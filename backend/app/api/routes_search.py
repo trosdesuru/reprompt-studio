@@ -10,6 +10,7 @@ from app.services.scraper import (
 logger = logging.getLogger("api_search")
 router = APIRouter()
 
+
 @router.get("/buscar")
 def endpoint_buscar(query: str, paginas: int = 1):
     try:
@@ -21,10 +22,14 @@ def endpoint_buscar(query: str, paginas: int = 1):
 
 
 @router.get("/leer")
-def endpoint_leer(url: str):
+def endpoint_leer(url: str, p: int = 0):
     try:
-        paginas = obtener_enlaces_paginas(url)
-        return {"status": "success", "paginas": paginas}
+        resultado = obtener_enlaces_paginas(url, p)
+        return {
+            "status": "success",
+            "paginas": resultado["enlaces"],
+            "has_next": resultado["has_next"],
+        }
     except Exception as e:
         logger.error(f"💥 Error no controlado en /leer: {e}")
         raise HTTPException(status_code=500, detail="Error al procesar la galería.")

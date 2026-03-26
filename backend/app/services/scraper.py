@@ -7,51 +7,79 @@ from app.core.config import http_session
 
 logger = logging.getLogger("scraper")
 
+
+import concurrent.futures  # <-- AÑADE ESTO ARRIBA CON LOS IMPORTS
+
+
 def buscar_galerias(query: str, paginas: int = 1):
     resultados = []
     url_base = f"https://e-hentai.org/?f_search={quote(query)}"
-    logger.info(f"🔍 Buscando '{query}' ({paginas} páginas)")
+    logger.info(f"🔍 Buscando '{query}' ({paginas} páginas en PARALELO 🚀)")
 
-    for p in range(paginas):
+    def fetch_page(p):
+        """Función aislada que procesa una sola página"""
         try:
             r = http_session.get(f"{url_base}&page={p}", timeout=10)
-            r.raise_for_status() # Lanza error automático si la web responde 404, 500, 503...
+            r.raise_for_status()
             soup = BeautifulSoup(r.text, "lxml")
 
-            tarjetas = soup.select(".itg tr, .itg .gl1t")
-            for tarjeta in tarjetas:
+            page_results = []
+            for tarjeta in soup.select(".itg tr, .itg .gl1t"):
                 enlace = tarjeta.select_one("a[href*='/g/']")
-                if not enlace: continue
+                if not enlace:
+                    continue
 
-                link = enlace["href"]
-                titulo = enlace.text.strip()
-                
                 img_tag = tarjeta.select_one("img")
-                thumb = img_tag.get("data-src") or img_tag.get("src") if img_tag else "N/A"
-
-                resultados.append({"url": link, "thumb": thumb, "title": titulo})
+                thumb = (
+                    img_tag.get("data-src") or img_tag.get("src") if img_tag else "N/A"
+                )
+                page_results.append(
+                    {
+                        "url": enlace["href"],
+                        "thumb": thumb,
+                        "title": enlace.text.strip(),
+                    }
+                )
+            return page_results
         except Exception as e:
-            logger.error(f"❌ Error escaneando página {p} de la búsqueda: {e}")
-            
+            logger.error(f"❌ Error escaneando página {p}: {e}")
+            return []
+
+    # Lanzamos hasta 5 peticiones simultáneas (¡Magia negra de Python!)
+    with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
+        for res in executor.map(fetch_page, range(paginas)):
+            resultados.extend(res)
+
     return resultados
 
 
-def obtener_enlaces_paginas(url: str):
+def obtener_enlaces_paginas(url: str, pagina: int = 0):
+    """Extrae SOLO una página y avisa si hay más."""
     paginas = []
-    logger.info(f"⚡ Extrayendo páginas de Lector Turbo: {url}")
+    logger.info(f"⚡ Lector Turbo: Extrayendo página {pagina} de {url}")
+
     try:
-        r = http_session.get(url, timeout=10)
+        r = http_session.get(f"{url}?p={pagina}", timeout=10)
         r.raise_for_status()
         soup = BeautifulSoup(r.text, "lxml")
-        
+
         enlaces = soup.select('#gdt a[href*="/s/"], .itg a[href*="/s/"]')
         for a in enlaces:
             href = a.get("href")
-            if href: paginas.append(href)
+            if href:
+                paginas.append(href)
+
+        # Detectamos si existe la flecha de "Siguiente" en la tabla de paginación
+        has_next = False
+        for a in soup.select(".ptt a"):
+            if ">" in a.text:
+                has_next = True
+                break
+
+        return {"enlaces": list(dict.fromkeys(paginas)), "has_next": has_next}
     except Exception as e:
-        logger.error(f"⚠️ Error crítico al leer la galería: {e}")
-        
-    return list(dict.fromkeys(paginas))
+        logger.error(f"⚠️ Error al leer la galería (pág {pagina}): {e}")
+        return {"enlaces": [], "has_next": False}
 
 
 def extraer_imagen_real(url: str):

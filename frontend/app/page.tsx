@@ -1,195 +1,187 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
+import { api } from "@/src/services/api";
+import ImageViewerModal from "../src/components/ImageViewerModal";
 
-// --- COMPONENTE TARJETA VISOR (Con botón de descarga individual) ---
-interface TarjetaProps {
-  urlPagina: string;
-  numReal: number;
-  tituloGaleria: string;
-}
-
-const TarjetaVisor: React.FC<TarjetaProps> = ({ urlPagina, numReal, tituloGaleria }) => {
-  const [imgReal, setImgReal] = useState<string>("");
-  const [cargandoImg, setCargandoImg] = useState<boolean>(false);
-  const [visible, setVisible] = useState<boolean>(false);
-  const tarjetaRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting) {
-          setVisible(true);
-          observer.disconnect();
-        }
-      },
-      { rootMargin: "300px" }
-    );
-    if (tarjetaRef.current) observer.observe(tarjetaRef.current);
-    return () => observer.disconnect();
-  }, []);
-
-  useEffect(() => {
-    if (!visible) return;
-    const obtener = async () => {
-      setCargandoImg(true);
-      try {
-        const res = await fetch(`http://localhost:8000/api/resolver_imagen?url=${encodeURIComponent(urlPagina)}`);
-        const data = await res.json();
-        if (data.status === "success") setImgReal(data.url_img);
-      } catch (e) { console.error(e); }
-      finally { setCargandoImg(false); }
-    };
-    obtener();
-  }, [urlPagina, visible]);
-
-  // FUNCIÓN: Descargar solo esta foto [cite: 102]
-  const descargarEstaFoto = async () => {
-    if (!imgReal) return;
-    try {
-      await fetch("http://localhost:8000/api/descargar_imagen", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url_img: imgReal, title: tituloGaleria, index: numReal }),
-      });
-      console.log(`Petición enviada para imagen ${numReal}`);
-    } catch (err) { alert("Error al descargar foto suelta"); }
-  };
-
-  return (
-    <div ref={tarjetaRef} className="bg-gray-800 rounded-lg overflow-hidden border border-gray-700 flex flex-col group shadow-lg">
-      <div className="h-56 bg-gray-900 relative flex items-center justify-center overflow-hidden">
-        {cargandoImg ? (
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
-        ) : imgReal ? (
-          <img src={imgReal} referrerPolicy="no-referrer" className="w-full h-full object-cover transition-transform group-hover:scale-105" alt="page" />
-        ) : (
-          <span className="text-gray-600 text-xs">Cargando...</span>
-        )}
-        <span className="absolute top-2 left-2 bg-black/80 text-blue-400 text-xs font-bold px-2 py-1 rounded">#{numReal}</span>
-      </div>
-      <button 
-        onClick={descargarEstaFoto}
-        disabled={!imgReal || cargandoImg}
-        className="bg-gray-700 hover:bg-green-600 text-white py-2 text-xs font-bold transition-colors disabled:opacity-30"
-      >
-        ⬇️ GUARDAR FOTO
-      </button>
-    </div>
-  );
-};
-
-// --- PÁGINA PRINCIPAL ---
 export default function Home() {
+  // --- STATES (En inglés profesional) ---
   const [query, setQuery] = useState<string>("");
-  const [paginas, setPaginas] = useState<number>(1);
-  const [resultados, setResultados] = useState<any[]>([]);
-  const [cargando, setCargando] = useState<boolean>(false);
-  const [error, setError] = useState<string>("");
+  const [pagesToSearch, setPagesToSearch] = useState<number>(1);
+  const [results, setResults] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
 
-  const [visorAbierto, setVisorAbierto] = useState<boolean>(false);
-  const [paginasVisor, setPaginasVisor] = useState<string[]>([]);
-  const [tituloVisor, setTituloVisor] = useState<string>("");
-  const [cargandoVisor, setCargandoVisor] = useState<boolean>(false);
+  // --- VIEWER STATES ---
+  const [isViewerOpen, setIsViewerOpen] = useState<boolean>(false);
+  const [viewerPages, setViewerPages] = useState<string[]>([]);
+  const [viewerTitle, setViewerTitle] = useState<string>("");
+  const [isViewerLoading, setIsViewerLoading] = useState<boolean>(false);
 
+  // --- BACKGROUND LOADING STATES ---
+  const [activeGalleryUrl, setActiveGalleryUrl] = useState<string>("");
+  const [currentViewerPage, setCurrentViewerPage] = useState<number>(0);
+  const [hasMorePages, setHasMorePages] = useState<boolean>(false);
+
+  // --- HANDLERS ---
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!query) return;
-    setCargando(true);
-    setError("");
+    setIsLoading(true);
     try {
-      const res = await fetch(`http://localhost:8000/api/buscar?query=${encodeURIComponent(query)}&paginas=${paginas}`);
-      const data = await res.json();
-      if (data.status === "success") setResultados(data.data);
-    } catch (err) { setError("Error de conexión API"); }
-    finally { setCargando(false); }
+      const data = await api.buscar(query, pagesToSearch);
+      if (data.status === "success") setResults(data.data);
+    } catch (err) {
+      console.error("API Connection Error");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  // FUNCIÓN: Descargar toda la galería [cite: 99, 100]
   const handleDownloadTotal = async (url: string, title: string) => {
-    alert(`⏳ Iniciando descarga de galería completa:\n${title}`);
+    alert(`⏳ Starting full gallery download:\n${title}`);
     try {
-      await fetch("http://localhost:8000/api/descargar", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url, title }),
-      });
-    } catch (err) { alert("Error al conectar con el backend"); }
+      await api.descargarTotal(url, title);
+    } catch (err) {
+      alert("Error connecting to backend");
+    }
   };
 
-  const handleOpenVisor = async (url: string, title: string) => {
-    setVisorAbierto(true);
-    setCargandoVisor(true);
-    setTituloVisor(title);
+  const handleOpenViewer = async (url: string, title: string) => {
+    setIsViewerOpen(true);
+    setIsViewerLoading(true);
+    setViewerPages([]);
+    setViewerTitle(title);
+    setActiveGalleryUrl(url);
+
     try {
-      const res = await fetch(`http://localhost:8000/api/leer?url=${encodeURIComponent(url)}`);
-      const data = await res.json();
-      if (data.status === "success") setPaginasVisor(data.paginas);
-    } catch (err) { alert("Error al leer páginas"); }
-    finally { setCargandoVisor(false); }
+      // Pedimos SOLO la página 0 inicialmente para rapidez total
+      const data = await api.leer(url, 0);
+      if (data.status === "success") {
+        setViewerPages(data.paginas);
+        setHasMorePages(data.has_next);
+        setCurrentViewerPage(1);
+      }
+    } catch (err) {
+      alert("Error loading gallery pages");
+    } finally {
+      setIsViewerLoading(false);
+    }
   };
+
+  // --- BACKGROUND SILENT LOAD MOTOR ---
+  useEffect(() => {
+    if (!isViewerOpen || !hasMorePages) return;
+
+    let isMounted = true;
+    const loadNextPage = async () => {
+      try {
+        const data = await api.leer(activeGalleryUrl, currentViewerPage);
+        if (isMounted && data.status === "success") {
+          setViewerPages((prev) => [...prev, ...data.paginas]);
+          setHasMorePages(data.has_next);
+          if (data.has_next) {
+            setCurrentViewerPage((prev) => prev + 1);
+          }
+        }
+      } catch (e) {
+        console.error("Error loading extra page", e);
+      }
+    };
+
+    loadNextPage();
+    return () => {
+      isMounted = false;
+    };
+  }, [isViewerOpen, hasMorePages, currentViewerPage, activeGalleryUrl]);
+
+  useEffect(() => {
+    if (isViewerOpen) {
+      // 1. Bloqueamos el scroll del body por completo
+      document.body.style.overflow = "hidden";
+      // 2. Opcional: Evitamos el pequeño salto lateral al desaparecer la barra
+      document.body.style.paddingRight = "15px";
+    } else {
+      // 3. Restauramos al cerrar
+      document.body.style.overflow = "unset";
+      document.body.style.paddingRight = "0px";
+    }
+
+    // Limpieza por si el componente se desmonta inesperadamente
+    return () => {
+      document.body.style.overflow = "unset";
+      document.body.style.paddingRight = "0px";
+    };
+  }, [isViewerOpen]);
 
   return (
     <main className="min-h-screen bg-gray-900 text-white p-8 font-sans">
-      <h1 className="text-4xl font-extrabold text-blue-400 text-center mb-10">Buscador de Galerías</h1>
-      
-      <form onSubmit={handleSearch} className="max-w-2xl mx-auto flex gap-2 mb-12 bg-gray-800 p-2 rounded-xl border border-gray-700 shadow-xl">
-        <input 
-          type="text" 
-          value={query} 
-          onChange={(e) => setQuery(e.target.value)} 
+      <h1 className="text-4xl font-extrabold text-blue-400 text-center mb-10">
+        Gallery Scraper Pro
+      </h1>
+
+      <form
+        onSubmit={handleSearch}
+        className="max-w-2xl mx-auto flex gap-2 mb-12 bg-gray-800 p-2 rounded-xl border border-gray-700 shadow-xl"
+      >
+        <input
+          type="text"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
           className="flex-1 p-3 rounded bg-gray-900 border border-gray-700 outline-none focus:border-blue-500"
-          placeholder="Buscar personaje o tag..."
+          placeholder="Search character or tag..."
         />
-        <button type="submit" className="bg-blue-600 px-8 py-3 rounded font-bold hover:bg-blue-500 transition-colors">BUSCAR</button>
+        <button
+          type="submit"
+          className="bg-blue-600 px-8 py-3 rounded font-bold hover:bg-blue-500 transition-colors"
+        >
+          SEARCH
+        </button>
       </form>
 
+      {/* RESULTS GRID */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6">
-        {resultados.map((item: any, index: number) => (
-          <div key={index} className="bg-gray-800 rounded-xl overflow-hidden border border-gray-700 flex flex-col shadow-lg">
+        {results.map((item: any, index: number) => (
+          <div
+            key={index}
+            className="bg-gray-800 rounded-xl overflow-hidden border border-gray-700 flex flex-col shadow-lg"
+          >
             <div className="h-64 bg-gray-900 overflow-hidden">
-              <img src={item.thumb} referrerPolicy="no-referrer" className="w-full h-full object-cover" alt="thumb" />
+              <img
+                src={item.thumb}
+                referrerPolicy="no-referrer"
+                className="w-full h-full object-cover"
+                alt="thumb"
+              />
             </div>
             <div className="p-4 flex flex-col gap-2">
-              <h2 className="text-sm font-bold line-clamp-2 h-10 text-gray-200">{item.title}</h2>
-              <button 
+              <h2 className="text-sm font-bold line-clamp-2 h-10 text-gray-200">
+                {item.title}
+              </h2>
+              <button
                 onClick={() => handleDownloadTotal(item.url, item.title)}
                 className="w-full bg-green-600 py-2 rounded text-xs font-bold hover:bg-green-500 transition-colors"
               >
-                ⬇️ BAJAR GALERÍA
+                ⬇️ DOWNLOAD ALL
               </button>
-              <button 
-                onClick={() => handleOpenVisor(item.url, item.title)}
+              <button
+                onClick={() => handleOpenViewer(item.url, item.title)}
                 className="w-full bg-blue-600 py-2 rounded text-xs font-bold hover:bg-blue-500 transition-colors"
               >
-                📖 ABRIR VISOR
+                📖 OPEN VIEWER
               </button>
             </div>
           </div>
         ))}
       </div>
 
-      {visorAbierto && (
-        <div className="fixed inset-0 bg-black/95 z-50 p-6 overflow-y-auto backdrop-blur-sm">
-          <div className="max-w-7xl mx-auto">
-            <div className="flex justify-between items-center mb-8 sticky top-0 bg-black/40 p-4 rounded-lg z-10">
-              <h2 className="text-xl font-bold text-blue-400 truncate w-2/3">{tituloVisor}</h2>
-              <button onClick={() => setVisorAbierto(false)} className="bg-red-600 px-6 py-2 rounded-full font-bold hover:bg-red-500 transition-all">CERRAR ✖</button>
-            </div>
-            {cargandoVisor ? (
-              <div className="flex flex-col items-center justify-center h-64">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mb-4"></div>
-                <p className="text-blue-400 text-lg">Obteniendo enlaces de lectura...</p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                {paginasVisor.map((url: string, i: number) => (
-                  <TarjetaVisor key={i} urlPagina={url} numReal={i + 1} tituloGaleria={tituloVisor} />
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
+      {/* RENDERIZADO DEL MODAL PROFESIONAL */}
+      {isViewerOpen && (
+        <ImageViewerModal
+          title={viewerTitle}
+          pages={viewerPages}
+          isLoading={isViewerLoading}
+          onClose={() => setIsViewerOpen(false)}
+        />
       )}
     </main>
   );
