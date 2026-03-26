@@ -22,7 +22,7 @@ logger = logging.getLogger("cli_analytics")
 
 
 def ejecutar_mapeo(termino: str, paginas: int):
-    url_base = f"https://e-hentai.org/?f_search={quote(termino)}"
+    url_base = f"https:
     base_de_datos = []
 
     # 3. Usamos el navegador de forma segura (sin ensuciar el código con options y quits)
@@ -61,7 +61,7 @@ def ejecutar_mapeo(termino: str, paginas: int):
                         thumb_url = "N/A"
                         try:
                             thumb_url = elemento.find_element(
-                                By.XPATH, ".//img | ../..//img"
+                                By.XPATH, ".
                             ).get_attribute("src")
                         except:
                             pass

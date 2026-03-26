@@ -1,4 +1,3 @@
-// frontend/src/components/ImageCard.tsx
 "use client";
 
 import { useState, useEffect, useRef } from "react";

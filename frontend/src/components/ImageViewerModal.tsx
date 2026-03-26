@@ -19,7 +19,6 @@ export default function ImageViewerModal({
 }: ImageViewerModalProps) {
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
 
-  // 1. Congelar el scroll del body al abrir una imagen
   useEffect(() => {
     if (selectedIndex !== null) {
       document.body.style.overflow = "hidden";
@@ -51,7 +50,6 @@ export default function ImageViewerModal({
     [selectedIndex],
   );
 
-  // Navegación por teclado
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (selectedIndex === null) return;
@@ -68,7 +66,7 @@ export default function ImageViewerModal({
      Al poner h-screen y w-screen, ignoramos cualquier contenido que haya debajo.
   */
     <div className="fixed inset-0 z-50 flex flex-col bg-gray-900 w-screen h-screen overflow-hidden">
-      {/* HEADER: Se queda arriba fijo */}
+      {}
       <div className="flex-none flex justify-between items-center p-4 bg-gray-900 border-b border-gray-800 z-30 shadow-2xl">
         <h2 className="text-xl font-bold text-blue-400 truncate w-2/3">
           {title}
@@ -81,7 +79,7 @@ export default function ImageViewerModal({
         </button>
       </div>
 
-      {/* CUERPO: Este es el ÚNICO lugar donde permitimos scroll ahora */}
+      {}
       <div className="flex-1 overflow-y-auto p-4 sm:p-8 custom-scrollbar">
         {isLoading ? (
           <div className="flex items-center justify-center h-64">
@@ -102,14 +100,14 @@ export default function ImageViewerModal({
         )}
       </div>
 
-      {/* ⬛ LIGHTBOX: CORREGIDO ⬛ */}
+      {}
       {selectedIndex !== null && (
         <div
           className="fixed inset-0 z-100 bg-black/95 flex items-center justify-center"
           onClick={() => setSelectedIndex(null)}
         >
           <div className="relative w-full h-full flex items-center justify-center p-4 md:p-12">
-            {/* Botón Prev (Limpio) */}
+            {}
             {selectedIndex > 0 && (
               <button
                 className="absolute left-4 z-120 p-4 bg-gray-800/60 hover:bg-blue-600 text-white rounded-full transition-all"
@@ -139,7 +137,7 @@ export default function ImageViewerModal({
               index={selectedIndex + 1}
             />
 
-            {/* Botón Next (Limpio) */}
+            {}
             {selectedIndex < pages.length - 1 && (
               <button
                 className="absolute right-4 z-120 p-4 bg-gray-800/60 hover:bg-blue-600 text-white rounded-full transition-all"

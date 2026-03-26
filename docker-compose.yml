@@ -19,8 +19,8 @@ services:
       - ./backend:/app
       - ./storage:/storage
     environment:
-      - REDIS_URL=redis://redis:6379/0
-      - PYTHONPATH=/app
+      - REDIS_URL=redis://redis:6379/0  # Asegúrate de que haya un espacio después del guion
+      - PYTHONPATH=/app                 # Sin llaves {}, solo la cadena de texto
     depends_on:
       - redis
     command: python worker.py
