@@ -19,7 +19,7 @@ app = FastAPI(title="Bot de Descarga API")
 # Configuración de CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http:
+    allow_origins=["http://localhost:3000"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

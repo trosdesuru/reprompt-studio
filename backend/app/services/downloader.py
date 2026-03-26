@@ -76,7 +76,7 @@ def ejecutar_descarga(url: str, download_dir: str):
 
             # Paginación
             try:
-                next_button = driver.find_element(By.XPATH, "
+                next_button = driver.find_element(By.XPATH, "//a[text()='>']")
                 next_button.click()
                 time.sleep(2)
             except:

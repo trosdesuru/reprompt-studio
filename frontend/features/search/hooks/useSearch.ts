@@ -19,7 +19,14 @@ export function useSearch() {
         setResults(data.data);
       }
     } catch (err) {
-      console.error("🔍 Search Error:", err);
+      if (err instanceof TypeError && err.message === "Failed to fetch") {
+        console.error(
+          "🚨 Error Crítico: El servidor Backend no responde. Verifica que Docker esté corriendo y no haya errores de sintaxis en Python.",
+        );
+        alert("El servidor está desconectado. Revisa la consola.");
+      } else {
+        console.error("🔍 Search Error:", err);
+      }
     } finally {
       setIsLoading(false);
     }

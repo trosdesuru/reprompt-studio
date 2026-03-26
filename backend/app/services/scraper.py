@@ -15,7 +15,7 @@ import concurrent.futures  # <-- AÑADE ESTO ARRIBA CON LOS IMPORTS
 
 def buscar_galerias(query: str, paginas: int = 1):
     resultados = []
-    url_base = f"https:
+    url_base = f"https://e-hentai.org/?f_search={quote(query)}"
     logger.info(f"🔍 Buscando '{query}' ({paginas} páginas en PARALELO 🚀)")
 
     def fetch_page(p):
