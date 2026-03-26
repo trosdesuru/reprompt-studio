@@ -14,6 +14,9 @@ export default function ImageCard({ pageUrl, index, galleryTitle, onOpenImage }:
   const [imageUrl, setImageUrl] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
+  const [downloadStatus, setDownloadStatus] = useState<"idle" | "loading" | "success" | "error">(
+    "idle",
+  );
 
   const cardRef = useRef<HTMLDivElement>(null);
 
@@ -55,11 +58,17 @@ export default function ImageCard({ pageUrl, index, galleryTitle, onOpenImage }:
 
   const handleDownload = async () => {
     if (!imageUrl) return;
+
+    setDownloadStatus("loading");
     try {
       await api.descargarImagen(imageUrl, galleryTitle, index);
-      console.log(`✅ Download request sent: image ${index}`);
+      setDownloadStatus("success");
     } catch (error) {
-      alert(`Error downloading image ${index}`);
+      console.error(`Error downloading image ${index}:`, error);
+      setDownloadStatus("error");
+    } finally {
+      // Devolver el botón a su estado original después de 2 segundos
+      setTimeout(() => setDownloadStatus("idle"), 2500);
     }
   };
 
@@ -96,10 +105,25 @@ export default function ImageCard({ pageUrl, index, galleryTitle, onOpenImage }:
       </div>
       <button
         onClick={handleDownload}
-        disabled={!imageUrl || isLoading}
-        className="bg-gray-700 hover:bg-green-600 text-white font-semibold py-2 transition-colors text-sm w-full disabled:opacity-30 disabled:hover:bg-gray-700"
+        disabled={
+          !imageUrl || isLoading || downloadStatus === "loading" || downloadStatus === "success"
+        }
+        className={`font-semibold py-2 transition-colors text-sm w-full disabled:opacity-80 flex justify-center items-center gap-2 ${
+          downloadStatus === "success"
+            ? "bg-green-600 text-white"
+            : downloadStatus === "error"
+              ? "bg-red-600 text-white"
+              : downloadStatus === "loading"
+                ? "bg-blue-600 text-white"
+                : "bg-gray-700 hover:bg-green-600 text-white"
+        }`}
       >
-        ⬇️ Save Photo
+        {downloadStatus === "success" && "✅ ¡Encolada!"}
+        {downloadStatus === "error" && "❌ Falló"}
+        {downloadStatus === "loading" && (
+          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+        )}
+        {downloadStatus === "idle" && "⬇️ Guardar Foto"}
       </button>
     </div>
   );

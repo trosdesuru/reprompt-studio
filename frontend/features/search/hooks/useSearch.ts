@@ -4,22 +4,29 @@ import { GalleryItem } from "@/src/types/gallery";
 
 export function useSearch() {
   const [query, setQuery] = useState("");
-  const [pagesToSearch, setPagesToSearch] = useState(1);
   const [results, setResults] = useState<GalleryItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null); // Nuevo estado
+  const [error, setError] = useState<string | null>(null);
+
+  // Configuramos la profundidad de búsqueda "oculta"
+  const PAGINAS_A_BUSCAR = 3;
 
   const handleSearch = async (e?: React.FormEvent) => {
     e?.preventDefault();
     if (!query) return;
 
     setIsLoading(true);
-    setError(null); // Limpiamos errores previos
+    setError(null);
 
     try {
-      const data = await api.buscar(query, pagesToSearch);
+      const data = await api.buscar(query, PAGINAS_A_BUSCAR);
       if (data.status === "success") {
-        setResults(data.data);
+        // 🟢 ESCUDO: Deduplicación instantánea de objetos basándonos en la 'url'
+        const uniqueResults = Array.from(
+          new Map(data.data.map((item: GalleryItem) => [item.url, item])).values(),
+        ) as GalleryItem[];
+
+        setResults(uniqueResults);
       }
     } catch (err) {
       if (err instanceof TypeError && err.message === "Failed to fetch") {
@@ -33,14 +40,5 @@ export function useSearch() {
     }
   };
 
-  return {
-    query,
-    setQuery,
-    pagesToSearch,
-    setPagesToSearch,
-    results,
-    isLoading,
-    error,
-    handleSearch,
-  };
+  return { query, setQuery, results, isLoading, error, handleSearch };
 }

@@ -25,19 +25,25 @@ export const api = {
     return res.json();
   },
 
+  // 🟢 CORREGIDO: Ahora parsea el JSON y maneja errores igual que el resto
   descargarTotal: async (url: string, title: string) => {
-    return fetch(`${API_URL}/descargar`, {
+    const res = await fetch(`${API_URL}/descargar`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ url, title }),
     });
+    if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+    return res.json();
   },
 
+  // 🟢 CORREGIDO: También parseamos la descarga individual por consistencia
   descargarImagen: async (url_img: string, title: string, index: number) => {
-    return fetch(`${API_URL}/descargar_imagen`, {
+    const res = await fetch(`${API_URL}/descargar_imagen`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ url_img, title, index }),
     });
+    if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+    return res.json();
   },
 };

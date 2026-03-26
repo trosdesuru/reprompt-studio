@@ -5,12 +5,7 @@ interface SearchFormProps {
   isLoading: boolean;
 }
 
-export default function SearchForm({
-  query,
-  setQuery,
-  onSearch,
-  isLoading,
-}: SearchFormProps) {
+export default function SearchForm({ query, setQuery, onSearch, isLoading }: SearchFormProps) {
   return (
     <form
       onSubmit={onSearch}
@@ -21,7 +16,7 @@ export default function SearchForm({
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         className="flex-1 p-3 rounded bg-gray-900 border border-gray-700 outline-none focus:border-blue-500 transition-all text-white"
-        placeholder="Search character, artist or tag..."
+        placeholder="Buscar personaje, artista o tag..."
         disabled={isLoading}
       />
       <button
@@ -29,7 +24,7 @@ export default function SearchForm({
         disabled={isLoading || !query}
         className="bg-blue-600 px-8 py-3 rounded font-bold hover:bg-blue-500 transition-colors disabled:bg-gray-700"
       >
-        {isLoading ? "SEARCHING..." : "SEARCH"}
+        {isLoading ? "BUSCANDO..." : "BUSCAR"}
       </button>
     </form>
   );

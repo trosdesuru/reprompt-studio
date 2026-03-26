@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { api } from "@/src/services/api"; 
+import { api } from "@/src/services/api";
 
 export function useViewerSync(activeUrl: string) {
   const [isViewerOpen, setIsViewerOpen] = useState(false);
@@ -8,14 +8,16 @@ export function useViewerSync(activeUrl: string) {
   const [hasMorePages, setHasMorePages] = useState(false);
   const [currentViewerPage, setCurrentViewerPage] = useState(0);
 
-  
-  const openViewer = async () => {
+  const openViewer = async (targetUrl?: string) => {
+    const urlToFetch = targetUrl || activeUrl;
+    if (!urlToFetch) return;
+
     setIsViewerOpen(true);
     setIsViewerLoading(true);
     setViewerPages([]);
 
     try {
-      const data = await api.leer(activeUrl, 0); 
+      const data = await api.leer(urlToFetch, 0);
       if (data.status === "success") {
         setViewerPages(data.paginas);
         setHasMorePages(data.has_next);
@@ -33,7 +35,6 @@ export function useViewerSync(activeUrl: string) {
     setViewerPages([]);
   };
 
-  
   useEffect(() => {
     if (!isViewerOpen || !hasMorePages) return;
 
@@ -59,11 +60,5 @@ export function useViewerSync(activeUrl: string) {
     };
   }, [isViewerOpen, hasMorePages, currentViewerPage, activeUrl]);
 
-  return {
-    viewerPages,
-    isViewerLoading,
-    isViewerOpen,
-    openViewer,
-    closeViewer,
-  };
+  return { viewerPages, isViewerLoading, isViewerOpen, openViewer, closeViewer };
 }
