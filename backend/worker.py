@@ -1,5 +1,7 @@
 import logging
-from rq import Worker, Queue
+
+from rq import Queue, Worker
+
 from app.core.redis_config import conn
 
 # Logs para el proceso worker

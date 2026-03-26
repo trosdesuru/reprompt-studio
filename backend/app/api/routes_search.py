@@ -1,10 +1,12 @@
 # backend/app/api/routes_search.py
 import logging
+
 from fastapi import APIRouter, HTTPException
+
 from app.services.scraper import (
     buscar_galerias,
-    obtener_enlaces_paginas,
     extraer_imagen_real,
+    obtener_enlaces_paginas,
 )
 
 logger = logging.getLogger("api_search")

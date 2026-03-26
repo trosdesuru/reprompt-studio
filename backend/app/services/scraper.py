@@ -1,8 +1,10 @@
 # backend/app/services/scraper.py
-import re
 import logging
-from bs4 import BeautifulSoup
+import re
 from urllib.parse import quote
+
+from bs4 import BeautifulSoup
+
 from app.core.config import http_session
 
 logger = logging.getLogger("scraper")

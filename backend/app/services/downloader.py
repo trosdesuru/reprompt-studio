@@ -1,15 +1,17 @@
 # backend/app/services/downloader.py
 import logging
 import time
+
 import requests
 from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.support.ui import WebDriverWait
+
+from app.core.config import http_session
+from app.core.webdriver_mgr import navegador_seguro
 
 # Importamos nuestras utilidades limpias
 from app.utils.storage import guardar_archivo
-from app.core.config import http_session
-from app.core.webdriver_mgr import navegador_seguro
 
 logger = logging.getLogger("downloader")
 

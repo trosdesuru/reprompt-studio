@@ -1,5 +1,6 @@
 from pydantic import BaseModel
 
+
 class DescargaRequest(BaseModel):
     url: str
     title: str

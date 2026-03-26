@@ -1,16 +1,16 @@
 # backend/scripts/run_analytics.py
+import logging
 import os
 import sys
 import time
-import logging
 from urllib.parse import quote
 
 # 1. HACK: Añadimos la raíz del backend al PATH para poder importar la carpeta 'app'
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.support.ui import WebDriverWait
 
 # 2. Importamos nuestras utilidades limpias
 from app.core.webdriver_mgr import navegador_seguro

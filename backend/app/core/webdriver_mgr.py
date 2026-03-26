@@ -1,6 +1,7 @@
 # backend/app/core/webdriver_mgr.py
 import logging
 from contextlib import contextmanager
+
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 

@@ -1,4 +1,3 @@
-import sys
 import os
 
 print("--- DIAGNÓSTICO DE ENTORNO ---")
@@ -13,7 +12,6 @@ except ImportError:
     print("❌ ERROR: RQ no está instalado en este entorno")
 
 try:
-    from app.core.redis_config import conn
     print("✅ Conexión a Redis configurada correctamente")
 except Exception as e:
     print(f"❌ ERROR al importar redis_config: {e}")

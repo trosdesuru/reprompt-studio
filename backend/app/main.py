@@ -1,9 +1,10 @@
 import logging
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.api.routes_search import router as search_router
+
 from app.api.routes_download import router as download_router
-from app.core.redis_config import conn
+from app.api.routes_search import router as search_router
 
 # Configuración de Logs
 logging.basicConfig(
