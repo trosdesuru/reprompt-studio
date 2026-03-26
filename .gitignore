@@ -1,0 +1,9 @@
+# Entornos y dependencias
+venv/
+node_modules/
+__pycache__/
+.next/
+
+# Datos y Descargas (VITAL)
+storage/
+*.json
