@@ -1,10 +1,11 @@
 import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.api.endpoints import router
+from app.api.routes_search import router as search_router
+from app.api.routes_download import router as download_router
 from app.core.redis_config import conn
 
-# 1. Configuración de Logs Global
+# Configuración de Logs
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
@@ -14,10 +15,10 @@ logger = logging.getLogger("backend")
 
 app = FastAPI(title="Bot de Descarga API")
 
-# 2. Configuración de CORS (Soluciona el error de "Blocked by CORS")
+# Configuración de CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"], # Tu URL de Next.js
+    allow_origins=["http://localhost:3000"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -27,4 +28,6 @@ app.add_middleware(
 async def startup_event():
     logger.info("🚀 API Backend iniciada. Conexión Redis: OK")
 
-app.include_router(router)
+# Conectamos las rutas divididas
+app.include_router(search_router, prefix="/api")
+app.include_router(download_router, prefix="/api")

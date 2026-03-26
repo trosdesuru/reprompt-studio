@@ -1,46 +1,86 @@
+# backend/app/services/downloader.py
 import logging
-import os
 import time
+import requests
 from selenium import webdriver
+from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+
+# 1. Importamos nuestra nueva utilidad limpia y la sesión global
+from app.utils.storage import guardar_archivo
+from app.core.config import http_session
 
 logger = logging.getLogger("downloader")
 
-def ejecutar_descarga(url: str, storage_path: str):
-    logger.info(f"🏁 Iniciando proceso para URL: {url}")
-    
-    chrome_options = Options()
-    # Argumentos críticos para Docker
-    chrome_options.add_argument("--headless=new")
-    chrome_options.add_argument("--no-sandbox")
-    chrome_options.add_argument("--disable-dev-shm-usage")
-    chrome_options.add_argument("--disable-gpu")
-    chrome_options.add_argument("--window-size=1920,1080")
-    chrome_options.add_argument("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+def get_chrome_options():
+    options = Options()
+    options.add_argument("--headless=new")
+    options.add_argument("--no-sandbox")
+    options.add_argument("--disable-dev-shm-usage")
+    options.add_argument("--disable-gpu")
+    options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
+    return options
 
-    driver = None
+def ejecutar_descarga(url: str, download_dir: str):
+    """Descarga todas las imágenes de una galería."""
+    logger.info(f"📥 [DESCARGA TOTAL] Iniciando en: {download_dir}")
+    driver = webdriver.Chrome(options=get_chrome_options())
+    wait = WebDriverWait(driver, 10)
     try:
-        logger.info("🌐 Abriendo instancia de Chrome...")
-        driver = webdriver.Chrome(options=chrome_options)
-        
-        logger.info(f"🔗 Navegando a la galería...")
         driver.get(url)
+        driver.add_cookie({"name": "nw", "value": "1", "domain": ".e-hentai.org"})
+        driver.refresh()
+        img_count = 1
         
-        # Log para debug: Ver si cargó el sitio
-        logger.info(f"📄 Título detectado: {driver.title}")
-        
-        # --- AQUÍ VA TU LÓGICA DE SCRAPEO ESPECÍFICA ---
-        # Ejemplo: crear carpeta si no existe
-        os.makedirs(storage_path, exist_ok=True)
-        time.sleep(2) # Pausa amigable
-        
-        logger.info(f"✅ Descarga completada en: {storage_path}")
-        return {"status": "success", "path": storage_path}
+        while True:
+            wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "#gdt, .itg")))
+            thumbs = driver.find_elements(By.CSS_SELECTOR, 'a[href*="/s/"]')
+            links = list(dict.fromkeys([t.get_attribute("href") for t in thumbs if t.get_attribute("href")]))
 
-    except Exception as e:
-        logger.error(f"❌ ERROR en el Worker: {str(e)}", exc_info=True)
-        raise e
+            for link in links:
+                driver.get(link)
+                try:
+                    img_element = wait.until(EC.presence_of_element_located((By.ID, "img")))
+                    src = img_element.get_attribute("src")
+                    r = requests.get(src, headers={"User-Agent": "Mozilla/5.0", "Referer": driver.current_url}, stream=True, timeout=10)
+                    
+                    if r.status_code == 200:
+                        ext = src.split(".")[-1].split("?")[0] if "." in src else "jpg"
+                        nombre_archivo = f"image_{img_count:03d}.{ext}"
+                        
+                        # 2. DELEGAMOS LA RESPONSABILIDAD AL STORAGE
+                        guardar_archivo(download_dir, nombre_archivo, r.iter_content(1024))
+                        
+                        logger.info(f"🖼️ [{img_count:03d}] Guardada")
+                        img_count += 1
+                        time.sleep(1)
+                except Exception as e:
+                    logger.error(f"❌ Error en imagen: {e}")
+                driver.back()
+
+            try:
+                next_button = driver.find_element(By.XPATH, "//a[text()='>']")
+                next_button.click()
+                time.sleep(2)
+            except:
+                break
     finally:
-        if driver:
-            driver.quit()
-            logger.info("🔒 Navegador cerrado correctamente.")
+        driver.quit()
+
+def ejecutar_descarga_individual(url_img: str, download_dir: str, indice: int):
+    """Descarga una sola imagen suelta."""
+    try:
+        r = requests.get(url_img, headers=http_session.headers, stream=True, timeout=10)
+        if r.status_code == 200:
+            ext = url_img.split(".")[-1].split("?")[0] if "." in url_img else "jpg"
+            nombre_archivo = f"image_{indice:03d}.{ext}"
+            
+            # 2. DELEGAMOS LA RESPONSABILIDAD AL STORAGE
+            guardar_archivo(download_dir, nombre_archivo, r.iter_content(1024))
+            logger.info(f"✅ Imagen suelta {indice} guardada.")
+        else:
+             logger.error(f"❌ Error al descargar imagen {indice}, HTTP {r.status_code}")
+    except Exception as e:
+        logger.error(f"❌ Error de red en descarga individual: {e}")
