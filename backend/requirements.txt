@@ -1,0 +1,9 @@
+fastapi
+uvicorn
+requests
+beautifulsoup4
+lxml
+selenium
+pydantic
+redis  # 👈 La añadimos ya para el futuro
+rq
