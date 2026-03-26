@@ -6,11 +6,7 @@ interface Props {
   onOpenVisor: (url: string, title: string) => void;
 }
 
-export default function GalleryCard({
-  item,
-  onDownloadTotal,
-  onOpenVisor,
-}: Props) {
+export default function GalleryCard({ item, onDownloadTotal, onOpenVisor }: Props) {
   return (
     <div className="bg-gray-800 rounded-xl overflow-hidden shadow-lg border border-gray-700 flex flex-col">
       <div className="h-64 overflow-hidden bg-gray-900">
@@ -21,16 +17,11 @@ export default function GalleryCard({
             className="w-full h-full object-cover"
           />
         ) : (
-          <div className="flex items-center justify-center h-full text-gray-600">
-            Sin foto
-          </div>
+          <div className="flex items-center justify-center h-full text-gray-600">Sin foto</div>
         )}
       </div>
       <div className="p-4 flex flex-col grow justify-between">
-        <h2
-          className="text-sm font-bold text-gray-200 line-clamp-2 mb-4"
-          title={item.title}
-        >
+        <h2 className="text-sm font-bold text-gray-200 line-clamp-2 mb-4" title={item.title}>
           {item.title}
         </h2>
         <div className="flex flex-col gap-2">

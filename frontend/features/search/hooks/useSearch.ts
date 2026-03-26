@@ -7,12 +7,15 @@ export function useSearch() {
   const [pagesToSearch, setPagesToSearch] = useState(1);
   const [results, setResults] = useState<GalleryItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null); // Nuevo estado
 
   const handleSearch = async (e?: React.FormEvent) => {
     e?.preventDefault();
     if (!query) return;
 
     setIsLoading(true);
+    setError(null); // Limpiamos errores previos
+
     try {
       const data = await api.buscar(query, pagesToSearch);
       if (data.status === "success") {
@@ -20,13 +23,11 @@ export function useSearch() {
       }
     } catch (err) {
       if (err instanceof TypeError && err.message === "Failed to fetch") {
-        console.error(
-          "🚨 Error Crítico: El servidor Backend no responde. Verifica que Docker esté corriendo y no haya errores de sintaxis en Python.",
-        );
-        alert("El servidor está desconectado. Revisa la consola.");
+        setError("🚨 El servidor Backend no responde. Verifica que Docker esté corriendo.");
       } else {
-        console.error("🔍 Search Error:", err);
+        setError("🔍 Ocurrió un error inesperado al buscar.");
       }
+      console.error(err);
     } finally {
       setIsLoading(false);
     }
@@ -39,6 +40,7 @@ export function useSearch() {
     setPagesToSearch,
     results,
     isLoading,
+    error,
     handleSearch,
   };
 }
