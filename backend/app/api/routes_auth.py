@@ -9,6 +9,19 @@ from app.core.security import get_password_hash, verify_password, create_access_
 router = APIRouter()
 
 
+@router.get("/me")
+def get_current_user_profile(current_user: User = Depends(get_current_user)):
+    """Devuelve los datos del usuario logueado usando su Cookie"""
+    return {
+        "status": "success",
+        "user": {
+            "username": current_user.username,
+            "role": current_user.role,
+            "is_active": current_user.is_active,
+        },
+    }
+
+
 @router.post("/register")
 def register_user(user_data: UserRegister, session: Session = Depends(get_session)):
     statement = (
