@@ -1,8 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlmodel import Session, select
 from app.core.db import get_session
+from app.api.deps import get_current_user
 from app.models.user import User, InviteCode
-from app.schemas.user import UserRegister, UserLogin, Token
+from app.schemas.user import UserRegister, UserLogin, Token, PasswordChange
 from app.core.security import get_password_hash, verify_password, create_access_token
 
 router = APIRouter()
@@ -70,7 +71,7 @@ def login_user(
         max_age=60 * 60 * 24 * 7,
         samesite="lax",
         secure=False,
-        path="/"
+        path="/",
     )
 
     return {"status": "success", "message": f"Bienvenido, {user.username}"}
@@ -81,3 +82,21 @@ def logout_user(response: Response):
     """Destruye la sesión eliminando la cookie del navegador"""
     response.delete_cookie("access_token")
     return {"status": "success", "message": "Sesión cerrada"}
+
+
+@router.put("/change-password")
+def change_password(
+    data: PasswordChange,
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    if not verify_password(data.old_password, current_user.hashed_password):
+        raise HTTPException(
+            status_code=400, detail="La contraseña actual es incorrecta"
+        )
+
+    current_user.hashed_password = get_password_hash(data.new_password)
+    session.add(current_user)
+    session.commit()
+
+    return {"status": "success", "message": "Contraseña actualizada correctamente"}

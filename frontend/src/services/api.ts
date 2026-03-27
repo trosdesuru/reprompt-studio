@@ -45,6 +45,14 @@ export const api = {
     window.location.href = "/login";
   },
 
+  cambiarPassword: async (data: { old_password: string; new_password: string }) => {
+    return fetchSeguro(`${API_URL}/auth/change-password`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+  },
+
   // --- BÚSQUEDA Y LECTURA ---
   buscar: async (
     query: string,
