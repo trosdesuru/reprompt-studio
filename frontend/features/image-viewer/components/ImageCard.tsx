@@ -1,7 +1,10 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { api } from "../services/api";
+// 🟢 Corregimos la ruta de la API al mover el archivo
+import { api } from "../../../src/services/api";
+// 🟢 Importamos el botón global
+import { Button } from "../../../src/components/ui/Button";
 
 interface ImageCardProps {
   pageUrl: string;
@@ -14,9 +17,7 @@ export default function ImageCard({ pageUrl, index, galleryTitle, onOpenImage }:
   const [imageUrl, setImageUrl] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
-  const [downloadStatus, setDownloadStatus] = useState<"idle" | "loading" | "success" | "error">(
-    "idle",
-  );
+  const [downloadStatus, setDownloadStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
 
   const cardRef = useRef<HTMLDivElement>(null);
 
@@ -37,7 +38,6 @@ export default function ImageCard({ pageUrl, index, galleryTitle, onOpenImage }:
 
   useEffect(() => {
     if (!isVisible) return;
-
     const delayMs = (index % 40) * 100;
     const timeoutId = setTimeout(async () => {
       setIsLoading(true);
@@ -52,13 +52,11 @@ export default function ImageCard({ pageUrl, index, galleryTitle, onOpenImage }:
         setIsLoading(false);
       }
     }, delayMs);
-
     return () => clearTimeout(timeoutId);
   }, [pageUrl, isVisible, index]);
 
   const handleDownload = async () => {
     if (!imageUrl) return;
-
     setDownloadStatus("loading");
     try {
       await api.descargarImagen(imageUrl, galleryTitle, index);
@@ -67,7 +65,6 @@ export default function ImageCard({ pageUrl, index, galleryTitle, onOpenImage }:
       console.error(`Error downloading image ${index}:`, error);
       setDownloadStatus("error");
     } finally {
-      // Devolver el botón a su estado original después de 2 segundos
       setTimeout(() => setDownloadStatus("idle"), 2500);
     }
   };
@@ -75,19 +72,19 @@ export default function ImageCard({ pageUrl, index, galleryTitle, onOpenImage }:
   return (
     <div
       ref={cardRef}
-      className="bg-gray-800 rounded-lg overflow-hidden border border-gray-700 hover:border-blue-500 flex flex-col shadow-lg relative z-20"
+      className="bg-(--bg-secondary) neo-border neo-shadow flex flex-col relative z-20 group"
     >
       <div
-        className="h-56 relative bg-gray-900 flex items-center justify-center overflow-hidden cursor-pointer group"
-        onClick={() => {
-          console.log(`🖱️ Clicked card ${index}`);
-          if (imageUrl) onOpenImage(imageUrl);
-        }}
+        className="h-56 relative bg-background border-b-2 border-(--border-color) flex items-center justify-center overflow-hidden cursor-pointer"
+        onClick={() => imageUrl && onOpenImage(imageUrl)}
       >
         {!isVisible ? (
-          <span className="text-gray-600 text-sm font-medium pointer-events-none">Waiting...</span>
+          <span className="text-(--text-secondary)-mono text-xs pointer-events-none">Waiting...</span>
         ) : isLoading ? (
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 pointer-events-none"></div>
+          <svg className="animate-spin h-8 w-8 text-(--accent-color)" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
         ) : imageUrl ? (
           <img
             src={imageUrl}
@@ -96,35 +93,29 @@ export default function ImageCard({ pageUrl, index, galleryTitle, onOpenImage }:
             alt={`Thumbnail ${index}`}
           />
         ) : (
-          <span className="text-red-400 text-xs font-bold pointer-events-none">Error</span>
+          <span className="text-red-500 font-mono font-bold text-xs pointer-events-none">Error</span>
         )}
 
-        <span className="absolute top-2 left-2 bg-black/80 text-xs font-bold px-2 py-1 rounded text-blue-400 pointer-events-none">
+        {/* Badge del número de página */}
+        <span className="absolute top-2 left-2 bg-background text-foreground neo-border px-2 py-1 text-xs font-mono font-black pointer-events-none">
           #{index}
         </span>
       </div>
-      <button
-        onClick={handleDownload}
-        disabled={
-          !imageUrl || isLoading || downloadStatus === "loading" || downloadStatus === "success"
-        }
-        className={`font-semibold py-2 transition-colors text-sm w-full disabled:opacity-80 flex justify-center items-center gap-2 ${
-          downloadStatus === "success"
-            ? "bg-green-600 text-white"
-            : downloadStatus === "error"
-              ? "bg-red-600 text-white"
-              : downloadStatus === "loading"
-                ? "bg-blue-600 text-white"
-                : "bg-gray-700 hover:bg-green-600 text-white"
-        }`}
-      >
-        {downloadStatus === "success" && "✅ ¡Encolada!"}
-        {downloadStatus === "error" && "❌ Falló"}
-        {downloadStatus === "loading" && (
-          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-        )}
-        {downloadStatus === "idle" && "⬇️ Guardar Foto"}
-      </button>
+
+      <div className="p-3">
+        <Button
+          onClick={handleDownload}
+          disabled={!imageUrl || isLoading || downloadStatus === "loading" || downloadStatus === "success"}
+          variant={downloadStatus === "error" ? "danger" : "secondary"}
+          size="sm"
+          className="w-full text-xs"
+          isLoading={downloadStatus === "loading"}
+        >
+          {downloadStatus === "success" && "✅ ¡Encolada!"}
+          {downloadStatus === "error" && "❌ Falló"}
+          {downloadStatus === "idle" && "⬇️ Guardar"}
+        </Button>
+      </div>
     </div>
   );
 }
