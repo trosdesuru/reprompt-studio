@@ -2,17 +2,18 @@
 import logging
 import json
 from sqlmodel import Session
-from app.core.db import get_session
-from app.models.user import User, AuditLog
-from fastapi import APIRouter, HTTPException
-from fastapi import Depends
-from app.api.deps import get_current_user
+from fastapi import APIRouter, HTTPException, Depends
 
+from app.core.db import get_session
+from app.api.deps import get_current_user
+from app.models.user import User, AuditLog
+
+# 🟢 IMPORTANTE: Faltaba importar buscar_galerias
 from app.services.scraper import (
+    buscar_galerias,
     extraer_imagen_real,
     obtener_enlaces_paginas,
 )
-
 
 logger = logging.getLogger("api_search")
 router = APIRouter()
@@ -26,7 +27,7 @@ def endpoint_buscar(
     current_user: User = Depends(get_current_user),
     session: Session = Depends(get_session),
 ):
-
+    # 1. 🕵️‍♂️ GUARDAR EL LOG EN LA BASE DE DATOS
     log = AuditLog(
         username=current_user.username,
         action="SEARCH",
@@ -36,6 +37,31 @@ def endpoint_buscar(
     session.commit()
 
     logger.info(f"👤 Usuario {current_user.username} está buscando: {query}")
+
+    # 2. 🧩 PROCESAR LAS CATEGORÍAS
+    cats_dict = None
+    if categories:
+        try:
+            cats_dict = json.loads(categories)
+        except Exception as e:
+            logger.warning(f"Error parseando categorías: {e}")
+            cats_dict = None
+
+    # 3. 🚀 LLAMAR AL SCRAPER (Esto es lo que había desaparecido)
+    try:
+        res = buscar_galerias(query, next_id, cats_dict)
+
+        # 4. 🔙 DEVOLVER LOS RESULTADOS AL FRONTEND
+        return {
+            "status": "success",
+            "data": res.get("data", []),
+            "next_id": res.get("next_id"),
+        }
+    except Exception as e:
+        logger.error(f"💥 Error al buscar en EH: {e}")
+        raise HTTPException(
+            status_code=500, detail="Error al buscar galerías en el servidor."
+        )
 
 
 @router.get("/leer")

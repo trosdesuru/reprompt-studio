@@ -13,13 +13,20 @@ export function useSearch() {
   const [hasMore, setHasMore] = useState(true);
 
   const [activeCategories, setActiveCategories] = useState<Record<string, boolean>>({
-    misc: true, doujinshi: true, manga: true, artistcg: true,
-    gamecg: true, western: true, nonh: true, imageset: true,
-    cosplay: true, asianporn: true,
+    misc: true,
+    doujinshi: true,
+    manga: true,
+    artistcg: true,
+    gamecg: true,
+    western: true,
+    nonh: true,
+    imageset: true,
+    cosplay: true,
+    asianporn: true,
   });
 
   const toggleCategory = (id: string) => {
-    setActiveCategories(prev => ({ ...prev, [id]: !prev[id] }));
+    setActiveCategories((prev) => ({ ...prev, [id]: !prev[id] }));
   };
 
   const handleSearch = async (e?: React.FormEvent) => {
@@ -30,16 +37,19 @@ export function useSearch() {
     setError(null);
     setNextCursor(null);
     setHasMore(true);
-
     try {
       const data = await api.buscar(query, null, activeCategories);
       if (data.status === "success") {
         setResults(data.data);
         setNextCursor(data.next_id || null);
         setHasMore(!!data.next_id);
+      } else {
+        throw new Error(data.message || "El servidor devolvió un estado no exitoso");
       }
-    } catch (err) {
-      setError("🚨 Error al conectar con el servidor.");
+    } catch (err: any) {
+      console.error("🚨 DETALLE DEL ERROR FANTASMA:", err);
+
+      setError(`Error interno: ${err.message || "Fallo desconocido. Revisa F12."}`);
     } finally {
       setIsLoading(false);
     }
