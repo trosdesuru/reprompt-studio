@@ -7,7 +7,6 @@ const fetchSeguro = async (url: string, options: RequestInit = {}) => {
   });
 
   if (res.status === 401) {
-    // 🟢 EL FIX: Solo redirigimos si NO estamos ya en /login
     if (typeof window !== "undefined" && window.location.pathname !== "/login") {
       window.location.href = "/login";
     }
@@ -62,6 +61,10 @@ export const api = {
     return fetchSeguro(`${API_URL}/auth/invite-codes?role_requested=${role}`, {
       method: "POST",
     });
+  },
+
+  obtenerLogsAuditoria: async (limit: number = 50) => {
+    return fetchSeguro(`${API_URL}/auth/admin/logs?limit=${limit}`);
   },
 
   // --- BÚSQUEDA Y LECTURA ---

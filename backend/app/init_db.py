@@ -2,12 +2,14 @@ import secrets
 from sqlmodel import SQLModel, Session
 from app.core.db import engine
 from app.models.user import InviteCode, User
+from app.models.user import User, InviteCode, AuditLog
+
 
 def init_db():
     print("⏳ Conectando a Neon.tech y sincronizando tablas...")
     # Crea las tablas en la base de datos basándose en las clases de SQLModel
     SQLModel.metadata.create_all(engine)
-    
+
     with Session(engine) as session:
         existing_code = session.query(InviteCode).first()
         if not existing_code:
@@ -21,6 +23,7 @@ def init_db():
             print("⚠️ Cópialo y guárdalo. Lo usarás para crear tu cuenta Admin.")
         else:
             print("✅ Las tablas ya existían y la base de datos está lista.")
+
 
 if __name__ == "__main__":
     init_db()

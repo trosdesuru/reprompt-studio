@@ -69,6 +69,12 @@ export default function Navbar() {
             </div>
           )}
 
+          {!isLoadingAuth && user?.role === "admin" && (
+            <Button variant="ghost" size="sm" onClick={() => (window.location.href = "/admin")}>
+              🛡️ Panel
+            </Button>
+          )}
+
           <button onClick={toggleTheme} className="text-2xl hover:scale-110 transition-transform">
             {isDark ? "☀️" : "🌙"}
           </button>

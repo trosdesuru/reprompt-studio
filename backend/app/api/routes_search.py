@@ -1,14 +1,14 @@
 # backend/app/api/routes_search.py
 import logging
 import json
+from sqlmodel import Session
+from app.core.db import get_session
+from app.models.user import User, AuditLog
 from fastapi import APIRouter, HTTPException
 from fastapi import Depends
 from app.api.deps import get_current_user
-from app.models.user import User
-from app.services.scraper import buscar_galerias
 
 from app.services.scraper import (
-    buscar_galerias,
     extraer_imagen_real,
     obtener_enlaces_paginas,
 )
@@ -23,23 +23,19 @@ def endpoint_buscar(
     query: str,
     next_id: str = None,
     categories: str = None,
-    current_user: User = Depends(get_current_user),  # 🟢 ¡El portero en acción!
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
 ):
-    # Imprimimos quién está buscando para dejarlo en los logs
-    logger.info(
-        f"👤 Usuario {current_user.username} (Rol: {current_user.role}) está buscando: {query}"
+
+    log = AuditLog(
+        username=current_user.username,
+        action="SEARCH",
+        details=f"Query: {query} | Cats: {categories}",
     )
+    session.add(log)
+    session.commit()
 
-    # ... (El resto de tu código de buscar_galerias se queda EXACTAMENTE IGUAL) ...
-    cats_dict = None
-    if categories:
-        try:
-            cats_dict = json.loads(categories)
-        except:
-            cats_dict = None
-
-    res = buscar_galerias(query, next_id, cats_dict)
-    return {"status": "success", "data": res["data"], "next_id": res["next_id"]}
+    logger.info(f"👤 Usuario {current_user.username} está buscando: {query}")
 
 
 @router.get("/leer")
@@ -61,5 +57,4 @@ def endpoint_resolver_imagen(url: str, current_user: User = Depends(get_current_
     img_real = extraer_imagen_real(url)
     if img_real:
         return {"status": "success", "url_img": img_real}
-    # Mantengo el return 200 con status "error" para no romper tu frontend de React
     return {"status": "error", "url_img": None}

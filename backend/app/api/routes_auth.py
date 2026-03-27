@@ -4,11 +4,26 @@ from sqlmodel import Session, select
 
 from app.core.db import get_session
 from app.api.deps import get_current_user, get_current_admin
-from app.models.user import User, InviteCode
+from app.models.user import User, InviteCode, AuditLog
 from app.schemas.user import UserRegister, UserLogin, Token, PasswordChange
 from app.core.security import get_password_hash, verify_password, create_access_token
 
 router = APIRouter()
+
+
+@router.get("/admin/logs")
+def get_audit_logs(
+    limit: int = 50,
+    current_admin: User = Depends(get_current_admin),  # 🛡️ Solo para Admins
+    session: Session = Depends(get_session),
+):
+    """Devuelve los últimos logs de actividad de la plataforma"""
+
+    # Buscamos los logs, los ordenamos del más nuevo al más viejo
+    statement = select(AuditLog).order_by(AuditLog.timestamp.desc()).limit(limit)
+    logs = session.exec(statement).all()
+
+    return {"status": "success", "logs": logs}
 
 
 @router.get("/me")
