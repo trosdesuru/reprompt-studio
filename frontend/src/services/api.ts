@@ -1,16 +1,35 @@
 const API_URL = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000") + "/api";
 
-const fetchSeguro = async (url: string, options: RequestInit = {}) => {
+const fetchSeguro = async (url: string, options: RequestInit = {}, retries = 1) => {
   const res = await fetch(url, {
     ...options,
     credentials: "include",
   });
 
-  if (res.status === 401) {
+  if (res.status === 401 && retries > 0) {
+    console.log("🔑 Access Token caducado. Intentando refresco silencioso...");
+
+    try {
+      // 2. Llamamos al endpoint de refresco
+      const refreshRes = await fetch(`${API_URL}/auth/refresh`, {
+        method: "POST",
+        credentials: "include",
+      });
+
+      if (refreshRes.ok) {
+        console.log("✅ Token renovado con éxito. Reintentando petición...");
+        // 3. Si el refresco funcionó, reintentamos la petición original (retries = 0 para no entrar en bucle)
+        return fetchSeguro(url, options, 0);
+      }
+    } catch (err) {
+      console.error("❌ Fallo crítico en el refresco:", err);
+    }
+
+    // 4. Si el refresco falló o el Refresh Token también caducó, al login
     if (typeof window !== "undefined" && window.location.pathname !== "/login") {
       window.location.href = "/login";
     }
-    throw new Error("Sesión expirada o no iniciada");
+    throw new Error("Sesión expirada");
   }
 
   if (!res.ok) {
@@ -65,6 +84,10 @@ export const api = {
 
   obtenerLogsAuditoria: async (limit: number = 50) => {
     return fetchSeguro(`${API_URL}/auth/admin/logs?limit=${limit}`);
+  },
+
+  refrescarToken: async () => {
+    return fetchSeguro(`${API_URL}/auth/refresh`, { method: "POST" });
   },
 
   // --- BÚSQUEDA Y LECTURA ---
