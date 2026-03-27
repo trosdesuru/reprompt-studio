@@ -1,37 +1,32 @@
 "use client";
 
-import { useImageResolver } from "../hooks/useImageResolver";
 import { Button } from "@/src/components/ui/Button";
+import { useImageCard } from "./useImageCard";
+import { ImageCardProps } from "./ImageCard.types";
 
-interface ImageCardProps {
-  pageUrl: string;
-  index: number;
-  galleryTitle: string;
-  onOpenImage: (imgUrl: string) => void;
-}
-
-export default function ImageCard({ pageUrl, index, galleryTitle, onOpenImage }: ImageCardProps) {
-  // 🟢 Conectamos el "Cerebro" al componente
-  const { cardRef, imageUrl, isLoading, isVisible, downloadStatus, handleDownload } =
-    useImageResolver(pageUrl, index, galleryTitle);
+export function ImageCard({ pageUrl, index, galleryTitle, onOpenImage }: ImageCardProps) {
+  const { cardRef, imageUrl, isLoading, isVisible, downloadStatus, handleDownload } = useImageCard(
+    pageUrl,
+    index,
+    galleryTitle,
+  );
 
   return (
     <div
       ref={cardRef}
-      className="bg-var(--bg-secondary) neo-border neo-shadow flex flex-col relative z-20 group"
+      className="bg-(--bg-secondary) neo-border neo-shadow flex flex-col relative z-20 group"
     >
-      {/* VISOR DE IMAGEN */}
       <div
         className="h-56 relative bg-background border-b-2 border-(--border-color) flex items-center justify-center overflow-hidden cursor-pointer"
         onClick={() => imageUrl && onOpenImage(imageUrl)}
       >
         {!isVisible ? (
-          <span className="text-var(--text-secondary) font-mono text-xs pointer-events-none">
+          <span className="text-(--text-secondary) font-mono text-xs pointer-events-none">
             Esperando...
           </span>
         ) : isLoading ? (
           <svg
-            className="animate-spin h-8 w-8 text-var(--accent-color)"
+            className="animate-spin h-8 w-8 text-(--accent-color)"
             xmlns="http://www.w3.org/2000/svg"
             fill="none"
             viewBox="0 0 24 24"
@@ -62,14 +57,11 @@ export default function ImageCard({ pageUrl, index, galleryTitle, onOpenImage }:
             Error
           </span>
         )}
-
-        {/* Badge del número de página */}
         <span className="absolute top-2 left-2 bg-background text-foreground neo-border px-2 py-1 text-xs font-mono font-black pointer-events-none">
           #{index}
         </span>
       </div>
 
-      {/* BOTONERA */}
       <div className="p-3">
         <Button
           onClick={handleDownload}

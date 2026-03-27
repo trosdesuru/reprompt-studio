@@ -6,8 +6,8 @@ import { useSearch } from "@/features/search/hooks/useSearch";
 import FilterBar from "@/features/search/components/FilterBar";
 import GalleryCard from "@/src/components/GalleryCard";
 
-import TrendingSection from "@/features/search/components/TrendingSection";
-import ImageViewerModal from "@/features/image-viewer/components/ImageViewerModal";
+import { TrendingSection } from "@/features/search/TrendingSection";
+import { ImageViewerModal } from "@/features/image-viewer/ImageViewerModal";
 
 import { useSearchStore } from "@/src/store/searchStore";
 import { useViewerSync } from "@/features/image-viewer/hooks/useViewerSync";
