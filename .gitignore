@@ -25,3 +25,14 @@ package-lock.json
 __pycache__/
 venv/
 .venv/
+
+# Base de datos local (por si acaso)
+*.sqlite
+
+# Archivos del Sistema / Nube
+*.icloud
+.DS_Store
+
+# Agentes de IA
+.agents/
+skills-lock.json
