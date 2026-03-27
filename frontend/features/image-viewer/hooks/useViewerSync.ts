@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useCallback } from "react";
 import { api } from "@/src/services/api";
 import { ViewerPageItem } from "@/src/types/gallery";
 
@@ -6,6 +6,7 @@ export function useViewerSync(activeUrl: string) {
   const [isViewerOpen, setIsViewerOpen] = useState(false);
   const [viewerPages, setViewerPages] = useState<ViewerPageItem[]>([]);
   const [isViewerLoading, setIsViewerLoading] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [hasMorePages, setHasMorePages] = useState(false);
   const [currentViewerPage, setCurrentViewerPage] = useState(0);
 
@@ -36,28 +37,32 @@ export function useViewerSync(activeUrl: string) {
     setViewerPages([]);
   };
 
-  useEffect(() => {
-    if (!isViewerOpen || !hasMorePages) return;
-
-    let isMounted = true;
-    const loadNextPage = async () => {
-      try {
-        const data = await api.leer(activeUrl, currentViewerPage);
-        if (isMounted && data.status === "success") {
-          setViewerPages((prev) => [...prev, ...data.paginas]);
-          setHasMorePages(data.has_next);
-          if (data.has_next) setCurrentViewerPage((prev) => prev + 1);
-        }
-      } catch (e) {
-        console.error("Error loading extra page", e);
+  // 🟢 Paginación manual y controlada (¡Adiós bucle infinito!)
+  const loadNextPage = useCallback(async () => {
+    if (!hasMorePages || isLoadingMore) return;
+    setIsLoadingMore(true);
+    try {
+      const data = await api.leer(activeUrl, currentViewerPage);
+      if (data.status === "success") {
+        setViewerPages((prev) => [...prev, ...data.paginas]);
+        setHasMorePages(data.has_next);
+        if (data.has_next) setCurrentViewerPage((prev) => prev + 1);
       }
-    };
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsLoadingMore(false);
+    }
+  }, [activeUrl, currentViewerPage, hasMorePages, isLoadingMore]);
 
-    loadNextPage();
-    return () => {
-      isMounted = false;
-    };
-  }, [isViewerOpen, hasMorePages, currentViewerPage, activeUrl]);
-
-  return { viewerPages, isViewerLoading, isViewerOpen, openViewer, closeViewer };
+  return {
+    viewerPages,
+    isViewerLoading,
+    isLoadingMore,
+    isViewerOpen,
+    openViewer,
+    closeViewer,
+    hasMorePages,
+    loadNextPage,
+  };
 }

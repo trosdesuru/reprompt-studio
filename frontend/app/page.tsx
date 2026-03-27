@@ -1,3 +1,4 @@
+// frontend/app/page.tsx
 "use client";
 
 import { useState, useEffect } from "react";
@@ -20,7 +21,7 @@ export default function Home() {
     setQuery,
     results,
     isLoading,
-    isLoadingMore,
+    isLoadingMore: isLoadingMoreResults, // 🟢 Renombramos para evitar colisión
     hasMore,
     error,
     handleSearch,
@@ -28,11 +29,22 @@ export default function Home() {
     activeCategories,
     toggleCategory,
   } = useSearch();
+
   const [activeUrl, setActiveUrl] = useState("");
   const [activeTitle, setActiveTitle] = useState("");
   const { trending, fetchTrending } = useSearchStore();
-  const { viewerPages, isViewerLoading, isViewerOpen, openViewer, closeViewer } =
-    useViewerSync(activeUrl);
+
+  // 🟢 Desestructuramos de useViewerSync (aquí es donde van hasMorePages y loadNextPage)
+  const {
+    viewerPages,
+    isViewerLoading,
+    isLoadingMore: isLoadingMorePages, // 🟢 Renombramos para evitar colisión
+    isViewerOpen,
+    openViewer,
+    closeViewer,
+    hasMorePages,
+    loadNextPage,
+  } = useViewerSync(activeUrl);
 
   const handleOpenVisor = (item: GalleryItem) => {
     setActiveUrl(item.url);
@@ -90,7 +102,7 @@ export default function Home() {
         </div>
       )}
 
-      <div className="max-w-360auto px-4">
+      <div className="max-w-360 mx-auto px-4">
         {query === "" && (
           <TrendingSection
             trending={trending}
@@ -119,8 +131,13 @@ export default function Home() {
 
         {results.length > 0 && hasMore && (
           <div className="flex justify-center mt-16 mb-12">
-            <Button onClick={loadMore} isLoading={isLoadingMore} variant="secondary" size="lg">
-              {isLoadingMore ? "Cargando..." : "↓ Ver más resultados"}
+            <Button
+              onClick={loadMore}
+              isLoading={isLoadingMoreResults}
+              variant="secondary"
+              size="lg"
+            >
+              {isLoadingMoreResults ? "Cargando..." : "↓ Ver más resultados"}
             </Button>
           </div>
         )}
@@ -130,6 +147,9 @@ export default function Home() {
             title={activeTitle}
             pages={viewerPages}
             isLoading={isViewerLoading}
+            isLoadingMore={isLoadingMorePages}
+            hasMorePages={hasMorePages}
+            onLoadMore={loadNextPage}
             onClose={closeViewer}
           />
         )}
