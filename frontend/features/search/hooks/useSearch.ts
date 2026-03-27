@@ -1,3 +1,4 @@
+// frontend/features/search/hooks/useSearch.ts
 import { useState } from "react";
 import { api } from "@/src/services/api";
 import { GalleryItem } from "@/src/types/gallery";
@@ -11,7 +12,6 @@ export function useSearch() {
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(true);
 
-  // 🟢 Estado de categorías
   const [activeCategories, setActiveCategories] = useState<Record<string, boolean>>({
     misc: true, doujinshi: true, manga: true, artistcg: true,
     gamecg: true, western: true, nonh: true, imageset: true,
@@ -32,9 +32,7 @@ export function useSearch() {
     setHasMore(true);
 
     try {
-      // 🟢 Ahora TypeScript no protestará: pasamos los 3 argumentos
       const data = await api.buscar(query, null, activeCategories);
-
       if (data.status === "success") {
         setResults(data.data);
         setNextCursor(data.next_id || null);
@@ -49,13 +47,10 @@ export function useSearch() {
 
   const loadMore = async () => {
     if (isLoadingMore || !hasMore || !nextCursor) return;
-
     setIsLoadingMore(true);
 
     try {
-      // 🟢 IMPORTANTE: También pasamos activeCategories aquí para mantener el filtro
       const data = await api.buscar(query, nextCursor, activeCategories);
-
       if (data.status === "success" && data.data.length > 0) {
         setResults((prev) => {
           const combined = [...prev, ...data.data];
@@ -63,7 +58,6 @@ export function useSearch() {
           combined.forEach((item) => uniqueMap.set(item.url, item));
           return Array.from(uniqueMap.values()) as GalleryItem[];
         });
-
         setNextCursor(data.next_id || null);
         setHasMore(!!data.next_id);
       } else {
@@ -86,7 +80,6 @@ export function useSearch() {
     error,
     handleSearch,
     loadMore,
-    // 🟢 DEVOLVEMOS esto para que el componente de la UI pueda usarlos
     activeCategories,
     toggleCategory,
   };

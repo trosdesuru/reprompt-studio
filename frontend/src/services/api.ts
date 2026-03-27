@@ -1,8 +1,7 @@
+// frontend/src/services/api.ts
 const API_URL = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000") + "/api";
 
 export const api = {
-  // frontend/src/services/api.ts
-
   buscar: async (
     query: string,
     next_id: string | null = null,
@@ -10,16 +9,8 @@ export const api = {
   ) => {
     try {
       let endpoint = `${API_URL}/buscar?query=${encodeURIComponent(query)}`;
-
-      if (next_id) {
-        endpoint += `&next_id=${next_id}`;
-      }
-
-      // 🟢 Si hay categorías, las enviamos como un string JSON
-      // El backend lo recibirá y lo convertirá en el f_cats de EH
-      if (categories) {
-        endpoint += `&categories=${encodeURIComponent(JSON.stringify(categories))}`;
-      }
+      if (next_id) endpoint += `&next_id=${next_id}`;
+      if (categories) endpoint += `&categories=${encodeURIComponent(JSON.stringify(categories))}`;
 
       const res = await fetch(endpoint);
       if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
@@ -41,7 +32,6 @@ export const api = {
     return res.json();
   },
 
-  // 🟢 CORREGIDO: Ahora parsea el JSON y maneja errores igual que el resto
   descargarTotal: async (url: string, title: string) => {
     const res = await fetch(`${API_URL}/descargar`, {
       method: "POST",
@@ -52,7 +42,6 @@ export const api = {
     return res.json();
   },
 
-  // 🟢 CORREGIDO: También parseamos la descarga individual por consistencia
   descargarImagen: async (url_img: string, title: string, index: number) => {
     const res = await fetch(`${API_URL}/descargar_imagen`, {
       method: "POST",
