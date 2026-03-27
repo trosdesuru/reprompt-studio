@@ -1,6 +1,7 @@
 # backend/app/core/security.py
 import os
 import bcrypt
+import uuid
 from datetime import datetime, timedelta
 from jose import jwt
 from dotenv import load_dotenv
@@ -40,11 +41,25 @@ def create_access_token(data: dict) -> str:
     return encoded_jwt
 
 
-def create_refresh_token(data: dict) -> str:
-    """Fabrica el Pase Maestro de 7 días"""
+def create_refresh_token(data: dict, family_id: str = None) -> dict:
+    """Fabrica el Pase Maestro Mutante de 7 días"""
     to_encode = data.copy()
     expire = datetime.utcnow() + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
-    to_encode.update({"exp": expire, "type": "refresh"})
+
+    # Generamos el ADN del token
+    token_id = str(uuid.uuid4())
+    token_family = family_id if family_id else str(uuid.uuid4())
+
+    to_encode.update(
+        {
+            "exp": expire,
+            "type": "refresh",
+            "jti": token_id,
+            "family": token_family,
+        }
+    )
 
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
-    return encoded_jwt
+
+    # Devolvemos el JWT y sus IDs para que el router los guarde en Redis
+    return {"token": encoded_jwt, "jti": token_id, "family_id": token_family}
