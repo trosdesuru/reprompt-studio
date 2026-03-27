@@ -184,6 +184,32 @@ def generate_invite_code(
     }
 
 
+@router.get("/admin/sessions")
+def list_active_sessions(current_user: User = Depends(get_current_user)):
+    """Lista todas las familias de sesiones activas del usuario en Redis"""
+    # Buscamos todas las llaves que empiecen por session:username:*
+    prefix = f"session:{current_user.username}:*"
+    keys = redis_client.keys(prefix)
+
+    sessions = []
+    for key in keys:
+        family_id = key.split(":")[-1]
+        sessions.append(
+            {"family_id": family_id, "last_active_jti": redis_client.get(key)}
+        )
+    return {"status": "success", "sessions": sessions}
+
+
+@router.post("/admin/sessions/revoke-all")
+def revoke_all_sessions(current_user: User = Depends(get_current_user)):
+    """Borra TODAS las sesiones del usuario en Redis (Botón del Pánico)"""
+    prefix = f"session:{current_user.username}:*"
+    keys = redis_client.keys(prefix)
+    if keys:
+        redis_client.delete(*keys)
+    return {"status": "success", "message": "Todas las sesiones han sido revocadas."}
+
+
 @router.post("/refresh")
 def refresh_access_token(
     response: Response,
