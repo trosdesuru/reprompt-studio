@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { api } from "@/src/services/api";
 import { Button } from "@/src/components/ui/Button";
 import { useAuthStore } from "@/src/store/authStore";
+import Link from "next/link";
 
 export default function Navbar() {
   const pathname = usePathname();
@@ -57,9 +58,12 @@ export default function Navbar() {
   return (
     <>
       <nav className="bg-(--bg-secondary) border-b-4 border-(--border-color) px-6 py-4 flex justify-between items-center z-50 sticky top-0">
-        <div className="font-mono font-black text-xl text-foreground">
+        <Link
+          href="/"
+          className="font-mono font-black text-xl text-foreground hover:opacity-80 transition-opacity"
+        >
           EH<span className="text-(--accent-color)">_</span>Admin
-        </div>
+        </Link>
 
         <div className="flex gap-4 items-center">
           {!isLoadingAuth && user && (

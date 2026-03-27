@@ -86,6 +86,12 @@ export const api = {
     return fetchSeguro(`${API_URL}/auth/admin/logs?limit=${limit}`);
   },
 
+  revocarTodasLasSesiones: async () => {
+    return fetchSeguro(`${API_URL}/auth/admin/sessions/revoke-all`, {
+      method: "POST",
+    });
+  },
+
   refrescarToken: async () => {
     return fetchSeguro(`${API_URL}/auth/refresh`, { method: "POST" });
   },
