@@ -1,6 +1,6 @@
-# frontend/.prettierignore
 node_modules/
 .next/
 out/
 build/
 public/
+package-lock.json
