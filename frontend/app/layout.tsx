@@ -1,19 +1,32 @@
+// frontend/app/layout.tsx
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Inter, Space_Mono } from "next/font/google";
 import "./globals.css";
-import Navbar from "@/src/components/Navbar";
+import { AuthProvider } from "@/src/components/AuthProvider";
+import { AppShell } from "@/src/components/layout/AppShell"; // 🟢 Importamos el Layout
 
-const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
-const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
+// Optimizamos las fuentes para que el navegador no dé saltos al cargar
+const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
+const spaceMono = Space_Mono({
+  weight: ["400", "700"],
+  subsets: ["latin"],
+  variable: "--font-mono",
+});
 
-export const metadata: Metadata = { title: "EH-Explorer", description: "Visor y Extractor" };
+export const metadata: Metadata = {
+  title: "EH Explorer | Enterprise UX",
+  description: "Plataforma de extracción y visor de alto rendimiento",
+  themeColor: "#f4f4f0", // 🟢 Color para la barra superior de Android/iOS
+};
 
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
-      <body className="min-h-full flex flex-col">
-        <Navbar /> {/* 🟢 Navbar global (se oculta solo en /login) */}
-        {children}
+    <html lang="es" className={`${inter.variable} ${spaceMono.variable}`}>
+      <body className="antialiased selection:bg-(--accent-color) selection:text-white">
+        <AuthProvider>
+          {/* 🟢 Nuestro Cascarón UI */}
+          <AppShell>{children}</AppShell>
+        </AuthProvider>
       </body>
     </html>
   );
