@@ -70,6 +70,7 @@ def login_user(
         max_age=60 * 60 * 24 * 7,
         samesite="lax",
         secure=False,
+        path="/"
     )
 
     return {"status": "success", "message": f"Bienvenido, {user.username}"}
