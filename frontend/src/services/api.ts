@@ -3,11 +3,14 @@ const API_URL = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000") + "
 const fetchSeguro = async (url: string, options: RequestInit = {}) => {
   const res = await fetch(url, {
     ...options,
-    credentials: "include", // 👈 ESTO ES LA CLAVE DE LA SEGURIDAD
+    credentials: "include",
   });
 
   if (res.status === 401) {
-    if (typeof window !== "undefined") window.location.href = "/login";
+    // 🟢 EL FIX: Solo redirigimos si NO estamos ya en /login
+    if (typeof window !== "undefined" && window.location.pathname !== "/login") {
+      window.location.href = "/login";
+    }
     throw new Error("Sesión expirada o no iniciada");
   }
 

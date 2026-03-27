@@ -16,8 +16,10 @@ export default function Navbar() {
   const { user, checkAuth, isLoadingAuth } = useAuthStore();
 
   useEffect(() => {
-    checkAuth();
-  }, [checkAuth]);
+    if (pathname !== "/login" && pathname !== "/join") {
+      checkAuth();
+    }
+  }, [checkAuth, pathname]);
 
   useEffect(() => {
     const theme = localStorage.getItem("theme");
