@@ -1,4 +1,4 @@
-import GalleryCard from "@/src/components/GalleryCard";
+import { GalleryCard } from "@/src/components/GalleryCard";
 import { TrendingSectionProps } from "./TrendingSection.types";
 
 export function TrendingSection({ trending, onOpenVisor, onDownloadTotal }: TrendingSectionProps) {
