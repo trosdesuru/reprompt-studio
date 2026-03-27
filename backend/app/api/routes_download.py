@@ -28,11 +28,6 @@ def endpoint_descargar(
     carpeta_limpia = re.sub(r'[\\/*?:"<>|]', "", req.title).strip() or "galeria"
     download_dir = preparar_directorio("/storage/galleries", carpeta_limpia)
 
-    # Registramos la descarga en la base de datos
-    AuditService.log_gallery_interaction(
-        session, url=req.url, title=req.title, thumb="", interaction_type="download"
-    )
-
     job = download_queue.enqueue(ejecutar_descarga, req.url, download_dir)
     return {"status": "success", "message": "Descarga enviada a la cola"}
 

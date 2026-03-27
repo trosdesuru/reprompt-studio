@@ -5,6 +5,7 @@ import { useSearch } from "@/features/search/hooks/useSearch";
 
 import FilterBar from "@/features/search/components/FilterBar";
 import { GalleryCard } from "@/src/components/GalleryCard";
+import { GalleryItem } from "@/src/types/gallery";
 import { TrendingSection } from "@/features/search/TrendingSection";
 import { ImageViewerModal } from "@/features/image-viewer/ImageViewerModal";
 
@@ -14,22 +15,45 @@ import { api } from "@/src/services/api";
 import { Button } from "@/src/components/ui/Button";
 
 export default function Home() {
-  const { query, setQuery, results, isLoading, isLoadingMore, hasMore, error, handleSearch, loadMore, activeCategories, toggleCategory } = useSearch();
+  const {
+    query,
+    setQuery,
+    results,
+    isLoading,
+    isLoadingMore,
+    hasMore,
+    error,
+    handleSearch,
+    loadMore,
+    activeCategories,
+    toggleCategory,
+  } = useSearch();
   const [activeUrl, setActiveUrl] = useState("");
   const [activeTitle, setActiveTitle] = useState("");
   const { trending, fetchTrending } = useSearchStore();
-  const { viewerPages, isViewerLoading, isViewerOpen, openViewer, closeViewer } = useViewerSync(activeUrl);
+  const { viewerPages, isViewerLoading, isViewerOpen, openViewer, closeViewer } =
+    useViewerSync(activeUrl);
 
-  const handleOpenVisor = (url: string, title: string) => {
-    setActiveUrl(url); setActiveTitle(title); openViewer(url);
+  const handleOpenVisor = (item: GalleryItem) => {
+    setActiveUrl(item.url);
+    setActiveTitle(item.title);
+    openViewer(item.url);
+    api.registrarInteraccion(item, "view").catch(console.error);
   };
 
-  const handleDownloadTotal = async (url: string, title: string) => {
-    try { await api.descargarTotal(url, title); alert(`⬇️ Descarga iniciada: ${title}`); } 
-    catch (err) { alert("❌ Error al encolar la descarga."); }
+  const handleDownloadTotal = async (item: GalleryItem) => {
+    try {
+      await api.descargarTotal(item.url, item.title);
+      api.registrarInteraccion(item, "download").catch(console.error);
+      alert(`⬇️ Descarga iniciada: ${item.title}`);
+    } catch (err) {
+      alert("❌ Error al encolar la descarga.");
+    }
   };
 
-  useEffect(() => { fetchTrending(); }, [fetchTrending]);
+  useEffect(() => {
+    fetchTrending();
+  }, [fetchTrending]);
 
   return (
     <main className="min-h-screen bg-background text-foreground font-sans">
@@ -41,7 +65,10 @@ export default function Home() {
           Plataforma de extracción y visor de alto rendimiento
         </p>
 
-        <form onSubmit={handleSearch} className="flex flex-col md:flex-row gap-4 max-w-3xl mx-auto mb-8 relative z-10">
+        <form
+          onSubmit={handleSearch}
+          className="flex flex-col md:flex-row gap-4 max-w-3xl mx-auto mb-8 relative z-10"
+        >
           <input
             type="text"
             value={query}
@@ -65,7 +92,11 @@ export default function Home() {
 
       <div className="max-w-360auto px-4">
         {query === "" && (
-          <TrendingSection trending={trending} onOpenVisor={handleOpenVisor} onDownloadTotal={handleDownloadTotal} />
+          <TrendingSection
+            trending={trending}
+            onOpenVisor={handleOpenVisor}
+            onDownloadTotal={handleDownloadTotal}
+          />
         )}
 
         {results.length > 0 && (
@@ -75,7 +106,12 @@ export default function Home() {
             </h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-8">
               {results.map((item, index) => (
-                <GalleryCard key={`${item.url}-${index}`} item={item} onOpenVisor={handleOpenVisor} onDownloadTotal={handleDownloadTotal} />
+                <GalleryCard
+                  key={`${item.url}-${index}`}
+                  item={item}
+                  onOpenVisor={handleOpenVisor}
+                  onDownloadTotal={handleDownloadTotal}
+                />
               ))}
             </div>
           </div>
@@ -90,7 +126,12 @@ export default function Home() {
         )}
 
         {isViewerOpen && (
-          <ImageViewerModal title={activeTitle} pages={viewerPages} isLoading={isViewerLoading} onClose={closeViewer} />
+          <ImageViewerModal
+            title={activeTitle}
+            pages={viewerPages}
+            isLoading={isViewerLoading}
+            onClose={closeViewer}
+          />
         )}
       </div>
     </main>

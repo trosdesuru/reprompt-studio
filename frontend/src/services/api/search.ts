@@ -18,4 +18,19 @@ export const searchApi = {
     fetchSeguro(`${API_URL}/resolver_imagen?url=${encodeURIComponent(url)}`),
 
   obtenerTendencias: (limit: number = 5) => fetchSeguro(`${API_URL}/tendencias?limit=${limit}`),
+
+  registrarInteraccion: (
+    item: { url: string; title: string; thumb: string },
+    type: "view" | "download",
+  ) =>
+    fetchSeguro(`${API_URL}/interact`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        url: item.url,
+        title: item.title,
+        thumb: item.thumb,
+        interaction_type: type,
+      }),
+    }),
 };

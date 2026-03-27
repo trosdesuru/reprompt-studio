@@ -8,8 +8,9 @@ from app.models.gallery import GalleryMetric
 from app.core.db import get_session
 from app.api.deps import get_current_user
 from app.models.user import User
-from app.services.audit_service import AuditService
 
+from app.schemas.requests import InteractionRequest
+from app.services.audit_service import AuditService
 from app.services.scraper import (
     buscar_galerias,
     extraer_imagen_real,
@@ -106,3 +107,16 @@ def obtener_tendencias(limit: int = 5, session: Session = Depends(get_session)):
     except Exception as e:
         logger.error(f"💥 Error al obtener tendencias: {e}")
         return {"status": "error", "data": []}
+
+
+@router.post("/interact")
+def endpoint_interact(req: InteractionRequest, session: Session = Depends(get_session)):
+    """Registra una interacción (vista o descarga) con todos sus metadatos visuales"""
+    AuditService.log_gallery_interaction(
+        session,
+        url=req.url,
+        title=req.title,
+        thumb=req.thumb,
+        interaction_type=req.interaction_type,
+    )
+    return {"status": "success"}
