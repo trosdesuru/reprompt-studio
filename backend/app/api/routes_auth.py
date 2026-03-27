@@ -1,7 +1,9 @@
+import secrets
 from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlmodel import Session, select
+
 from app.core.db import get_session
-from app.api.deps import get_current_user
+from app.api.deps import get_current_user, get_current_admin
 from app.models.user import User, InviteCode
 from app.schemas.user import UserRegister, UserLogin, Token, PasswordChange
 from app.core.security import get_password_hash, verify_password, create_access_token
@@ -113,3 +115,30 @@ def change_password(
     session.commit()
 
     return {"status": "success", "message": "Contraseña actualizada correctamente"}
+
+
+@router.post("/invite-codes")
+def generate_invite_code(
+    role_requested: str = "voyager",  # Por defecto creamos invitaciones de nivel básico
+    current_admin: User = Depends(
+        get_current_admin
+    ),  # 🟢 ¡El Jefe de Seguridad en acción!
+    session: Session = Depends(get_session),
+):
+    """Genera un nuevo código de invitación de un solo uso"""
+
+    # Generamos un prefijo según el rol (VGR para voyager, ART para artist)
+    prefix = "VGR" if role_requested == "voyager" else "ART"
+
+    # Fabricamos un código seguro estilo "VGR-A1B2C3D4"
+    new_code_str = f"{prefix}-{secrets.token_hex(4).upper()}"
+
+    new_invite = InviteCode(code=new_code_str)
+    session.add(new_invite)
+    session.commit()
+
+    return {
+        "status": "success",
+        "message": "Código de invitación generado",
+        "code": new_code_str,
+    }

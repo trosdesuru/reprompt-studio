@@ -9,20 +9,21 @@ from app.models.user import User
 SECRET_KEY = os.getenv("SECRET_KEY", "super_clave_secreta_de_respaldo")
 ALGORITHM = "HS256"
 
+
 def get_current_user(request: Request, session: Session = Depends(get_session)):
     """Verifica el JWT leyéndolo directamente desde la Cookie HttpOnly."""
-    
+
     # Extraemos el token de la galleta enviada por el navegador
     token = request.cookies.get("access_token")
-    
+
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="No autenticado",
     )
-    
+
     if not token:
         raise credentials_exception
-        
+
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         username: str = payload.get("sub")
@@ -30,9 +31,22 @@ def get_current_user(request: Request, session: Session = Depends(get_session)):
             raise credentials_exception
     except JWTError:
         raise credentials_exception
-        
+
     user = session.exec(select(User).where(User.username == username)).first()
     if user is None:
         raise credentials_exception
-        
+
     return user
+
+
+def get_current_admin(current_user: User = Depends(get_current_user)):
+    """
+    Dependencia de RBAC: Verifica que el usuario logueado sea Administrador.
+    Si es un Voyager o Lector, le deniega el paso con un error 403 (Forbidden).
+    """
+    if current_user.role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No tienes suficientes privilegios (Requiere rol Admin)",
+        )
+    return current_user

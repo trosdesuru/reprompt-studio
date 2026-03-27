@@ -58,6 +58,12 @@ export const api = {
     return fetchSeguro(`${API_URL}/auth/me`);
   },
 
+  generarInvitacion: async (role: string = "voyager") => {
+    return fetchSeguro(`${API_URL}/auth/invite-codes?role_requested=${role}`, {
+      method: "POST",
+    });
+  },
+
   // --- BÚSQUEDA Y LECTURA ---
   buscar: async (
     query: string,
