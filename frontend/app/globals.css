@@ -1,90 +1,82 @@
-@import "tailwindcss/preflight";
-@import "tailwindcss/utilities";
+@import "tailwindcss";
 
-@layer base {
+:root {
+  /* 🎨 Paleta Base (Modo Claro - Opcional, pero buena práctica) */
+  --bg-primary: #f4f5f5;
+  --bg-secondary: #ffffff;
+  --text-primary: #1d1f21;
+  --text-secondary: #4b5563;
+  --border-color: #1d1f21;
+  --accent-color: #f64900;
+  /* Un naranja técnico estilo PostHog */
+  --shadow-color: #1d1f21;
+}
+
+@media (prefers-color-scheme: dark) {
   :root {
-    /* 🎨 Paleta Base - Alto Contraste para legibilidad extrema */
-    --bg-primary: #f4f4f0;
-    /* Un blanco hueso que cansa menos la vista que el #fff puro */
-    --bg-secondary: #ffffff;
-    /* Para tarjetas y contenedores elevados */
-    --foreground: #0f172a;
-    /* Slate-900: Casi negro, más elegante */
-    --text-secondary: #64748b;
-    /* Slate-500: Para descripciones y subtítulos */
-
-    /* 💥 Colores de Acento y Feedback */
-    --accent-color: #f43f5e;
-    /* Rose-500: Acción principal (Descargas, Buscar) */
-    --accent-hover: #e11d48;
-    /* Rose-600 */
-    --warning: #facc15;
-    /* Yellow-400: Para destacados y tendencias */
-    --success: #10b981;
-    /* Emerald-500: Para feedback positivo */
-    --danger: #ef4444;
-    /* Red-500: Para alertas y borrados */
-
-    /* 🧱 Tokens Neo-Brutalistas */
-    --border-color: #0f172a;
-    --border-width: 3px;
-    --shadow-offset: 5px;
-  }
-
-  /* Reset global y tipografía fluida */
-  html {
-    scroll-behavior: smooth;
-    -webkit-tap-highlight-color: transparent;
-    /* Evita el parpadeo azul al tocar en móviles */
-  }
-
-  body {
-    background-color: var(--bg-primary);
-    color: var(--foreground);
-    /* Interlineado amplio para mejorar la legibilidad (Norman's rule) */
-    line-height: 1.6;
+    /* 🎨 Paleta Base (Modo Oscuro Profundo) */
+    --bg-primary: #0a0a0a;
+    --bg-secondary: #171717;
+    --text-primary: #f4f5f5;
+    --text-secondary: #a1a1aa;
+    --border-color: #3f3f46;
+    --accent-color: #f64900;
+    --shadow-color: #000000;
   }
 }
 
-@layer utilities {
+.dark {
+  --bg-primary: #0a0a0a;
+  --bg-secondary: #171717;
+  --text-primary: #f4f5f5;
+  --text-secondary: #a1a1aa;
+  --border-color: #3f3f46;
+  --accent-color: #f64900;
+  --shadow-color: #000000;
+}
 
-  /* 🧱 Utilidades Neo-Brutalistas Automatizadas */
-  .neo-border {
-    border: var(--border-width) solid var(--border-color);
-  }
+body {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: var(--font-sans), Arial, Helvetica, sans-serif;
+  /* Suaviza el scroll en toda la web preparándonos para Lenis */
+  scroll-behavior: smooth;
+}
 
-  .neo-shadow {
-    box-shadow: var(--shadow-offset) var(--shadow-offset) 0px var(--border-color);
-    transition: transform 0.15s ease, box-shadow 0.15s ease;
-  }
+/* 🧱 Utilidades Neo-Brutalistas Globales */
+.neo-border {
+  border: 2px solid var(--border-color);
+  border-radius: 0.5rem;
+}
 
-  /* Microinteracción: Al pulsar o pasar el ratón, el botón "se hunde" */
-  .neo-shadow:hover {
-    transform: translate(2px, 2px);
-    box-shadow: calc(var(--shadow-offset) - 2px) calc(var(--shadow-offset) - 2px) 0px var(--border-color);
-  }
+.neo-shadow {
+  box-shadow: 4px 4px 0px 0px var(--shadow-color);
+  transition: all 0.2s ease-in-out;
+}
 
-  .neo-shadow:active {
-    transform: translate(var(--shadow-offset), var(--shadow-offset));
-    box-shadow: 0px 0px 0px var(--border-color);
-  }
+.neo-shadow:hover {
+  transform: translate(2px, 2px);
+  box-shadow: 2px 2px 0px 0px var(--shadow-color);
+}
 
-  /* Variante para elementos enfocados (Inputs) */
-  .neo-shadow-accent {
-    box-shadow: var(--shadow-offset) var(--shadow-offset) 0px var(--accent-color);
-  }
+.neo-shadow-accent {
+  box-shadow: 4px 4px 0px 0px var(--accent-color);
+}
 
-  /* Ocultar scrollbar pero mantener funcionalidad (Limpieza UI) */
-  .custom-scrollbar::-webkit-scrollbar {
-    width: 8px;
-  }
+/* Scrollbar técnica y minimalista */
+::-webkit-scrollbar {
+  width: 8px;
+}
 
-  .custom-scrollbar::-webkit-scrollbar-track {
-    background: var(--bg-primary);
-    border-left: 2px solid var(--border-color);
-  }
+::-webkit-scrollbar-track {
+  background: var(--bg-primary);
+}
 
-  .custom-scrollbar::-webkit-scrollbar-thumb {
-    background: var(--border-color);
-  }
+::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-secondary);
 }
