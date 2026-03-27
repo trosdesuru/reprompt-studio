@@ -49,9 +49,9 @@ export default function Navbar() {
 
   return (
     <>
-      <nav className="bg-[var(--bg-secondary)] border-b-4 border-[var(--border-color)] px-6 py-4 flex justify-between items-center z-50 sticky top-0">
+      <nav className="bg-(--bg-secondary) border-b-4 border-(--border-color) px-6 py-4 flex justify-between items-center z-50 sticky top-0">
         <div className="font-mono font-black text-xl text-foreground">
-          EH<span className="text-[var(--accent-color)]">_</span>Admin
+          EH<span className="text-(--accent-color)">_</span>Admin
         </div>
         
         <div className="flex gap-4 items-center">
@@ -71,11 +71,11 @@ export default function Navbar() {
 
       {/* Modal de Contraseña Simple */}
       {showPwdModal && (
-        <div className="fixed inset-0 bg-black/80 z-[100] flex items-center justify-center p-4">
-          <form onSubmit={handlePasswordChange} className="bg-[var(--bg-secondary)] p-8 neo-border neo-shadow flex flex-col gap-4 max-w-sm w-full">
+        <div className="fixed inset-0 bg-black/80 z-100 flex items-center justify-center p-4">
+          <form onSubmit={handlePasswordChange} className="bg-(--bg-secondary) p-8 neo-border neo-shadow flex flex-col gap-4 max-w-sm w-full">
             <h3 className="text-xl font-bold font-mono text-foreground uppercase">Cambiar Clave</h3>
-            <input type="password" placeholder="Clave Actual" required className="neo-border p-2 bg-[var(--bg-primary)] text-foreground font-mono" value={pwdData.old_password} onChange={e => setPwdData({...pwdData, old_password: e.target.value})} />
-            <input type="password" placeholder="Nueva Clave" required className="neo-border p-2 bg-[var(--bg-primary)] text-foreground font-mono" value={pwdData.new_password} onChange={e => setPwdData({...pwdData, new_password: e.target.value})} />
+            <input type="password" placeholder="Clave Actual" required className="neo-border p-2 bg-background text-foreground font-mono" value={pwdData.old_password} onChange={e => setPwdData({...pwdData, old_password: e.target.value})} />
+            <input type="password" placeholder="Nueva Clave" required className="neo-border p-2 bg-background text-foreground font-mono" value={pwdData.new_password} onChange={e => setPwdData({...pwdData, new_password: e.target.value})} />
             <div className="flex gap-2 mt-4">
               <Button type="button" variant="ghost" className="flex-1" onClick={() => setShowPwdModal(false)}>Cancelar</Button>
               <Button type="submit" variant="primary" className="flex-1">Guardar</Button>
