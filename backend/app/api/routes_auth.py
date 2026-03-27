@@ -1,5 +1,4 @@
-# backend/app/api/routes_auth.py
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlmodel import Session, select
 from app.core.db import get_session
 from app.models.user import User, InviteCode
@@ -11,7 +10,6 @@ router = APIRouter()
 
 @router.post("/register")
 def register_user(user_data: UserRegister, session: Session = Depends(get_session)):
-    # 1. Buscar el código de invitación usando la sintaxis moderna (session.exec)
     statement = (
         select(InviteCode)
         .where(InviteCode.code == user_data.invite_code)
@@ -24,7 +22,6 @@ def register_user(user_data: UserRegister, session: Session = Depends(get_sessio
             status_code=400, detail="Código de invitación inválido o ya usado"
         )
 
-    # 2. Verificar que el nombre de usuario esté libre
     user_exists = session.exec(
         select(User).where(User.username == user_data.username)
     ).first()
@@ -33,10 +30,8 @@ def register_user(user_data: UserRegister, session: Session = Depends(get_sessio
             status_code=400, detail="El nombre de usuario ya está en uso"
         )
 
-    # 3. Determinar el Rol (El código maestro otorga Admin)
     assigned_role = "admin" if invite.code.startswith("TROYA-") else "voyager"
 
-    # 4. Crear el Usuario
     new_user = User(
         username=user_data.username,
         hashed_password=get_password_hash(user_data.password),
@@ -46,7 +41,6 @@ def register_user(user_data: UserRegister, session: Session = Depends(get_sessio
     session.commit()
     session.refresh(new_user)
 
-    # 5. QUEMAR el código de invitación (asociarlo al usuario y marcarlo como usado)
     invite.is_used = True
     invite.used_by_id = new_user.id
     session.add(invite)
@@ -59,18 +53,30 @@ def register_user(user_data: UserRegister, session: Session = Depends(get_sessio
     }
 
 
-@router.post("/login", response_model=Token)
-def login_user(user_data: UserLogin, session: Session = Depends(get_session)):
-    # 1. Buscar al usuario en la base de datos
+@router.post("/login")
+def login_user(
+    user_data: UserLogin, response: Response, session: Session = Depends(get_session)
+):
     user = session.exec(select(User).where(User.username == user_data.username)).first()
-    if not user:
+    if not user or not verify_password(user_data.password, user.hashed_password):
         raise HTTPException(status_code=401, detail="Usuario o contraseña incorrectos")
 
-    # 2. Verificar que la contraseña coincide con el Hash
-    if not verify_password(user_data.password, user.hashed_password):
-        raise HTTPException(status_code=401, detail="Usuario o contraseña incorrectos")
-
-    # 3. Generar el Token VIP (Guardamos el nombre y el rol dentro del token)
     access_token = create_access_token(data={"sub": user.username, "role": user.role})
 
-    return {"access_token": access_token, "token_type": "bearer"}
+    response.set_cookie(
+        key="access_token",
+        value=access_token,
+        httponly=True,
+        max_age=60 * 60 * 24 * 7,
+        samesite="lax",
+        secure=False,
+    )
+
+    return {"status": "success", "message": f"Bienvenido, {user.username}"}
+
+
+@router.post("/logout")
+def logout_user(response: Response):
+    """Destruye la sesión eliminando la cookie del navegador"""
+    response.delete_cookie("access_token")
+    return {"status": "success", "message": "Sesión cerrada"}
