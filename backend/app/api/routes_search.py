@@ -2,6 +2,9 @@
 import logging
 import json
 from fastapi import APIRouter, HTTPException
+from fastapi import Depends
+from app.api.deps import get_current_user
+from app.models.user import User
 from app.services.scraper import buscar_galerias
 
 from app.services.scraper import (
@@ -16,8 +19,18 @@ router = APIRouter()
 
 
 @router.get("/buscar")
-def endpoint_buscar(query: str, next_id: str = None, categories: str = None):
-    # 🟢 Convertimos el string JSON de vuelta a un diccionario de Python
+def endpoint_buscar(
+    query: str,
+    next_id: str = None,
+    categories: str = None,
+    current_user: User = Depends(get_current_user),  # 🟢 ¡El portero en acción!
+):
+    # Imprimimos quién está buscando para dejarlo en los logs
+    logger.info(
+        f"👤 Usuario {current_user.username} (Rol: {current_user.role}) está buscando: {query}"
+    )
+
+    # ... (El resto de tu código de buscar_galerias se queda EXACTAMENTE IGUAL) ...
     cats_dict = None
     if categories:
         try:
