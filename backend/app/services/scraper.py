@@ -1,58 +1,84 @@
 # backend/app/services/scraper.py
 import logging
 import re
+import time
 from urllib.parse import quote
-
 from bs4 import BeautifulSoup
-
 from app.core.config import http_session
 
 logger = logging.getLogger("scraper")
 
 
-import concurrent.futures  # <-- AÑADE ESTO ARRIBA CON LOS IMPORTS
+def calcular_f_cats(categories_json: dict):
+    # Valores de exclusión oficiales
+    mapping = {
+        "misc": 1,
+        "doujinshi": 2,
+        "manga": 4,
+        "artistcg": 8,
+        "gamecg": 16,
+        "imageset": 32,
+        "cosplay": 64,
+        "asianporn": 128,
+        "nonh": 256,
+        "western": 512,
+    }
+    f_cats = 0
+    # EH funciona por EXCLUSIÓN: si la categoría NO está activa, sumamos su valor
+    for cat, is_active in categories_json.items():
+        if not is_active:
+            f_cats += mapping.get(cat, 0)
+    return f_cats
 
 
-def buscar_galerias(query: str, paginas: int = 1):
-    resultados = []
-    url_base = f"https://e-hentai.org/?f_search={quote(query)}"
-    logger.info(f"🔍 Buscando '{query}' ({paginas} páginas en PARALELO 🚀)")
+def buscar_galerias(query: str, next_id: str = None, categories: dict = None):
+    # 1. Calculamos el f_cats si nos envían el JSON de categorías
+    f_cats = calcular_f_cats(categories) if categories else 0
 
-    def fetch_page(p):
-        """Función aislada que procesa una sola página"""
-        try:
-            r = http_session.get(f"{url_base}&page={p}", timeout=10)
-            r.raise_for_status()
-            soup = BeautifulSoup(r.text, "lxml")
+    # 2. Construimos la URL con el filtro
+    url = f"https://e-hentai.org/?f_search={quote(query)}&f_cats={f_cats}"
+    if next_id:
+        url += f"&next={next_id}"
 
-            page_results = []
-            for tarjeta in soup.select(".itg tr, .itg .gl1t"):
-                enlace = tarjeta.select_one("a[href*='/g/']")
-                if not enlace:
-                    continue
+    logger.info(f"📡 [SOLICITUD] {url}")
 
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0"
+    }
+    cookies = {"nw": "1"}
+
+    try:
+        r = http_session.get(url, headers=headers, cookies=cookies, timeout=10)
+        soup = BeautifulSoup(r.text, "lxml")
+
+        # 🟢 BUSCAR EL PUNTERO SIGUIENTE (Lo que tú inspeccionaste)
+        next_tag = soup.find("a", id="unext")
+        found_next_id = None
+        if next_tag and "next=" in next_tag["href"]:
+            # Extraemos solo el número después de 'next='
+            found_next_id = next_tag["href"].split("next=")[1]
+            logger.info(f"⏭️ [SIGUIENTE ID DETECTADO]: {found_next_id}")
+
+        tarjetas = soup.select(".itg tr, .itg .gl1t")
+        resultados = []
+        for tarjeta in tarjetas:
+            enlace = tarjeta.select_one("a[href*='/g/']")
+            if enlace:
                 img_tag = tarjeta.select_one("img")
-                thumb = (
-                    img_tag.get("data-src") or img_tag.get("src") if img_tag else "N/A"
-                )
-                page_results.append(
+                thumb = img_tag.get("data-src") or img_tag.get("src") or ""
+                resultados.append(
                     {
                         "url": enlace["href"],
                         "thumb": thumb,
                         "title": enlace.text.strip(),
                     }
                 )
-            return page_results
-        except Exception as e:
-            logger.error(f"❌ Error escaneando página {p}: {e}")
-            return []
 
-    # Lanzamos hasta 5 peticiones simultáneas (¡Magia negra de Python!)
-    with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
-        for res in executor.map(fetch_page, range(paginas)):
-            resultados.extend(res)
+        return {"data": resultados, "next_id": found_next_id}
 
-    return resultados
+    except Exception as e:
+        logger.error(f"💥 [ERROR]: {e}")
+        return {"data": [], "next_id": None}
 
 
 def obtener_enlaces_paginas(url: str, pagina: int = 0):
@@ -71,7 +97,6 @@ def obtener_enlaces_paginas(url: str, pagina: int = 0):
             if href:
                 paginas.append(href)
 
-        # Detectamos si existe la flecha de "Siguiente" en la tabla de paginación
         has_next = False
         for a in soup.select(".ptt a"):
             if ">" in a.text:
@@ -92,6 +117,5 @@ def extraer_imagen_real(url: str):
         if match:
             return match.group(1)
     except Exception as e:
-        # Fallamos silenciosamente a nivel de usuario, pero el dev se entera en los logs
         logger.debug(f"⚠️ No se pudo extraer imagen de {url}: {e}")
     return None

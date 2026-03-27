@@ -1,96 +1,99 @@
 "use client";
 
-import { useState } from "react";
-import SearchForm from "../features/search/components/SearchForm";
 import { useSearch } from "../features/search/hooks/useSearch";
-import ImageViewerModal from "../features/image-viewer/components/ImageViewerModal";
-import { useViewerSync } from "../features/image-viewer/hooks/useViewerSync";
-
-import GalleryCard from "@/src/components/GalleryCard";
-import { api } from "@/src/services/api";
+import FilterBar from "../features/search/components/FilterBar";
+import GalleryCard from "../src/components/GalleryCard";
+// 🟢 Corregimos la importación del Modal (antes decía ImageCard)
+import ImageViewerModal from "../src/components/ImageViewerModal";
+// 🟢 Importamos el hook que faltaba
+import { useGalleryViewer } from "../src/hooks/useGalleryViewer";
 
 export default function Home() {
-  const { query, setQuery, results, isLoading, error, handleSearch } = useSearch();
-  const [viewerData, setViewerData] = useState<{ url: string; title: string } | null>(null);
+  const {
+    query,
+    setQuery,
+    results,
+    isLoading,
+    isLoadingMore,
+    hasMore,
+    error,
+    handleSearch,
+    loadMore,
+    activeCategories,
+    toggleCategory,
+  } = useSearch();
 
-  // 🟢 Nuevo estado para notificaciones de descarga elegantes
-  const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
+  const { selectedGallery, isModalOpen, onOpenGallery, onCloseGallery } = useGalleryViewer();
 
-  const { viewerPages, isViewerLoading, isViewerOpen, closeViewer, openViewer } = useViewerSync(
-    viewerData?.url || "",
-  );
-
-  // 🟢 Conectamos el botón con la API y damos feedback al usuario
-  const handleDownloadTotal = async (url: string, title: string) => {
-    try {
-      setToast({ message: `📦 Encolando galería: ${title}...`, type: "success" });
-      const res = await api.descargarTotal(url, title);
-
-      if (res.status === "success") {
-        setToast({
-          message: `✅ Descarga iniciada en 2º plano. Revisa los logs del Worker.`,
-          type: "success",
-        });
-      }
-    } catch (err) {
-      setToast({ message: "❌ Error al conectar con el servicio de descargas", type: "error" });
-    } finally {
-      // Ocultar la notificación después de 4 segundos
-      setTimeout(() => setToast(null), 4000);
-    }
+  // 🟢 Función dummy para cumplir con el contrato de GalleryCard
+  const handleDownloadTotal = (url: string) => {
+    console.log("Descarga total iniciada para:", url);
   };
 
-  const onOpenGallery = (url: string, title: string) => {
-    setViewerData({ url, title });
-    openViewer(url);
-  };
   return (
-    <main className="min-h-screen bg-gray-900 text-white p-8 font-sans antialiased relative">
-      <header className="mb-10 text-center">
-        <h1 className="text-4xl font-extrabold text-blue-400">Gallery Scraper Pro</h1>
-      </header>
-      {/* 🟢 Renderizado del Toast System flotante */}
-      {toast && (
-        <div
-          className={`fixed top-5 right-5 z-9999 p-4 rounded-lg shadow-2xl transition-all font-bold border ${
-            toast.type === "success"
-              ? "bg-green-900/90 border-green-500 text-green-100"
-              : "bg-red-900/90 border-red-500 text-red-100"
-          }`}
-        >
-          {toast.message}
-        </div>
-      )}
+    <main className="min-h-screen bg-[#0a0a0a] text-gray-100 p-4 md:p-8">
+      {/* Header & Buscador */}
+      <div className="max-w-6xl mx-auto text-center mb-10">
+        {/* Actualizado a la sugerencia de Tailwind: bg-linear-to-r */}
+        <h1 className="text-5xl font-black mb-4 bg-linear-to-r from-blue-500 to-purple-500 bg-clip-text text-transparent">
+          EH-EXPLORER
+        </h1>
+        <p className="text-gray-400 mb-8">Navega y descarga galerías con filtros avanzados</p>
 
-      <SearchForm query={query} setQuery={setQuery} onSearch={handleSearch} isLoading={isLoading} />
+        <form onSubmit={handleSearch} className="flex gap-2 max-w-2xl mx-auto mb-6">
+          <input
+            type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Ej: Naruto, Artbook, Cosplay..."
+            className="flex-1 bg-gray-900 border border-gray-700 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+          />
+          <button
+            type="submit"
+            disabled={isLoading}
+            className="bg-blue-600 hover:bg-blue-700 px-8 py-3 rounded-lg font-bold transition-colors disabled:opacity-50"
+          >
+            {isLoading ? "BUSCANDO..." : "BUSCAR"}
+          </button>
+        </form>
 
-      {error && (
-        <div className="max-w-2xl mx-auto mb-8 p-4 bg-red-900/50 border border-red-500 rounded-lg text-red-200 text-center font-semibold">
-          {error}
-        </div>
-      )}
+        <FilterBar activeCategories={activeCategories} toggleCategory={toggleCategory} />
+      </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6 max-w-7xl mx-auto">
-        {results.map((item) => (
+      {/* Grid de Resultados */}
+      {error && <div className="text-center text-red-400 mb-8 font-mono">{error}</div>}
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+        {results.map((item, index) => (
           <GalleryCard
-            key={item.url}
+            key={`${item.url}-${index}`}
             item={item}
-            onDownloadTotal={handleDownloadTotal}
             onOpenVisor={onOpenGallery}
+            onDownloadTotal={handleDownloadTotal} // 🟢 Propiedad añadida
           />
         ))}
       </div>
-      {isViewerOpen && viewerData && (
-        <ImageViewerModal
-          title={viewerData.title}
-          pages={viewerPages}
-          isLoading={isViewerLoading}
-          onClose={() => {
-            setViewerData(null);
-            closeViewer();
-          }}
-        />
+
+      {/* Botón Cargar Más */}
+      {results.length > 0 && hasMore && (
+        <div className="flex justify-center mt-12 mb-8">
+          <button
+            onClick={loadMore}
+            disabled={isLoadingMore}
+            className="bg-gray-800 hover:bg-gray-700 text-blue-400 border border-blue-500/30 px-10 py-4 rounded-full font-bold text-lg shadow-xl transition-all disabled:opacity-50"
+          >
+            {isLoadingMore ? "CARGANDO..." : "⬇️ VER MÁS RESULTADOS"}
+          </button>
+        </div>
       )}
+
+      {/* 🟢 Cambiado ImageCard por ImageViewerModal */}
+      <ImageViewerModal
+        isOpen={isModalOpen}
+        onClose={onCloseGallery}
+        galleryUrl={selectedGallery?.url || ""}
+        title={selectedGallery?.title || ""}
+      />
     </main>
   );
 }

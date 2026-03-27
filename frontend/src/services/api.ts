@@ -1,11 +1,27 @@
 const API_URL = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000") + "/api";
 
 export const api = {
-  buscar: async (query: string, paginas: number) => {
+  // frontend/src/services/api.ts
+
+  buscar: async (
+    query: string,
+    next_id: string | null = null,
+    categories: Record<string, boolean> | null = null,
+  ) => {
     try {
-      const res = await fetch(
-        `${API_URL}/buscar?query=${encodeURIComponent(query)}&paginas=${paginas}`,
-      );
+      let endpoint = `${API_URL}/buscar?query=${encodeURIComponent(query)}`;
+
+      if (next_id) {
+        endpoint += `&next_id=${next_id}`;
+      }
+
+      // 🟢 Si hay categorías, las enviamos como un string JSON
+      // El backend lo recibirá y lo convertirá en el f_cats de EH
+      if (categories) {
+        endpoint += `&categories=${encodeURIComponent(JSON.stringify(categories))}`;
+      }
+
+      const res = await fetch(endpoint);
       if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
       return res.json();
     } catch (error) {

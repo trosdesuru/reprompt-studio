@@ -1,7 +1,8 @@
 # backend/app/api/routes_search.py
 import logging
-
+import json
 from fastapi import APIRouter, HTTPException
+from app.services.scraper import buscar_galerias
 
 from app.services.scraper import (
     buscar_galerias,
@@ -9,18 +10,23 @@ from app.services.scraper import (
     obtener_enlaces_paginas,
 )
 
+
 logger = logging.getLogger("api_search")
 router = APIRouter()
 
 
 @router.get("/buscar")
-def endpoint_buscar(query: str, paginas: int = 1):
-    try:
-        resultados = buscar_galerias(query, paginas)
-        return {"status": "success", "data": resultados}
-    except Exception as e:
-        logger.error(f"💥 Error no controlado en /buscar: {e}")
-        raise HTTPException(status_code=500, detail="Error interno al buscar galerías.")
+def endpoint_buscar(query: str, next_id: str = None, categories: str = None):
+    # 🟢 Convertimos el string JSON de vuelta a un diccionario de Python
+    cats_dict = None
+    if categories:
+        try:
+            cats_dict = json.loads(categories)
+        except:
+            cats_dict = None
+
+    res = buscar_galerias(query, next_id, cats_dict)
+    return {"status": "success", "data": res["data"], "next_id": res["next_id"]}
 
 
 @router.get("/leer")

@@ -6,10 +6,21 @@ export function useSearch() {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<GalleryItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [hasMore, setHasMore] = useState(true);
 
-  // Configuramos la profundidad de búsqueda "oculta"
-  const PAGINAS_A_BUSCAR = 3;
+  // 🟢 Estado de categorías
+  const [activeCategories, setActiveCategories] = useState<Record<string, boolean>>({
+    misc: true, doujinshi: true, manga: true, artistcg: true,
+    gamecg: true, western: true, nonh: true, imageset: true,
+    cosplay: true, asianporn: true,
+  });
+
+  const toggleCategory = (id: string) => {
+    setActiveCategories(prev => ({ ...prev, [id]: !prev[id] }));
+  };
 
   const handleSearch = async (e?: React.FormEvent) => {
     e?.preventDefault();
@@ -17,28 +28,66 @@ export function useSearch() {
 
     setIsLoading(true);
     setError(null);
+    setNextCursor(null);
+    setHasMore(true);
 
     try {
-      const data = await api.buscar(query, PAGINAS_A_BUSCAR);
-      if (data.status === "success") {
-        // 🟢 ESCUDO: Deduplicación instantánea de objetos basándonos en la 'url'
-        const uniqueResults = Array.from(
-          new Map(data.data.map((item: GalleryItem) => [item.url, item])).values(),
-        ) as GalleryItem[];
+      // 🟢 Ahora TypeScript no protestará: pasamos los 3 argumentos
+      const data = await api.buscar(query, null, activeCategories);
 
-        setResults(uniqueResults);
+      if (data.status === "success") {
+        setResults(data.data);
+        setNextCursor(data.next_id || null);
+        setHasMore(!!data.next_id);
       }
     } catch (err) {
-      if (err instanceof TypeError && err.message === "Failed to fetch") {
-        setError("🚨 El servidor Backend no responde. Verifica que Docker esté corriendo.");
-      } else {
-        setError("🔍 Ocurrió un error inesperado al buscar.");
-      }
-      console.error(err);
+      setError("🚨 Error al conectar con el servidor.");
     } finally {
       setIsLoading(false);
     }
   };
 
-  return { query, setQuery, results, isLoading, error, handleSearch };
+  const loadMore = async () => {
+    if (isLoadingMore || !hasMore || !nextCursor) return;
+
+    setIsLoadingMore(true);
+
+    try {
+      // 🟢 IMPORTANTE: También pasamos activeCategories aquí para mantener el filtro
+      const data = await api.buscar(query, nextCursor, activeCategories);
+
+      if (data.status === "success" && data.data.length > 0) {
+        setResults((prev) => {
+          const combined = [...prev, ...data.data];
+          const uniqueMap = new Map();
+          combined.forEach((item) => uniqueMap.set(item.url, item));
+          return Array.from(uniqueMap.values()) as GalleryItem[];
+        });
+
+        setNextCursor(data.next_id || null);
+        setHasMore(!!data.next_id);
+      } else {
+        setHasMore(false);
+      }
+    } catch (err) {
+      console.error("Error al cargar más:", err);
+    } finally {
+      setIsLoadingMore(false);
+    }
+  };
+
+  return {
+    query,
+    setQuery,
+    results,
+    isLoading,
+    isLoadingMore,
+    hasMore,
+    error,
+    handleSearch,
+    loadMore,
+    // 🟢 DEVOLVEMOS esto para que el componente de la UI pueda usarlos
+    activeCategories,
+    toggleCategory,
+  };
 }
