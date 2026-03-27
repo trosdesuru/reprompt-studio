@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
 import { api } from "@/src/services/api";
+import { ViewerPageItem } from "@/src/types/gallery";
 
 export function useViewerSync(activeUrl: string) {
   const [isViewerOpen, setIsViewerOpen] = useState(false);
-  const [viewerPages, setViewerPages] = useState<string[]>([]);
+  const [viewerPages, setViewerPages] = useState<ViewerPageItem[]>([]);
   const [isViewerLoading, setIsViewerLoading] = useState(false);
   const [hasMorePages, setHasMorePages] = useState(false);
   const [currentViewerPage, setCurrentViewerPage] = useState(0);
@@ -45,9 +46,7 @@ export function useViewerSync(activeUrl: string) {
         if (isMounted && data.status === "success") {
           setViewerPages((prev) => [...prev, ...data.paginas]);
           setHasMorePages(data.has_next);
-          if (data.has_next) {
-            setCurrentViewerPage((prev) => prev + 1);
-          }
+          if (data.has_next) setCurrentViewerPage((prev) => prev + 1);
         }
       } catch (e) {
         console.error("Error loading extra page", e);

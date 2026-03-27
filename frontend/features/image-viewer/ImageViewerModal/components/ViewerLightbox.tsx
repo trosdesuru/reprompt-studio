@@ -2,9 +2,10 @@
 "use client";
 
 import { FullImageResolver } from "./FullImageResolver";
+import { ViewerPageItem } from "@/src/types/gallery";
 
 interface ViewerLightboxProps {
-  pages: string[];
+  pages: ViewerPageItem[];
   selectedIndex: number;
   onClose: () => void;
   onNext: () => void;
@@ -45,7 +46,7 @@ export function ViewerLightbox({
         )}
 
         {/* Resolvemos la imagen Full HD */}
-        <FullImageResolver pageUrl={pages[selectedIndex]} index={selectedIndex + 1} />
+        <FullImageResolver pageUrl={pages[selectedIndex].page_url} index={selectedIndex + 1} />
 
         {/* Botón Siguiente */}
         {selectedIndex < pages.length - 1 && (

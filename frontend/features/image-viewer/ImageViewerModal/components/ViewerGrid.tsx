@@ -1,13 +1,15 @@
 import { ImageCard } from "../../ImageCard";
+import { ViewerPageItem } from "@/src/types/gallery";
 
 interface ViewerGridProps {
-  pages: string[];
+  pages: ViewerPageItem[];
   galleryTitle: string;
   isLoading: boolean;
   onSelectImage: (index: number) => void;
 }
 
 export function ViewerGrid({ pages, galleryTitle, isLoading, onSelectImage }: ViewerGridProps) {
+  // ... el código de carga (svg spin) se queda igual ...
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -37,10 +39,10 @@ export function ViewerGrid({ pages, galleryTitle, isLoading, onSelectImage }: Vi
 
   return (
     <div className="relative z-10 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6 max-w-7xl mx-auto w-full pb-20">
-      {pages.map((pageUrl, i) => (
+      {pages.map((item, i) => (
         <ImageCard
           key={i}
-          pageUrl={pageUrl}
+          item={item}
           index={i + 1}
           galleryTitle={galleryTitle}
           onOpenImage={() => onSelectImage(i)}

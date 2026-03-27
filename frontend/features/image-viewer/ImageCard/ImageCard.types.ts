@@ -1,6 +1,8 @@
+import { ViewerPageItem } from "@/src/types/gallery";
+
 export interface ImageCardProps {
-  pageUrl: string;
+  item: ViewerPageItem;
   index: number;
   galleryTitle: string;
-  onOpenImage: (imgUrl: string) => void;
+  onOpenImage: () => void;
 }

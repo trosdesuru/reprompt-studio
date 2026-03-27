@@ -82,8 +82,8 @@ def buscar_galerias(query: str, next_id: str = None, categories: dict = None):
 
 
 def obtener_enlaces_paginas(url: str, pagina: int = 0):
-    """Extrae SOLO una página y avisa si hay más."""
-    paginas = []
+    """Extrae la página y sus miniaturas en una sola pasada (Zero-Latency)."""
+    paginas_dict = {}
     logger.info(f"⚡ Lector Turbo: Extrayendo página {pagina} de {url}")
 
     try:
@@ -94,8 +94,23 @@ def obtener_enlaces_paginas(url: str, pagina: int = 0):
         enlaces = soup.select('#gdt a[href*="/s/"], .itg a[href*="/s/"]')
         for a in enlaces:
             href = a.get("href")
-            if href:
-                paginas.append(href)
+            if not href:
+                continue
+
+            # Buscamos la miniatura (puede estar en un img o en el background del div padre)
+            thumb_url = ""
+            img = a.find("img")
+            if img:
+                thumb_url = img.get("data-src") or img.get("src", "")
+            else:
+                parent_div = a.find_parent("div")
+                if parent_div and parent_div.get("style"):
+                    match = re.search(r"url\((.*?)\)", parent_div.get("style"))
+                    if match:
+                        thumb_url = match.group(1).strip("'\"")
+
+            if href not in paginas_dict:
+                paginas_dict[href] = {"page_url": href, "thumb_url": thumb_url}
 
         has_next = False
         for a in soup.select(".ptt a"):
@@ -103,7 +118,8 @@ def obtener_enlaces_paginas(url: str, pagina: int = 0):
                 has_next = True
                 break
 
-        return {"enlaces": list(dict.fromkeys(paginas)), "has_next": has_next}
+        # Devolvemos una lista de diccionarios con la url y el thumbnail
+        return {"enlaces": list(paginas_dict.values()), "has_next": has_next}
     except Exception as e:
         logger.error(f"⚠️ Error al leer la galería (pág {pagina}): {e}")
         return {"enlaces": [], "has_next": False}

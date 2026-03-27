@@ -12,6 +12,11 @@ export interface GalleryItem {
   added_at?: string;
 }
 
+export interface ViewerPageItem {
+  page_url: string;
+  thumb_url: string;
+}
+
 export interface GalleryMetrics {
   total_views: number;
   total_downloads: number;
