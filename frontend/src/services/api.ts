@@ -51,4 +51,17 @@ export const api = {
     if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
     return res.json();
   },
+
+  registrar: async (userData: any) => {
+    const res = await fetch(`${API_URL}/auth/register`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(userData),
+    });
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({}));
+      throw new Error(errorData.detail || "Error desconocido al registrarse");
+    }
+    return res.json();
+  },
 };
