@@ -9,7 +9,7 @@ interface FilterBarProps {
 export default function FilterBar({ activeCategories, toggleCategory }: FilterBarProps) {
   return (
     <div className="max-w-4xl mx-auto mb-8">
-      <div className="flex flex-wrap justify-center gap-3 p-5 bg-(--bg-secondary) neo-border neo-shadow">
+      <div className="flex flex-wrap justify-center gap-3 p-5 bg-[var(--bg-secondary)] neo-border neo-shadow">
         {EH_CATEGORIES.map((cat) => {
           const isActive = activeCategories[cat.id];
           
@@ -22,7 +22,7 @@ export default function FilterBar({ activeCategories, toggleCategory }: FilterBa
                 ${
                   isActive
                     ? `${cat.color} ${cat.textColor} neo-shadow-accent -translate-y-1`
-                    : "bg-background text-(--text-secondary) hover:text-foreground hover:-translate-y-0.5"
+                    : "bg-background text-[var(--text-secondary)] hover:text-foreground hover:-translate-y-0.5"
                 }
               `}
             >

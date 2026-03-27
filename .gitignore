@@ -17,7 +17,8 @@ backend/.env
 
 # Basura de Next.js y Node
 .next/
-**/ .next*/
+.next*/
+"*.next*"
 node_modules/
 package-lock.json
 

@@ -43,7 +43,7 @@ def endpoint_buscar(
 
 
 @router.get("/leer")
-def endpoint_leer(url: str, p: int = 0):
+def endpoint_leer(url: str, p: int = 0, current_user: User = Depends(get_current_user)):
     try:
         resultado = obtener_enlaces_paginas(url, p)
         return {
@@ -57,7 +57,7 @@ def endpoint_leer(url: str, p: int = 0):
 
 
 @router.get("/resolver_imagen")
-def endpoint_resolver_imagen(url: str):
+def endpoint_resolver_imagen(url: str, current_user: User = Depends(get_current_user)):
     img_real = extraer_imagen_real(url)
     if img_real:
         return {"status": "success", "url_img": img_real}

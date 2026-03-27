@@ -10,7 +10,7 @@ interface Props {
 
 export default function GalleryCard({ item, onDownloadTotal, onOpenVisor }: Props) {
   return (
-    <div className="bg-(--bg-secondary)r neo-shadow flex flex-col overflow-hidden group">
+    <div className="bg-[var(--bg-secondary)]r neo-shadow flex flex-col overflow-hidden group">
       <div className="h-64 overflow-hidden bg-black border-b-2 border-(--border-color) relative">
         {item.thumb && item.thumb !== "N/A" ? (
           <img

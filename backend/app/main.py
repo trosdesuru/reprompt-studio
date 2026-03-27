@@ -6,9 +6,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.routes_download import router as download_router
 from app.api.routes_search import router as search_router
 
-from app.api.routes_download import router as download_router
-from app.api.routes_search import router as search_router
-
 # 🟢 Añade el nuevo router de autenticación
 from app.api.routes_auth import router as auth_router
 

@@ -54,9 +54,9 @@ export default function Home() {
       <div className="max-w-6xl mx-auto text-center mb-12 mt-8">
         {/* Título estilo devtools: fuente monoespaciada y color de acento */}
         <h1 className="text-5xl md:text-7xl font-black mb-4 font-mono tracking-tighter text-foreground uppercase">
-          EH<span className="text-(--accent-color)">-</span>Explorer
+          EH<span className="text-[var(--accent-color)]">-</span>Explorer
         </h1>
-        <p className="text-(--text-secondary) mb-10 font-medium text-lg border-b-2 border-(--border-color) pb-6 inline-block">
+        <p className="text-[var(--text-secondary)] mb-10 font-medium text-lg border-b-2 border-(--border-color) pb-6 inline-block">
           Plataforma de extracción y visor de alto rendimiento
         </p>
 
@@ -70,7 +70,7 @@ export default function Home() {
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Ej: Naruto, Artbook, Cosplay..."
             // 🟢 Input Neo-Brutalista: bordes duros y sombra que cambia al hacer focus
-            className="flex-1 bg-(--bg-secondary) text-foreground neo-border neo-shadow px-5 py-4 focus:outline-none focus:neo-shadow-accent transition-all text-lg font-mono placeholder:text-gray-500"
+            className="flex-1 bg-[var(--bg-secondary)] text-foreground neo-border neo-shadow px-5 py-4 focus:outline-none focus:neo-shadow-accent transition-all text-lg font-mono placeholder:text-gray-500"
           />
           {/* 🟢 Usamos nuestro componente Button global */}
           <Button type="submit" isLoading={isLoading} size="lg" variant="primary">
