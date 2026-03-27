@@ -18,11 +18,15 @@ interface SearchState {
   toggleCategory: (id: string) => void;
   executeSearch: () => Promise<void>;
   loadMore: () => Promise<void>;
+
+  trending: GalleryItem[];
+  fetchTrending: () => Promise<void>;
 }
 
 export const useSearchStore = create<SearchState>((set, get) => ({
   query: "",
   results: [],
+  trending: [],
   isLoading: false,
   isLoadingMore: false,
   error: null,
@@ -98,6 +102,17 @@ export const useSearchStore = create<SearchState>((set, get) => ({
       console.error("Error al cargar más:", err);
     } finally {
       set({ isLoadingMore: false });
+    }
+  },
+
+  fetchTrending: async () => {
+    try {
+      const data = await api.obtenerTendencias(5); // Pedimos el Top 5
+      if (data.status === "success") {
+        set({ trending: data.data });
+      }
+    } catch (err) {
+      console.error("Error cargando tendencias:", err);
     }
   },
 }));

@@ -13,6 +13,9 @@ export const searchApi = {
   },
   leer: (url: string, p: number = 0) =>
     fetchSeguro(`${API_URL}/leer?url=${encodeURIComponent(url)}&p=${p}`),
+
   resolverImagen: (url: string) =>
     fetchSeguro(`${API_URL}/resolver_imagen?url=${encodeURIComponent(url)}`),
+
+  obtenerTendencias: (limit: number = 5) => fetchSeguro(`${API_URL}/tendencias?limit=${limit}`),
 };

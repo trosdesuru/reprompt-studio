@@ -1,10 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useSearch } from "@/features/search/hooks/useSearch";
+
 import FilterBar from "@/features/search/components/FilterBar";
 import GalleryCard from "@/src/components/GalleryCard";
+
+import TrendingSection from "@/features/search/components/TrendingSection";
 import ImageViewerModal from "@/features/image-viewer/components/ImageViewerModal";
+
+import { useSearchStore } from "@/src/store/searchStore";
 import { useViewerSync } from "@/features/image-viewer/hooks/useViewerSync";
 import { api } from "@/src/services/api";
 import { Button } from "@/src/components/ui/Button";
@@ -26,6 +31,7 @@ export default function Home() {
 
   const [activeUrl, setActiveUrl] = useState("");
   const [activeTitle, setActiveTitle] = useState("");
+  const { trending, fetchTrending } = useSearchStore();
 
   const { viewerPages, isViewerLoading, isViewerOpen, openViewer, closeViewer } =
     useViewerSync(activeUrl);
@@ -45,8 +51,12 @@ export default function Home() {
     }
   };
 
+  useEffect(() => {
+    fetchTrending();
+  }, [fetchTrending]);
+
+  // 🟢 Aplicamos las variables globales de color para el fondo
   return (
-    // 🟢 Aplicamos las variables globales de color para el fondo
     <main className="min-h-screen bg-background text-foreground font-sans">
       <div className="max-w-6xl mx-auto text-center mb-12 mt-8">
         {/* Título estilo devtools: fuente monoespaciada y color de acento */}
@@ -61,12 +71,12 @@ export default function Home() {
           onSubmit={handleSearch}
           className="flex flex-col md:flex-row gap-4 max-w-3xl mx-auto mb-8 relative z-10"
         >
+          {/* 🟢 Input Neo-Brutalista: bordes duros y sombra que cambia al hacer focus */}
           <input
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Ej: Naruto, Artbook, Cosplay..."
-            // 🟢 Input Neo-Brutalista: bordes duros y sombra que cambia al hacer focus
             className="flex-1 bg-(--bg-secondary) text-foreground neo-border neo-shadow px-5 py-4 focus:outline-none focus:neo-shadow-accent transition-all text-lg font-mono placeholder:text-gray-500"
           />
           {/* 🟢 Usamos nuestro componente Button global */}
@@ -85,36 +95,54 @@ export default function Home() {
         </div>
       )}
 
-      {/* Grid de Resultados */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-8">
-        {results.map((item, index) => (
-          <GalleryCard
-            key={`${item.url}-${index}`}
-            item={item}
+      <div className="max-w-[90rem] mx-auto px-4">
+        {/* Solo lo mostramos si no está buscando nada específico */}
+        {query === "" && (
+          <TrendingSection
+            trending={trending}
             onOpenVisor={handleOpenVisor}
             onDownloadTotal={handleDownloadTotal}
           />
-        ))}
+        )}
+
+        {/* Grid de Resultados Normales */}
+        {results.length > 0 && (
+          <div className="mt-8 border-t-2 border-(--border-color) pt-8">
+            <h3 className="text-xl font-black font-mono uppercase mb-6 opacity-50">
+              Resultados de Búsqueda
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-8">
+              {results.map((item, index) => (
+                <GalleryCard
+                  key={`${item.url}-${index}`}
+                  item={item}
+                  onOpenVisor={handleOpenVisor}
+                  onDownloadTotal={handleDownloadTotal}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Botón Cargar Más */}
+        {results.length > 0 && hasMore && (
+          <div className="flex justify-center mt-16 mb-12">
+            <Button onClick={loadMore} isLoading={isLoadingMore} variant="secondary" size="lg">
+              {isLoadingMore ? "Cargando..." : "↓ Ver más resultados"}
+            </Button>
+          </div>
+        )}
+
+        {/* Modal Visor */}
+        {isViewerOpen && (
+          <ImageViewerModal
+            title={activeTitle}
+            pages={viewerPages}
+            isLoading={isViewerLoading}
+            onClose={closeViewer}
+          />
+        )}
       </div>
-
-      {/* Botón Cargar Más */}
-      {results.length > 0 && hasMore && (
-        <div className="flex justify-center mt-16 mb-12">
-          <Button onClick={loadMore} isLoading={isLoadingMore} variant="secondary" size="lg">
-            {isLoadingMore ? "Cargando..." : "↓ Ver más resultados"}
-          </Button>
-        </div>
-      )}
-
-      {/* Modal Visor */}
-      {isViewerOpen && (
-        <ImageViewerModal
-          title={activeTitle}
-          pages={viewerPages}
-          isLoading={isViewerLoading}
-          onClose={closeViewer}
-        />
-      )}
     </main>
   );
 }

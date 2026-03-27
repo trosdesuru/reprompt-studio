@@ -1,8 +1,9 @@
-# backend/app/api/routes_search.py
 import logging
 import json
 from sqlmodel import Session
 from fastapi import APIRouter, HTTPException, Depends
+from sqlmodel import desc, select
+from app.models.gallery import GalleryMetric
 
 from app.core.db import get_session
 from app.api.deps import get_current_user
@@ -89,3 +90,19 @@ def endpoint_resolver_imagen(url: str, current_user: User = Depends(get_current_
     if img_real:
         return {"status": "success", "url_img": img_real}
     return {"status": "error", "url_img": None}
+
+
+@router.get("/tendencias")
+def obtener_tendencias(limit: int = 5, session: Session = Depends(get_session)):
+    """Devuelve las galerías más descargadas de la plataforma."""
+    try:
+        # Buscamos las métricas ordenadas por descargas (de mayor a menor)
+        statement = (
+            select(GalleryMetric).order_by(desc(GalleryMetric.downloads)).limit(limit)
+        )
+        tendencias = session.exec(statement).all()
+
+        return {"status": "success", "data": tendencias}
+    except Exception as e:
+        logger.error(f"💥 Error al obtener tendencias: {e}")
+        return {"status": "error", "data": []}
