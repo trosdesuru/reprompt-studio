@@ -1,5 +1,6 @@
 import logging
 import json
+import asyncio
 from sqlmodel import Session
 from fastapi import APIRouter, HTTPException, Depends
 from sqlmodel import desc, select
@@ -17,6 +18,7 @@ from app.services.scraper import (
     obtener_enlaces_paginas,
 )
 
+MAX_CONCURRENT_RESOLUTIONS = asyncio.Semaphore(10)
 logger = logging.getLogger("api_search")
 router = APIRouter()
 
@@ -85,12 +87,18 @@ def endpoint_leer(
         raise HTTPException(status_code=500, detail="Error al procesar la galería.")
 
 
-@router.get("/resolver_imagen")
-def endpoint_resolver_imagen(url: str, current_user: User = Depends(get_current_user)):
-    img_real = extraer_imagen_real(url)
-    if img_real:
-        return {"status": "success", "url_img": img_real}
-    return {"status": "error", "url_img": None}
+@router.get("/resolver-imagen")
+async def endpoint_resolver_imagen(url: str):
+    async with MAX_CONCURRENT_RESOLUTIONS:
+        # Esto hace que si llegan 50 peticiones, 40 esperen en cola
+        # y solo 10 entren al scraper a la vez.
+        try:
+            # Tu lógica de scraping aquí...
+            # resultado = obtener_enlace_imagen_grande(url)
+            # return {"status": "success", "url_img": resultado}
+            pass
+        except Exception as e:
+            return {"status": "error", "message": str(e)}
 
 
 @router.get("/tendencias")
