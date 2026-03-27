@@ -1,3 +1,4 @@
+# backend/app/api/routes_search.py
 import logging
 import json
 from sqlmodel import Session
@@ -59,8 +60,18 @@ def endpoint_buscar(
 
 
 @router.get("/leer")
-def endpoint_leer(url: str, p: int = 0, current_user: User = Depends(get_current_user)):
+def endpoint_leer(
+    url: str,
+    p: int = 0,
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),  # 🟢 ¡Añadimos la sesión aquí también!
+):
     try:
+        # 🟢 Registramos la vista en la base de datos
+        AuditService.log_gallery_interaction(
+            session, url=url, title="Galería", thumb="", interaction_type="view"
+        )
+
         resultado = obtener_enlaces_paginas(url, p)
         return {
             "status": "success",

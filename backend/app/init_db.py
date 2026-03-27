@@ -1,8 +1,8 @@
 import secrets
 from sqlmodel import SQLModel, Session
 from app.core.db import engine
-from app.models.user import InviteCode, User
-from app.models.user import User, InviteCode, AuditLog
+from app.models.user import InviteCode, User, AuditLog
+from app.models.gallery import GalleryMetric
 
 
 def init_db():
