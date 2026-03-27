@@ -1,12 +1,20 @@
 import secrets
-from fastapi import APIRouter, Depends, HTTPException, Response
+import jwt
+from fastapi import APIRouter, Depends, HTTPException, Response, Cookie
 from sqlmodel import Session, select
 
 from app.core.db import get_session
 from app.api.deps import get_current_user, get_current_admin
 from app.models.user import User, InviteCode, AuditLog
 from app.schemas.user import UserRegister, UserLogin, Token, PasswordChange
-from app.core.security import get_password_hash, verify_password, create_access_token
+from app.core.security import (
+    get_password_hash,
+    verify_password,
+    create_access_token,
+    create_refresh_token,
+    SECRET_KEY,
+    ALGORITHM,
+)
 
 router = APIRouter()
 
@@ -18,8 +26,6 @@ def get_audit_logs(
     session: Session = Depends(get_session),
 ):
     """Devuelve los últimos logs de actividad de la plataforma"""
-
-    # Buscamos los logs, los ordenamos del más nuevo al más viejo
     statement = select(AuditLog).order_by(AuditLog.timestamp.desc()).limit(limit)
     logs = session.exec(statement).all()
 
@@ -93,15 +99,26 @@ def login_user(
         raise HTTPException(status_code=401, detail="Usuario o contraseña incorrectos")
 
     access_token = create_access_token(data={"sub": user.username, "role": user.role})
+    refresh_token = create_refresh_token(data={"sub": user.username})
 
     response.set_cookie(
         key="access_token",
         value=access_token,
         httponly=True,
-        max_age=60 * 60 * 24 * 7,
+        max_age=60 * 15,
         samesite="lax",
         secure=False,
         path="/",
+    )
+
+    response.set_cookie(
+        key="refresh_token",
+        value=refresh_token,
+        httponly=True,
+        max_age=60 * 60 * 24 * 7,
+        samesite="lax",
+        secure=False,
+        path="/api/auth/refresh",
     )
 
     return {"status": "success", "message": f"Bienvenido, {user.username}"}
@@ -134,18 +151,13 @@ def change_password(
 
 @router.post("/invite-codes")
 def generate_invite_code(
-    role_requested: str = "voyager",  # Por defecto creamos invitaciones de nivel básico
-    current_admin: User = Depends(
-        get_current_admin
-    ),  # 🟢 ¡El Jefe de Seguridad en acción!
+    role_requested: str = "voyager",
+    current_admin: User = Depends(get_current_admin),
     session: Session = Depends(get_session),
 ):
     """Genera un nuevo código de invitación de un solo uso"""
-
-    # Generamos un prefijo según el rol (VGR para voyager, ART para artist)
     prefix = "VGR" if role_requested == "voyager" else "ART"
 
-    # Fabricamos un código seguro estilo "VGR-A1B2C3D4"
     new_code_str = f"{prefix}-{secrets.token_hex(4).upper()}"
 
     new_invite = InviteCode(code=new_code_str)
@@ -157,3 +169,39 @@ def generate_invite_code(
         "message": "Código de invitación generado",
         "code": new_code_str,
     }
+
+
+@router.post("/refresh")
+def refresh_access_token(response: Response, refresh_token: str | None = Cookie(None)):
+    """Genera un nuevo access_token si el refresh_token es válido"""
+    if not refresh_token:
+        raise HTTPException(status_code=401, detail="Refresh token no proporcionado")
+
+    try:
+        payload = jwt.decode(refresh_token, SECRET_KEY, algorithms=[ALGORITHM])
+        username: str = payload.get("sub")
+        token_type: str = payload.get("type")
+
+        if username is None or token_type != "refresh":
+            raise HTTPException(status_code=401, detail="Token inválido")
+
+        new_access_token = create_access_token(data={"sub": username, "role": "admin"})
+
+        response.set_cookie(
+            key="access_token",
+            value=new_access_token,
+            httponly=True,
+            max_age=60 * 15,
+            samesite="lax",
+            secure=False,
+            path="/",
+        )
+
+        return {"status": "success", "message": "Token renovado"}
+
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(
+            status_code=401, detail="Refresh token expirado. Vuelve a iniciar sesión."
+        )
+    except jwt.PyJWTError:
+        raise HTTPException(status_code=401, detail="No se pudo validar el token.")

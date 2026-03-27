@@ -13,3 +13,4 @@ alembic
 passlib[bcrypt]
 python-jose[cryptography]
 python-dotenv
+PyJWT==2.8.0
