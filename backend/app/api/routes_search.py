@@ -1,4 +1,3 @@
-# backend/app/api/routes_search.py
 import logging
 import json
 from sqlmodel import Session
@@ -6,9 +5,9 @@ from fastapi import APIRouter, HTTPException, Depends
 
 from app.core.db import get_session
 from app.api.deps import get_current_user
-from app.models.user import User, AuditLog
+from app.models.user import User
+from app.services.audit_service import AuditService
 
-# 🟢 IMPORTANTE: Faltaba importar buscar_galerias
 from app.services.scraper import (
     buscar_galerias,
     extraer_imagen_real,
@@ -27,15 +26,10 @@ def endpoint_buscar(
     current_user: User = Depends(get_current_user),
     session: Session = Depends(get_session),
 ):
-    # 1. 🕵️‍♂️ GUARDAR EL LOG EN LA BASE DE DATOS
-    log = AuditLog(
-        username=current_user.username,
-        action="SEARCH",
-        details=f"Query: {query} | Cats: {categories}",
+    # 1. 🕵️‍♂️ Trazabilidad Limpia con el Service
+    AuditService.log_action(
+        session, current_user.username, "SEARCH", f"Query: {query} | Cats: {categories}"
     )
-    session.add(log)
-    session.commit()
-
     logger.info(f"👤 Usuario {current_user.username} está buscando: {query}")
 
     # 2. 🧩 PROCESAR LAS CATEGORÍAS
@@ -47,7 +41,7 @@ def endpoint_buscar(
             logger.warning(f"Error parseando categorías: {e}")
             cats_dict = None
 
-    # 3. 🚀 LLAMAR AL SCRAPER (Esto es lo que había desaparecido)
+    # 3. 🚀 LLAMAR AL SCRAPER
     try:
         res = buscar_galerias(query, next_id, cats_dict)
 

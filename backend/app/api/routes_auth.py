@@ -1,18 +1,17 @@
 import secrets
 import redis
-import jwt
 from fastapi import APIRouter, Depends, HTTPException, Response, Cookie
 from sqlmodel import Session, select
 
+from app.services.auth_service import AuthService
+from app.services.audit_service import AuditService
 from app.core.db import get_session
 from app.api.deps import get_current_user, get_current_admin
 from app.models.user import User, InviteCode, AuditLog
-from app.schemas.user import UserRegister, UserLogin, Token, PasswordChange
+from app.schemas.user import UserRegister, UserLogin, PasswordChange
 from app.core.security import (
     get_password_hash,
     verify_password,
-    create_access_token,
-    create_refresh_token,
     SECRET_KEY,
     ALGORITHM,
 )
@@ -97,24 +96,12 @@ def register_user(user_data: UserRegister, session: Session = Depends(get_sessio
 def login_user(
     user_data: UserLogin, response: Response, session: Session = Depends(get_session)
 ):
-    user = session.exec(select(User).where(User.username == user_data.username)).first()
-    if not user or not verify_password(user_data.password, user.hashed_password):
-        raise HTTPException(status_code=401, detail="Usuario o contraseña incorrectos")
+    # 1. Toda la lógica de validación y generación vive en el servicio
+    access_token, refresh_token, username = AuthService.authenticate_user(
+        user_data, session, redis_client
+    )
 
-    # 1. Generamos el Pase Rápido
-    access_token = create_access_token(data={"sub": user.username, "role": user.role})
-
-    # 2. Generamos el Pase Maestro Mutante (Nueva familia)
-    refresh_data = create_refresh_token(data={"sub": user.username})
-    refresh_token = refresh_data["token"]
-    family_id = refresh_data["family_id"]
-    jti = refresh_data["jti"]
-
-    # 3. 🟢 GUARDAMOS EN REDIS: "Esta familia tiene este token activo durante 7 días"
-    redis_key = f"session:{user.username}:{family_id}"
-    redis_client.setex(redis_key, 60 * 60 * 24 * 7, jti)  # Expira en 7 días
-
-    # 4. Seteamos las cookies
+    # 2. El router SOLO se encarga de setear las cookies HTTP (Su verdadera responsabilidad)
     response.set_cookie(
         key="access_token",
         value=access_token,
@@ -134,7 +121,10 @@ def login_user(
         path="/api/auth/refresh",
     )
 
-    return {"status": "success", "message": f"Bienvenido, {user.username}"}
+    # Registramos el login (Opcional, pero buena práctica)
+    AuditService.log_action(session, username, "LOGIN", "Inicio de sesión exitoso")
+
+    return {"status": "success", "message": f"Bienvenido, {username}"}
 
 
 @router.post("/logout")
@@ -216,65 +206,15 @@ def refresh_access_token(
     refresh_token: str | None = Cookie(None),
     session: Session = Depends(get_session),
 ):
-    """Rotación Mutante de Tokens con Detección de Robo"""
-    if not refresh_token:
-        raise HTTPException(status_code=401, detail="No hay token de refresco")
-
     try:
-        payload = jwt.decode(refresh_token, SECRET_KEY, algorithms=[ALGORITHM])
-        username = payload.get("sub")
-        jti = payload.get("jti")
-        family_id = payload.get("family")
-
-        if not all([username, jti, family_id]) or payload.get("type") != "refresh":
-            raise HTTPException(status_code=401, detail="Estructura de token inválida")
-
-        redis_key = f"session:{username}:{family_id}"
-        active_jti = redis_client.get(redis_key)
-
-        # 🚨 DETECCIÓN DE BRECHA DE SEGURIDAD 🚨
-        if active_jti and active_jti != jti:
-            # ¡Alguien ha usado un token viejo! Borramos toda la familia para proteger la cuenta.
-            redis_client.delete(redis_key)
-            # Borramos cookies
-            response.delete_cookie("access_token")
-            response.delete_cookie("refresh_token", path="/api/auth/refresh")
-            raise HTTPException(
-                status_code=403,
-                detail="ALERTA: Posible robo de sesión detectado. Sesión revocada por seguridad.",
-            )
-
-        # Si el token no está en Redis (caducó naturalmente o hicimos logout global)
-        if not active_jti:
-            raise HTTPException(
-                status_code=401, detail="Sesión expirada o cerrada remotamente."
-            )
-
-        # ✅ TODO CORRECTO: Procedemos a MUTAR el token
-        # 1. Obtenemos el rol del usuario (para el nuevo access token)
-        user = session.exec(select(User).where(User.username == username)).first()
-        if not user:
-            raise HTTPException(status_code=401, detail="Usuario no encontrado")
-
-        # 2. Generamos NUEVO Access Token
-        new_access_token = create_access_token(
-            data={"sub": username, "role": user.role}
+        # El servicio se encarga de la mutación y comprobación de brechas
+        new_access, new_refresh = AuthService.rotate_tokens(
+            refresh_token, session, redis_client
         )
 
-        # 3. Generamos NUEVO Refresh Token (Hereda la misma familia)
-        new_refresh_data = create_refresh_token(
-            data={"sub": username}, family_id=family_id
-        )
-        new_refresh_token = new_refresh_data["token"]
-        new_jti = new_refresh_data["jti"]
-
-        # 4. Actualizamos Redis con el nuevo JTI (Invalida el viejo instantáneamente)
-        redis_client.setex(redis_key, 60 * 60 * 24 * 7, new_jti)
-
-        # 5. Entregamos las nuevas llaves al frontend
         response.set_cookie(
             key="access_token",
-            value=new_access_token,
+            value=new_access,
             httponly=True,
             max_age=60 * 15,
             samesite="lax",
@@ -283,7 +223,7 @@ def refresh_access_token(
         )
         response.set_cookie(
             key="refresh_token",
-            value=new_refresh_token,
+            value=new_refresh,
             httponly=True,
             max_age=60 * 60 * 24 * 7,
             samesite="lax",
@@ -291,9 +231,10 @@ def refresh_access_token(
             path="/api/auth/refresh",
         )
 
-        return {"status": "success", "message": "Tokens rotados con seguridad máxima"}
-
-    except jwt.ExpiredSignatureError:
-        raise HTTPException(status_code=401, detail="Token expirado. Inicia sesión.")
-    except jwt.JWTError:
-        raise HTTPException(status_code=401, detail="Firma inválida.")
+        return {"status": "success", "message": "Tokens rotados"}
+    except HTTPException as e:
+        # Si hay brecha de seguridad, el router limpia las cookies
+        if e.status_code == 403:
+            response.delete_cookie("access_token")
+            response.delete_cookie("refresh_token", path="/api/auth/refresh")
+        raise e
