@@ -1,7 +1,5 @@
-// frontend/src/services/api.ts
 const API_URL = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000") + "/api";
 
-// 🟢 ENVOLTORIO MAESTRO: Todas las peticiones usarán esto para enviar la Cookie automáticamente
 const fetchSeguro = async (url: string, options: RequestInit = {}) => {
   const res = await fetch(url, {
     ...options,
@@ -51,6 +49,10 @@ export const api = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
     });
+  },
+
+  obtenerPerfil: async () => {
+    return fetchSeguro(`${API_URL}/auth/me`);
   },
 
   // --- BÚSQUEDA Y LECTURA ---
