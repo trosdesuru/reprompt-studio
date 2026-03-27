@@ -6,3 +6,4 @@ backend/__pycache__
 .git
 storage/galleries
 *.json
+.env

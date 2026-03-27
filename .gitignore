@@ -1,9 +1,27 @@
-# Entornos y dependencias
-venv/
-node_modules/
-__pycache__/
-.next/
+# trosdesuru-scraper-galerias/.gitignore
 
-# Datos y Descargas (VITAL)
+# Bloquear carpetas de Next incluso con nombres raros
+.next/
+.next*/
+"frontend/.next 2/"
+
+# Almacenamiento local (EH y Arte Usuario)
 storage/
-*.json
+**/storage/
+analytics_*.json
+
+# Secretos
+.env
+backend/.env
+**/.env
+
+# Basura de Next.js y Node
+.next/
+**/ .next*/
+node_modules/
+package-lock.json
+
+# Python
+__pycache__/
+venv/
+.venv/

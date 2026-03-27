@@ -29,12 +29,12 @@ export default function GalleryCard({ item, onDownloadTotal, onOpenVisor }: Prop
           IMG
         </div>
       </div>
-      
+
       <div className="p-4 flex flex-col grow justify-between gap-4">
         <h2 className="text-sm font-bold text-foreground line-clamp-2" title={item.title}>
           {item.title}
         </h2>
-        
+
         <div className="flex flex-col gap-2 mt-auto">
           <Button
             variant="secondary"

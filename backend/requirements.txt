@@ -5,5 +5,11 @@ beautifulsoup4
 lxml
 selenium
 pydantic
-redis  # 👈 La añadimos ya para el futuro
+redis
 rq
+sqlmodel
+psycopg2-binary
+alembic
+passlib[bcrypt]
+python-jose[cryptography]
+python-dotenv
