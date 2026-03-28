@@ -2,18 +2,17 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useSearch } from "@/features/search/hooks/useSearch";
+import { api } from "@/src/services/api";
 
-import FilterBar from "@/features/search/components/FilterBar";
-import { GalleryCard } from "@/src/components/GalleryCard";
+import { useSearch } from "@/features/search/hooks/useSearch";
+import { useSearchStore } from "@/src/store/searchStore";
+import { useViewerSync } from "@/features/image-viewer/hooks/useViewerSync";
+
 import { GalleryItem } from "@/src/types/gallery";
 import { TrendingSection } from "@/features/search/TrendingSection";
 import { ImageViewerModal } from "@/features/image-viewer/ImageViewerModal";
-
-import { useSearchStore } from "@/src/store/searchStore";
-import { useViewerSync } from "@/features/image-viewer/hooks/useViewerSync";
-import { api } from "@/src/services/api";
-import { Button } from "@/src/components/ui/Button";
+import { HeroSearch } from "@/features/search/components/HeroSearch";
+import { SearchResults } from "@/features/search/components/SearchResults";
 
 export default function Home() {
   const {
@@ -30,9 +29,10 @@ export default function Home() {
     toggleCategory,
   } = useSearch();
 
+  const { trending, fetchTrending } = useSearchStore();
+
   const [activeUrl, setActiveUrl] = useState("");
   const [activeTitle, setActiveTitle] = useState("");
-  const { trending, fetchTrending } = useSearchStore();
 
   const {
     viewerPages,
@@ -46,15 +46,6 @@ export default function Home() {
   } = useViewerSync(activeUrl);
 
   const handleOpenVisor = (item: GalleryItem) => {
-    console.log("--------------------------------------------------");
-    console.log("🎯 [QA DEBUG - CAPA 1] DISPARADOR CLICK EN TARJETA");
-    console.log("📦 Datos del Item clickeado:", item);
-
-    if (!item.url) {
-      console.error("❌ [QA DEBUG] ERROR: El item no tiene URL válida.");
-      return;
-    }
-
     setActiveUrl(item.url);
     setActiveTitle(item.title);
     openViewer(item.url);
@@ -76,35 +67,15 @@ export default function Home() {
   }, [fetchTrending]);
 
   return (
-    <main className="min-h-screen bg-background text-foreground font-prompt">
-      {/* 🟢 El Header viejo ya no está aquí. La navegación la gestiona tu Navbar desde el Layout */}
-
-      <div className="max-w-6xl mx-auto text-center mb-12 mt-8">
-        <h1 className="text-5xl md:text-7xl font-black mb-4 font-mono tracking-tighter text-foreground uppercase">
-          rePROMPT
-        </h1>
-        <p className="text-(--text-secondary) mb-10 font-medium text-lg border-b-2 border-(--border-color) pb-6 inline-block">
-          Plataforma de extracción y visor de alto rendimiento
-        </p>
-
-        <form
-          onSubmit={handleSearch}
-          className="flex flex-col md:flex-row gap-4 max-w-3xl mx-auto mb-8 relative z-10"
-        >
-          <input
-            type="text"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Ej: Naruto, Artbook, Cosplay..."
-            className="flex-1 bg-(--bg-secondary) text-foreground neo-border neo-shadow px-5 py-4 focus:outline-none focus:neo-shadow-accent transition-all text-lg font-mono placeholder:text-gray-500"
-          />
-          <Button type="submit" isLoading={isLoading} size="lg" variant="primary">
-            {isLoading ? "Buscando" : "Buscar"}
-          </Button>
-        </form>
-
-        <FilterBar activeCategories={activeCategories} toggleCategory={toggleCategory} />
-      </div>
+    <main className="min-h-screen bg-background text-foreground font-sans">
+      <HeroSearch
+        query={query}
+        setQuery={setQuery}
+        onSearch={handleSearch}
+        isLoading={isLoading}
+        activeCategories={activeCategories}
+        toggleCategory={toggleCategory}
+      />
 
       {error && (
         <div className="text-center text-red-500 mb-8 font-mono p-4 bg-red-500/10 neo-border neo-shadow max-w-md mx-auto">
@@ -121,36 +92,14 @@ export default function Home() {
           />
         )}
 
-        {results.length > 0 && (
-          <div className="mt-8 border-t-2 border-(--border-color) pt-8">
-            <h3 className="text-xl font-black font-mono uppercase mb-6 opacity-50">
-              Resultados de Búsqueda
-            </h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-8">
-              {results.map((item, index) => (
-                <GalleryCard
-                  key={`${item.url}-${index}`}
-                  item={item}
-                  onOpenVisor={handleOpenVisor}
-                  onDownloadTotal={handleDownloadTotal}
-                />
-              ))}
-            </div>
-          </div>
-        )}
-
-        {results.length > 0 && hasMore && (
-          <div className="flex justify-center mt-16 mb-12">
-            <Button
-              onClick={loadMore}
-              isLoading={isLoadingMoreResults}
-              variant="secondary"
-              size="lg"
-            >
-              {isLoadingMoreResults ? "Cargando..." : "↓ Ver más resultados"}
-            </Button>
-          </div>
-        )}
+        <SearchResults
+          results={results}
+          hasMore={hasMore}
+          isLoadingMore={isLoadingMoreResults}
+          onLoadMore={loadMore}
+          onOpenVisor={handleOpenVisor}
+          onDownloadTotal={handleDownloadTotal}
+        />
 
         {isViewerOpen && (
           <ImageViewerModal
