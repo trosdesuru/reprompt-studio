@@ -1,4 +1,4 @@
-// frontend/src/components/Navbar.tsx
+// frontend/src/components/layout/Navbar/Navbar.tsx
 "use client";
 
 import { useEffect, useState } from "react";
@@ -8,22 +8,25 @@ import { Button } from "@/src/components/ui/Button";
 import { useAuthStore } from "@/src/store/authStore";
 import Link from "next/link";
 
-export default function Navbar() {
+export function Navbar() {
   const pathname = usePathname();
   const [isDark, setIsDark] = useState(false);
   const [showPwdModal, setShowPwdModal] = useState(false);
   const [pwdData, setPwdData] = useState({ old_password: "", new_password: "" });
 
-  // 🟢 Quitamos el checkAuth() de aquí porque ya lo ejecuta el AuthProvider
-  const { user, isLoadingAuth } = useAuthStore();
+  // 🟢 Desestructuramos checkAuth para invocarlo directamente
+  const { user, isLoadingAuth, checkAuth } = useAuthStore();
 
   useEffect(() => {
+    // Forzamos la carga del usuario nada más entrar
+    checkAuth();
+
     const theme = localStorage.getItem("theme");
     if (theme === "dark" || (!theme && window.matchMedia("(prefers-color-scheme: dark)").matches)) {
       setIsDark(true);
       document.documentElement.classList.add("dark");
     }
-  }, []);
+  }, [checkAuth]);
 
   const toggleTheme = () => {
     const nextDark = !isDark;
@@ -61,23 +64,26 @@ export default function Navbar() {
         </Link>
 
         <div className="flex gap-4 items-center">
-          {/* 🟢 Bloque de Usuario siempre visible */}
+          {/* 🟢 Bloque de Usuario y Dashboard corregido */}
           {!isLoadingAuth && user ? (
-            <div className="flex flex-col text-right mr-2 md:mr-4 border-r-2 border-(--border-color) pr-2 md:pr-4">
-              <span className="text-sm font-bold text-foreground">@{user.username}</span>
-              <span className="text-xs font-mono text-(--accent-color) uppercase tracking-widest">
-                {user.role}
-              </span>
-            </div>
+            <>
+              <div className="flex flex-col text-right mr-2 md:mr-4 border-r-2 border-(--border-color) pr-2 md:pr-4">
+                <span className="text-sm font-bold text-foreground">@{user.username}</span>
+                <span className="text-xs font-mono text-(--accent-color) uppercase tracking-widest">
+                  {user.role}
+                </span>
+              </div>
+
+              {/* Botón de Admin */}
+              {user.role === "admin" && (
+                <Button variant="ghost" size="sm" onClick={() => (window.location.href = "/admin")}>
+                  🛡️ Panel
+                </Button>
+              )}
+            </>
           ) : isLoadingAuth ? (
             <div className="h-8 w-24 bg-gray-200 animate-pulse neo-border"></div>
           ) : null}
-
-          {!isLoadingAuth && user?.role === "admin" && (
-            <Button variant="ghost" size="sm" onClick={() => (window.location.href = "/admin")}>
-              🛡️ Panel
-            </Button>
-          )}
 
           <button onClick={toggleTheme} className="text-2xl hover:scale-110 transition-transform">
             {isDark ? "☀️" : "🌙"}
