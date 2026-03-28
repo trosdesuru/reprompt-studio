@@ -1,6 +1,7 @@
 # backend/app/services/scraper.py
 import logging
 import re
+import time
 from urllib.parse import quote
 from bs4 import BeautifulSoup
 from app.core.config import http_session
@@ -8,32 +9,19 @@ from app.core.config import http_session
 logger = logging.getLogger("scraper")
 
 
-def limpiar_titulo(titulo_crudo: str) -> dict:
-    """Limpia el ruido de los títulos de E-Hentai extrayendo la info útil."""
-
-    # 1. Extraemos todo lo que está entre corchetes o paréntesis (Tags, Grupos, Idiomas)
-    matches = re.findall(r"\[(.*?)\]|\((.*?)\)", titulo_crudo)
-    tags_extracted = [tag for tupla in matches for tag in tupla if tag.strip()]
-
-    # 2. Eliminamos todo el contenido entre paréntesis, corchetes o llaves
+def limpiar_titulo(titulo_crudo: str) -> str:
+    """Limpia el ruido de los títulos de E-Hentai mediante Regex."""
+    # 1. Eliminamos corchetes, paréntesis, llaves y su contenido
     titulo_limpio = re.sub(r"\[.*?\]|\(.*?\)|<.*?>|\{.*?\}", "", titulo_crudo)
-
-    # 3. Limpiamos caracteres huérfanos (guiones, tildes, barras) que queden sueltos
+    # 2. Eliminamos caracteres huérfanos que quedan como basura
     titulo_limpio = re.sub(r"[-~|,_]+", " ", titulo_limpio)
-
-    # 4. Comprimimos los espacios dobles/triples que hayan quedado y quitamos espacios en los bordes
+    # 3. Comprimimos espacios múltiples y quitamos espacios en los bordes
     titulo_limpio = re.sub(r"\s+", " ", titulo_limpio).strip()
 
-    # 5. PROGRAMACIÓN DEFENSIVA (Fallback)
-    # Si el título era TAN raro que al limpiarlo se ha quedado en nada, usamos el original
+    # Fallback defensivo: si al limpiar nos quedamos sin título, devolvemos el original
     if len(titulo_limpio) < 3:
-        titulo_limpio = titulo_crudo.strip()
-
-    return {
-        "title_clean": titulo_limpio,
-        "title_raw": titulo_crudo.strip(),
-        "tags_extracted": tags_extracted,
-    }
+        return titulo_crudo.strip()
+    return titulo_limpio
 
 
 def calcular_f_cats(categories_json: dict):
@@ -86,11 +74,17 @@ def buscar_galerias(query: str, next_id: str = None, categories: dict = None):
             if enlace:
                 img_tag = tarjeta.select_one("img")
                 thumb = img_tag.get("data-src") or img_tag.get("src") or ""
+
+                # 🟢 APLICAMOS LA LAVADORA REGEX AQUÍ
+                titulo_crudo = enlace.text.strip()
+                titulo_limpio = limpiar_titulo(titulo_crudo)
+
                 resultados.append(
                     {
                         "url": enlace["href"],
                         "thumb": thumb,
-                        "title": enlace.text.strip(),
+                        "title": titulo_limpio,  # Enviamos el limpio a la interfaz
+                        "title_raw": titulo_crudo,  # Guardamos el original para el futuro IA
                     }
                 )
 
@@ -119,8 +113,8 @@ def obtener_enlaces_paginas(url: str, pagina: int = 0):
 
             thumb_url = ""
             offset = ""
-            width = None  # 🟢 Capturaremos el ancho dinámico
-            height = None  # 🟢 Capturaremos el alto dinámico
+            width = None
+            height = None
 
             img = a.find("img")
             if img:

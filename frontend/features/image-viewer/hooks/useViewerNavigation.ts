@@ -1,3 +1,4 @@
+// frontend/features/image-viewer/hooks/useViewerNavigation.ts
 import { useState, useCallback, useEffect } from "react";
 import { ViewerPageItem } from "@/src/types/gallery";
 
@@ -35,16 +36,8 @@ export function useViewerNavigation(pages: ViewerPageItem[]) {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [selectedIndex, showNext, showPrev]);
 
-  useEffect(() => {
-    if (selectedIndex !== null) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "unset";
-    }
-    return () => {
-      document.body.style.overflow = "unset";
-    };
-  }, [selectedIndex]);
+  // 🟢 FIX CRÍTICO: Hemos eliminado el useEffect que manipulaba el 'document.body.style.overflow'.
+  // Ahora el modal principal (ImageViewerModal) es el único dueño del bloqueo del scroll.
 
   return { selectedIndex, setSelectedIndex, showNext, showPrev };
 }
