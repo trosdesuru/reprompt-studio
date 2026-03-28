@@ -12,13 +12,18 @@
   "dependencies": {
     "@tabler/icons-react": "^3.41.0",
     "next": "16.2.1",
+    "png-chunk-text": "^1.0.0",
+    "png-chunks-extract": "^1.0.0",
     "react": "19.2.4",
     "react-dom": "19.2.4",
+    "react-dropzone": "^15.0.0",
     "zustand": "^5.0.12"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20.19.37",
+    "@types/png-chunk-text": "^1.0.3",
+    "@types/png-chunks-extract": "^1.0.2",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "eslint": "^9",

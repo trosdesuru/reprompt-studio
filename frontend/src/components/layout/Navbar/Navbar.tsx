@@ -1,5 +1,6 @@
 "use client";
 
+import { IconWand } from "@tabler/icons-react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/src/components/ui/Button";
@@ -23,8 +24,19 @@ export function Navbar() {
         EH<span className="text-(--accent-color)">-</span>EXPLORER
       </Link>
 
-      {/* 2. Área de Controles de Usuario */}
-      <div className="flex gap-3 items-center">
+      {/* 2. Área Derecha: Herramientas y Usuario */}
+      <div className="flex gap-4 items-center">
+        {/* 🟢 NUEVO: Botón directo a Reprompt (Solo visible si estás logueado) */}
+        {user && (
+          <Link href="/reprompt" className="hidden sm:block">
+            <button className="flex items-center gap-2 px-4 py-2 bg-background hover:bg-(--accent-color) hover:text-white text-foreground font-mono font-bold text-sm uppercase tracking-wide neo-border transition-all hover:-translate-y-0.5 hover:neo-shadow-accent">
+              <IconWand size={18} />
+              Reprompt Studio
+            </button>
+          </Link>
+        )}
+
+        {/* Menú de Usuario Original */}
         {isLoadingAuth ? (
           <div className="h-10 w-10 bg-gray-200 dark:bg-gray-800 animate-pulse rounded neo-border"></div>
         ) : user ? (
