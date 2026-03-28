@@ -4,6 +4,7 @@
 import { useState, useEffect } from "react";
 import { useSearch } from "@/features/search/hooks/useSearch";
 
+import { Header } from "@/src/components/layout/Header";
 import FilterBar from "@/features/search/components/FilterBar";
 import { GalleryCard } from "@/src/components/GalleryCard";
 import { GalleryItem } from "@/src/types/gallery";
@@ -69,6 +70,7 @@ export default function Home() {
 
   return (
     <main className="min-h-screen bg-background text-foreground font-sans">
+      <Header />
       <div className="max-w-6xl mx-auto text-center mb-12 mt-8">
         <h1 className="text-5xl md:text-7xl font-black mb-4 font-mono tracking-tighter text-foreground uppercase">
           EH<span className="text-(--accent-color)">-</span>Explorer
