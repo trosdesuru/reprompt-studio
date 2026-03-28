@@ -7,28 +7,26 @@ import { ViewerGrid } from "./components/ViewerGrid";
 import { ViewerLightbox } from "./components/ViewerLightbox";
 import { ImageViewerModalProps } from "./ImageViewerModal.types";
 
-export function ImageViewerModal({
-  title,
-  pages,
-  isLoading,
-  isLoadingMore,
-  hasMorePages,
-  onLoadMore,
-  onClose,
-}: ImageViewerModalProps) {
+export function ImageViewerModal({ title, pages, isLoading, isLoadingMore, hasMorePages, onLoadMore, onClose }: ImageViewerModalProps) {
   const { selectedIndex, setSelectedIndex, showNext, showPrev } = useViewerNavigation(pages);
 
   useEffect(() => {
+    // Congelamos el scroll del body
     document.body.style.overflow = "hidden";
+    // Al desmontarse (cerrar el modal), lo liberamos
     return () => {
       document.body.style.overflow = "unset";
     };
   }, []);
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-black/95 backdrop-blur-md w-screen h-screen overflow-hidden animate-fade-in">
+    // 🟢 Restauramos el fondo claro y quitamos el blur de la V2
+    <div className="fixed inset-0 z-50 flex flex-col bg-background w-screen h-screen overflow-hidden animate-fade-in">
+      
+      {/* Header restaurado */}
       <ViewerHeader title={title} onClose={onClose} />
 
+      {/* Grid de miniaturas restaurado */}
       <div className="flex-1 overflow-y-auto p-4 md:p-8 custom-scrollbar">
         <ViewerGrid
           pages={pages}
