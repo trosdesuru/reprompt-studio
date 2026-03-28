@@ -103,7 +103,7 @@ export default function Home() {
         </div>
       )}
 
-      <div className="max-w-[90rem] mx-auto px-4">
+      <div className="max-w-90rem mx-auto px-4">
         {query === "" && (
           <TrendingSection
             trending={trending}
