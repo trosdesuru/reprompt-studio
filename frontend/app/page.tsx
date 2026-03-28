@@ -76,12 +76,12 @@ export default function Home() {
   }, [fetchTrending]);
 
   return (
-    <main className="min-h-screen bg-background text-foreground font-sans">
+    <main className="min-h-screen bg-background text-foreground font-prompt">
       {/* 🟢 El Header viejo ya no está aquí. La navegación la gestiona tu Navbar desde el Layout */}
 
       <div className="max-w-6xl mx-auto text-center mb-12 mt-8">
         <h1 className="text-5xl md:text-7xl font-black mb-4 font-mono tracking-tighter text-foreground uppercase">
-          EH<span className="text-(--accent-color)">-</span>Explorer
+          rePROMPT
         </h1>
         <p className="text-(--text-secondary) mb-10 font-medium text-lg border-b-2 border-(--border-color) pb-6 inline-block">
           Plataforma de extracción y visor de alto rendimiento

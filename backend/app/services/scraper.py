@@ -156,17 +156,18 @@ def obtener_enlaces_paginas(url: str, pagina: int = 0):
                         "page_url": href,
                         "thumb_url": thumb_url,
                         "offset": offset,
-                        "width": width,  # 🟢 Se lo pasamos al frontend
-                        "height": height,  # 🟢 Se lo pasamos al frontend
+                        "width": width,
+                        "height": height,
                     }
                 )
 
-        has_next = False
-        next_buttons = soup.select(".ptt a")
-        if next_buttons and ">" in next_buttons[-1].text:
-            has_next = True
+                has_next = any(">" in a.text for a in soup.select(".ptt a"))
 
         return {"enlaces": paginas_lista, "has_next": has_next}
+
+    except Exception as e:
+        logger.error(f"💥 Error crítico en scraper: {str(e)}")
+        return {"enlaces": [], "has_next": False}
 
     except Exception as e:
         logger.error(f"💥 Error crítico en scraper: {str(e)}")

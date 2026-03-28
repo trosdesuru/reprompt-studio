@@ -56,7 +56,7 @@ export function Navbar() {
           href="/"
           className="font-mono font-black text-xl text-foreground hover:opacity-80 transition-opacity"
         >
-          EH<span className="text-(--accent-color)">_</span>Explorer
+          REPROMPT
         </Link>
 
         <div className="flex gap-4 items-center">

@@ -25,43 +25,22 @@ export function ViewerGrid({
 }: ViewerGridProps) {
   const observerRef = useRef<HTMLDivElement>(null);
 
-  // 🟢 LOG DE RENDERIZADO
-  useEffect(() => {
-    console.log("🎨 [QA DEBUG - CAPA 3] RENDER DEL GRID.");
-    console.log("➡️ isLoading:", isLoading, "| Total páginas:", pages?.length);
-
-    if (pages && pages.length > 0) {
-      // Extraemos solo las URLs de las primeras 5 miniaturas para compararlas
-      const urls = pages.slice(0, 5).map((p) => p.thumb_url);
-
-      console.log("🔍 [QA DEBUG - SPRITE CHECK] Comprobando URLs de miniaturas:");
-      urls.forEach((url, i) => console.log(`   Thumb ${i + 1}: ${url}`));
-
-      // Comprobación matemática de duplicados
-      const sonTodasIguales = urls.every((val) => val === urls[0]);
-      if (sonTodasIguales) {
-        console.warn("⚠️ [QA ALERTA] ¡DETECTADO CSS SPRITE! Todas las URLs son idénticas.");
-      } else {
-        console.log("✅ [QA OK] Las URLs de las miniaturas son diferentes.");
-      }
-    }
-  }, [isLoading, pages]);
-
   useEffect(() => {
     if (!hasMorePages || !onLoadMore || isLoadingMore) return;
 
+    // Aumentamos el rootMargin a 600px para que empiece a cargar mucho antes de llegar al final
     const observer = new IntersectionObserver(
       (entries) => {
         if (entries[0].isIntersecting) onLoadMore();
       },
-      { rootMargin: "300px" },
+      { rootMargin: "600px" },
     );
 
     if (observerRef.current) observer.observe(observerRef.current);
     return () => observer.disconnect();
   }, [hasMorePages, onLoadMore, isLoadingMore]);
 
-  if (isLoading && (!pages || pages.length === 0)) {
+  if (isLoading && pages.length === 0) {
     return (
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6 max-w-7xl mx-auto w-full pb-20">
         {Array.from({ length: 15 }).map((_, i) => (
@@ -76,32 +55,37 @@ export function ViewerGrid({
 
   return (
     <div className="relative z-10 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6 max-w-7xl mx-auto w-full pb-20">
-      {pages &&
-        pages.map((item, i) => (
-          <ImageCard
-            key={`img-card-${i}`}
-            item={item}
-            index={i + 1}
-            galleryTitle={galleryTitle}
-            onOpenImage={() => onSelectImage(i)}
-          />
-        ))}
+      {pages.map((item, i) => (
+        <ImageCard
+          key={`img-${i}`}
+          item={item}
+          index={i + 1}
+          galleryTitle={galleryTitle}
+          onOpenImage={() => onSelectImage(i)}
+        />
+      ))}
 
+      {/* 🟢 FIX CRÍTICO: El Centinela ahora tiene min-h-[100px] siempre */}
       {hasMorePages && (
         <div
           ref={observerRef}
-          className="col-span-full grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6 mt-6"
+          className="col-span-full w-full min-h-100px flex items-center justify-center mt-8 border-t-2 border-dashed border-gray-700/50"
         >
-          {isLoadingMore &&
-            Array.from({ length: 5 }).map((_, i) => (
-              <div key={`more-skeleton-${i}`} className="flex flex-col gap-3">
-                <Skeleton className="h-56 w-full" />
-              </div>
-            ))}
+          {isLoadingMore ? (
+            <div className="flex flex-col items-center gap-3">
+              <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-(--accent-color)"></div>
+              <span className="font-mono text-xs text-white uppercase tracking-widest opacity-70">
+                Extrayendo más imágenes...
+              </span>
+            </div>
+          ) : (
+            // Esto asegura que el div exista para el observer aunque no estemos cargando
+            <div className="w-full h-full"></div>
+          )}
         </div>
       )}
 
-      {!isLoading && (!pages || pages.length === 0) && (
+      {!isLoading && pages.length === 0 && (
         <div className="col-span-full text-center p-8 font-mono text-white text-lg">
           No se encontraron páginas en esta galería.
         </div>
