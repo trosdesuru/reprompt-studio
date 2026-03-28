@@ -73,50 +73,39 @@ def buscar_galerias(query: str, next_id: str = None, categories: dict = None):
         return {"data": [], "next_id": None}
 
 
-# 🟢 LA VERSIÓN LEGENDARIA (Zero-Latency y a prueba de fallos)
-# backend/app/services/scraper.py
-
-
 def obtener_enlaces_paginas(url: str, pagina: int = 0):
-    """Extrae cada página con su miniatura única (Zero-Latency)."""
+    """Extrae la página y sus miniaturas. Cambiamos 'enlaces' por 'paginas' para el Frontend."""
     paginas_dict = {}
-    logger.info(f"⚡ Lector Turbo: Extrayendo página {pagina} de {url}")
-
     try:
         r = http_session.get(f"{url}?p={pagina}", timeout=10)
         r.raise_for_status()
         soup = BeautifulSoup(r.text, "lxml")
 
-        # Selector específico para las celdas de la galería en E-H
-        # Buscamos los contenedores de las imágenes
-        celdas = soup.select("#gdt .gdtm, #gdt .gdtl")
+        # Selector de celdas (Grid o Tabla)
+        celdas = soup.select("#gdt .gdtm, #gdt .gdtl, .itg td")
 
         for celda in celdas:
-            a = celda.find("a")
-            if not a:
+            a = celda.find("a", href=True)
+            if not a or "/s/" not in a["href"]:
                 continue
 
-            href = a.get("href")
+            href = a["href"]
             thumb_url = ""
 
-            # Caso 1: Imagen directa (gdtl)
+            # Buscamos miniatura en img o en style (background-url)
             img = celda.find("img")
             if img:
                 thumb_url = img.get("data-src") or img.get("src")
 
-            # Caso 2: Background CSS (gdtm)
-            div_img = celda.find("div", style=True)
-            if not thumb_url and div_img:
-                style = div_img.get("style", "")
-                match = re.search(r"url\((.*?)\)", style)
-                if match:
-                    thumb_url = match.group(1).strip("'\"")
+            if not thumb_url:
+                div_style = celda.find("div", style=True)
+                if div_style:
+                    match = re.search(r"url\((.*?)\)", div_style["style"])
+                    if match:
+                        thumb_url = match.group(1).strip("'\"")
 
-            if href and href not in paginas_dict:
-                paginas_dict[href] = {
-                    "page_url": href,
-                    "thumb_url": thumb_url if thumb_url else "",
-                }
+            if href not in paginas_dict:
+                paginas_dict[href] = {"page_url": href, "thumb_url": thumb_url}
 
         has_next = False
         for a in soup.select(".ptt a"):
@@ -124,10 +113,15 @@ def obtener_enlaces_paginas(url: str, pagina: int = 0):
                 has_next = True
                 break
 
-        return {"enlaces": list(paginas_dict.values()), "has_next": has_next}
+        # 🟢 CAMBIO CRÍTICO: Devolvemos 'paginas' en lugar de 'enlaces'
+        return {
+            "status": "success",
+            "paginas": list(paginas_dict.values()),
+            "has_next": has_next,
+        }
     except Exception as e:
-        logger.error(f"⚠️ Error en scraper de galería: {e}")
-        return {"enlaces": [], "has_next": False}
+        logger.error(f"Error en scraper: {e}")
+        return {"status": "error", "paginas": [], "has_next": False}
 
 
 def extraer_imagen_real(url: str):
