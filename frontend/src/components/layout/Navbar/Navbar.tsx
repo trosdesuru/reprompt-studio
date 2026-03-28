@@ -28,11 +28,12 @@ export function Navbar() {
       <div className="flex gap-4 items-center">
         {/* 🟢 NUEVO: Botón directo a Reprompt (Solo visible si estás logueado) */}
         {user && (
-          <Link href="/reprompt" className="hidden sm:block">
-            <button className="flex items-center gap-2 px-4 py-2 bg-background hover:bg-(--accent-color) hover:text-white text-foreground font-mono font-bold text-sm uppercase tracking-wide neo-border transition-all hover:-translate-y-0.5 hover:neo-shadow-accent">
-              <IconWand size={18} />
-              Reprompt Studio
-            </button>
+          <Link
+            href="/reprompt"
+            className="hidden sm:flex items-center gap-2 px-4 py-2 bg-background hover:bg-(--accent-color) hover:text-white text-foreground font-mono font-bold text-sm uppercase tracking-wide neo-border transition-all hover:-translate-y-0.5 hover:neo-shadow-accent"
+          >
+            <IconWand size={18} />
+            Reprompt Studio
           </Link>
         )}
 

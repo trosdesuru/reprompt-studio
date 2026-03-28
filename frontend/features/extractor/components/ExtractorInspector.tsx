@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { IconCopy, IconCheck, IconTrash } from "@tabler/icons-react";
 import { Button } from "@/src/components/ui/Button";
-import { ExtractedPromptData } from "@/src/utils/promptParser"; // Asumiendo que ya creamos el parser
+import { ExtractedPromptData } from "../utils/promptParser";
 
 interface ExtractorInspectorProps {
   extractedData: ExtractedPromptData;
