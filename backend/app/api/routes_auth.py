@@ -56,7 +56,7 @@ def login_user(
     # SI ENTRA CON ÉXITO: Reseteamos el contador
     redis_client.delete(user_key)
 
-    # 🟢 FIX CRÍTICO: Restaurada la entrega de cookies que se había borrado
+    # FIX CRÍTICO: Restaurada la entrega de cookies que se había borrado
     response.set_cookie(
         key="access_token",
         value=access_token,
@@ -79,9 +79,31 @@ def login_user(
 
 
 @router.post("/logout")
-def logout_user(response: Response):
+def logout_user(response: Response, refresh_token: str | None = Cookie(None)):
+    # 1. Destruimos la cookie del Access Token
     response.delete_cookie("access_token", path="/")
-    return {"status": "success", "message": "Sesión cerrada"}
+
+    # 2. FIX CRÍTICO: Destruimos la cookie del Refresh Token (Hay que especificar su path exacto)
+    response.delete_cookie("refresh_token", path="/api/auth/refresh")
+
+    # 3. CIBERSEGURIDAD: Destruimos la sesión en Redis para que el token quede inservible
+    if refresh_token:
+        try:
+            from jose import jwt
+            from app.core.security import SECRET_KEY, ALGORITHM
+
+            payload = jwt.decode(refresh_token, SECRET_KEY, algorithms=[ALGORITHM])
+            username = payload.get("sub")
+            family_id = payload.get("family")
+
+            if username and family_id:
+                redis_key = f"session:{username}:{family_id}"
+                redis_client.delete(redis_key)
+        except Exception:
+            # Si el token ya era inválido o caducó, simplemente lo ignoramos
+            pass
+
+    return {"status": "success", "message": "Sesión cerrada y destruida por completo"}
 
 
 @router.put("/change-password")
