@@ -119,9 +119,9 @@ export function ViewerLightbox({
       <div className="relative w-full h-full flex items-center justify-center p-4 md:p-12">
         {isLoading && (
           // 🟢 FIX UI: Skeleton elegante y sutil de alta opacidad (transparencia)
-          <div className="w-full h-[60vh] md:h-[80vh] max-w-4xl mx-auto rounded-lg bg-white/0.03 border border-white/0.05 animate-pulse flex items-center justify-center shadow-2xl backdrop-blur-sm">
+          <div className="w-full h-[60vh] md:h-[80vh] max-w-4xl mx-auto rounded-lg bg-white/5 animate-pulse flex items-center justify-center shadow-2xl backdrop-blur-sm">
             {/* Detalle minimalista en el centro (Icono de imagen fantasma) */}
-            <div className="w-16 h-16 rounded-full bg-white/0.02 flex items-center justify-center">
+            <div className="w-16 h-16 rounded-full bg-white/10 flex items-center justify-center">
               <svg
                 className="w-6 h-6 text-white/10"
                 fill="none"
