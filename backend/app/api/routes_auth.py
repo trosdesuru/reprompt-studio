@@ -7,18 +7,17 @@ from sqlmodel import Session, select
 from app.services.auth_service import AuthService
 from app.services.audit_service import AuditService
 from app.core.db import get_session
-from app.api.deps import get_current_user, get_current_admin
+from app.api.deps import get_current_user, get_current_admin, RateLimiter
 from app.models.user import User, InviteCode, AuditLog
 from app.schemas.user import UserRegister, UserLogin, PasswordChange
 
-# 🟢 FIX: Inyección de dependencias (Idealmente, este cliente iría en app/core/redis_config.py)
+# FIX: Inyección de dependencias
 redis_client = redis.Redis(host="redis", port=6379, db=0, decode_responses=True)
 router = APIRouter()
 
 
 @router.post("/register")
 def register_user(user_data: UserRegister, session: Session = Depends(get_session)):
-    # 🟢 SRP: El router solo delega al servicio
     new_user = AuthService.register_user(user_data, session)
     return {
         "status": "success",
@@ -27,15 +26,37 @@ def register_user(user_data: UserRegister, session: Session = Depends(get_sessio
     }
 
 
-@router.post("/login")
+@router.post(
+    "/login", dependencies=[Depends(RateLimiter(max_requests=5, window_seconds=60))]
+)
 def login_user(
     user_data: UserLogin, response: Response, session: Session = Depends(get_session)
 ):
-    access_token, refresh_token, username = AuthService.authenticate_user(
-        user_data, session, redis_client
-    )
+    # DEFENSA ANTI-BOTNET: Límite por cuenta de usuario
+    user_key = f"brute_force_user:{user_data.username}"
 
-    # El router SOLO maneja respuestas HTTP (cookies)
+    attempts = redis_client.incr(user_key)
+    if attempts == 1:
+        redis_client.expire(user_key, 300)  # Bloqueo de 5 minutos
+
+    if attempts > 5:
+        raise HTTPException(
+            status_code=429,
+            detail=f"La cuenta '{user_data.username}' está bloqueada temporalmente por seguridad. Inténtalo en 5 minutos.",
+        )
+
+    # Autenticación normal
+    try:
+        access_token, refresh_token, username = AuthService.authenticate_user(
+            user_data, session, redis_client
+        )
+    except HTTPException as e:
+        raise e
+
+    # SI ENTRA CON ÉXITO: Reseteamos el contador
+    redis_client.delete(user_key)
+
+    # 🟢 FIX CRÍTICO: Restaurada la entrega de cookies que se había borrado
     response.set_cookie(
         key="access_token",
         value=access_token,
