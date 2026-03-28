@@ -1,6 +1,7 @@
 import { useState, useCallback } from "react";
 import extract from "png-chunks-extract";
 import text from "png-chunk-text";
+import exifr from "exifr";
 import { parseA1111Parameters, ExtractedPromptData } from "../utils/promptParser";
 
 export function usePromptExtractor() {
@@ -14,54 +15,71 @@ export function usePromptExtractor() {
     setExtractedData(null);
 
     try {
-      // 1. Validación de seguridad básica
-      if (file.type !== "image/png") {
-        throw new Error("Formato no soportado. Por favor, sube una imagen PNG generada por IA.");
-      }
+      let rawText = null;
 
-      // 2. Leemos el archivo en la memoria local del navegador (ArrayBuffer)
-      const buffer = await file.arrayBuffer();
-      const uint8 = new Uint8Array(buffer);
+      // ==========================================
+      // 🟦 MOTOR PNG (Chunks)
+      // ==========================================
+      if (file.type === "image/png") {
+        const buffer = await file.arrayBuffer();
+        const uint8 = new Uint8Array(buffer);
+        const chunks = extract(uint8);
+        const textChunks = chunks.filter(
+          (chunk: any) => chunk.name === "tEXt" || chunk.name === "iTXt",
+        );
 
-      // 3. Extraemos todos los fragmentos (chunks) del archivo PNG
-      const chunks = extract(uint8);
+        if (textChunks.length === 0) throw new Error("PNG sin metadatos ocultos.");
 
-      // 4. Filtramos solo los fragmentos diseñados para almacenar texto (tEXt o iTXt)
-      const textChunks = chunks.filter(
-        (chunk: any) => chunk.name === "tEXt" || chunk.name === "iTXt",
-      );
-
-      if (textChunks.length === 0) {
-        throw new Error("No se encontraron metadatos ocultos en esta imagen.");
-      }
-
-      let foundParameters = false;
-
-      // 5. Iteramos sobre los fragmentos de texto buscando la huella de la IA
-      for (const chunk of textChunks) {
-        try {
-          const decoded = text.decode(chunk.data);
-
-          // La convención de Stable Diffusion es usar la clave "parameters"
-          if (decoded.keyword === "parameters" || decoded.keyword === "Comment") {
-            const parsedData = parseA1111Parameters(decoded.text);
-            setExtractedData(parsedData);
-            foundParameters = true;
-            break; // Si lo encontramos, dejamos de buscar
+        for (const chunk of textChunks) {
+          try {
+            const decoded = text.decode(chunk.data);
+            if (decoded.keyword === "parameters" || decoded.keyword === "Comment") {
+              rawText = decoded.text;
+              break;
+            }
+          } catch (e) {
+            continue;
           }
-        } catch (e) {
-          // Ignoramos fragmentos corruptos de forma silenciosa
-          continue;
         }
       }
+      // ==========================================
+      // 🟧 MOTOR JPEG (EXIF)
+      // ==========================================
+      else if (file.type === "image/jpeg" || file.type === "image/jpg") {
+        // Le pedimos a exifr que extraiga absolutamente todo (EXIF, IPTC, XMP)
+        const exifData = await exifr.parse(file, { userComment: true });
 
-      if (!foundParameters) {
-        throw new Error(
-          "La imagen tiene texto oculto, pero no coincide con el estándar de prompts de IA.",
-        );
+        // Stable Diffusion suele meter el prompt en el UserComment
+        if (exifData && exifData.userComment) {
+          // A veces viene como String, a veces como Uint8Array. Lo normalizamos:
+          rawText =
+            typeof exifData.userComment === "string"
+              ? exifData.userComment
+              : new TextDecoder("utf-8").decode(exifData.userComment);
+
+          // Limpiamos la basura binaria que a veces mete A1111 al principio
+          rawText = rawText.replace(/^UNICODE\x00/, "").trim();
+          rawText = rawText.replace(/^ASCII\x00\x00\x00/, "").trim();
+        } else if (exifData && exifData.parameters) {
+          rawText = exifData.parameters;
+        }
       }
+      // ❌ FORMATO INVÁLIDO
+      else {
+        throw new Error("Formato no soportado. Sube una imagen PNG o JPEG.");
+      }
+
+      // ==========================================
+      // 🧠 TRADUCTOR FINAL (Común para ambos)
+      // ==========================================
+      if (!rawText) {
+        throw new Error("La imagen no contiene parámetros de generación IA.");
+      }
+
+      const parsedData = parseA1111Parameters(rawText);
+      setExtractedData(parsedData);
     } catch (err: any) {
-      setError(err.message || "Ocurrió un error desconocido al leer el archivo.");
+      setError(err.message || "Error desconocido al procesar la imagen.");
     } finally {
       setIsExtracting(false);
     }
@@ -72,11 +90,5 @@ export function usePromptExtractor() {
     setError(null);
   }, []);
 
-  return {
-    extractFromFile,
-    isExtracting,
-    error,
-    extractedData,
-    resetExtraction,
-  };
+  return { extractFromFile, isExtracting, error, extractedData, resetExtraction };
 }
