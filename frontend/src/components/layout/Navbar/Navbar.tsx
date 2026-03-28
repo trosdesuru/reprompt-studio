@@ -14,13 +14,8 @@ export default function Navbar() {
   const [showPwdModal, setShowPwdModal] = useState(false);
   const [pwdData, setPwdData] = useState({ old_password: "", new_password: "" });
 
-  const { user, checkAuth, isLoadingAuth } = useAuthStore();
-
-  useEffect(() => {
-    if (pathname !== "/login" && pathname !== "/join") {
-      checkAuth();
-    }
-  }, [checkAuth, pathname]);
+  // 🟢 Quitamos el checkAuth() de aquí porque ya lo ejecuta el AuthProvider
+  const { user, isLoadingAuth } = useAuthStore();
 
   useEffect(() => {
     const theme = localStorage.getItem("theme");
@@ -66,12 +61,17 @@ export default function Navbar() {
         </Link>
 
         <div className="flex gap-4 items-center">
-          {!isLoadingAuth && user && (
-            <div className="hidden md:flex flex-col text-right mr-4 border-r-2 border-(--border-color) pr-4">
+          {/* 🟢 Bloque de Usuario siempre visible */}
+          {!isLoadingAuth && user ? (
+            <div className="flex flex-col text-right mr-2 md:mr-4 border-r-2 border-(--border-color) pr-2 md:pr-4">
               <span className="text-sm font-bold text-foreground">@{user.username}</span>
-              <span className="text-xs font-mono text-(--accent-color) uppercase">{user.role}</span>
+              <span className="text-xs font-mono text-(--accent-color) uppercase tracking-widest">
+                {user.role}
+              </span>
             </div>
-          )}
+          ) : isLoadingAuth ? (
+            <div className="h-8 w-24 bg-gray-200 animate-pulse neo-border"></div>
+          ) : null}
 
           {!isLoadingAuth && user?.role === "admin" && (
             <Button variant="ghost" size="sm" onClick={() => (window.location.href = "/admin")}>
@@ -86,22 +86,20 @@ export default function Navbar() {
           <Button variant="secondary" size="sm" onClick={() => setShowPwdModal(true)}>
             🔑
           </Button>
-
           <Button variant="danger" size="sm" onClick={api.logout}>
             Salir
           </Button>
         </div>
       </nav>
 
+      {/* Modal Cambio de Contraseña */}
       {showPwdModal && (
         <div className="fixed inset-0 bg-black/80 z-100 flex items-center justify-center p-4 backdrop-blur-sm">
-          {/* 🟢 Solucionado el error de TypeScript en onSubmit */}
           <form
             onSubmit={handlePasswordChange}
             className="bg-(--bg-secondary) p-8 neo-border neo-shadow flex flex-col gap-4 max-w-sm w-full"
           >
             <h3 className="text-xl font-bold font-mono text-foreground uppercase">Cambiar Clave</h3>
-            {/* 🟢 Solucionados los warnings de Tailwind (bg-background y text-foreground) */}
             <input
               type="password"
               placeholder="Clave Actual"

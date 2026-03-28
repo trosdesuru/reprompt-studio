@@ -74,7 +74,7 @@ def buscar_galerias(query: str, next_id: str = None, categories: dict = None):
 
 
 def obtener_enlaces_paginas(url: str, pagina: int = 0):
-    """Extrae páginas y miniaturas de forma robusta. Evita Errores 500."""
+    """Extrae enlaces de forma a prueba de balas buscando directamente el href."""
     paginas_lista = []
     logger.info(f"⚡ Lector Turbo: Extrayendo página {pagina} de {url}")
 
@@ -83,56 +83,48 @@ def obtener_enlaces_paginas(url: str, pagina: int = 0):
         r.raise_for_status()
         soup = BeautifulSoup(r.text, "lxml")
 
-        # Buscamos los contenedores de miniaturas (gdtm para grid pequeño, gdtl para grande)
-        celdas = soup.select(".gdtm, .gdtl")
+        # 🟢 FIX: Buscamos TODOS los enlaces que lleven a una imagen, estén donde estén
+        enlaces = soup.select('a[href*="/s/"]')
 
-        for celda in celdas:
-            a = celda.find("a", href=True)
-            if not a:
+        for a in enlaces:
+            href = a.get("href")
+            if not href:
                 continue
 
-            href = a["href"]
             thumb_url = ""
 
-            # Intento 1: Buscar tag img (común en .gdtl)
-            img = celda.find("img")
+            # 1. ¿Tiene la imagen dentro?
+            img = a.find("img")
             if img:
-                thumb_url = img.get("data-src") or img.get("src")
+                thumb_url = img.get("data-src") or img.get("src", "")
 
-            # Intento 2: Buscar en style (común en .gdtm)
+            # 2. ¿Está en el estilo del padre? (Grid view)
             if not thumb_url:
-                div_with_style = celda.find("div", style=True)
-                if div_with_style:
-                    style = div_with_style.get("style", "")
-                    match = re.search(r"url\((.*?)\)", style)
+                parent = a.parent
+                div_style = a.find("div", style=True) or (
+                    parent
+                    if parent and parent.name == "div" and parent.get("style")
+                    else None
+                )
+                if div_style:
+                    match = re.search(r"url\((.*?)\)", div_style.get("style", ""))
                     if match:
                         thumb_url = match.group(1).strip("'\"")
 
-            if href:
-                paginas_lista.append(
-                    {"page_url": href, "thumb_url": thumb_url if thumb_url else ""}
-                )
+            # Evitar duplicados
+            if not any(p["page_url"] == href for p in paginas_lista):
+                paginas_lista.append({"page_url": href, "thumb_url": thumb_url})
 
-        # Verificar si hay siguiente página
         has_next = False
         next_buttons = soup.select(".ptt a")
-        if next_buttons:
-            last_button = next_buttons[-1]
-            if ">" in last_button.text:
-                has_next = True
+        if next_buttons and ">" in next_buttons[-1].text:
+            has_next = True
 
-        # 🟢 IMPORTANTE: Siempre devolvemos el formato que el frontend espera
-        return {"status": "success", "paginas": paginas_lista, "has_next": has_next}
+        return {"enlaces": paginas_lista, "has_next": has_next}
 
     except Exception as e:
         logger.error(f"💥 Error crítico en scraper: {str(e)}")
-        # En lugar de lanzar Error 500, devolvemos un error controlado
-        return {
-            "status": "error",
-            "message": "No se pudo leer la galería",
-            "paginas": [],
-            "has_next": False,
-        }
+        return {"enlaces": [], "has_next": False}
 
 
 def extraer_imagen_real(url: str):

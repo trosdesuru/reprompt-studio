@@ -4,7 +4,11 @@ import "./globals.css";
 import { AuthProvider } from "@/src/components/AuthProvider";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
-const spaceMono = Space_Mono({ weight: ["400", "700"], subsets: ["latin"], variable: "--font-mono" });
+const spaceMono = Space_Mono({
+  weight: ["400", "700"],
+  subsets: ["latin"],
+  variable: "--font-mono",
+});
 
 export const metadata: Metadata = {
   title: "EH Explorer",
