@@ -25,19 +25,21 @@ export function ExtractorDropzone({ onFileDrop, isExtracting, error }: Extractor
     disabled: isExtracting,
   });
 
+  // ESTADO 1: Mientras el cerebro extrae los datos (Animación de carga)
   if (isExtracting) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[300px] animate-pulse bg-(--bg-secondary) neo-border">
+      <div className="flex flex-col items-center justify-center min-h-75 animate-pulse bg-(--bg-secondary) neo-border">
         <IconWand size={64} className="text-(--accent-color) animate-spin" />
         <h2 className="text-xl font-black font-mono uppercase mt-4">Extrayendo Magia...</h2>
       </div>
     );
   }
 
+  // ESTADO 2: Esperando a que el usuario suelte la imagen
   return (
     <div
       {...getRootProps()}
-      className={`border-4 border-dashed transition-all duration-300 ease-in-out flex flex-col items-center justify-center min-h-[300px] cursor-pointer neo-border bg-(--bg-secondary) ${
+      className={`border-4 border-dashed transition-all duration-300 ease-in-out flex flex-col items-center justify-center min-h-75 cursor-pointer neo-border bg-(--bg-secondary) ${
         isDragActive
           ? "border-(--accent-color) bg-(--accent-color)/10 scale-[1.02]"
           : "border-(--border-color) hover:border-(--text-secondary)"
@@ -57,6 +59,7 @@ export function ExtractorDropzone({ onFileDrop, isExtracting, error }: Extractor
         Soporta PNGs de Stable Diffusion, ComfyUI y NovelAI.
       </p>
 
+      {/* Manejo de Errores Visuales */}
       {error && (
         <div className="mt-6 bg-red-500/10 text-red-500 font-bold p-3 neo-border text-sm">
           ❌ {error}

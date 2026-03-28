@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { usePromptExtractor } from "@/src/hooks/usePromptExtractor"; // Asumiendo que ya creamos el hook
+import { usePromptExtractor } from "@/features/extractor/hooks/usePromptExtractor";
 import { ExtractorDropzone } from "./ExtractorDropzone";
 import { ExtractorInspector } from "./ExtractorInspector";
 

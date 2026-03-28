@@ -64,7 +64,7 @@ export function ExtractorInspector({
           <PromptBox
             title="NEGATIVE PROMPT"
             content={extractedData.negativePrompt}
-            onCopy={() => copyToClipboard(extractedData.negativePrompt, "negative")}
+            onCopy={() => copyToClipboard(extractedData.negativePrompt || "", "negative")}
             isCopied={copiedKey === "negative"}
             titleColor="text-red-400"
           />
