@@ -2,7 +2,7 @@
 import { useEffect, useRef } from "react";
 import { ImageCard } from "../../ImageCard";
 import { ViewerPageItem } from "@/src/types/gallery";
-import { Skeleton } from "@/src/components/ui/Skeleton"; // 🟢 Importamos el Skeleton Global
+import { Skeleton } from "@/src/components/ui/Skeleton";
 
 interface ViewerGridProps {
   pages: ViewerPageItem[];
@@ -25,6 +25,28 @@ export function ViewerGrid({
 }: ViewerGridProps) {
   const observerRef = useRef<HTMLDivElement>(null);
 
+  // 🟢 LOG DE RENDERIZADO
+  useEffect(() => {
+    console.log("🎨 [QA DEBUG - CAPA 3] RENDER DEL GRID.");
+    console.log("➡️ isLoading:", isLoading, "| Total páginas:", pages?.length);
+
+    if (pages && pages.length > 0) {
+      // Extraemos solo las URLs de las primeras 5 miniaturas para compararlas
+      const urls = pages.slice(0, 5).map((p) => p.thumb_url);
+
+      console.log("🔍 [QA DEBUG - SPRITE CHECK] Comprobando URLs de miniaturas:");
+      urls.forEach((url, i) => console.log(`   Thumb ${i + 1}: ${url}`));
+
+      // Comprobación matemática de duplicados
+      const sonTodasIguales = urls.every((val) => val === urls[0]);
+      if (sonTodasIguales) {
+        console.warn("⚠️ [QA ALERTA] ¡DETECTADO CSS SPRITE! Todas las URLs son idénticas.");
+      } else {
+        console.log("✅ [QA OK] Las URLs de las miniaturas son diferentes.");
+      }
+    }
+  }, [isLoading, pages]);
+
   useEffect(() => {
     if (!hasMorePages || !onLoadMore || isLoadingMore) return;
 
@@ -39,8 +61,7 @@ export function ViewerGrid({
     return () => observer.disconnect();
   }, [hasMorePages, onLoadMore, isLoadingMore]);
 
-  // 🟢 ESTADO DE CARGA INICIAL: Grid de Skeletons limpios
-  if (isLoading && pages.length === 0) {
+  if (isLoading && (!pages || pages.length === 0)) {
     return (
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6 max-w-7xl mx-auto w-full pb-20">
         {Array.from({ length: 15 }).map((_, i) => (
@@ -55,17 +76,17 @@ export function ViewerGrid({
 
   return (
     <div className="relative z-10 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6 max-w-7xl mx-auto w-full pb-20">
-      {pages.map((item, i) => (
-        <ImageCard
-          key={i}
-          item={item}
-          index={i + 1}
-          galleryTitle={galleryTitle}
-          onOpenImage={() => onSelectImage(i)}
-        />
-      ))}
+      {pages &&
+        pages.map((item, i) => (
+          <ImageCard
+            key={`img-card-${i}`}
+            item={item}
+            index={i + 1}
+            galleryTitle={galleryTitle}
+            onOpenImage={() => onSelectImage(i)}
+          />
+        ))}
 
-      {/* 🟢 ESTADO DE CARGA INFINITA: Skeletons en la parte inferior */}
       {hasMorePages && (
         <div
           ref={observerRef}
@@ -80,7 +101,7 @@ export function ViewerGrid({
         </div>
       )}
 
-      {!isLoading && pages.length === 0 && (
+      {!isLoading && (!pages || pages.length === 0) && (
         <div className="col-span-full text-center p-8 font-mono text-white text-lg">
           No se encontraron páginas en esta galería.
         </div>

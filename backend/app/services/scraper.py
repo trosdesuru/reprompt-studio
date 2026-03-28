@@ -1,12 +1,39 @@
 # backend/app/services/scraper.py
 import logging
 import re
-import time
 from urllib.parse import quote
 from bs4 import BeautifulSoup
 from app.core.config import http_session
 
 logger = logging.getLogger("scraper")
+
+
+def limpiar_titulo(titulo_crudo: str) -> dict:
+    """Limpia el ruido de los títulos de E-Hentai extrayendo la info útil."""
+
+    # 1. Extraemos todo lo que está entre corchetes o paréntesis (Tags, Grupos, Idiomas)
+    matches = re.findall(r"\[(.*?)\]|\((.*?)\)", titulo_crudo)
+    tags_extracted = [tag for tupla in matches for tag in tupla if tag.strip()]
+
+    # 2. Eliminamos todo el contenido entre paréntesis, corchetes o llaves
+    titulo_limpio = re.sub(r"\[.*?\]|\(.*?\)|<.*?>|\{.*?\}", "", titulo_crudo)
+
+    # 3. Limpiamos caracteres huérfanos (guiones, tildes, barras) que queden sueltos
+    titulo_limpio = re.sub(r"[-~|,_]+", " ", titulo_limpio)
+
+    # 4. Comprimimos los espacios dobles/triples que hayan quedado y quitamos espacios en los bordes
+    titulo_limpio = re.sub(r"\s+", " ", titulo_limpio).strip()
+
+    # 5. PROGRAMACIÓN DEFENSIVA (Fallback)
+    # Si el título era TAN raro que al limpiarlo se ha quedado en nada, usamos el original
+    if len(titulo_limpio) < 3:
+        titulo_limpio = titulo_crudo.strip()
+
+    return {
+        "title_clean": titulo_limpio,
+        "title_raw": titulo_crudo.strip(),
+        "tags_extracted": tags_extracted,
+    }
 
 
 def calcular_f_cats(categories_json: dict):
@@ -74,19 +101,15 @@ def buscar_galerias(query: str, next_id: str = None, categories: dict = None):
 
 
 def obtener_enlaces_paginas(url: str, pagina: int = 0):
-    """Extrae las páginas forzando miniaturas grandes para evitar los CSS Sprites."""
     paginas_lista = []
     logger.info(f"⚡ Lector Turbo: Extrayendo página {pagina} de {url}")
 
     try:
-        # 🟢 TRUCO ENTERPRISE: La cookie 'inline_set=ts_l' fuerza a E-Hentai a darnos
-        # imágenes individuales <img> en lugar de un Sprite CSS gigante.
-        cookies = {"nw": "1", "inline_set": "ts_l"}
+        cookies = {"nw": "1", "uconfig": "ts_l"}
         r = http_session.get(f"{url}?p={pagina}", cookies=cookies, timeout=10)
         r.raise_for_status()
         soup = BeautifulSoup(r.text, "lxml")
 
-        # Ahora podemos buscar tranquilamente los enlaces y su tag <img>
         enlaces = soup.select('a[href*="/s/"]')
 
         for a in enlaces:
@@ -95,15 +118,54 @@ def obtener_enlaces_paginas(url: str, pagina: int = 0):
                 continue
 
             thumb_url = ""
-            img = a.find("img")
+            offset = ""
+            width = None  # 🟢 Capturaremos el ancho dinámico
+            height = None  # 🟢 Capturaremos el alto dinámico
 
+            img = a.find("img")
             if img:
                 thumb_url = img.get("data-src") or img.get("src", "")
+                if "t.gif" in thumb_url:
+                    thumb_url = ""
 
-            # Solo añadimos si hemos encontrado una miniatura real
-            if href and thumb_url and thumb_url != "":
-                if not any(p["page_url"] == href for p in paginas_lista):
-                    paginas_lista.append({"page_url": href, "thumb_url": thumb_url})
+            if not thumb_url:
+                parent = a.parent
+                div_style = a.find("div", style=True) or (
+                    parent
+                    if parent and parent.name == "div" and parent.get("style")
+                    else None
+                )
+                if div_style:
+                    style_text = div_style.get("style", "")
+
+                    match_url = re.search(r"url\((.*?)\)", style_text)
+                    if match_url:
+                        thumb_url = match_url.group(1).strip("'\"")
+
+                    match_offset = re.search(
+                        r"url\(.*?\)\s+([-0-9a-zA-Z]+)\s+([-0-9a-zA-Z]+)", style_text
+                    )
+                    if match_offset:
+                        offset = f"{match_offset.group(1)} {match_offset.group(2)}"
+
+                    # 🟢 FIX DINÁMICO: Extraemos width y height del estilo
+                    match_w = re.search(r"width:\s*(\d+)px", style_text)
+                    match_h = re.search(r"height:\s*(\d+)px", style_text)
+                    if match_w:
+                        width = int(match_w.group(1))
+                    if match_h:
+                        height = int(match_h.group(1))
+
+            if not any(p["page_url"] == href for p in paginas_lista):
+                paginas_lista.append(
+                    {
+                        "page_url": href,
+                        "thumb_url": thumb_url,
+                        "offset": offset,
+                        "width": width,  # 🟢 Se lo pasamos al frontend
+                        "height": height,  # 🟢 Se lo pasamos al frontend
+                    }
+                )
 
         has_next = False
         next_buttons = soup.select(".ptt a")

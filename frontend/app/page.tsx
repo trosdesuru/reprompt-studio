@@ -46,6 +46,15 @@ export default function Home() {
   } = useViewerSync(activeUrl);
 
   const handleOpenVisor = (item: GalleryItem) => {
+    console.log("--------------------------------------------------");
+    console.log("🎯 [QA DEBUG - CAPA 1] DISPARADOR CLICK EN TARJETA");
+    console.log("📦 Datos del Item clickeado:", item);
+
+    if (!item.url) {
+      console.error("❌ [QA DEBUG] ERROR: El item no tiene URL válida.");
+      return;
+    }
+
     setActiveUrl(item.url);
     setActiveTitle(item.title);
     openViewer(item.url);

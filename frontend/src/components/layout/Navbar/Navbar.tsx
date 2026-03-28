@@ -100,7 +100,7 @@ export function Navbar() {
       </nav>
 
       {showPwdModal && (
-        <div className="fixed inset-0 bg-black/80 z-[100] flex items-center justify-center p-4 backdrop-blur-sm">
+        <div className="fixed inset-0 bg-black/80 z-100 flex items-center justify-center p-4 backdrop-blur-sm">
           {/* ... tu modal de contraseña ... */}
           <form
             onSubmit={handlePasswordChange}

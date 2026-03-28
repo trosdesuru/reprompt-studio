@@ -3,6 +3,8 @@
 export interface GalleryItem {
   url: string;
   title: string;
+  title_raw?: string;
+  tags_extracted?: string[];
   thumb: string;
 
   views?: number;
@@ -15,6 +17,9 @@ export interface GalleryItem {
 export interface ViewerPageItem {
   page_url: string;
   thumb_url: string;
+  offset?: string;
+  width?: number;
+  height?: number;
 }
 
 export interface GalleryMetrics {

@@ -13,22 +13,51 @@ export function useViewerSync(activeUrl: string) {
 
   const openViewer = async (targetUrl?: string) => {
     const urlToFetch = targetUrl || activeUrl;
-    if (!urlToFetch) return;
+
+    console.log("🧠 [QA DEBUG - CAPA 2] Iniciando openViewer()");
+    console.log("🔗 URL solicitada al Backend:", urlToFetch);
+
+    if (!urlToFetch) {
+      console.warn("⚠️ [QA DEBUG] openViewer abortado: targetUrl es undefined");
+      return;
+    }
 
     setIsViewerOpen(true);
     setIsViewerLoading(true);
     setViewerPages([]);
 
     try {
+      // 🟢 Disparamos la petición al Backend
       const res = await api.leer(urlToFetch, 0);
-      // 🟢 FIX: Ahora leemos "res.data" para cumplir el contrato
-      if (res.status === "success" && Array.isArray(res.data)) {
-        setViewerPages(res.data);
-        setHasMorePages(res.has_next);
-        setCurrentViewerPage(1);
+
+      console.log("📥 [QA DEBUG - CAPA 2] RESPUESTA BRUTA DEL BACKEND:", res);
+
+      // 🛡️ PROGRAMACIÓN DEFENSIVA: Extraemos el array venga como venga (data, paginas o enlaces)
+      const dataArray = res.data || res.paginas || res.enlaces;
+
+      console.log("🔍 [QA DEBUG - CAPA 2] Array de imágenes detectado:", dataArray);
+
+      if (res.status === "success" || res.status === "ok" || (dataArray && dataArray.length > 0)) {
+        if (Array.isArray(dataArray) && dataArray.length > 0) {
+          console.log(`✅ [QA DEBUG] Guardando ${dataArray.length} imágenes en el estado.`);
+          setViewerPages(dataArray);
+          setHasMorePages(!!res.has_next);
+          setCurrentViewerPage(1);
+        } else {
+          console.warn(
+            "⚠️ [QA DEBUG] El Backend devolvió SUCCESS, pero el array de imágenes está VACÍO o no es un array válido.",
+          );
+          setViewerPages([]);
+        }
+      } else {
+        console.error(
+          "❌ [QA DEBUG] El Backend devolvió un status de ERROR o estructura irreconocible:",
+          res,
+        );
+        setViewerPages([]);
       }
     } catch (err) {
-      console.error("Error loading gallery initial page", err);
+      console.error("💥 [QA DEBUG - CAPA 2] Crash durante la petición de red:", err);
     } finally {
       setIsViewerLoading(false);
     }
@@ -40,13 +69,15 @@ export function useViewerSync(activeUrl: string) {
   };
 
   const loadNextPage = useCallback(async () => {
+    // Para simplificar la prueba actual, dejamos el loadNextPage con su lógica básica
     if (!hasMorePages || isLoadingMore) return;
     setIsLoadingMore(true);
     try {
       const res = await api.leer(activeUrl, currentViewerPage);
-      if (res.status === "success" && Array.isArray(res.data)) {
-        setViewerPages((prev) => [...prev, ...res.data]);
-        setHasMorePages(res.has_next);
+      const dataArray = res.data || res.paginas || res.enlaces;
+      if (Array.isArray(dataArray)) {
+        setViewerPages((prev) => [...prev, ...dataArray]);
+        setHasMorePages(!!res.has_next);
         if (res.has_next) setCurrentViewerPage((prev) => prev + 1);
       }
     } catch (e) {
