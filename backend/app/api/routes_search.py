@@ -72,7 +72,6 @@ def resolver_imagen(url: str):
         return {"status": "error", "message": str(e)}
 
 
-# 🟢 FIX 2: Añadimos `= Body(...)` para que FastAPI entienda el JSON y evite el 422
 @router.post("/interact")
 def registrar_interaccion(
     data: dict = Body(...), session: Session = Depends(get_session)
@@ -80,6 +79,7 @@ def registrar_interaccion(
     try:
         url = data.get("url")
         title = data.get("title", "Sin título")
+        thumb = data.get("thumb")
         i_type = data.get("type") or data.get("interaction_type") or "view"
 
         if not url:
@@ -89,8 +89,14 @@ def registrar_interaccion(
         metric = session.exec(statement).first()
 
         if not metric:
-            metric = GalleryMetric(url=url, title=title, views=0, downloads=0)
+            metric = GalleryMetric(
+                url=url, title=title, thumb=thumb, views=0, downloads=0
+            )
             session.add(metric)
+        else:
+            # Por si acaso era una galería antigua sin thumb, lo actualizamos
+            if thumb and not metric.thumb:
+                metric.thumb = thumb
 
         if i_type == "view":
             metric.views += 1
