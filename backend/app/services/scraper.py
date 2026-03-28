@@ -10,7 +10,6 @@ logger = logging.getLogger("scraper")
 
 
 def calcular_f_cats(categories_json: dict):
-    # Valores de exclusión oficiales
     mapping = {
         "misc": 1,
         "doujinshi": 2,
@@ -24,7 +23,6 @@ def calcular_f_cats(categories_json: dict):
         "western": 512,
     }
     f_cats = 0
-    # EH funciona por EXCLUSIÓN: si la categoría NO está activa, sumamos su valor
     for cat, is_active in categories_json.items():
         if not is_active:
             f_cats += mapping.get(cat, 0)
@@ -32,10 +30,7 @@ def calcular_f_cats(categories_json: dict):
 
 
 def buscar_galerias(query: str, next_id: str = None, categories: dict = None):
-    # 1. Calculamos el f_cats si nos envían el JSON de categorías
     f_cats = calcular_f_cats(categories) if categories else 0
-
-    # 2. Construimos la URL con el filtro
     url = f"https://e-hentai.org/?f_search={quote(query)}&f_cats={f_cats}"
     if next_id:
         url += f"&next={next_id}"
@@ -49,15 +44,13 @@ def buscar_galerias(query: str, next_id: str = None, categories: dict = None):
 
     try:
         r = http_session.get(url, headers=headers, cookies=cookies, timeout=10)
+        r.raise_for_status()
         soup = BeautifulSoup(r.text, "lxml")
 
-        # 🟢 BUSCAR EL PUNTERO SIGUIENTE (Lo que tú inspeccionaste)
         next_tag = soup.find("a", id="unext")
         found_next_id = None
         if next_tag and "next=" in next_tag["href"]:
-            # Extraemos solo el número después de 'next='
             found_next_id = next_tag["href"].split("next=")[1]
-            logger.info(f"⏭️ [SIGUIENTE ID DETECTADO]: {found_next_id}")
 
         tarjetas = soup.select(".itg tr, .itg .gl1t")
         resultados = []
@@ -75,14 +68,14 @@ def buscar_galerias(query: str, next_id: str = None, categories: dict = None):
                 )
 
         return {"data": resultados, "next_id": found_next_id}
-
     except Exception as e:
         logger.error(f"💥 [ERROR]: {e}")
         return {"data": [], "next_id": None}
 
 
+# 🟢 LA VERSIÓN LEGENDARIA (Zero-Latency y a prueba de fallos)
 def obtener_enlaces_paginas(url: str, pagina: int = 0):
-    """Extrae la página y sus miniaturas en una sola pasada (Zero-Latency)."""
+    """Extrae SOLO una página, llevándose URLs y Thumbnails en la misma pasada."""
     paginas_dict = {}
     logger.info(f"⚡ Lector Turbo: Extrayendo página {pagina} de {url}")
 
@@ -97,18 +90,23 @@ def obtener_enlaces_paginas(url: str, pagina: int = 0):
             if not href:
                 continue
 
-            # Buscamos la miniatura (puede estar en un img o en el background del div padre)
             thumb_url = ""
             img = a.find("img")
+
+            # Buscar en el HTML tradicional
             if img:
                 thumb_url = img.get("data-src") or img.get("src", "")
-            else:
-                parent_div = a.find_parent("div")
-                if parent_div and parent_div.get("style"):
-                    match = re.search(r"url\((.*?)\)", parent_div.get("style"))
-                    if match:
-                        thumb_url = match.group(1).strip("'\"")
 
+            # Buscar en el CSS Inline (Background URL)
+            if not thumb_url:
+                target_with_style = a if a.get("style") else a.find("div", style=True)
+                if target_with_style and target_with_style.get("style"):
+                    style = target_with_style.get("style")
+                    match = re.search(r"url\((.*?)\)", style)
+                    if match:
+                        thumb_url = match.group(1).strip("'\"").strip()
+
+            # Evitamos duplicados guardándolo en un diccionario
             if href not in paginas_dict:
                 paginas_dict[href] = {"page_url": href, "thumb_url": thumb_url}
 
@@ -118,7 +116,6 @@ def obtener_enlaces_paginas(url: str, pagina: int = 0):
                 has_next = True
                 break
 
-        # Devolvemos una lista de diccionarios con la url y el thumbnail
         return {"enlaces": list(paginas_dict.values()), "has_next": has_next}
     except Exception as e:
         logger.error(f"⚠️ Error al leer la galería (pág {pagina}): {e}")
