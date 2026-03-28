@@ -1,5 +1,6 @@
 # backend/app/main.py
 import logging
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -15,7 +16,18 @@ logging.basicConfig(
 )
 logger = logging.getLogger("backend")
 
-app = FastAPI(title="Bot de Descarga API")
+
+# 🟢 FIX ARQUITECTÓNICO: Uso de Lifespan en lugar de eventos obsoletos
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    logger.info("🚀 API Backend iniciada. Sistemas en línea.")
+    # Aquí podríamos inicializar pools de conexiones si hiciera falta
+    yield
+    # Aquí cerramos conexiones al apagar (Clean Shutdown)
+    logger.info("🛑 Apagando API Backend limpiamente...")
+
+
+app = FastAPI(title="EH Explorer API", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -24,12 +36,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-
-@app.on_event("startup")
-async def startup_event():
-    logger.info("🚀 API Backend iniciada. Conexión Redis: OK")
-
 
 # Conectamos las rutas
 app.include_router(search_router, prefix="/api")
