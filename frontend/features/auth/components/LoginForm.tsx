@@ -34,13 +34,13 @@ export default function LoginForm() {
     <div className="w-full max-w-md mx-auto">
       <form
         onSubmit={handleSubmit}
-        className="flex flex-col gap-6 bg-[var(--bg-secondary)] p-8 neo-border neo-shadow"
+        className="flex flex-col gap-6 bg-(--bg-secondary) p-8 neo-border neo-shadow"
       >
         <div className="text-center mb-2">
           <h2 className="text-3xl font-black font-mono uppercase tracking-tighter text-foreground">
-            Acceso<span className="text-[var(--accent-color)]">_</span>Admin
+            Acceso<span className="text-(--accent-color)">_</span>Admin
           </h2>
-          <p className="text-[var(--text-secondary)] text-xs font-mono mt-1">
+          <p className="text-(--text-secondary) text-xs font-mono mt-1">
             Identifícate para explorar
           </p>
         </div>

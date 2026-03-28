@@ -28,7 +28,7 @@ export function ChangePasswordModal({ onClose }: ChangePasswordModalProps) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/80 z-[100] flex items-center justify-center p-4 backdrop-blur-sm">
+    <div className="fixed inset-0 bg-black/80 z-100 flex items-center justify-center p-4 backdrop-blur-sm">
       <form
         onSubmit={handleSubmit}
         className="bg-(--bg-secondary) p-8 neo-border neo-shadow flex flex-col gap-5 max-w-sm w-full animate-fade-in relative"
