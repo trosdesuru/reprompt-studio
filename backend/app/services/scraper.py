@@ -74,16 +74,19 @@ def buscar_galerias(query: str, next_id: str = None, categories: dict = None):
 
 
 def obtener_enlaces_paginas(url: str, pagina: int = 0):
-    """Extrae enlaces de forma a prueba de balas buscando directamente el href."""
+    """Extrae las páginas forzando miniaturas grandes para evitar los CSS Sprites."""
     paginas_lista = []
     logger.info(f"⚡ Lector Turbo: Extrayendo página {pagina} de {url}")
 
     try:
-        r = http_session.get(f"{url}?p={pagina}", timeout=10)
+        # 🟢 TRUCO ENTERPRISE: La cookie 'inline_set=ts_l' fuerza a E-Hentai a darnos
+        # imágenes individuales <img> en lugar de un Sprite CSS gigante.
+        cookies = {"nw": "1", "inline_set": "ts_l"}
+        r = http_session.get(f"{url}?p={pagina}", cookies=cookies, timeout=10)
         r.raise_for_status()
         soup = BeautifulSoup(r.text, "lxml")
 
-        # 🟢 FIX: Buscamos TODOS los enlaces que lleven a una imagen, estén donde estén
+        # Ahora podemos buscar tranquilamente los enlaces y su tag <img>
         enlaces = soup.select('a[href*="/s/"]')
 
         for a in enlaces:
@@ -92,28 +95,15 @@ def obtener_enlaces_paginas(url: str, pagina: int = 0):
                 continue
 
             thumb_url = ""
-
-            # 1. ¿Tiene la imagen dentro?
             img = a.find("img")
+
             if img:
                 thumb_url = img.get("data-src") or img.get("src", "")
 
-            # 2. ¿Está en el estilo del padre? (Grid view)
-            if not thumb_url:
-                parent = a.parent
-                div_style = a.find("div", style=True) or (
-                    parent
-                    if parent and parent.name == "div" and parent.get("style")
-                    else None
-                )
-                if div_style:
-                    match = re.search(r"url\((.*?)\)", div_style.get("style", ""))
-                    if match:
-                        thumb_url = match.group(1).strip("'\"")
-
-            # Evitar duplicados
-            if not any(p["page_url"] == href for p in paginas_lista):
-                paginas_lista.append({"page_url": href, "thumb_url": thumb_url})
+            # Solo añadimos si hemos encontrado una miniatura real
+            if href and thumb_url and thumb_url != "":
+                if not any(p["page_url"] == href for p in paginas_lista):
+                    paginas_lista.append({"page_url": href, "thumb_url": thumb_url})
 
         has_next = False
         next_buttons = soup.select(".ptt a")

@@ -1,8 +1,11 @@
-// frontend/features/image-viewer/components/ViewerLightbox.tsx
+// frontend/features/image-viewer/ImageViewerModal/components/ViewerLightbox.tsx
 "use client";
 
-import { FullImageResolver } from "./FullImageResolver";
+import { useState, useEffect } from "react";
+import { api } from "@/src/services/api";
 import { ViewerPageItem } from "@/src/types/gallery";
+import { Skeleton } from "@/src/components/ui/Skeleton";
+import { Button } from "@/src/components/ui/Button";
 
 interface ViewerLightboxProps {
   pages: ViewerPageItem[];
@@ -19,60 +22,86 @@ export function ViewerLightbox({
   onNext,
   onPrev,
 }: ViewerLightboxProps) {
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // 🟢 EFECTO BLINDADO: Carga la imagen de forma segura sin fugas de memoria
+  useEffect(() => {
+    let isMounted = true;
+    setIsLoading(true);
+    setImageUrl(null); // Reseteamos la imagen al cambiar de página
+
+    const fetchFullImage = async () => {
+      try {
+        const res = await api.resolverImagen(pages[selectedIndex].page_url);
+        if (isMounted && res.status === "success" && res.url_img && res.url_img.trim() !== "") {
+          setImageUrl(res.url_img);
+        } else if (isMounted) {
+          setImageUrl("error");
+        }
+      } catch (e) {
+        if (isMounted) setImageUrl("error");
+      } finally {
+        if (isMounted) setIsLoading(false);
+      }
+    };
+
+    fetchFullImage();
+    return () => {
+      isMounted = false;
+    };
+  }, [selectedIndex, pages]);
+
   return (
-    <div
-      className="fixed inset-0 z-100 bg-black/95 flex items-center justify-center backdrop-blur-sm"
-      onClick={onClose}
-    >
-      <div className="relative w-full h-full flex items-center justify-center p-4 md:p-12">
-        {/* Botón Anterior */}
-        {selectedIndex > 0 && (
-          <button
-            className="absolute left-4 md:left-8 z-120 p-4 bg-(--bg-secondary) neo-border neo-shadow text-foreground hover:neo-shadow-accent transition-all"
-            onClick={(e) => {
-              e.stopPropagation();
-              onPrev();
-            }}
-          >
-            <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={3}
-                d="M15 19l-7-7 7-7"
-              />
-            </svg>
-          </button>
+    // Capa extra oscurecida al 95% para resaltar la imagen
+    <div className="fixed inset-0 z-60 flex items-center justify-center bg-black/95 backdrop-blur-md animate-fade-in">
+      {/* Botón de cerrar */}
+      <Button
+        variant="ghost"
+        className="absolute top-4 right-6 text-white text-2xl z-70"
+        onClick={onClose}
+      >
+        ✖
+      </Button>
+
+      {/* Controles laterales */}
+      <button
+        className="absolute left-4 top-1/2 -translate-y-1/2 text-white text-5xl z-70 hover:scale-110 transition-transform opacity-50 hover:opacity-100"
+        onClick={onPrev}
+      >
+        ◀
+      </button>
+
+      {/* Contenedor central de la imagen */}
+      <div className="relative max-w-6xl max-h-[90vh] w-full h-full flex items-center justify-center p-4 md:p-12">
+        {isLoading ? (
+          // 🟢 Skeleton elegante mientras el backend resuelve la imagen
+          <Skeleton className="w-full h-full max-h-[80vh] rounded-lg opacity-20" />
+        ) : imageUrl === "error" || !imageUrl ? (
+          // 🟢 Prevención de bucles infinitos en el src=""
+          <div className="text-red-500 font-mono font-bold text-xl neo-border p-8 bg-black/50">
+            ❌ Error al resolver la imagen Full HD.
+          </div>
+        ) : (
+          <img
+            src={imageUrl}
+            alt={`Página ${selectedIndex + 1}`}
+            className="max-w-full max-h-full object-contain shadow-2xl animate-fade-in"
+            referrerPolicy="no-referrer"
+          />
         )}
+      </div>
 
-        {/* Resolvemos la imagen Full HD */}
-        <FullImageResolver pageUrl={pages[selectedIndex].page_url} index={selectedIndex + 1} />
+      <button
+        className="absolute right-4 top-1/2 -translate-y-1/2 text-white text-5xl z-70 hover:scale-110 transition-transform opacity-50 hover:opacity-100"
+        onClick={onNext}
+      >
+        ▶
+      </button>
 
-        {/* Botón Siguiente */}
-        {selectedIndex < pages.length - 1 && (
-          <button
-            className="absolute right-4 md:right-8 z-120 p-4 bg-(--bg-secondary) neo-border neo-shadow text-foreground hover:neo-shadow-accent transition-all"
-            onClick={(e) => {
-              e.stopPropagation();
-              onNext();
-            }}
-          >
-            <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M9 5l7 7-7 7" />
-            </svg>
-          </button>
-        )}
-
-        {/* Botón Cerrar Lightbox */}
-        <button
-          className="absolute top-6 right-6 z-120 text-white bg-red-600 neo-border neo-shadow hover:bg-red-500 w-12 h-12 flex items-center justify-center font-bold text-xl"
-          onClick={(e) => {
-            e.stopPropagation();
-            onClose();
-          }}
-        >
-          ✕
-        </button>
+      {/* Indicador de página */}
+      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 text-white font-mono font-bold bg-black/50 px-4 py-2 neo-border">
+        {selectedIndex + 1} / {pages.length}
       </div>
     </div>
   );
