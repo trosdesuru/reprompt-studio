@@ -1,24 +1,29 @@
 # backend/app/services/scraper.py
 import logging
 import re
-import time
+import json
+import redis
 from urllib.parse import quote
 from bs4 import BeautifulSoup
 from app.core.config import http_session
 
 logger = logging.getLogger("scraper")
 
+# 🟢 CONFIGURACIÓN DE REDIS PARA CACHÉ
+# Usamos decode_responses=True para que devuelva strings en lugar de bytes
+try:
+    redis_client = redis.Redis(host="redis", port=6379, db=0, decode_responses=True)
+except Exception as e:
+    logger.error(f"⚠️ No se pudo conectar a Redis para Caché: {e}")
+    redis_client = None
+
 
 def limpiar_titulo(titulo_crudo: str) -> str:
     """Limpia el ruido de los títulos de E-Hentai mediante Regex."""
-    # 1. Eliminamos corchetes, paréntesis, llaves y su contenido
     titulo_limpio = re.sub(r"\[.*?\]|\(.*?\)|<.*?>|\{.*?\}", "", titulo_crudo)
-    # 2. Eliminamos caracteres huérfanos que quedan como basura
     titulo_limpio = re.sub(r"[-~|,_]+", " ", titulo_limpio)
-    # 3. Comprimimos espacios múltiples y quitamos espacios en los bordes
     titulo_limpio = re.sub(r"\s+", " ", titulo_limpio).strip()
 
-    # Fallback defensivo: si al limpiar nos quedamos sin título, devolvemos el original
     if len(titulo_limpio) < 3:
         return titulo_crudo.strip()
     return titulo_limpio
@@ -38,20 +43,39 @@ def calcular_f_cats(categories_json: dict):
         "western": 512,
     }
     f_cats = 0
-    for cat, is_active in categories_json.items():
-        if not is_active:
-            f_cats += mapping.get(cat, 0)
+    if categories_json:
+        for cat, is_active in categories_json.items():
+            if not is_active:
+                f_cats += mapping.get(cat, 0)
     return f_cats
 
 
+# ==========================================
+# 🚀 1. CACHÉ DE BÚSQUEDA (TTL: 15 Minutos)
+# ==========================================
 def buscar_galerias(query: str, next_id: str = None, categories: dict = None):
-    f_cats = calcular_f_cats(categories) if categories else 0
+    f_cats = calcular_f_cats(categories)
+
+    # Generamos una clave única basada en lo que el usuario ha pedido
+    cache_key = f"cache:search:q={query}:next={next_id}:cats={f_cats}"
+
+    # Intentamos recuperar de la Caché primero
+    if redis_client:
+        try:
+            cached_result = redis_client.get(cache_key)
+            if cached_result:
+                logger.info(
+                    f"⚡ [CACHE HIT] Resultados de búsqueda devueltos desde Redis (0.01s)"
+                )
+                return json.loads(cached_result)
+        except Exception:
+            pass
+
     url = f"https://e-hentai.org/?f_search={quote(query)}&f_cats={f_cats}"
     if next_id:
         url += f"&next={next_id}"
 
-    logger.info(f"📡 [SOLICITUD] {url}")
-
+    logger.info(f"📡 [SCRAPING] Consultando a E-Hentai: {url}")
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0"
     }
@@ -63,9 +87,11 @@ def buscar_galerias(query: str, next_id: str = None, categories: dict = None):
         soup = BeautifulSoup(r.text, "lxml")
 
         next_tag = soup.find("a", id="unext")
-        found_next_id = None
-        if next_tag and "next=" in next_tag["href"]:
-            found_next_id = next_tag["href"].split("next=")[1]
+        found_next_id = (
+            next_tag["href"].split("next=")[1]
+            if next_tag and "next=" in next_tag["href"]
+            else None
+        )
 
         tarjetas = soup.select(".itg tr, .itg .gl1t")
         resultados = []
@@ -74,29 +100,52 @@ def buscar_galerias(query: str, next_id: str = None, categories: dict = None):
             if enlace:
                 img_tag = tarjeta.select_one("img")
                 thumb = img_tag.get("data-src") or img_tag.get("src") or ""
-
-                # 🟢 APLICAMOS LA LAVADORA REGEX AQUÍ
                 titulo_crudo = enlace.text.strip()
-                titulo_limpio = limpiar_titulo(titulo_crudo)
 
                 resultados.append(
                     {
                         "url": enlace["href"],
                         "thumb": thumb,
-                        "title": titulo_limpio,  # Enviamos el limpio a la interfaz
-                        "title_raw": titulo_crudo,  # Guardamos el original para el futuro IA
+                        "title": limpiar_titulo(titulo_crudo),
+                        "title_raw": titulo_crudo,
                     }
                 )
 
-        return {"data": resultados, "next_id": found_next_id}
+        final_result = {"data": resultados, "next_id": found_next_id}
+
+        # Guardamos en Caché durante 15 minutos (900 segundos)
+        if redis_client:
+            try:
+                redis_client.setex(cache_key, 900, json.dumps(final_result))
+            except Exception:
+                pass
+
+        return final_result
+
     except Exception as e:
-        logger.error(f"💥 [ERROR]: {e}")
+        logger.error(f"💥 [ERROR SCRAPING]: {e}")
         return {"data": [], "next_id": None}
 
 
+# ==========================================
+# 🚀 2. CACHÉ DE GALERÍA (TTL: 24 Horas)
+# ==========================================
 def obtener_enlaces_paginas(url: str, pagina: int = 0):
+    cache_key = f"cache:gallery:{url}:p={pagina}"
+
+    if redis_client:
+        try:
+            cached_result = redis_client.get(cache_key)
+            if cached_result:
+                logger.info(
+                    f"⚡ [CACHE HIT] Página {pagina} de galería devuelta desde Redis"
+                )
+                return json.loads(cached_result)
+        except Exception:
+            pass
+
     paginas_lista = []
-    logger.info(f"⚡ Lector Turbo: Extrayendo página {pagina} de {url}")
+    logger.info(f"📡 [SCRAPING] Extrayendo página {pagina} de {url}")
 
     try:
         cookies = {"nw": "1", "uconfig": "ts_l"}
@@ -111,10 +160,7 @@ def obtener_enlaces_paginas(url: str, pagina: int = 0):
             if not href:
                 continue
 
-            thumb_url = ""
-            offset = ""
-            width = None
-            height = None
+            thumb_url, offset, width, height = "", "", None, None
 
             img = a.find("img")
             if img:
@@ -131,7 +177,6 @@ def obtener_enlaces_paginas(url: str, pagina: int = 0):
                 )
                 if div_style:
                     style_text = div_style.get("style", "")
-
                     match_url = re.search(r"url\((.*?)\)", style_text)
                     if match_url:
                         thumb_url = match_url.group(1).strip("'\"")
@@ -142,7 +187,6 @@ def obtener_enlaces_paginas(url: str, pagina: int = 0):
                     if match_offset:
                         offset = f"{match_offset.group(1)} {match_offset.group(2)}"
 
-                    # 🟢 FIX DINÁMICO: Extraemos width y height del estilo
                     match_w = re.search(r"width:\s*(\d+)px", style_text)
                     match_h = re.search(r"height:\s*(\d+)px", style_text)
                     if match_w:
@@ -161,26 +205,59 @@ def obtener_enlaces_paginas(url: str, pagina: int = 0):
                     }
                 )
 
-                has_next = any(">" in a.text for a in soup.select(".ptt a"))
+        has_next = any(">" in a.text for a in soup.select(".ptt a"))
 
-        return {"enlaces": paginas_lista, "has_next": has_next}
+        final_result = {"enlaces": paginas_lista, "has_next": has_next}
+
+        # Guardamos en Caché durante 24 horas (86400 segundos). El contenido de una galería no cambia.
+        if redis_client:
+            try:
+                redis_client.setex(cache_key, 86400, json.dumps(final_result))
+            except Exception:
+                pass
+
+        return final_result
 
     except Exception as e:
         logger.error(f"💥 Error crítico en scraper: {str(e)}")
         return {"enlaces": [], "has_next": False}
 
-    except Exception as e:
-        logger.error(f"💥 Error crítico en scraper: {str(e)}")
-        return {"enlaces": [], "has_next": False}
 
+# ==========================================
+# 🚀 3. CACHÉ DE RESOLUCIÓN FULL HD (TTL: 2 Horas)
+# ==========================================
+def extraer_imagen_real(url_visor: str):
+    cache_key = f"cache:image_res:{url_visor}"
 
-def extraer_imagen_real(url: str):
+    if redis_client:
+        try:
+            cached_result = redis_client.get(cache_key)
+            if cached_result:
+                return cached_result  # Es un string directo
+        except Exception:
+            pass
+
+    logger.info(f"📡 [SCRAPING] Resolviendo imagen real: {url_visor}")
     try:
-        r = http_session.get(url, timeout=5)
+        cookies = {"nw": "1"}
+        r = http_session.get(url_visor, cookies=cookies, timeout=10)
         r.raise_for_status()
-        match = re.search(r'<img id="img" src="(.*?)"', r.text)
-        if match:
-            return match.group(1)
+        soup = BeautifulSoup(r.text, "lxml")
+        img_tag = soup.find("img", id="img")
+
+        if not img_tag:
+            return None
+
+        real_url = img_tag.get("src")
+
+        # Guardamos la URL resuelta por 2 horas (Las claves de imagen de EHentai suelen expirar)
+        if redis_client and real_url:
+            try:
+                redis_client.setex(cache_key, 7200, real_url)
+            except Exception:
+                pass
+
+        return real_url
     except Exception as e:
-        logger.debug(f"⚠️ No se pudo extraer imagen de {url}: {e}")
-    return None
+        logger.error(f"Error extrayendo imagen {url_visor}: {e}")
+        return None
