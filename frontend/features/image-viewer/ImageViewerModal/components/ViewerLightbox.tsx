@@ -1,4 +1,3 @@
-// frontend/features/image-viewer/ImageViewerModal/components/ViewerLightbox.tsx
 import { useEffect, useState } from "react";
 import { ViewerPageItem } from "@/src/types/gallery";
 import { api } from "@/src/services/api";
@@ -25,6 +24,7 @@ export function ViewerLightbox({
 
   const urlToFetch = pages[selectedIndex]?.page_url;
 
+  // 1. CARGA DE LA IMAGEN ACTUAL
   useEffect(() => {
     if (!urlToFetch) return;
 
@@ -62,14 +62,38 @@ export function ViewerLightbox({
     };
   }, [urlToFetch]);
 
+  // 🟢 2. LA MAGIA: PRE-CARGA INVISIBLE DE LA SIGUIENTE IMAGEN
+  useEffect(() => {
+    // Solo precargamos si hay una imagen siguiente
+    if (selectedIndex >= pages.length - 1) return;
+
+    const nextUrl = pages[selectedIndex + 1]?.page_url;
+    if (!nextUrl) return;
+
+    // Pedimos al backend la URL de la siguiente imagen en segundo plano
+    api
+      .resolverImagen(nextUrl)
+      .then((res) => {
+        if (res.status === "success" && res.url_img) {
+          // Obligamos al navegador a almacenar en caché los bytes de la imagen
+          const img = new Image();
+          img.src = res.url_img;
+        }
+      })
+      .catch(() => {
+        // Fallo silencioso: si la precarga falla, no molestamos al usuario.
+        // Se intentará cargar de forma normal cuando pase de página.
+      });
+  }, [selectedIndex, pages]);
+
   if (!pages[selectedIndex]) return null;
 
   return (
     <div className="fixed inset-0 z-60 flex items-center justify-center bg-black/95 animate-fade-in">
-      {/* 🟢 FIX: Botón de Cerrar con z-[70] (Capa Suprema) y un ligero fondo para visibilidad */}
+      {/* Botón de Cerrar */}
       <button
         onClick={(e) => {
-          e.stopPropagation(); // Evitamos que el clic se filtre hacia abajo por accidente
+          e.stopPropagation();
           onClose();
         }}
         className="absolute top-6 right-6 z-70 bg-black/40 hover:bg-red-600/80 rounded-full text-white/70 hover:text-white transition-all p-3 shadow-lg"
@@ -114,14 +138,11 @@ export function ViewerLightbox({
         </button>
       )}
 
-      {/* Contenedor Principal */}
-      {/* Contenedor Principal */}
+      {/* Contenedor Principal con Skeleton Elegante */}
       <div className="relative w-full h-full flex items-center justify-center p-4 md:p-12">
         {isLoading && (
-          // 🟢 FIX UI: Skeleton elegante y sutil de alta opacidad (transparencia)
-          <div className="w-full h-[60vh] md:h-[80vh] max-w-4xl mx-auto rounded-lg bg-white/5 animate-pulse flex items-center justify-center shadow-2xl backdrop-blur-sm">
-            {/* Detalle minimalista en el centro (Icono de imagen fantasma) */}
-            <div className="w-16 h-16 rounded-full bg-white/10 flex items-center justify-center">
+          <div className="w-full h-[60vh] md:h-[80vh] max-w-4xl mx-auto rounded-lg bg-white/0.03 border border-white/0.05 animate-pulse flex items-center justify-center shadow-2xl backdrop-blur-sm">
+            <div className="w-16 h-16 rounded-full bg-white/0.02 flex items-center justify-center">
               <svg
                 className="w-6 h-6 text-white/10"
                 fill="none"

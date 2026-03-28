@@ -6,9 +6,6 @@ interface SkeletonProps {
 
 export function Skeleton({ className = "" }: SkeletonProps) {
   return (
-    <div
-      className={`animate-pulse bg-gray-900 dark:bg-gray-900 ${className}`}
-      aria-hidden="true"
-    />
+    <div className={`animate-pulse bg-gray-900 dark:bg-gray-900 ${className}`} aria-hidden="true" />
   );
 }

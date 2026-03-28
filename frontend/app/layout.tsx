@@ -5,7 +5,11 @@ import { AuthProvider } from "@/src/components/AuthProvider";
 import { Navbar } from "@/src/components/layout/Navbar";
 
 // const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
-const prompt = Prompt({ weight: ["400", "700", "900"], subsets: ["latin"], variable: "--font-prompt" });
+const prompt = Prompt({
+  weight: ["400", "700", "900"],
+  subsets: ["latin"],
+  variable: "--font-prompt",
+});
 const spaceMono = Space_Mono({
   weight: ["400", "700"],
   subsets: ["latin"],

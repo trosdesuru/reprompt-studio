@@ -11,12 +11,7 @@ interface ImageCardProps {
   onOpenImage: (imgUrl: string) => void;
 }
 
-export default function ImageCard({
-  pageUrl,
-  index,
-  galleryTitle,
-  onOpenImage,
-}: ImageCardProps) {
+export default function ImageCard({ pageUrl, index, galleryTitle, onOpenImage }: ImageCardProps) {
   const [imageUrl, setImageUrl] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
@@ -82,9 +77,7 @@ export default function ImageCard({
         }}
       >
         {!isVisible ? (
-          <span className="text-gray-600 text-sm font-medium pointer-events-none">
-            Waiting...
-          </span>
+          <span className="text-gray-600 text-sm font-medium pointer-events-none">Waiting...</span>
         ) : isLoading ? (
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 pointer-events-none"></div>
         ) : imageUrl ? (
@@ -95,9 +88,7 @@ export default function ImageCard({
             alt={`Thumbnail ${index}`}
           />
         ) : (
-          <span className="text-red-400 text-xs font-bold pointer-events-none">
-            Error
-          </span>
+          <span className="text-red-400 text-xs font-bold pointer-events-none">Error</span>
         )}
 
         <span className="absolute top-2 left-2 bg-black/80 text-xs font-bold px-2 py-1 rounded text-blue-400 pointer-events-none">
