@@ -1,3 +1,4 @@
+// frontend/features/image-viewer/hooks/useViewerSync.ts
 import { useState, useCallback } from "react";
 import { api } from "@/src/services/api";
 import { ViewerPageItem } from "@/src/types/gallery";
@@ -19,10 +20,11 @@ export function useViewerSync(activeUrl: string) {
     setViewerPages([]);
 
     try {
-      const data = await api.leer(urlToFetch, 0);
-      if (data.status === "success") {
-        setViewerPages(data.paginas);
-        setHasMorePages(data.has_next);
+      const res = await api.leer(urlToFetch, 0);
+      // 🟢 FIX: Ahora leemos "res.data" para cumplir el contrato
+      if (res.status === "success" && Array.isArray(res.data)) {
+        setViewerPages(res.data);
+        setHasMorePages(res.has_next);
         setCurrentViewerPage(1);
       }
     } catch (err) {
@@ -37,16 +39,15 @@ export function useViewerSync(activeUrl: string) {
     setViewerPages([]);
   };
 
-  // 🟢 Paginación manual y controlada (¡Adiós bucle infinito!)
   const loadNextPage = useCallback(async () => {
     if (!hasMorePages || isLoadingMore) return;
     setIsLoadingMore(true);
     try {
-      const data = await api.leer(activeUrl, currentViewerPage);
-      if (data.status === "success") {
-        setViewerPages((prev) => [...prev, ...data.paginas]);
-        setHasMorePages(data.has_next);
-        if (data.has_next) setCurrentViewerPage((prev) => prev + 1);
+      const res = await api.leer(activeUrl, currentViewerPage);
+      if (res.status === "success" && Array.isArray(res.data)) {
+        setViewerPages((prev) => [...prev, ...res.data]);
+        setHasMorePages(res.has_next);
+        if (res.has_next) setCurrentViewerPage((prev) => prev + 1);
       }
     } catch (e) {
       console.error(e);

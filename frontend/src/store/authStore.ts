@@ -37,16 +37,24 @@ export const useAuthStore = create<AuthState>((set) => ({
   checkAuth: async () => {
     set({ isLoadingAuth: true });
     try {
-      const data = await api.obtenerPerfil();
+      const res = await api.obtenerPerfil();
 
-      // 🟢 FIX CRÍTICO: Comprobamos directamente si existe username,
-      // ya que este endpoint NO devuelve "status: success"
-      if (data && data.username) {
-        set({ user: { username: data.username, role: data.role }, isLoadingAuth: false });
+      // 🟢 CHIVATO QA: Veremos exactamente qué envía el Backend
+      console.log("🕵️‍♂️ QA [authStore] Respuesta Backend:", res);
+
+      // 🛡️ PROGRAMACIÓN DEFENSIVA: Extraemos los datos sin importar la envoltura
+      const username = res?.username || res?.data?.username || res?.user?.username;
+      const role = res?.role || res?.data?.role || res?.user?.role || "user";
+
+      if (username) {
+        console.log(`✅ QA [authStore] Usuario detectado: ${username} (${role})`);
+        set({ user: { username, role }, isLoadingAuth: false });
       } else {
+        console.warn("⚠️ QA [authStore] 200 OK pero JSON no tiene 'username':", res);
         set({ user: null, isLoadingAuth: false });
       }
     } catch (error) {
+      console.error("❌ QA [authStore] Fallo de red o Sesión Caducada:", error);
       set({ user: null, isLoadingAuth: false });
     }
   },

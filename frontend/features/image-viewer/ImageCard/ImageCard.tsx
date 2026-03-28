@@ -1,3 +1,4 @@
+// frontend/features/image-viewer/ImageCard/ImageCard.tsx
 "use client";
 
 import { Button } from "@/src/components/ui/Button";
@@ -7,8 +8,8 @@ import { ImageCardProps } from "./ImageCard.types";
 export function ImageCard({ item, index, galleryTitle, onOpenImage }: ImageCardProps) {
   const { downloadStatus, handleDownload } = useImageCard(item.page_url, index, galleryTitle);
 
-  // 🟢 VALIDACIÓN EXTREMA: Evitamos el bug catastrófico del src=""
-  const hasValidImage = item.thumb_url && item.thumb_url.trim() !== "";
+  // 🟢 VALIDACIÓN EXTREMA DEFENSIVA (Previene fuga de RAM)
+  const isValidImage = item && typeof item.thumb_url === "string" && item.thumb_url.length > 5;
 
   return (
     <div className="bg-(--bg-secondary) neo-border neo-shadow flex flex-col relative z-20 group">
@@ -16,7 +17,7 @@ export function ImageCard({ item, index, galleryTitle, onOpenImage }: ImageCardP
         className="h-56 relative bg-background border-b-2 border-(--border-color) flex items-center justify-center overflow-hidden cursor-pointer"
         onClick={onOpenImage}
       >
-        {hasValidImage ? (
+        {isValidImage ? (
           <img
             src={item.thumb_url}
             referrerPolicy="no-referrer"
@@ -25,8 +26,8 @@ export function ImageCard({ item, index, galleryTitle, onOpenImage }: ImageCardP
             loading="lazy"
           />
         ) : (
-          <div className="flex flex-col items-center justify-center text-gray-500 font-mono text-[10px] w-full h-full bg-gray-900 pointer-events-none">
-            <span>[ SIN MINIATURA ]</span>
+          <div className="w-full h-full bg-gray-800 flex items-center justify-center text-xs font-mono text-gray-400">
+            [IMG ERROR]
           </div>
         )}
         <span className="absolute top-2 left-2 bg-background text-foreground neo-border px-2 py-1 text-xs font-mono font-black pointer-events-none">
@@ -46,7 +47,7 @@ export function ImageCard({ item, index, galleryTitle, onOpenImage }: ImageCardP
           className="w-full text-xs"
           isLoading={downloadStatus === "loading"}
         >
-          {downloadStatus === "success" && "✅ ¡Encolada!"}
+          {downloadStatus === "success" && "✅ Encolada"}
           {downloadStatus === "error" && "❌ Falló"}
           {downloadStatus === "idle" && "⬇️ Guardar"}
         </Button>

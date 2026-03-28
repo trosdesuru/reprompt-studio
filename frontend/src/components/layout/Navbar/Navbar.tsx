@@ -14,7 +14,6 @@ export function Navbar() {
   const [showPwdModal, setShowPwdModal] = useState(false);
   const [pwdData, setPwdData] = useState({ old_password: "", new_password: "" });
 
-  // 🟢 Solo leemos. El AuthProvider ya hizo el checkAuth por nosotros.
   const { user, isLoadingAuth, logout } = useAuthStore();
 
   useEffect(() => {
@@ -61,10 +60,11 @@ export function Navbar() {
         </Link>
 
         <div className="flex gap-4 items-center">
-          {/* 🟢 Bloque de Autenticación Robusto */}
           {isLoadingAuth ? (
+            // 🦴 Skeleton mientras verifica la sesión
             <div className="h-8 w-24 bg-gray-200 animate-pulse neo-border"></div>
           ) : user ? (
+            // 👤 Usuario Logueado
             <>
               <div className="flex flex-col text-right mr-2 md:mr-4 border-r-2 border-(--border-color) pr-2 md:pr-4">
                 <span className="text-sm font-bold text-foreground">@{user.username}</span>
@@ -73,35 +73,35 @@ export function Navbar() {
                 </span>
               </div>
 
-              {/* Botón de Admin */}
               {user.role === "admin" && (
                 <Button variant="ghost" size="sm" onClick={() => (window.location.href = "/admin")}>
                   🛡️ Panel
                 </Button>
               )}
+
+              <Button variant="secondary" size="sm" onClick={() => setShowPwdModal(true)}>
+                🔑
+              </Button>
+              <Button variant="danger" size="sm" onClick={logout}>
+                Salir
+              </Button>
             </>
-          ) : null}
+          ) : (
+            // 🛡️ ESTADO FALLBACK: Si no hay usuario, mostrar explícitamente el botón de Entrar
+            <Button variant="primary" size="sm" onClick={() => (window.location.href = "/login")}>
+              Entrar
+            </Button>
+          )}
 
           <button onClick={toggleTheme} className="text-2xl hover:scale-110 transition-transform">
             {isDark ? "☀️" : "🌙"}
           </button>
-
-          {user && (
-            <Button variant="secondary" size="sm" onClick={() => setShowPwdModal(true)}>
-              🔑
-            </Button>
-          )}
-          {user && (
-            <Button variant="danger" size="sm" onClick={logout}>
-              Salir
-            </Button>
-          )}
         </div>
       </nav>
 
-      {/* Modal Cambio de Contraseña */}
       {showPwdModal && (
-        <div className="fixed inset-0 bg-black/80 z-100 flex items-center justify-center p-4 backdrop-blur-sm">
+        <div className="fixed inset-0 bg-black/80 z-[100] flex items-center justify-center p-4 backdrop-blur-sm">
+          {/* ... tu modal de contraseña ... */}
           <form
             onSubmit={handlePasswordChange}
             className="bg-(--bg-secondary) p-8 neo-border neo-shadow flex flex-col gap-4 max-w-sm w-full"
