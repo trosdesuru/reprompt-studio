@@ -1,144 +1,40 @@
-// frontend/src/components/layout/Navbar/Navbar.tsx
 "use client";
 
-import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
-import { api } from "@/src/services/api";
+import Link from "next/link";
 import { Button } from "@/src/components/ui/Button";
 import { useAuthStore } from "@/src/store/authStore";
-import Link from "next/link";
+import { UserDropdown } from "./UserDropdown";
 
 export function Navbar() {
   const pathname = usePathname();
-  const [isDark, setIsDark] = useState(false);
-  const [showPwdModal, setShowPwdModal] = useState(false);
-  const [pwdData, setPwdData] = useState({ old_password: "", new_password: "" });
+  const { user, isLoadingAuth } = useAuthStore();
 
-  const { user, isLoadingAuth, logout } = useAuthStore();
-
-  useEffect(() => {
-    const theme = localStorage.getItem("theme");
-    if (theme === "dark" || (!theme && window.matchMedia("(prefers-color-scheme: dark)").matches)) {
-      setIsDark(true);
-      document.documentElement.classList.add("dark");
-    }
-  }, []);
-
-  const toggleTheme = () => {
-    const nextDark = !isDark;
-    setIsDark(nextDark);
-    if (nextDark) {
-      document.documentElement.classList.add("dark");
-      localStorage.setItem("theme", "dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-      localStorage.setItem("theme", "light");
-    }
-  };
-
-  const handlePasswordChange = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      await api.cambiarPassword(pwdData);
-      alert("✅ Contraseña actualizada");
-      setShowPwdModal(false);
-    } catch (err: any) {
-      alert(`❌ Error: ${err.message}`);
-    }
-  };
-
+  // No mostramos Navbar en pantallas de acceso
   if (pathname === "/login" || pathname === "/join") return null;
 
   return (
-    <>
-      <nav className="bg-(--bg-secondary) border-b-4 border-(--border-color) px-6 py-4 flex justify-between items-center z-50 sticky top-0">
-        <Link
-          href="/"
-          className="font-mono font-black text-xl text-foreground hover:opacity-80 transition-opacity"
-        >
-          REPROMPT
-        </Link>
+    <nav className="bg-(--bg-secondary) border-b-4 border-(--border-color) px-6 py-4 flex justify-between items-center z-40 sticky top-0 transition-colors">
+      {/* 1. Logo de la plataforma */}
+      <Link
+        href="/"
+        className="font-mono font-black text-xl text-foreground hover:text-(--accent-color) transition-colors tracking-tighter"
+      >
+        EH<span className="text-(--accent-color)">-</span>EXPLORER
+      </Link>
 
-        <div className="flex gap-4 items-center">
-          {isLoadingAuth ? (
-            // 🦴 Skeleton mientras verifica la sesión
-            <div className="h-8 w-24 bg-gray-200 animate-pulse neo-border"></div>
-          ) : user ? (
-            // 👤 Usuario Logueado
-            <>
-              <div className="flex flex-col text-right mr-2 md:mr-4 border-r-2 border-(--border-color) pr-2 md:pr-4">
-                <span className="text-sm font-bold text-foreground">@{user.username}</span>
-                <span className="text-xs font-mono text-(--accent-color) uppercase tracking-widest">
-                  {user.role}
-                </span>
-              </div>
-
-              {user.role === "admin" && (
-                <Button variant="ghost" size="sm" onClick={() => (window.location.href = "/admin")}>
-                  🛡️ Panel
-                </Button>
-              )}
-
-              <Button variant="secondary" size="sm" onClick={() => setShowPwdModal(true)}>
-                🔑
-              </Button>
-              <Button variant="danger" size="sm" onClick={logout}>
-                Salir
-              </Button>
-            </>
-          ) : (
-            // 🛡️ ESTADO FALLBACK: Si no hay usuario, mostrar explícitamente el botón de Entrar
-            <Button variant="primary" size="sm" onClick={() => (window.location.href = "/login")}>
-              Entrar
-            </Button>
-          )}
-
-          <button onClick={toggleTheme} className="text-2xl hover:scale-110 transition-transform">
-            {isDark ? "☀️" : "🌙"}
-          </button>
-        </div>
-      </nav>
-
-      {showPwdModal && (
-        <div className="fixed inset-0 bg-black/80 z-100 flex items-center justify-center p-4 backdrop-blur-sm">
-          {/* ... tu modal de contraseña ... */}
-          <form
-            onSubmit={handlePasswordChange}
-            className="bg-(--bg-secondary) p-8 neo-border neo-shadow flex flex-col gap-4 max-w-sm w-full"
-          >
-            <h3 className="text-xl font-bold font-mono text-foreground uppercase">Cambiar Clave</h3>
-            <input
-              type="password"
-              placeholder="Clave Actual"
-              required
-              className="neo-border p-2 bg-background text-foreground font-mono focus:outline-none"
-              value={pwdData.old_password}
-              onChange={(e) => setPwdData({ ...pwdData, old_password: e.target.value })}
-            />
-            <input
-              type="password"
-              placeholder="Nueva Clave"
-              required
-              className="neo-border p-2 bg-background text-foreground font-mono focus:outline-none"
-              value={pwdData.new_password}
-              onChange={(e) => setPwdData({ ...pwdData, new_password: e.target.value })}
-            />
-            <div className="flex gap-2 mt-4">
-              <Button
-                type="button"
-                variant="ghost"
-                className="flex-1"
-                onClick={() => setShowPwdModal(false)}
-              >
-                Cancelar
-              </Button>
-              <Button type="submit" variant="primary" className="flex-1">
-                Guardar
-              </Button>
-            </div>
-          </form>
-        </div>
-      )}
-    </>
+      {/* 2. Área de Controles de Usuario */}
+      <div className="flex gap-3 items-center">
+        {isLoadingAuth ? (
+          <div className="h-10 w-10 bg-gray-200 dark:bg-gray-800 animate-pulse rounded neo-border"></div>
+        ) : user ? (
+          <UserDropdown />
+        ) : (
+          <Button variant="primary" size="sm" onClick={() => (window.location.href = "/login")}>
+            Entrar
+          </Button>
+        )}
+      </div>
+    </nav>
   );
 }
