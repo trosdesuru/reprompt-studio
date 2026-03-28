@@ -14,19 +14,16 @@ export function Navbar() {
   const [showPwdModal, setShowPwdModal] = useState(false);
   const [pwdData, setPwdData] = useState({ old_password: "", new_password: "" });
 
-  // 🟢 Desestructuramos checkAuth para invocarlo directamente
-  const { user, isLoadingAuth, checkAuth } = useAuthStore();
+  // 🟢 Solo leemos. El AuthProvider ya hizo el checkAuth por nosotros.
+  const { user, isLoadingAuth, logout } = useAuthStore();
 
   useEffect(() => {
-    // Forzamos la carga del usuario nada más entrar
-    checkAuth();
-
     const theme = localStorage.getItem("theme");
     if (theme === "dark" || (!theme && window.matchMedia("(prefers-color-scheme: dark)").matches)) {
       setIsDark(true);
       document.documentElement.classList.add("dark");
     }
-  }, [checkAuth]);
+  }, []);
 
   const toggleTheme = () => {
     const nextDark = !isDark;
@@ -60,12 +57,14 @@ export function Navbar() {
           href="/"
           className="font-mono font-black text-xl text-foreground hover:opacity-80 transition-opacity"
         >
-          EH<span className="text-(--accent-color)">_</span>Admin
+          EH<span className="text-(--accent-color)">_</span>Explorer
         </Link>
 
         <div className="flex gap-4 items-center">
-          {/* 🟢 Bloque de Usuario y Dashboard corregido */}
-          {!isLoadingAuth && user ? (
+          {/* 🟢 Bloque de Autenticación Robusto */}
+          {isLoadingAuth ? (
+            <div className="h-8 w-24 bg-gray-200 animate-pulse neo-border"></div>
+          ) : user ? (
             <>
               <div className="flex flex-col text-right mr-2 md:mr-4 border-r-2 border-(--border-color) pr-2 md:pr-4">
                 <span className="text-sm font-bold text-foreground">@{user.username}</span>
@@ -81,20 +80,22 @@ export function Navbar() {
                 </Button>
               )}
             </>
-          ) : isLoadingAuth ? (
-            <div className="h-8 w-24 bg-gray-200 animate-pulse neo-border"></div>
           ) : null}
 
           <button onClick={toggleTheme} className="text-2xl hover:scale-110 transition-transform">
             {isDark ? "☀️" : "🌙"}
           </button>
 
-          <Button variant="secondary" size="sm" onClick={() => setShowPwdModal(true)}>
-            🔑
-          </Button>
-          <Button variant="danger" size="sm" onClick={api.logout}>
-            Salir
-          </Button>
+          {user && (
+            <Button variant="secondary" size="sm" onClick={() => setShowPwdModal(true)}>
+              🔑
+            </Button>
+          )}
+          {user && (
+            <Button variant="danger" size="sm" onClick={logout}>
+              Salir
+            </Button>
+          )}
         </div>
       </nav>
 

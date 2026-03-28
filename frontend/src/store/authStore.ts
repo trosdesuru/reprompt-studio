@@ -17,19 +17,16 @@ interface AuthState {
 
 export const useAuthStore = create<AuthState>((set) => ({
   user: null,
-  isLoadingAuth: true, // Empieza en true hasta que el AuthProvider decida
+  isLoadingAuth: true,
 
   login: (userData) => set({ user: userData, isLoadingAuth: false }),
 
-  // 🟢 Nueva Acción: El Logout seguro
   logout: async () => {
     try {
-      // Llamamos al backend para que destruya la sesión en Redis y borre cookies
       await api.logout();
     } catch (error) {
-      console.error("Error durante el logout:", error);
+      console.error("Error logout:", error);
     } finally {
-      // Pase lo que pase, lo borramos de la memoria del frontend
       set({ user: null });
       if (typeof window !== "undefined") {
         window.location.href = "/login";
@@ -37,19 +34,19 @@ export const useAuthStore = create<AuthState>((set) => ({
     }
   },
 
-  // 🟢 Acción: Verificar al cargar la página
   checkAuth: async () => {
     set({ isLoadingAuth: true });
     try {
       const data = await api.obtenerPerfil();
-      if (data.status === "success") {
+
+      // 🟢 FIX CRÍTICO: Comprobamos directamente si existe username,
+      // ya que este endpoint NO devuelve "status: success"
+      if (data && data.username) {
         set({ user: { username: data.username, role: data.role }, isLoadingAuth: false });
       } else {
         set({ user: null, isLoadingAuth: false });
       }
     } catch (error) {
-      // Si falla (ej. 401), el cliente de API intentará el refresco silencioso.
-      // Si el refresco también falla, nos quedamos sin usuario.
       set({ user: null, isLoadingAuth: false });
     }
   },
