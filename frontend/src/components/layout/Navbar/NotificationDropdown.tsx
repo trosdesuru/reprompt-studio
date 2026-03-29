@@ -54,9 +54,9 @@ export function NotificationDropdown() {
 
       {/* Desplegable de la Bandeja */}
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-background border border-(--border-color) shadow-2xl rounded-lg flex flex-col z-50 animate-fade-in origin-top-right overflow-hidden">
+        <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-[#1A1B1E] border-2 border-(--border-color) shadow-[0_8px_30px_rgb(0,0,0,0.8)] rounded-lg flex flex-col z-100 animate-fade-in origin-top-right overflow-hidden">
           {/* Header */}
-          <div className="p-4 border-b border-(--border-color) bg-(--bg-secondary) flex justify-between items-center">
+          <div className="p-4 border-b-2 border-(--border-color) bg-black/40 flex justify-between items-center">
             <h3 className="text-sm font-bold font-mono uppercase tracking-wide">Notificaciones</h3>
             <div className="flex gap-2">
               {unreadCount > 0 && (

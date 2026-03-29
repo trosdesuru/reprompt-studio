@@ -21,11 +21,9 @@ export default function LoginForm() {
     try {
       await api.login(formData);
       window.location.href = "/";
-
     } catch (err: unknown) {
       const msg = handleError(err, "LoginForm");
       setError(msg);
-      
     } finally {
       setIsLoading(false);
     }
