@@ -1,13 +1,13 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback } from "react";
 import { useDropzone } from "react-dropzone";
 import { DropzoneLoading } from "./DropzoneLoading";
 import { DropzoneContent } from "./DropzoneContent";
 import { DropzoneError } from "./DropzoneError";
 
 interface ExtractorDropzoneProps {
-  onFileDrop: (files: File[]) => void; // 🟢 Ahora emite un Array
+  onFileDrop: (acceptedFiles: File[], rejectedFiles: any[]) => void; // 🟢 Actualizada la firma
   isExtracting: boolean;
   error: string | null;
 }
@@ -17,15 +17,12 @@ export function ExtractorDropzone({
   isExtracting,
   error: externalError,
 }: ExtractorDropzoneProps) {
-  const [localError, setLocalError] = useState<string | null>(null);
-
   const onDrop = useCallback(
     (acceptedFiles: File[], fileRejections: any[]) => {
-      setLocalError(null);
-      if (fileRejections.length > 0) {
-        setLocalError("Algún archivo no es soportado. Usa ZIP, PNG, JPG, TXT o JSON.");
+      // 🟢 Pasamos todo al Hook, él se encargará de clasificar y avisar
+      if (acceptedFiles.length > 0 || fileRejections.length > 0) {
+        onFileDrop(acceptedFiles, fileRejections);
       }
-      if (acceptedFiles.length > 0) onFileDrop(acceptedFiles);
     },
     [onFileDrop],
   );
@@ -37,16 +34,14 @@ export function ExtractorDropzone({
       "image/jpeg": [".jpg", ".jpeg"],
       "text/plain": [".txt"],
       "application/json": [".json"],
-      "application/zip": [".zip"], // 🟢 Soporte para ZIP
+      "application/zip": [".zip"],
       "application/x-zip-compressed": [".zip"],
     },
     disabled: isExtracting,
-    // 🟢 Quitamos maxFiles para permitir arrastrar varios de golpe
+    // 🟢 Sin maxFiles: Acepta múltiples imágenes o zips a la vez
   });
 
   if (isExtracting) return <DropzoneLoading />;
-
-  const activeError = externalError || localError;
 
   return (
     <div
@@ -59,7 +54,7 @@ export function ExtractorDropzone({
     >
       <input {...getInputProps()} />
       <DropzoneContent isDragActive={isDragActive} />
-      {activeError && <DropzoneError message={activeError} />}
+      {externalError && <DropzoneError message={externalError} />}
     </div>
   );
 }

@@ -5,8 +5,17 @@ import { ExtractorDropzone } from "@/features/extractor/components/dropzone";
 import { BatchInspector } from "@/features/extractor/components/inspector/BatchInspector";
 
 export default function RepromptPage() {
-  const { processFiles, isExtracting, error, batch, updateItemStatus, removeItem, clearBatch } =
-    usePromptExtractor();
+  const {
+    processFiles,
+    isExtracting,
+    error,
+    batch,
+    skippedFiles,
+    updateItemStatus,
+    removeItem,
+    clearBatch,
+    clearSkipped,
+  } = usePromptExtractor();
 
   return (
     <main className="min-h-screen bg-background p-4 md:p-8">
@@ -16,7 +25,7 @@ export default function RepromptPage() {
             Estudio <span className="text-(--accent-color)">REPROMPT</span>
           </h1>
           <p className="text-xl md:text-2xl text-(--text-secondary) font-mono max-w-3xl mx-auto leading-relaxed">
-            Extrae, analiza y organiza los metadatos de tus generaciones IA en lote.
+            Arrastra múltiples imágenes o archivos ZIP para extraer metadatos en lote.
           </p>
         </section>
 
@@ -30,9 +39,11 @@ export default function RepromptPage() {
           ) : (
             <BatchInspector
               batch={batch}
+              skippedFiles={skippedFiles}
               onUpdateStatus={updateItemStatus}
               onRemoveItem={removeItem}
               onClearAll={clearBatch}
+              onClearSkipped={clearSkipped}
             />
           )}
         </section>

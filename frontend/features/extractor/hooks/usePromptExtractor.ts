@@ -12,30 +12,45 @@ export interface BatchItem {
   status: "idle" | "saving" | "success" | "error";
 }
 
+export interface SkippedFile {
+  name: string;
+  reason: string;
+}
+
 export function usePromptExtractor() {
   const [isExtracting, setIsExtracting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [batch, setBatch] = useState<BatchItem[]>([]);
+  const [skippedFiles, setSkippedFiles] = useState<SkippedFile[]>([]); // 🟢 NUEVO ESTADO
 
-  const processFiles = useCallback(async (files: File[]) => {
+  const processFiles = useCallback(async (files: File[], fileRejections: any[] = []) => {
     setIsExtracting(true);
     setError(null);
 
     let allFilesToProcess: File[] = [];
+    const currentSkipped: SkippedFile[] = fileRejections.map((r) => ({
+      name: r.file.name,
+      reason: "Formato no aceptado o archivo inválido.",
+    }));
 
     try {
-      // 1. Expandir ZIPs si los hay
+      // 1. Expandir ZIPs o aceptar múltiples archivos sueltos
       for (const file of files) {
-        if (file.type === "application/zip" || file.name.endsWith(".zip")) {
+        if (
+          file.type === "application/zip" ||
+          file.name.endsWith(".zip") ||
+          file.name.endsWith(".x-zip-compressed")
+        ) {
           const unzipped = await extractFilesFromZip(file);
-          allFilesToProcess = [...allFilesToProcess, ...unzipped];
+          allFilesToProcess = [...allFilesToProcess, ...unzipped.validFiles];
+          currentSkipped.push(...unzipped.rejectedFiles);
         } else {
           allFilesToProcess.push(file);
         }
       }
 
-      if (allFilesToProcess.length === 0) {
-        throw new Error("No se encontraron archivos válidos para procesar.");
+      if (allFilesToProcess.length === 0 && currentSkipped.length === 0) {
+        throw new Error("No se recibieron archivos válidos.");
       }
 
       // 2. Extraer metadata de cada archivo
@@ -44,11 +59,12 @@ export function usePromptExtractor() {
       for (const file of allFilesToProcess) {
         try {
           const rawText = await getRawTextFromFile(file);
-          if (!rawText) continue; // Ignoramos si no hay metadatos
+          if (!rawText) {
+            currentSkipped.push({ name: file.name, reason: "Sin metadatos de IA detectados." });
+            continue;
+          }
 
           const parsedData = parsePromptData(rawText);
-
-          // Generar preview solo si es imagen
           const previewUrl = file.type.startsWith("image/") ? URL.createObjectURL(file) : null;
 
           newBatchItems.push({
@@ -59,18 +75,19 @@ export function usePromptExtractor() {
             status: "idle",
           });
         } catch (e) {
-          console.warn(`No se pudo procesar ${file.name}:`, e);
+          currentSkipped.push({ name: file.name, reason: "Error al procesar el archivo." });
         }
       }
 
-      if (newBatchItems.length === 0) {
-        throw new Error(
-          "Se analizaron los archivos pero ninguno contenía metadatos de IA válidos.",
+      setSkippedFiles((prev) => [...prev, ...currentSkipped]);
+
+      if (newBatchItems.length > 0) {
+        setBatch((prev) => [...prev, ...newBatchItems]);
+      } else if (currentSkipped.length > 0) {
+        setError(
+          `Se descartaron ${currentSkipped.length} archivos por no ser válidos o no tener metadatos.`,
         );
       }
-
-      // 3. Añadir a la cola existente
-      setBatch((prev) => [...prev, ...newBatchItems]);
     } catch (err: unknown) {
       setError(handleError(err, "ExtractorBatch"));
     } finally {
@@ -95,8 +112,23 @@ export function usePromptExtractor() {
       if (item.previewUrl) URL.revokeObjectURL(item.previewUrl);
     });
     setBatch([]);
+    setSkippedFiles([]);
     setError(null);
   }, [batch]);
 
-  return { processFiles, isExtracting, error, batch, updateItemStatus, removeItem, clearBatch };
+  const clearSkipped = useCallback(() => {
+    setSkippedFiles([]);
+  }, []);
+
+  return {
+    processFiles,
+    isExtracting,
+    error,
+    batch,
+    skippedFiles,
+    updateItemStatus,
+    removeItem,
+    clearBatch,
+    clearSkipped,
+  };
 }
