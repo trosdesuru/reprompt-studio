@@ -7,4 +7,6 @@ export const promptApi = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
     }),
+
+  obtenerMisPrompts: () => fetchSeguro(`${API_URL}/prompts/`),
 };
