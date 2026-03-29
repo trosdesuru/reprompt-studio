@@ -1,8 +1,6 @@
 import { useState, useCallback } from "react";
-import extract from "png-chunks-extract";
-import text from "png-chunk-text";
-import exifr from "exifr";
 import { parsePromptData, ExtractedPromptData } from "../utils/promptParser";
+import { getRawTextFromFile } from "../utils/fileExtractors";
 
 export function usePromptExtractor() {
   const [isExtracting, setIsExtracting] = useState(false);
@@ -15,85 +13,18 @@ export function usePromptExtractor() {
     setExtractedData(null);
 
     try {
-      let rawText = null;
+      // 1. Delegamos la extracción física del texto
+      const rawText = await getRawTextFromFile(file);
 
-      // ==========================================
-      // 🟦 MOTOR PNG (Chunks)
-      // ==========================================
-      if (file.type === "image/png") {
-        const buffer = await file.arrayBuffer();
-        const uint8 = new Uint8Array(buffer);
-        const chunks = extract(uint8);
-        const textChunks = chunks.filter(
-          (chunk: any) => chunk.name === "tEXt" || chunk.name === "iTXt",
-        );
-
-        if (textChunks.length === 0) throw new Error("PNG sin metadatos ocultos.");
-
-        for (const chunk of textChunks) {
-          try {
-            const decoded = text.decode(chunk.data);
-            if (decoded.keyword === "parameters" || decoded.keyword === "Comment") {
-              rawText = decoded.text;
-              break;
-            }
-          } catch (e) {
-            continue;
-          }
-        }
-      }
-      // ==========================================
-      // 🟩 MOTOR TEXTO/JSON (Archivos en crudo)
-      // ==========================================
-      if (file.type === "text/plain" || file.type === "application/json") {
-        // Simplemente leemos el contenido del archivo de texto
-        rawText = await file.text();
-      }
-      // ==========================================
-      // 🟦 MOTOR PNG (Chunks)
-      // ==========================================
-      else if (file.type === "image/png") {
-        // ... (tu código PNG actual) ...
-      }
-      // ==========================================
-      // 🟧 MOTOR JPEG (EXIF)
-      // ==========================================
-      else if (file.type === "image/jpeg" || file.type === "image/jpg") {
-        // Le pedimos a exifr que extraiga absolutamente todo (EXIF, IPTC, XMP)
-        const exifData = await exifr.parse(file, { userComment: true });
-
-        // Stable Diffusion suele meter el prompt en el UserComment
-        if (exifData && exifData.userComment) {
-          // A veces viene como String, a veces como Uint8Array. Lo normalizamos:
-          rawText =
-            typeof exifData.userComment === "string"
-              ? exifData.userComment
-              : new TextDecoder("utf-8").decode(exifData.userComment);
-
-          // Limpiamos la basura binaria que a veces mete A1111 al principio
-          rawText = rawText.replace(/^UNICODE\x00/, "").trim();
-          rawText = rawText.replace(/^ASCII\x00\x00\x00/, "").trim();
-        } else if (exifData && exifData.parameters) {
-          rawText = exifData.parameters;
-        }
-      }
-      // ❌ FORMATO INVÁLIDO
-      else {
-        throw new Error("Formato no soportado. Sube una imagen PNG o JPEG.");
-      }
-
-      // ==========================================
-      // 🧠 TRADUCTOR FINAL (Común para todos)
-      // ==========================================
       if (!rawText) {
-        throw new Error("La imagen no contiene parámetros de generación IA.");
+        throw new Error("No se detectaron metadatos de IA en este archivo.");
       }
 
-      // 🟢 FIX: Llamamos al adaptador universal
+      // 2. Delegamos el parseo lógico del contenido
       const parsedData = parsePromptData(rawText);
       setExtractedData(parsedData);
     } catch (err: any) {
-      setError(err.message || "Error desconocido al procesar la imagen.");
+      setError(err.message || "Error al procesar el archivo");
     } finally {
       setIsExtracting(false);
     }
