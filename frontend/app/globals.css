@@ -1,7 +1,6 @@
 @import "tailwindcss";
 
 :root {
-  /* 🎨 Paleta Base (Modo Claro - Opcional, pero buena práctica) */
   --bg-primary: #f4f5f5;
   --bg-secondary: #ffffff;
   --text-primary: #1d1f21;
@@ -14,7 +13,6 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    /* 🎨 Paleta Base (Modo Oscuro Profundo) */
     --bg-primary: #0a0a0a;
     --bg-secondary: #171717;
     --text-primary: #f4f5f5;
@@ -22,6 +20,16 @@
     --border-color: #3f3f46;
     --accent-color: #f64900;
     --shadow-color: #000000;
+  }
+}
+
+@keyframes progress-stripes {
+  from {
+    background-position: 1rem 0;
+  }
+
+  to {
+    background-position: 0 0;
   }
 }
 
@@ -39,11 +47,9 @@ body {
   background: var(--bg-primary);
   color: var(--text-primary);
   font-family: var(--font-sans), Arial, Helvetica, sans-serif;
-  /* Suaviza el scroll en toda la web preparándonos para Lenis */
   scroll-behavior: smooth;
 }
 
-/* 🧱 Utilidades Neo-Brutalistas Globales */
 .neo-border {
   border: 2px solid var(--border-color);
   border-radius: 0.5rem;
@@ -63,7 +69,6 @@ body {
   box-shadow: 4px 4px 0px 0px var(--accent-color);
 }
 
-/* Scrollbar técnica y minimalista */
 ::-webkit-scrollbar {
   width: 8px;
 }

@@ -7,6 +7,7 @@ import { Button } from "@/src/system/atoms/Button";
 import { useAuthStore } from "@/src/store/authStore";
 import { UserDropdown } from "./UserDropdown";
 import { NotificationDropdown } from "./NotificationDropdown";
+import Image from "next/image";
 
 export function Navbar() {
   const pathname = usePathname();
@@ -17,11 +18,15 @@ export function Navbar() {
   return (
     <nav className="bg-(--bg-secondary) border-b-4 border-(--border-color) px-4 sm:px-6 py-4 flex justify-between items-center z-40 sticky top-0 transition-colors">
       <div className="flex items-center gap-6">
-        <Link
-          href="/"
-          className="font-mono font-black text-lg sm:text-xl text-foreground hover:text-(--accent-color) transition-colors tracking-tighter"
-        >
-          EH<span className="text-(--accent-color)">-</span>EXPLORER
+        <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
+          <Image
+            src="/brand.svg"
+            alt="EH Explorer Bunker"
+            width={150} // El ancho base de renderizado
+            height={40} // El alto proporcional (ej: 150 * (484/1750))
+            priority // CRÍTICO: El logo siempre debe cargar primero, sin lazy-loading
+            className="w-auto h-auto max-h-10" // Asegura que el logo no exceda los 40px de altura, manteniendo la proporción 
+          />
         </Link>
 
         {user && (

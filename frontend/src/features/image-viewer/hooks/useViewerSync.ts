@@ -2,6 +2,7 @@
 import { useState, useCallback } from "react";
 import { api } from "@/src/services/api";
 import { ViewerPageItem } from "@/src/types/gallery";
+import { useProgressStore } from "@/src/store/progressStore";
 
 export function useViewerSync(activeUrl: string) {
   const [isViewerOpen, setIsViewerOpen] = useState(false);
@@ -14,8 +15,7 @@ export function useViewerSync(activeUrl: string) {
   const openViewer = async (targetUrl?: string) => {
     const urlToFetch = targetUrl || activeUrl;
 
-    console.log("🧠 [QA DEBUG - CAPA 2] Iniciando openViewer()");
-    console.log("🔗 URL solicitada al Backend:", urlToFetch);
+    useProgressStore.getState().startWork();
 
     if (!urlToFetch) {
       console.warn("⚠️ [QA DEBUG] openViewer abortado: targetUrl es undefined");
@@ -27,15 +27,10 @@ export function useViewerSync(activeUrl: string) {
     setViewerPages([]);
 
     try {
-      // 🟢 Disparamos la petición al Backend
+      useProgressStore.getState().startWork();
       const res = await api.leer(urlToFetch, 0);
-
-      console.log("📥 [QA DEBUG - CAPA 2] RESPUESTA BRUTA DEL BACKEND:", res);
-
-      // 🛡️ PROGRAMACIÓN DEFENSIVA: Extraemos el array venga como venga (data, paginas o enlaces)
       const dataArray = res.data || res.paginas || res.enlaces;
 
-      console.log("🔍 [QA DEBUG - CAPA 2] Array de imágenes detectado:", dataArray);
 
       if (res.status === "success" || res.status === "ok" || (dataArray && dataArray.length > 0)) {
         if (Array.isArray(dataArray) && dataArray.length > 0) {
@@ -69,15 +64,17 @@ export function useViewerSync(activeUrl: string) {
   };
 
   const loadNextPage = useCallback(async () => {
-    // Para simplificar la prueba actual, dejamos el loadNextPage con su lógica básica
     if (!hasMorePages || isLoadingMore) return;
     setIsLoadingMore(true);
+
     try {
       const res = await api.leer(activeUrl, currentViewerPage);
       const dataArray = res.data || res.paginas || res.enlaces;
+
       if (Array.isArray(dataArray)) {
         setViewerPages((prev) => [...prev, ...dataArray]);
         setHasMorePages(!!res.has_next);
+
         if (res.has_next) setCurrentViewerPage((prev) => prev + 1);
       }
     } catch (e) {
@@ -86,6 +83,7 @@ export function useViewerSync(activeUrl: string) {
       setIsLoadingMore(false);
     }
   }, [activeUrl, currentViewerPage, hasMorePages, isLoadingMore]);
+  useProgressStore.getState().stopWork();
 
   return {
     viewerPages,

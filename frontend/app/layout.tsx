@@ -4,6 +4,7 @@ import "./globals.css";
 import { AuthProvider } from "@/src/features/auth/AuthProvider";
 import { Navbar } from "@/src/system/organisms/Layout/Navbar/Navbar";
 import { AppToaster } from "@/src/system/organisms/Layout/AppToaster";
+import { GlobalProgress } from "@/src/system/organisms/Layout/GlobalProgress";
 
 const prompt = Prompt({
   weight: ["400", "700", "900"],
@@ -27,6 +28,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="es" className={`${prompt.variable} ${spaceMono.variable}`}>
       <body className="antialiased selection:bg-(--accent-color) selection:text-white">
         <AuthProvider>
+          <GlobalProgress />
           <Navbar />
           {children}
           <AppToaster />

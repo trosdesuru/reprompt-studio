@@ -3,7 +3,6 @@ import { useState, useCallback, useEffect } from "react";
 export function useViewerNavigation(pages: any[]) {
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
 
-  // 🟢 Programación Defensiva: Si prev es null, asume 0. 
   const showNext = useCallback((e?: React.MouseEvent | KeyboardEvent) => {
     e?.stopPropagation();
     setSelectedIndex((prev) => {

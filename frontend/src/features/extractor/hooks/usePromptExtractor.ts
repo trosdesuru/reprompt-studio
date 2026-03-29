@@ -4,6 +4,7 @@ import { getRawTextFromFile } from "../utils/fileExtractors";
 import { extractFilesFromZip } from "../utils/fileExtractors/zipExtractor";
 import { handleError } from "@/src/utils/errors/ErrorHandler";
 
+
 export interface BatchItem {
   id: string;
   file: File;
