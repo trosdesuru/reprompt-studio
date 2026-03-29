@@ -3,6 +3,7 @@ from sqlmodel import SQLModel, Session
 from app.core.db import engine
 from app.models.user import InviteCode, User, AuditLog
 from app.models.gallery import GalleryMetric
+from app.models.prompt import SavedPrompt
 
 
 def init_db():

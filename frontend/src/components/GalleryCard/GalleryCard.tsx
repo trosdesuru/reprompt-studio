@@ -40,15 +40,15 @@ export function GalleryCard({ item, onOpenVisor, onDownloadTotal }: GalleryCardP
         )}
       </div>
 
-      <div className="p-4 flex flex-col grow">
+      <div className="p-4 flex flex-col grow justify-between gap-3">
         <h3
-          className="text-sm font-bold leading-tight mb-4 line-clamp-3 hover:text-(--accent-color) cursor-pointer"
+          className="text-sm font-bold leading-tight line-clamp-2 hover:text-(--accent-color) cursor-pointer"
           onClick={() => onOpenVisor(item)}
           title={item.title}
         >
           {item.title}
         </h3>
-        <div className="mt-auto">
+        <div className="mt-auto pt-2 border-t border-(--border-color)/30">
           <Button
             onClick={() => onDownloadTotal(item)}
             variant="secondary"
