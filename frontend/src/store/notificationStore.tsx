@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import toast from "react-hot-toast";
+import { IconAlertTriangle, IconInfoCircle } from "@tabler/icons-react";
 
 export type NotificationType = "success" | "error" | "info" | "warning";
 
@@ -15,7 +16,6 @@ export interface AppNotification {
 interface NotificationState {
   notifications: AppNotification[];
   unreadCount: number;
-  // Acciones
   notify: (title: string, message: string, type?: NotificationType) => void;
   markAsRead: (id: string) => void;
   markAllAsRead: () => void;
@@ -37,9 +37,8 @@ export const useNotificationStore = create<NotificationState>((set) => ({
       timestamp: new Date(),
     };
 
-    // 1. Actualizamos el estado de la bandeja y el contador
     set((state) => ({
-      notifications: [newNotif, ...state.notifications].slice(0, 50), // Guardamos máximo 50
+      notifications: [newNotif, ...state.notifications].slice(0, 50),
       unreadCount: state.unreadCount + 1,
     }));
 
@@ -53,12 +52,17 @@ export const useNotificationStore = create<NotificationState>((set) => ({
         toast.error(toastMessage, { id });
         break;
       case "warning":
-        // Usamos el custom que definimos en AppToaster para el warning
-        toast(toastMessage, { id, icon: "⚠️" });
+        toast(toastMessage, {
+          id,
+          icon: <IconAlertTriangle size={20} className="text-yellow-500" />, // 🟢 Icono Tabler inyectado
+        });
         break;
       case "info":
       default:
-        toast(toastMessage, { id, icon: "ℹ️" });
+        toast(toastMessage, {
+          id,
+          icon: <IconInfoCircle size={20} className="text-blue-500" />, // 🟢 Icono Tabler inyectado
+        });
         break;
     }
   },
