@@ -23,7 +23,7 @@ export function ExtractorInspector({ data, previewUrl, onReset }: Props) {
     setSaveStatus("idle");
 
     try {
-      // MAGIA: Convertir la imagen temporal (blob) a Base64 para guardarla
+      // 🟢 1. MAGIA BASE64: Convertimos la imagen antes de enviarla
       let finalImageUrl = null;
       if (previewUrl) {
         if (previewUrl.startsWith("blob:")) {
@@ -35,7 +35,7 @@ export function ExtractorInspector({ data, previewUrl, onReset }: Props) {
             reader.readAsDataURL(blob);
           });
         } else {
-          finalImageUrl = previewUrl; // Si ya es Base64 o URL externa
+          finalImageUrl = previewUrl;
         }
       }
 

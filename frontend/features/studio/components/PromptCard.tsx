@@ -41,6 +41,7 @@ export function PromptCard({ item, onDelete }: Props) {
           <img
             src={item.image_url}
             alt={item.title}
+            referrerPolicy="no-referrer"
             className="w-full h-full object-cover opacity-90 group-hover:opacity-100 transition-opacity"
             loading="lazy"
           />
