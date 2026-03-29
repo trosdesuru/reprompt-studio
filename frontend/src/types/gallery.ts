@@ -1,6 +1,7 @@
 // frontend/src/types/gallery.ts
 
 export interface GalleryItem {
+  id?: string;
   url: string;
   title: string;
   title_raw?: string;
