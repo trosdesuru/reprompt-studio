@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { useAuth } from "@/src/features/auth/AuthProvider";
+import { api } from "@/src/services/api";
+import { useAuthStore } from "@/src/store/authStore";
 import { useRouter } from "next/navigation";
 import { handleError } from "@/src/utils/errors/ErrorHandler";
 import { useNotificationStore } from "@/src/store/notificationStore";
@@ -10,7 +11,7 @@ import { FormField } from "@/src/system/molecules/FormField";
 import { Button } from "@/src/system/atoms/Button";
 
 export function LoginForm() {
-  const auth = useAuth();
+  const { checkAuth } = useAuthStore();
   const router = useRouter();
   const notify = useNotificationStore((state) => state.notify);
 
@@ -31,7 +32,8 @@ export function LoginForm() {
     setIsLoading(true);
 
     try {
-      await auth.login(formData.username, formData.password);
+      await api.login(formData);
+      await checkAuth();
       notify("Sistemas en línea", `Bienvenido de nuevo, ${formData.username}`, "success");
       router.push("/");
     } catch (err: unknown) {

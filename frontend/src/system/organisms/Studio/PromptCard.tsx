@@ -1,6 +1,6 @@
 import { IconCopy, IconCheck, IconTrash } from "@tabler/icons-react";
 import { useState } from "react";
-import { useStudio, SavedPrompt } from "@/src/features/studio/hooks/useStudio";
+import { SavedPrompt } from "@/src/features/studio/hooks/useStudio";
 import { Badge } from "../../atoms/Badge";
 
 interface Props {
