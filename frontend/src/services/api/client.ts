@@ -1,4 +1,4 @@
-import { AuthError } from "@/src/utils/errors/AppErrors";
+import { AuthError, NetworkError } from "@/src/utils/errors/AppErrors";
 
 export const API_URL = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000") + "/api";
 
@@ -56,15 +56,9 @@ export const fetchSeguro = async <T = any>(
         throw new Error("El servidor rechazó el refresco.");
       }
     } catch (err) {
-      const isLoginRoute = typeof window !== "undefined" && window.location.pathname === "/login";
-
-      if (!isLoginRoute) {
-        console.error("Fallo crítico en el refresco:", err);
-        window.location.href = "/login";
-      }
-
       processQueue(err as Error);
-      throw new AuthError("El servidor rechazó el refresco. Por favor, inicia sesión nuevamente.");
+
+      throw new AuthError("Sesión expirada de forma definitiva.");
     } finally {
       isRefreshing = false;
     }
@@ -72,7 +66,7 @@ export const fetchSeguro = async <T = any>(
 
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({}));
-    throw new Error(errorData.detail || `HTTP error! status: ${res.status}`);
+    throw new NetworkError(errorData.detail || "Fallo en la petición HTTP", res.status);
   }
 
   return res.json();

@@ -1,7 +1,7 @@
 export class AppError extends Error {
   constructor(
     public message: string,
-    public code?: string,
+    public code: string,
   ) {
     super(message);
     this.name = "AppError";
@@ -15,9 +15,22 @@ export class AuthError extends AppError {
   }
 }
 
-export class MetadataError extends AppError {
-  constructor(message: string) {
-    super(message, "METADATA_PARSE_ERROR");
-    this.name = "MetadataError";
+export class ExtractionError extends AppError {
+  constructor(
+    message: string,
+    code: "UNSUPPORTED_FORMAT" | "NO_METADATA" | "PARSE_FAILED" = "PARSE_FAILED",
+  ) {
+    super(message, code);
+    this.name = "ExtractionError";
+  }
+}
+
+export class NetworkError extends AppError {
+  constructor(
+    message: string,
+    public statusCode?: number,
+  ) {
+    super(message, "NETWORK_ERROR");
+    this.name = "NetworkError";
   }
 }

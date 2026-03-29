@@ -2,6 +2,7 @@
 import { create } from "zustand";
 import { api } from "@/src/services/api";
 import { GalleryItem } from "@/src/types/gallery";
+import { handleError } from "../utils/errors/ErrorHandler";
 
 interface SearchState {
   query: string;
@@ -70,8 +71,9 @@ export const useSearchStore = create<SearchState>((set, get) => ({
           hasMore: !!data.next_id,
         });
       }
-    } catch (err: any) {
-      set({ error: err.message || "Error en la búsqueda" });
+    } catch (err: unknown) {
+      const cleanMessage = handleError(err, "SearchStore");
+      set({ error: cleanMessage });
     } finally {
       set({ isLoading: false });
     }

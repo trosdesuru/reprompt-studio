@@ -1,9 +1,9 @@
-// frontend/features/auth/components/LoginForm.tsx
 "use client";
 
 import { useState } from "react";
 import { api } from "@/src/services/api";
 import { Button } from "@/src/components/ui/Button";
+import { handleError } from "@/src/utils/errors/ErrorHandler";
 
 export default function LoginForm() {
   const [formData, setFormData] = useState({
@@ -19,12 +19,13 @@ export default function LoginForm() {
     setError(null);
 
     try {
-      // Intentamos el login. Si tiene éxito, el backend nos pondrá la cookie HttpOnly
       await api.login(formData);
-      // Redirigimos al home tras el éxito
       window.location.href = "/";
-    } catch (err: any) {
-      setError(err.message || "Error al iniciar sesión");
+
+    } catch (err: unknown) {
+      const msg = handleError(err, "LoginForm");
+      setError(msg);
+      
     } finally {
       setIsLoading(false);
     }
