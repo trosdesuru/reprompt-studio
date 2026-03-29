@@ -7,7 +7,7 @@ import { DropzoneContent } from "./DropzoneContent";
 import { DropzoneError } from "./DropzoneError";
 
 interface ExtractorDropzoneProps {
-  onFileDrop: (file: File) => void;
+  onFileDrop: (files: File[]) => void; // 🟢 Ahora emite un Array
   isExtracting: boolean;
   error: string | null;
 }
@@ -23,10 +23,9 @@ export function ExtractorDropzone({
     (acceptedFiles: File[], fileRejections: any[]) => {
       setLocalError(null);
       if (fileRejections.length > 0) {
-        setLocalError("Formato no soportado. Usa PNG, JPG, TXT o JSON.");
-        return;
+        setLocalError("Algún archivo no es soportado. Usa ZIP, PNG, JPG, TXT o JSON.");
       }
-      if (acceptedFiles.length > 0) onFileDrop(acceptedFiles[0]);
+      if (acceptedFiles.length > 0) onFileDrop(acceptedFiles);
     },
     [onFileDrop],
   );
@@ -38,9 +37,11 @@ export function ExtractorDropzone({
       "image/jpeg": [".jpg", ".jpeg"],
       "text/plain": [".txt"],
       "application/json": [".json"],
+      "application/zip": [".zip"], // 🟢 Soporte para ZIP
+      "application/x-zip-compressed": [".zip"],
     },
-    maxFiles: 1,
     disabled: isExtracting,
+    // 🟢 Quitamos maxFiles para permitir arrastrar varios de golpe
   });
 
   if (isExtracting) return <DropzoneLoading />;
@@ -57,9 +58,7 @@ export function ExtractorDropzone({
       }`}
     >
       <input {...getInputProps()} />
-
       <DropzoneContent isDragActive={isDragActive} />
-
       {activeError && <DropzoneError message={activeError} />}
     </div>
   );
