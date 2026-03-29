@@ -11,6 +11,7 @@ import {
 import { api } from "@/src/services/api";
 import { handleError } from "@/src/utils/errors/ErrorHandler";
 import { InspectorBadges } from "./InspectorBadges";
+import { useNotificationStore } from "@/src/store/notificationStore";
 
 interface Props {
   batch: BatchItem[];
@@ -40,9 +41,11 @@ export function BatchInspector({
   onClearSkipped,
 }: Props) {
   const [isGlobalLoading, setIsGlobalLoading] = useState(false);
+  const notify = useNotificationStore((state) => state.notify);
 
   const handleSaveItem = async (item: BatchItem) => {
     if (item.status === "success") return;
+
     onUpdateStatus(item.id, "saving");
 
     try {
@@ -68,10 +71,12 @@ export function BatchInspector({
 
       await api.guardarPrompt(payload);
       onUpdateStatus(item.id, "success");
+      notify("Búnker", "Prompt guardado correctamente", "success");
 
       setTimeout(() => {
         onRemoveItem(item.id);
-      }, 2000);
+        notify("Búnker", "Prompt eliminado correctamente", "success");
+      }, 1000);
     } catch (err: unknown) {
       handleError(err, "SaveBatchItem");
       onUpdateStatus(item.id, "error");

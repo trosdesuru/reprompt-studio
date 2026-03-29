@@ -3,6 +3,7 @@ import { Space_Mono, Prompt } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/src/components/AuthProvider";
 import { Navbar } from "@/src/components/layout/Navbar";
+import { Toaster } from "react-hot-toast";
 
 // const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 const prompt = Prompt({
@@ -25,6 +26,18 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="es" className={`${prompt.variable} ${spaceMono.variable}`}>
       <body className="antialiased selection:bg-(--accent-color) selection:text-white">
+        <Toaster
+          position="bottom-right"
+          toastOptions={{
+            className:
+              "bg-background text-foreground border border-(--border-color) shadow-lg font-sans text-sm",
+            style: {
+              borderRadius: "8px",
+              background: "var(--bg-secondary)",
+              color: "var(--text-primary)",
+            },
+          }}
+        />
         <AuthProvider>
           <Navbar />
           {children}

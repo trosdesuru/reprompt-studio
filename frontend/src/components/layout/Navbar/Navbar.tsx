@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Button } from "@/src/components/ui/Button";
 import { useAuthStore } from "@/src/store/authStore";
 import { UserDropdown } from "./UserDropdown";
+import { NotificationDropdown } from "./NotificationDropdown";
 
 export function Navbar() {
   const pathname = usePathname();
@@ -52,6 +53,8 @@ export function Navbar() {
             </Link>
           </>
         )}
+
+        {user && <NotificationDropdown />}
 
         {isLoadingAuth ? (
           <div className="h-9 w-9 sm:h-10 sm:w-10 bg-gray-200 dark:bg-gray-800 animate-pulse rounded neo-border"></div>
