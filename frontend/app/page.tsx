@@ -90,15 +90,17 @@ export default function Home() {
             onDownloadTotal={handleDownloadTotal}
           />
         )}
-
-        <SearchResults
-          results={results}
-          hasMore={hasMore}
-          isLoadingMore={isLoadingMoreResults}
-          onLoadMore={loadMore}
-          onOpenVisor={handleOpenVisor}
-          onDownloadTotal={handleDownloadTotal}
-        />
+        
+       {!isLoading && results.length > 0 && (
+          <SearchResults
+            results={results}
+            onOpenVisor={handleOpenVisor}
+            onDownloadTotal={handleDownloadTotal}
+            hasMore={hasMore}
+            isLoadingMore={isLoadingMoreResults}
+            onLoadMore={loadMore}
+          />
+        )}
 
         {isViewerOpen && (
           <ImageViewerModal

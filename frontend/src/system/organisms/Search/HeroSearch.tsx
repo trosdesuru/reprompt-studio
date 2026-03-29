@@ -1,17 +1,28 @@
-import { useState } from "react";
+import React from "react";
 import { IconSearch } from "@tabler/icons-react";
 
 interface Props {
-  onSearch: (query: string) => void;
+  query: string;
+  setQuery: (query: string) => void;
+  onSearch: (input?: string | React.FormEvent) => void;
   isLoading: boolean;
+  activeCategories?: Record<string, boolean>;
+  toggleCategory?: (id: string) => void;
 }
 
-export function HeroSearch({ onSearch, isLoading }: Props) {
-  const [query, setQuery] = useState("");
-
+export function HeroSearch({
+  query,
+  setQuery,
+  onSearch,
+  isLoading,
+  activeCategories,
+  toggleCategory,
+}: Props) {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (query.trim()) onSearch(query);
+    if (query.trim()) {
+      onSearch(e);
+    }
   };
 
   return (
@@ -29,7 +40,7 @@ export function HeroSearch({ onSearch, isLoading }: Props) {
         <input
           type="text"
           value={query}
-          onChange={(e) => setQuery(e.target.value)}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setQuery(e.target.value)}
           placeholder="Buscar galerías, tags, artistas..."
           className="grow neo-border p-4 md:p-6 bg-background font-mono text-lg focus:outline-none focus:ring-2 focus:ring-(--accent-color) border-r-0"
         />
@@ -47,6 +58,20 @@ export function HeroSearch({ onSearch, isLoading }: Props) {
           )}
         </button>
       </form>
+
+      {activeCategories && toggleCategory && Object.keys(activeCategories).length > 0 && (
+        <div className="flex flex-wrap justify-center gap-2 mt-4">
+          {Object.entries(activeCategories).map(([cat, isActive]) => (
+            <button
+              key={cat}
+              onClick={() => toggleCategory(cat)}
+              className={`text-xs font-mono px-3 py-1 neo-border transition-colors ${isActive ? "bg-(--accent-color) text-white" : "bg-background text-(--text-secondary)"}`}
+            >
+              {cat}
+            </button>
+          ))}
+        </div>
+      )}
     </section>
   );
 }
