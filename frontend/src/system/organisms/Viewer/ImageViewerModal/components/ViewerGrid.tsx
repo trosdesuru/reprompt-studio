@@ -1,93 +1,70 @@
-// frontend/features/image-viewer/ImageViewerModal/components/ViewerGrid.tsx
-import { useEffect, useRef } from "react";
-import { ImageCard } from "../../ImageCard";
-import { ViewerPageItem } from "@/src/types/gallery";
 import { Skeleton } from "@/src/system/atoms/Skeleton";
+import { useInView } from "react-intersection-observer";
+import { useEffect } from "react";
 
-interface ViewerGridProps {
-  pages: ViewerPageItem[];
-  galleryTitle: string;
-  isLoading: boolean;
-  isLoadingMore?: boolean;
+interface Props {
+  pages: any[];
+  currentIndex: number;
+  onSelect: (index: number) => void;
+  // Nuevas props
   hasMorePages?: boolean;
+  isLoadingMore?: boolean;
   onLoadMore?: () => void;
-  onSelectImage: (index: number) => void;
 }
 
 export function ViewerGrid({
   pages,
-  galleryTitle,
-  isLoading,
-  isLoadingMore,
+  currentIndex,
+  onSelect,
   hasMorePages,
+  isLoadingMore,
   onLoadMore,
-  onSelectImage,
-}: ViewerGridProps) {
-  const observerRef = useRef<HTMLDivElement>(null);
+}: Props) {
+  // 🟢 El centinela del Grid
+  const { ref, inView } = useInView({
+    rootMargin: "400px",
+  });
 
   useEffect(() => {
-    if (!hasMorePages || !onLoadMore || isLoadingMore) return;
+    if (inView && hasMorePages && !isLoadingMore && onLoadMore) {
+      onLoadMore();
+    }
+  }, [inView, hasMorePages, isLoadingMore, onLoadMore]);
 
-    // Aumentamos el rootMargin a 600px para que empiece a cargar mucho antes de llegar al final
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting) onLoadMore();
-      },
-      { rootMargin: "600px" },
-    );
-
-    if (observerRef.current) observer.observe(observerRef.current);
-    return () => observer.disconnect();
-  }, [hasMorePages, onLoadMore, isLoadingMore]);
-
-  if (isLoading && pages.length === 0) {
-    return (
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6 max-w-7xl mx-auto w-full pb-20">
-        {Array.from({ length: 15 }).map((_, i) => (
-          <div key={`skeleton-${i}`} className="flex flex-col gap-3">
-            <Skeleton className="h-56 w-full" />
-            <Skeleton className="h-8 w-full" />
+  return (
+    <div className="w-full h-full overflow-y-auto pr-2 custom-scrollbar">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 pb-20">
+        {pages.map((page, index) => (
+          <div
+            key={page.image_url || `grid-${index}`}
+            onClick={() => onSelect(index)}
+            className={`cursor-pointer neo-border aspect-3/4 relative overflow-hidden transition-all ${
+              currentIndex === index ? "ring-4 ring-(--accent-color) scale-95" : "hover:scale-105"
+            }`}
+          >
+            {page.image_url ? (
+              <img
+                src={page.image_url}
+                alt={`Page ${index}`}
+                className="w-full h-full object-cover"
+                loading="lazy"
+              />
+            ) : (
+              <Skeleton className="w-full h-full" />
+            )}
+            <div className="absolute bottom-0 left-0 bg-black/80 text-white text-[10px] font-mono px-2 py-1">
+              {index + 1}
+            </div>
           </div>
         ))}
       </div>
-    );
-  }
 
-  return (
-    <div className="relative z-10 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6 max-w-7xl mx-auto w-full pb-20">
-      {pages.map((item, i) => (
-        <ImageCard
-          key={`img-${i}`}
-          item={item}
-          index={i + 1}
-          galleryTitle={galleryTitle}
-          onOpenImage={() => onSelectImage(i)}
-        />
-      ))}
-
-      {/* 🟢 FIX CRÍTICO: El Centinela ahora tiene min-h-[100px] siempre */}
+      {/* 🟢 El Centinela en la parte inferior del Grid */}
       {hasMorePages && (
-        <div
-          ref={observerRef}
-          className="col-span-full w-full min-h-100px flex items-center justify-center mt-8 border-t-2 border-dashed border-gray-700/50"
-        >
-          {isLoadingMore ? (
-            <div className="flex flex-col items-center gap-3">
-              <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-(--accent-color)"></div>
-              <span className="font-mono text-xs text-white uppercase tracking-widest opacity-70">
-                Extrayendo más imágenes...
-              </span>
-            </div>
-          ) : (
-            // Esto asegura que el div exista para el observer aunque no estemos cargando
-            <div className="w-full h-full"></div>
+        <div ref={ref} className="w-full flex justify-center py-8">
+          {isLoadingMore && (
+            <div className="w-8 h-8 rounded-full border-4 border-(--accent-color) border-t-transparent animate-spin" />
           )}
-        </div>
-      )}
-
-      {!isLoading && pages.length === 0 && (
-        <div className="col-span-full text-center p-8 font-mono text-white text-lg">
-          No se encontraron páginas en esta galería.
         </div>
       )}
     </div>
