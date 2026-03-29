@@ -1,4 +1,4 @@
-import { ExtractedPromptData } from "../../utils/parsers/types";
+import { ExtractedPromptData } from "@/src/features/extractor/utils/parsers/types";
 
 export function InspectorBadges({ data }: { data: ExtractedPromptData }) {
   const items = [

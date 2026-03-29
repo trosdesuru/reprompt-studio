@@ -2,7 +2,7 @@
 
 import { useState, useRef } from "react";
 import { useNotificationStore } from "@/src/store/notificationStore";
-import { useClickOutside } from "@/src/components/hooks/useClickOutside";
+import { useClickOutside } from "@/src/utils/hooks/useClickOutside";
 import {
   IconBell,
   IconBellFilled,

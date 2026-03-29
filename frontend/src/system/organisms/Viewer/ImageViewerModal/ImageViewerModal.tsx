@@ -2,11 +2,11 @@
 "use client";
 
 import { useEffect } from "react";
-import { useViewerNavigation } from "@/features/image-viewer/hooks/useViewerNavigation";
+import { useViewerNavigation } from "@/src/features/image-viewer/hooks/useViewerNavigation";
 import { ViewerGrid } from "./components/ViewerGrid";
 import { ViewerLightbox } from "./components/ViewerLightbox";
 import { ImageViewerModalProps } from "./ImageViewerModal.types";
-import { Button } from "@/src/components/ui/Button";
+import { Button } from "@/src/system/atoms/Button";
 
 export function ImageViewerModal({
   title,

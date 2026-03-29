@@ -1,5 +1,5 @@
 // frontend/features/admin/components/SecurityModule.tsx
-import { Button } from "@/src/components/ui/Button";
+import { Button } from "@/src/system/atoms/Button";
 
 export function SecurityModule({ onRevokeAll }: { onRevokeAll: () => void }) {
   return (

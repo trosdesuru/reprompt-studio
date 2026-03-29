@@ -1,9 +1,9 @@
 import { useState } from "react";
-import { ExtractedPromptData } from "../../utils/parsers/types";
+import { ExtractedPromptData } from "@/src/features/extractor/utils/parsers/types";
 import { InspectorBadges } from "./InspectorBadges";
 import { InspectorResources } from "./InspectorResources";
 import { InspectorPromptBox } from "./InspectorPromptBox";
-import { Button } from "@/src/components/ui/Button";
+import { Button } from "@/src/system/atoms/Button";
 import { IconTrash, IconDeviceFloppy } from "@tabler/icons-react";
 import { api } from "@/src/services/api";
 import { handleError } from "@/src/utils/errors/ErrorHandler";

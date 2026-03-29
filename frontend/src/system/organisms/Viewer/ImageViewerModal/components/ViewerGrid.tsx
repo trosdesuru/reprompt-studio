@@ -2,7 +2,7 @@
 import { useEffect, useRef } from "react";
 import { ImageCard } from "../../ImageCard";
 import { ViewerPageItem } from "@/src/types/gallery";
-import { Skeleton } from "@/src/components/ui/Skeleton";
+import { Skeleton } from "@/src/system/atoms/Skeleton";
 
 interface ViewerGridProps {
   pages: ViewerPageItem[];

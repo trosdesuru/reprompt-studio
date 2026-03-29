@@ -1,6 +1,6 @@
 import { IconBox, IconTags } from "@tabler/icons-react";
 import { useState } from "react";
-import { ExtractedPromptData } from "../../utils/parsers/types";
+import { ExtractedPromptData } from "@/src/features/extractor/utils/parsers/types";
 
 export function InspectorResources({ data }: { data: ExtractedPromptData }) {
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
@@ -20,7 +20,7 @@ export function InspectorResources({ data }: { data: ExtractedPromptData }) {
             <IconBox size={14} /> LoRAs Detectados
           </div>
           <div className="flex flex-wrap gap-2">
-            {data.loras.map((lora, i) => (
+            {data.loras.map((lora: any, i: number) => (
               <div key={i} className="bg-yellow-400 border-2 border-black px-2 py-1 text-[10px] font-bold font-mono text-black flex items-center gap-1 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
                 {lora.name} <span className="bg-black text-yellow-400 px-1 ml-1">{lora.strength}</span>
               </div>
@@ -36,7 +36,7 @@ export function InspectorResources({ data }: { data: ExtractedPromptData }) {
             <IconTags size={14} /> Trigger Words
           </div>
           <div className="flex flex-wrap gap-2">
-            {data.triggerWords.map((word, i) => (
+            {data.triggerWords.map((word: string, i: number) => (
               <button key={i} onClick={() => copy(word, `tw-${i}`)} className="bg-green-400 hover:bg-green-300 border-2 border-black px-2 py-1 text-[10px] font-bold font-mono text-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-px active:shadow-none transition-all">
                 {copiedKey === `tw-${i}` ? "¡COPIADO!" : word}
               </button>

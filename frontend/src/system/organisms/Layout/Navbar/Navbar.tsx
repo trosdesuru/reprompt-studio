@@ -3,7 +3,7 @@
 import { IconWand, IconArchive } from "@tabler/icons-react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
-import { Button } from "@/src/components/ui/Button";
+import { Button } from "@/src/system/atoms/Button";
 import { useAuthStore } from "@/src/store/authStore";
 import { UserDropdown } from "./UserDropdown";
 import { NotificationDropdown } from "./NotificationDropdown";

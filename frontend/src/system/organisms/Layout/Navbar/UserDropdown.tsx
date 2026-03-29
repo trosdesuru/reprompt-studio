@@ -3,9 +3,9 @@
 import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/src/store/authStore";
-import { useTheme } from "@/src/components/hooks/useTheme";
-import { useClickOutside } from "@/src/components/hooks/useClickOutside";
-import { ChangePasswordModal } from "@/features/auth/components/ChangePasswordModal";
+import { useTheme } from "@/src/utils/hooks/useTheme";
+import { useClickOutside } from "@/src/utils/hooks/useClickOutside";
+import { ChangePasswordModal } from "@/src/system/organisms/Auth/ChangePasswordModal";
 
 import {
   IconMenu2,

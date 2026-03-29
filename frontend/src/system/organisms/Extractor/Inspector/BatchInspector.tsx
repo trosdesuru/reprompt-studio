@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { BatchItem, SkippedFile } from "../../hooks/usePromptExtractor";
-import { Button } from "@/src/components/ui/Button";
+import { BatchItem, SkippedFile } from "@/src/features/extractor/hooks/usePromptExtractor";
+import { Button } from "@/src/system/atoms/Button";
 import {
   IconTrash,
   IconDeviceFloppy,

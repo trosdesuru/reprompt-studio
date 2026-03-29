@@ -1,6 +1,6 @@
 "use client";
 
-import { StandardImageCard } from "@/src/components/StandardImageCard";
+import { StandardImageCard } from "@/src/system/organisms/Viewer/StandardImageCard";
 import { useImageCard } from "./useImageCard";
 import { ImageCardProps } from "./ImageCard.types";
 

@@ -2,7 +2,7 @@
 import { useEffect, useState, useRef } from "react";
 import { ViewerPageItem } from "@/src/types/gallery";
 import { api } from "@/src/services/api";
-import { Button } from "@/src/components/ui/Button";
+import { Button } from "@/src/system/atoms/Button";
 
 interface ViewerLightboxProps {
   pages: ViewerPageItem[];
