@@ -22,21 +22,37 @@ export function ExtractorInspector({ data, previewUrl, onReset }: Props) {
     setIsSaving(true);
     setSaveStatus("idle");
 
+    console.log("🛠️ [DEBUG FRONTEND] 1. Botón Guardar pulsado");
+    console.log(
+      "🛠️ [DEBUG FRONTEND] 2. previewUrl actual:",
+      previewUrl ? previewUrl.substring(0, 50) + "..." : "NULO",
+    );
+
     try {
-      // 🟢 1. MAGIA BASE64: Convertimos la imagen antes de enviarla
       let finalImageUrl = null;
+
       if (previewUrl) {
         if (previewUrl.startsWith("blob:")) {
+          console.log(
+            "🛠️ [DEBUG FRONTEND] 3A. Detectado formato BLOB. Iniciando conversión a Base64...",
+          );
           const response = await fetch(previewUrl);
           const blob = await response.blob();
+
           finalImageUrl = await new Promise<string>((resolve) => {
             const reader = new FileReader();
-            reader.onloadend = () => resolve(reader.result as string);
+            reader.onloadend = () => {
+              console.log("🛠️ [DEBUG FRONTEND] 4. Conversión exitosa. Base64 listo.");
+              resolve(reader.result as string);
+            };
             reader.readAsDataURL(blob);
           });
         } else {
+          console.log("🛠️ [DEBUG FRONTEND] 3B. La imagen ya es una URL normal o Base64.");
           finalImageUrl = previewUrl;
         }
+      } else {
+        console.warn("⚠️ [DEBUG FRONTEND] No hay previewUrl. El prompt se guardará sin imagen.");
       }
 
       const payload = {
@@ -50,18 +66,27 @@ export function ExtractorInspector({ data, previewUrl, onReset }: Props) {
         cfg_scale: data.cfgScale,
         seed: data.seed,
         resolution: data.resolution,
-        image_url: finalImageUrl,
+        image_url: finalImageUrl, // 🟢 Aquí va la imagen
         extra_data: {
           loras: data.loras || [],
           triggerWords: data.triggerWords || [],
         },
       };
 
-      await api.guardarPrompt(payload);
-      setSaveStatus("success");
+      console.log("🛠️ [DEBUG FRONTEND] 5. Payload listo para enviar al servidor:", {
+        ...payload,
+        image_url: payload.image_url
+          ? `[DATOS DE IMAGEN PRESENTES - Longitud: ${payload.image_url.length}]`
+          : "[VACÍO]",
+      });
 
+      await api.guardarPrompt(payload);
+      console.log("✅ [DEBUG FRONTEND] 6. El backend respondió 200 OK.");
+
+      setSaveStatus("success");
       setTimeout(() => setSaveStatus("idle"), 3000);
     } catch (err: unknown) {
+      console.error("💥 [DEBUG FRONTEND] Error en la petición:", err);
       handleError(err, "GuardarPrompt");
       setSaveStatus("error");
       setTimeout(() => setSaveStatus("idle"), 3000);

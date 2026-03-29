@@ -29,6 +29,11 @@ export function PromptCard({ item, onDelete }: Props) {
 
   const date = new Date(item.created_at).toLocaleDateString();
 
+  console.log(`🎨 [DEBUG PROMPTCARD] Renderizando ID ${item.id}:`, {
+    tiene_imagen: !!item.image_url,
+    contenido_imagen: item.image_url ? item.image_url.substring(0, 50) + "..." : "NULO/VACÍO"
+  });
+
   return (
     <div
       className={`neo-border bg-(--bg-secondary) flex flex-col h-full hover:neo-shadow-accent transition-all group ${

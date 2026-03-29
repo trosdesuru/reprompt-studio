@@ -18,6 +18,22 @@ def save_prompt(
     current_user: User = Depends(get_current_user),
     session: Session = Depends(get_session),
 ):
+    # 🟢 BALIZAS DE DEBUG
+    logger.info(
+        f"🛠️ [DEBUG BACKEND] 1. Petición recibida de usuario ID: {current_user.id}"
+    )
+    logger.info(f"🛠️ [DEBUG BACKEND] 2. Título del prompt: {prompt_in.title}")
+
+    img_len = len(prompt_in.image_url) if prompt_in.image_url else 0
+    if img_len > 0:
+        logger.info(
+            f"🛠️ [DEBUG BACKEND] 3. ¡IMAGEN RECIBIDA! Longitud de cadena: {img_len}"
+        )
+    else:
+        logger.warning(
+            f"⚠️ [DEBUG BACKEND] 3. El payload llegó sin imagen (image_url está vacío o nulo)"
+        )
+
     try:
         steps_val = (
             int(prompt_in.steps)
@@ -33,18 +49,19 @@ def save_prompt(
                 pass
 
         new_prompt = SavedPrompt(
+            user_id=current_user.id,
             title=prompt_in.title,
             prompt=prompt_in.prompt,
             negative_prompt=prompt_in.negative_prompt,
             software=prompt_in.software,
             model=prompt_in.model,
             sampler=prompt_in.sampler,
-            steps=steps_val,
-            cfg_scale=cfg_val,
+            steps=prompt_in.steps,
+            cfg_scale=prompt_in.cfg_scale,
             seed=prompt_in.seed,
             resolution=prompt_in.resolution,
+            image_url=prompt_in.image_url,
             extra_data=prompt_in.extra_data,
-            user_id=current_user.id,
         )
 
         session.add(new_prompt)
