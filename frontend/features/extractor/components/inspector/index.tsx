@@ -23,6 +23,22 @@ export function ExtractorInspector({ data, previewUrl, onReset }: Props) {
     setSaveStatus("idle");
 
     try {
+      // MAGIA: Convertir la imagen temporal (blob) a Base64 para guardarla
+      let finalImageUrl = null;
+      if (previewUrl) {
+        if (previewUrl.startsWith("blob:")) {
+          const response = await fetch(previewUrl);
+          const blob = await response.blob();
+          finalImageUrl = await new Promise<string>((resolve) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result as string);
+            reader.readAsDataURL(blob);
+          });
+        } else {
+          finalImageUrl = previewUrl; // Si ya es Base64 o URL externa
+        }
+      }
+
       const payload = {
         title: `Gen - ${data.software || "IA"}`,
         prompt: data.prompt,
@@ -34,6 +50,7 @@ export function ExtractorInspector({ data, previewUrl, onReset }: Props) {
         cfg_scale: data.cfgScale,
         seed: data.seed,
         resolution: data.resolution,
+        image_url: finalImageUrl,
         extra_data: {
           loras: data.loras || [],
           triggerWords: data.triggerWords || [],

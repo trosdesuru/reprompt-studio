@@ -1,6 +1,6 @@
 "use client";
 
-import { IconWand } from "@tabler/icons-react";
+import { IconWand, IconArchive } from "@tabler/icons-react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/src/components/ui/Button";
@@ -15,23 +15,42 @@ export function Navbar() {
 
   return (
     <nav className="bg-(--bg-secondary) border-b-4 border-(--border-color) px-4 sm:px-6 py-4 flex justify-between items-center z-40 sticky top-0 transition-colors">
-      <Link
-        href="/"
-        className="font-mono font-black text-lg sm:text-xl text-foreground hover:text-(--accent-color) transition-colors tracking-tighter"
-      >
-        EH<span className="text-(--accent-color)">-</span>EXPLORER
-      </Link>
+      <div className="flex items-center gap-6">
+        <Link
+          href="/"
+          className="font-mono font-black text-lg sm:text-xl text-foreground hover:text-(--accent-color) transition-colors tracking-tighter"
+        >
+          EH<span className="text-(--accent-color)">-</span>EXPLORER
+        </Link>
+
+        {user && (
+          <div className="hidden md:flex items-center gap-4 border-l-2 border-(--border-color) pl-6">
+            <Link
+              href="/studio"
+              className={`font-mono text-xs font-bold uppercase hover:text-(--accent-color) transition-colors ${pathname === "/studio" ? "text-(--accent-color)" : ""}`}
+            >
+              Mi Estudio
+            </Link>
+          </div>
+        )}
+      </div>
 
       <div className="flex gap-3 sm:gap-4 items-center">
         {user && (
-          <Link
-            href="/reprompt"
-            className="flex items-center gap-1.5 sm:gap-2 px-3 py-2 sm:px-4 sm:py-2 bg-background hover:bg-(--accent-color) hover:text-white text-foreground font-mono font-bold text-[10px] sm:text-sm uppercase tracking-wide neo-border transition-all hover:-translate-y-0.5 hover:neo-shadow-accent"
-          >
-            <IconWand size={16} className="sm:w-18px sm:h-18px" />
-            <span className="hidden sm:inline">Reprompt Studio</span>
-            <span className="inline sm:hidden">Reprompt</span>
-          </Link>
+          <>
+            <Link href="/studio" className="flex md:hidden p-2 hover:text-(--accent-color)">
+              <IconArchive size={20} />
+            </Link>
+
+            <Link
+              href="/reprompt"
+              className="flex items-center gap-1.5 sm:gap-2 px-3 py-2 sm:px-4 sm:py-2 bg-background hover:bg-(--accent-color) hover:text-white text-foreground font-mono font-bold text-[10px] sm:text-sm uppercase tracking-wide neo-border transition-all hover:-translate-y-0.5"
+            >
+              <IconWand size={16} />
+              <span className="hidden sm:inline">Reprompt Studio</span>
+              <span className="inline sm:hidden">Reprompt</span>
+            </Link>
+          </>
         )}
 
         {isLoadingAuth ? (

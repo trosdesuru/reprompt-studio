@@ -8,5 +8,6 @@ export const promptApi = {
       body: JSON.stringify(data),
     }),
 
-  obtenerMisPrompts: () => fetchSeguro(`${API_URL}/prompts/`),
+  obtenerMisPrompts: () => fetchSeguro(`${API_URL}/prompts`),
+  eliminarPrompt: (id: number) => fetchSeguro(`${API_URL}/prompts/${id}`, { method: "DELETE" }),
 };

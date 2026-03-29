@@ -14,6 +14,7 @@ class PromptCreate(BaseModel):
     cfg_scale: Optional[str] = None
     seed: Optional[str] = None
     resolution: Optional[str] = None
+    image_url: Optional[str] = None
     extra_data: Dict[str, Any] = {}
 
 
@@ -21,6 +22,8 @@ class PromptResponse(PromptCreate):
     id: int
     user_id: int
     created_at: datetime
+    steps: Optional[int] = None
+    cfg_scale: Optional[float] = None
 
     class Config:
         from_attributes = True

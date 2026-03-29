@@ -11,6 +11,7 @@ export interface SavedPrompt {
   model?: string;
   sampler?: string;
   created_at: string;
+  image_url?: string; // 🟢 Aquí está la propiedad que pedía PromptCard
   extra_data: { loras?: any[]; triggerWords?: string[] };
 }
 
@@ -33,9 +34,19 @@ export function useStudio() {
     }
   }, []);
 
+  const deletePrompt = async (id: number) => {
+    try {
+      await api.eliminarPrompt(id);
+      setPrompts((prev) => prev.filter((p) => p.id !== id));
+    } catch (err: unknown) {
+      handleError(err, "BorrarPrompt");
+      alert("No se pudo eliminar el prompt.");
+    }
+  };
+
   useEffect(() => {
     fetchPrompts();
   }, [fetchPrompts]);
 
-  return { prompts, isLoading, error, refetch: fetchPrompts };
+  return { prompts, isLoading, error, refetch: fetchPrompts, deletePrompt };
 }

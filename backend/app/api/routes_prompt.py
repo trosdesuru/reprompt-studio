@@ -89,3 +89,29 @@ def get_my_prompts(
         raise HTTPException(
             status_code=500, detail="Error interno al recuperar los datos."
         )
+
+
+@router.delete("/{prompt_id}")
+def delete_prompt(
+    prompt_id: int,
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    try:
+        # Buscamos el prompt y verificamos que sea del usuario actual
+        prompt = session.get(SavedPrompt, prompt_id)
+        if not prompt or prompt.user_id != current_user.id:
+            raise HTTPException(
+                status_code=404, detail="Prompt no encontrado o acceso denegado."
+            )
+
+        session.delete(prompt)
+        session.commit()
+        return {"status": "success", "message": "Prompt eliminado del búnker."}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error borrando prompt {prompt_id}: {e}")
+        session.rollback()
+        raise HTTPException(status_code=500, detail="Error al eliminar el prompt.")
