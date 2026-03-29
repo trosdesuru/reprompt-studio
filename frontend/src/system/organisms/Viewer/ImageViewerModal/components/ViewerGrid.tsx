@@ -6,7 +6,6 @@ interface Props {
   pages: any[];
   currentIndex: number;
   onSelect: (index: number) => void;
-  // Nuevas props
   hasMorePages?: boolean;
   isLoadingMore?: boolean;
   onLoadMore?: () => void;
@@ -20,7 +19,6 @@ export function ViewerGrid({
   isLoadingMore,
   onLoadMore,
 }: Props) {
-  // 🟢 El centinela del Grid
   const { ref, inView } = useInView({
     rootMargin: "400px",
   });
