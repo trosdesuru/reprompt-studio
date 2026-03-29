@@ -2,7 +2,6 @@
 import { useState, useCallback } from "react";
 import { api } from "@/src/services/api";
 import { ViewerPageItem } from "@/src/types/gallery";
-import { useProgressStore } from "@/src/store/progressStore";
 
 export function useViewerSync(activeUrl: string) {
   const [isViewerOpen, setIsViewerOpen] = useState(false);
@@ -15,8 +14,6 @@ export function useViewerSync(activeUrl: string) {
   const openViewer = async (targetUrl?: string) => {
     const urlToFetch = targetUrl || activeUrl;
 
-    useProgressStore.getState().startWork();
-
     if (!urlToFetch) {
       console.warn("⚠️ [QA DEBUG] openViewer abortado: targetUrl es undefined");
       return;
@@ -27,10 +24,8 @@ export function useViewerSync(activeUrl: string) {
     setViewerPages([]);
 
     try {
-      useProgressStore.getState().startWork();
       const res = await api.leer(urlToFetch, 0);
       const dataArray = res.data || res.paginas || res.enlaces;
-
 
       if (res.status === "success" || res.status === "ok" || (dataArray && dataArray.length > 0)) {
         if (Array.isArray(dataArray) && dataArray.length > 0) {
@@ -83,7 +78,6 @@ export function useViewerSync(activeUrl: string) {
       setIsLoadingMore(false);
     }
   }, [activeUrl, currentViewerPage, hasMorePages, isLoadingMore]);
-  useProgressStore.getState().stopWork();
 
   return {
     viewerPages,
