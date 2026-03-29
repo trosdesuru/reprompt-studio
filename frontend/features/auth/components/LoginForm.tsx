@@ -1,93 +1,95 @@
 "use client";
 
 import { useState } from "react";
-import { api } from "@/src/services/api";
-import { Button } from "@/src/components/ui/Button";
+import { useAuth } from "@/src/components/AuthProvider";
+import { useRouter } from "next/navigation";
 import { handleError } from "@/src/utils/errors/ErrorHandler";
+import { useNotificationStore } from "@/src/store/notificationStore";
+// 🟢 Importamos el Sistema de Diseño
+import { FormField } from "@/src/system/molecules/FormField";
+import { Button } from "@/src/system/atoms/Button";
 
-export default function LoginForm() {
+export function LoginForm() {
+  const auth = useAuth();
+  const router = useRouter();
+  const notify = useNotificationStore((state) => state.notify);
+
+  const [isLoading, setIsLoading] = useState(false);
+  // 🟢 Centralizamos el estado en un objeto para evitar los errores de "Cannot find name"
   const [formData, setFormData] = useState({
     username: "",
     password: "",
   });
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    setError(null);
 
     try {
-      await api.login(formData);
-      window.location.href = "/";
+      await auth.login(formData.username, formData.password);
+      notify("Sistemas en línea", `Bienvenido de nuevo, ${formData.username}`, "success");
+      router.push("/");
     } catch (err: unknown) {
       const msg = handleError(err, "LoginForm");
-      setError(msg);
+      notify("Error de Acceso", msg, "error");
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="w-full max-w-md mx-auto">
-      <form
-        onSubmit={handleSubmit}
-        className="flex flex-col gap-6 bg-(--bg-secondary) p-8 neo-border neo-shadow"
-      >
-        <div className="text-center mb-2">
-          <h2 className="text-3xl font-black font-mono uppercase tracking-tighter text-foreground">
-            Acceso<span className="text-(--accent-color)">_</span>Admin
-          </h2>
-          <p className="text-(--text-secondary) text-xs font-mono mt-1">
-            Identifícate para explorar
-          </p>
-        </div>
+    <div className="w-full max-w-md mx-auto p-8 bg-(--bg-secondary) neo-border neo-shadow">
+      <div className="mb-8 text-center">
+        <h2 className="text-2xl font-black uppercase font-mono tracking-tighter">
+          Acceso al <span className="text-(--accent-color)">Búnker</span>
+        </h2>
+        <p className="text-xs font-mono text-(--text-secondary) mt-2 uppercase">
+          Identifícate para gestionar tus prompts
+        </p>
+      </div>
 
-        {error && (
-          <div className="bg-red-500 text-white p-3 font-bold neo-border text-xs font-mono uppercase text-center animate-pulse">
-            {error}
-          </div>
-        )}
+      <form onSubmit={handleSubmit} className="space-y-6">
+        {/* 🟢 Usamos la molécula FormField con el mapeo correcto del estado */}
+        <FormField
+          label="Usuario"
+          name="username"
+          type="text"
+          value={formData.username}
+          onChange={handleChange}
+          placeholder="Tu alias..."
+          required
+        />
 
-        <div className="flex flex-col gap-2">
-          <label className="font-bold text-sm uppercase tracking-wide text-foreground">
-            Usuario
-          </label>
-          <input
-            type="text"
-            required
-            autoComplete="username"
-            className="bg-background text-foreground neo-border p-3 focus:outline-none focus:neo-shadow-accent transition-all font-mono"
-            value={formData.username}
-            onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-          />
-        </div>
-
-        <div className="flex flex-col gap-2">
-          <label className="font-bold text-sm uppercase tracking-wide text-foreground">
-            Contraseña
-          </label>
-          <input
-            type="password"
-            required
-            autoComplete="current-password"
-            className="bg-background text-foreground neo-border p-3 focus:outline-none focus:neo-shadow-accent transition-all font-mono"
-            value={formData.password}
-            onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-          />
-        </div>
+        <FormField
+          label="Contraseña"
+          name="password"
+          type="password"
+          value={formData.password}
+          onChange={handleChange}
+          placeholder="••••••••"
+          required
+        />
 
         <Button
           type="submit"
-          variant="primary"
-          size="lg"
           isLoading={isLoading}
-          className="mt-2 w-full"
+          className="w-full justify-center h-12 text-sm font-black uppercase tracking-widest"
         >
-          {isLoading ? "Validando..." : "Entrar al Sistema"}
+          Iniciar Secuencia de Entrada
         </Button>
       </form>
+
+      <div className="mt-6 text-center">
+        <p className="text-[10px] font-mono text-(--text-secondary) uppercase opacity-50">
+          Terminal ID:{" "}
+          {typeof window !== "undefined" ? window.crypto.randomUUID().split("-")[0] : "..."}
+        </p>
+      </div>
     </div>
   );
 }

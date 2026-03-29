@@ -1,8 +1,8 @@
 "use client";
 
 import { usePromptExtractor } from "@/features/extractor/hooks/usePromptExtractor";
-import { ExtractorDropzone } from "@/features/extractor/components/dropzone";
-import { BatchInspector } from "@/features/extractor/components/inspector/BatchInspector";
+import { ExtractorDropzone } from "@/src/system/organisms/Dropzone";
+import { BatchInspector } from "@/src/system/organisms/Inspector/BatchInspector";
 
 export default function RepromptPage() {
   const {

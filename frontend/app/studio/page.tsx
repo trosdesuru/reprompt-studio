@@ -1,7 +1,7 @@
 "use client";
 
 import { useStudio } from "@/features/studio/hooks/useStudio";
-import { PromptCard } from "@/features/studio/components/PromptCard";
+import { PromptCard } from "@/src/system/organisms/PromptCard";
 import { IconWand, IconDatabase } from "@tabler/icons-react";
 import Link from "next/link";
 
