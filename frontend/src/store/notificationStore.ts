@@ -43,10 +43,24 @@ export const useNotificationStore = create<NotificationState>((set) => ({
       unreadCount: state.unreadCount + 1,
     }));
 
-    // 2. Disparamos el Toast visual (con un estilo más limpio, "Civitai-like")
-    if (type === "success") toast.success(`${title}: ${message}`, { id });
-    else if (type === "error") toast.error(`${title}: ${message}`, { id });
-    else toast(`${title}: ${message}`, { id, icon: type === "warning" ? "⚠️" : "ℹ️" });
+    const toastMessage = `${title}: ${message}`;
+
+    switch (type) {
+      case "success":
+        toast.success(toastMessage, { id });
+        break;
+      case "error":
+        toast.error(toastMessage, { id });
+        break;
+      case "warning":
+        // Usamos el custom que definimos en AppToaster para el warning
+        toast(toastMessage, { id, icon: "⚠️" });
+        break;
+      case "info":
+      default:
+        toast(toastMessage, { id, icon: "ℹ️" });
+        break;
+    }
   },
 
   markAsRead: (id) =>
