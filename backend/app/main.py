@@ -1,7 +1,7 @@
-# backend/app/main.py
 import logging
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
+from app.init_db import init_db
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.routes_download import router as download_router
@@ -9,7 +9,6 @@ from app.api.routes_search import router as search_router
 from app.api.routes_auth import router as auth_router
 from app.api.routes_prompt import router as prompt_router
 
-# Configuración de Logs
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
@@ -18,13 +17,16 @@ logging.basicConfig(
 logger = logging.getLogger("backend")
 
 
-# 🟢 FIX ARQUITECTÓNICO: Uso de Lifespan en lugar de eventos obsoletos
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("🚀 API Backend iniciada. Sistemas en línea.")
-    # Aquí podríamos inicializar pools de conexiones si hiciera falta
+
+    try:
+        init_db()
+    except Exception as e:
+        logger.error(f"❌ Error al inicializar la base de datos: {e}")
+
     yield
-    # Aquí cerramos conexiones al apagar (Clean Shutdown)
     logger.info("🛑 Apagando API Backend limpiamente...")
 
 
@@ -38,7 +40,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Conectamos las rutas
 app.include_router(search_router, prefix="/api")
 app.include_router(download_router, prefix="/api")
 app.include_router(auth_router, prefix="/api/auth", tags=["Autenticación"])
