@@ -6,7 +6,7 @@ import { IconWand, IconDatabase } from "@tabler/icons-react";
 import Link from "next/link";
 
 export default function StudioPage() {
-  const { prompts, isLoading, error } = useStudio();
+  const { prompts, isLoading, error, deletePrompt } = useStudio();
 
   return (
     <main className="min-h-screen bg-background p-4 sm:p-8 animate-fade-in">
@@ -70,7 +70,7 @@ export default function StudioPage() {
         {!isLoading && prompts.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 pb-20">
             {prompts.map((prompt) => (
-              <PromptCard key={prompt.id} item={prompt} />
+              <PromptCard key={prompt.id} item={prompt} onDelete={deletePrompt} />
             ))}
           </div>
         )}
