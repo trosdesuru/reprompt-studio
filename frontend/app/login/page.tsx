@@ -1,8 +1,8 @@
 "use client";
 
-import LoginForm from "@/features/auth/components/LoginForm";
 import Link from "next/link";
-import { useRedirectIfAuthenticated } from "@/features/auth/components/hooks/useRedirectIfAuthenticated";
+import { LoginForm } from "@/src/system/organisms/Auth/LoginForm";
+import { useRedirectIfAuthenticated } from "@/src/features/auth/hooks/useRedirectIfAuthenticated";
 
 export default function LoginPage() {
   const { isChecking, isAuthenticated } = useRedirectIfAuthenticated("/");

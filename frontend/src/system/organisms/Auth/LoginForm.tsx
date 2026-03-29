@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useAuth } from "@/src/components/AuthProvider";
+import { useAuth } from "@/src/features/auth/AuthProvider";
 import { useRouter } from "next/navigation";
 import { handleError } from "@/src/utils/errors/ErrorHandler";
 import { useNotificationStore } from "@/src/store/notificationStore";

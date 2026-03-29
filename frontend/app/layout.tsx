@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import { Space_Mono, Prompt } from "next/font/google";
 import "./globals.css";
-import { AuthProvider } from "@/src/components/AuthProvider";
-import { Navbar } from "@/src/system/organisms/Navbar/Navbar";
-import { AppToaster } from "@/src/system/organisms/AppToaster";
+import { AuthProvider } from "@/src/features/auth/AuthProvider";
+import { Navbar } from "@/src/system/organisms/Layout/Navbar/Navbar";
+import { AppToaster } from "@/src/system/organisms/Layout/AppToaster";
 
 const prompt = Prompt({
   weight: ["400", "700", "900"],

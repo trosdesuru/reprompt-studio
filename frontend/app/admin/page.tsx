@@ -4,11 +4,10 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/src/store/authStore";
-import { useAdminDashboard } from "@/features/admin/hooks/useAdminDashboard";
-
-import { InviteManager } from "@/features/admin/components/InviteManager";
-import { SecurityModule } from "@/features/admin/components/SecurityModule";
-import { AuditTable } from "@/features/admin/components/AuditTable";
+import { useAdminDashboard } from "@/src/features/admin/hooks/useAdminDashboard";
+import { InviteManager } from "@/src/system/organisms/Admin/InviteManager";
+import { SecurityModule } from "@/src/system/organisms/Admin/SecurityModule";
+import { AuditTable } from "@/src/system/organisms/Admin/AuditTable";
 
 export default function AdminDashboard() {
   const { user, isLoadingAuth } = useAuthStore();

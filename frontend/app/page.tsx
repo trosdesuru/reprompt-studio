@@ -3,15 +3,15 @@
 import { useState, useEffect } from "react";
 import { api } from "@/src/services/api";
 
-import { useSearch } from "@/features/search/hooks/useSearch";
 import { useSearchStore } from "@/src/store/searchStore";
-import { useViewerSync } from "@/features/image-viewer/hooks/useViewerSync";
 
 import { GalleryItem } from "@/src/types/gallery";
-import { TrendingSection } from "@/features/search/TrendingSection";
-import { ImageViewerModal } from "@/features/image-viewer/ImageViewerModal";
-import { HeroSearch } from "@/features/search/components/HeroSearch";
-import { SearchResults } from "@/features/search/components/SearchResults";
+import { useSearch } from "@/src/features/search/hooks/useSearch";
+import { useViewerSync } from "@/src/features/image-viewer/hooks/useViewerSync";
+import { TrendingSection } from "@/src/system/organisms/Search/TrendingSection/TrendingSection";
+import { ImageViewerModal } from "@/src/system/organisms/Viewer/ImageViewerModal/ImageViewerModal";
+import { HeroSearch } from "@/src/system/organisms/Search/HeroSearch";
+import { SearchResults } from "@/src/system/organisms/Search/SearchResults";
 
 export default function Home() {
   const {
