@@ -1,43 +1,38 @@
-// frontend/features/image-viewer/hooks/useViewerNavigation.ts
 import { useState, useCallback, useEffect } from "react";
-import { ViewerPageItem } from "@/src/types/gallery";
 
-export function useViewerNavigation(pages: ViewerPageItem[]) {
+export function useViewerNavigation(pages: any[]) {
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
 
-  const showNext = useCallback(
-    (e?: React.MouseEvent | KeyboardEvent) => {
-      e?.stopPropagation();
-      if (selectedIndex !== null && selectedIndex < pages.length - 1) {
-        setSelectedIndex(selectedIndex + 1);
-      }
-    },
-    [selectedIndex, pages.length],
-  );
+  // 🟢 Programación Defensiva: Si prev es null, asume 0. 
+  const showNext = useCallback((e?: React.MouseEvent | KeyboardEvent) => {
+    e?.stopPropagation();
+    setSelectedIndex((prev) => {
+      const current = prev ?? 0;
+      return current < pages.length - 1 ? current + 1 : current;
+    });
+  }, [pages.length]);
 
-  const showPrev = useCallback(
-    (e?: React.MouseEvent | KeyboardEvent) => {
-      e?.stopPropagation();
-      if (selectedIndex !== null && selectedIndex > 0) {
-        setSelectedIndex(selectedIndex - 1);
-      }
-    },
-    [selectedIndex],
-  );
+  const showPrev = useCallback((e?: React.MouseEvent | KeyboardEvent) => {
+    e?.stopPropagation();
+    setSelectedIndex((prev) => {
+      const current = prev ?? 0;
+      return current > 0 ? current - 1 : 0;
+    });
+  }, []);
 
+  // 🟢 Eventos de teclado blindados
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (selectedIndex === null) return;
-      if (e.key === "ArrowRight") showNext(e);
-      if (e.key === "ArrowLeft") showPrev(e);
-      if (e.key === "Escape") setSelectedIndex(null);
+      // Evitar que las flechas cambien imágenes si el usuario está escribiendo en el buscador
+      if (document.activeElement?.tagName === "INPUT" || document.activeElement?.tagName === "TEXTAREA") return;
+      
+      if (e.key === "ArrowRight") showNext();
+      if (e.key === "ArrowLeft") showPrev();
     };
+    
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [selectedIndex, showNext, showPrev]);
-
-  // 🟢 FIX CRÍTICO: Hemos eliminado el useEffect que manipulaba el 'document.body.style.overflow'.
-  // Ahora el modal principal (ImageViewerModal) es el único dueño del bloqueo del scroll.
+  }, [showNext, showPrev]);
 
   return { selectedIndex, setSelectedIndex, showNext, showPrev };
 }

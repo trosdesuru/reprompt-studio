@@ -23,7 +23,7 @@ export function ImageViewerModal({
   onLoadMore,
   onClose,
 }: Props) {
-  const [viewMode, setViewMode] = useState<"grid" | "lightbox">("lightbox");
+  const [viewMode, setViewMode] = useState<"grid" | "lightbox">("grid");|const [viewMode, setViewMode] = useState<"grid" | "lightbox">("grid");
   const { selectedIndex, setSelectedIndex, showNext, showPrev } = useViewerNavigation(pages);
   const currentIndex = selectedIndex ?? 0;
 
