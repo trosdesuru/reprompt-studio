@@ -1,7 +1,7 @@
 // frontend/features/auth/components/RegisterForm.tsx
 import { useState } from "react";
 import { api } from "@/src/services/api";
-import { Button } from "@/src/components/ui/Button";
+import { Button } from "@/src/system/atoms/Button";
 
 export default function RegisterForm() {
   const [formData, setFormData] = useState({
@@ -34,9 +34,9 @@ export default function RegisterForm() {
     <form onSubmit={handleSubmit} className="flex flex-col gap-6 bg-(--bg-secondary) p-8 neo-border neo-shadow max-w-md mx-auto w-full">
       <div className="text-center mb-4">
         <h2 className="text-3xl font-black font-mono uppercase tracking-tighter text-foreground">
-          Join<span className="text-[var(--accent-color)]">_</span>Platform
+          Join<span className="text-(--accent-color)">_</span>Platform
         </h2>
-        <p className="text-[var(--text-secondary)] text-sm font-mono mt-2">Acceso restringido por invitación</p>
+        <p className="text-(--text-secondary) text-sm font-mono mt-2">Acceso restringido por invitación</p>
       </div>
 
       {error && <div className="bg-red-500 text-white p-3 font-bold neo-border text-sm font-mono uppercase text-center">{error}</div>}
@@ -67,7 +67,7 @@ export default function RegisterForm() {
       <div className="flex flex-col gap-2">
         <label className="font-bold text-sm uppercase tracking-wide text-foreground flex justify-between">
           <span>Código Maestro</span>
-          <span className="text-[var(--accent-color)]">🔑</span>
+          <span className="text-(--accent-color)">🔑</span>
         </label>
         <input
           type="text"
