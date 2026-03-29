@@ -4,9 +4,6 @@ from datetime import datetime
 
 
 class PromptCreate(BaseModel):
-    id: int
-    user_id: int
-    created_at: datetime = datetime.now()
     title: str = "Generación IA"
     prompt: str
     negative_prompt: Optional[str] = None
@@ -18,6 +15,12 @@ class PromptCreate(BaseModel):
     seed: Optional[str] = None
     resolution: Optional[str] = None
     extra_data: Dict[str, Any] = {}
+
+
+class PromptResponse(PromptCreate):
+    id: int
+    user_id: int
+    created_at: datetime
 
     class Config:
         from_attributes = True

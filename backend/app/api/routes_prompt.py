@@ -5,8 +5,8 @@ from sqlmodel import Session, select
 from app.core.db import get_session
 from app.api.deps import get_current_user
 from app.models.user import User
-from app.models.prompt import SavedPrompt, PromptResponse
-from app.schemas.prompt import PromptCreate
+from app.models.prompt import SavedPrompt
+from app.schemas.prompt import PromptCreate, PromptResponse
 
 logger = logging.getLogger("api_prompts")
 router = APIRouter()
