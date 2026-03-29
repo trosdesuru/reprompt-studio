@@ -1,5 +1,3 @@
-// frontend/src/utils/errors/AppErrors.ts
-
 export class AppError extends Error {
   constructor(
     public message: string,
