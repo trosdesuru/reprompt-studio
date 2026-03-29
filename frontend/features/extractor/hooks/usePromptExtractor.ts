@@ -2,7 +2,7 @@ import { useState, useCallback } from "react";
 import extract from "png-chunks-extract";
 import text from "png-chunk-text";
 import exifr from "exifr";
-import { parseA1111Parameters, ExtractedPromptData } from "../utils/promptParser";
+import { parsePromptData, ExtractedPromptData } from "../utils/promptParser";
 
 export function usePromptExtractor() {
   const [isExtracting, setIsExtracting] = useState(false);
@@ -43,6 +43,19 @@ export function usePromptExtractor() {
         }
       }
       // ==========================================
+      // 🟩 MOTOR TEXTO/JSON (Archivos en crudo)
+      // ==========================================
+      if (file.type === "text/plain" || file.type === "application/json") {
+        // Simplemente leemos el contenido del archivo de texto
+        rawText = await file.text();
+      }
+      // ==========================================
+      // 🟦 MOTOR PNG (Chunks)
+      // ==========================================
+      else if (file.type === "image/png") {
+        // ... (tu código PNG actual) ...
+      }
+      // ==========================================
       // 🟧 MOTOR JPEG (EXIF)
       // ==========================================
       else if (file.type === "image/jpeg" || file.type === "image/jpg") {
@@ -70,13 +83,14 @@ export function usePromptExtractor() {
       }
 
       // ==========================================
-      // 🧠 TRADUCTOR FINAL (Común para ambos)
+      // 🧠 TRADUCTOR FINAL (Común para todos)
       // ==========================================
       if (!rawText) {
         throw new Error("La imagen no contiene parámetros de generación IA.");
       }
 
-      const parsedData = parseA1111Parameters(rawText);
+      // 🟢 FIX: Llamamos al adaptador universal
+      const parsedData = parsePromptData(rawText);
       setExtractedData(parsedData);
     } catch (err: any) {
       setError(err.message || "Error desconocido al procesar la imagen.");

@@ -1,3 +1,4 @@
+// frontend/features/extractor/components/ExtractorDropzone.tsx
 "use client";
 
 import { useCallback } from "react";
@@ -11,24 +12,13 @@ interface ExtractorDropzoneProps {
 }
 
 export function ExtractorDropzone({ onFileDrop, isExtracting, error }: ExtractorDropzoneProps) {
-  // 🟢 AÑADIDOS LOGS Y CONTROL DE RECHAZOS
   const onDrop = useCallback(
     (acceptedFiles: File[], fileRejections: any[]) => {
-      console.log("📥 ¡Acción de Drag & Drop detectada!");
-      console.log("✅ Archivos Aceptados:", acceptedFiles);
-      console.log("❌ Archivos Rechazados:", fileRejections);
-
-      // Si la librería rechaza el archivo (ej: es un JPG), lanzamos una alerta
       if (fileRejections.length > 0) {
         const errorMsg = fileRejections[0].errors[0]?.message || "Archivo no válido";
-        alert(
-          `⚠️ El archivo fue rechazado por el Dropzone:\n${errorMsg}\n\nAsegúrate de arrastrar un archivo .png original.`,
-        );
+        alert(`⚠️ Archivo rechazado:\n${errorMsg}\n\nSube un PNG, JPG, TXT o JSON.`);
       }
-
-      // Si es válido, lo pasamos al Orquestador
       if (acceptedFiles.length > 0) {
-        console.log("🚀 Enviando archivo al motor de extracción...");
         onFileDrop(acceptedFiles[0]);
       }
     },
@@ -37,9 +27,12 @@ export function ExtractorDropzone({ onFileDrop, isExtracting, error }: Extractor
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
+    // 🟢 FIX: Abrimos la puerta a textos y JSONs
     accept: {
       "image/png": [".png"],
       "image/jpeg": [".jpg", ".jpeg"],
+      "text/plain": [".txt"],
+      "application/json": [".json"],
     },
     maxFiles: 1,
     disabled: isExtracting,
@@ -49,7 +42,7 @@ export function ExtractorDropzone({ onFileDrop, isExtracting, error }: Extractor
     return (
       <div className="flex flex-col items-center justify-center min-h-75 animate-pulse bg-(--bg-secondary) neo-border">
         <IconWand size={64} className="text-(--accent-color) animate-spin" />
-        <h2 className="text-xl font-black font-mono uppercase mt-4">Extrayendo Magia...</h2>
+        <h2 className="text-xl font-black font-mono uppercase mt-4">Procesando Archivo...</h2>
       </div>
     );
   }
@@ -70,11 +63,11 @@ export function ExtractorDropzone({ onFileDrop, isExtracting, error }: Extractor
           className={isDragActive ? "text-(--accent-color) animate-bounce" : "text-foreground"}
         />
       </div>
-      <h2 className="text-2xl font-black font-mono uppercase mb-2">
-        {isDragActive ? "¡Suelta tu imagen aquí!" : "Arrastra tu generación IA"}
+      <h2 className="text-2xl font-black font-mono uppercase mb-2 text-center">
+        {isDragActive ? "¡Suelta el archivo aquí!" : "Arrastra tu Imagen o Texto IA"}
       </h2>
       <p className="text-(--text-secondary) font-mono text-sm max-w-md text-center">
-        Soporta PNGs de Stable Diffusion, ComfyUI y NovelAI.
+        Soporta imágenes (PNG/JPG) o archivos de datos puros (.txt, .json).
       </p>
 
       {error && (
