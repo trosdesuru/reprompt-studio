@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
-import { Space_Mono, Prompt } from "next/font/google";
+import { Space_Mono, Prompt, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/src/features/auth/AuthProvider";
 import { Navbar } from "@/src/system/organisms/Layout/Navbar/Navbar";
 import { AppToaster } from "@/src/system/organisms/Layout/AppToaster";
 import { GlobalProgress } from "@/src/system/organisms/Layout/GlobalProgress";
+import { cn } from "@/lib/utils";
 
 const prompt = Prompt({
   weight: ["400", "700", "900"],
@@ -12,11 +13,7 @@ const prompt = Prompt({
   variable: "--font-prompt",
 });
 
-const spaceMono = Space_Mono({
-  weight: ["400", "700"],
-  subsets: ["latin"],
-  variable: "--font-mono",
-});
+const jetbrainsMono = JetBrains_Mono({subsets:['latin'],variable:'--font-mono'});
 
 export const metadata: Metadata = {
   title: "EH Explorer",
@@ -25,7 +22,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="es" className={`${prompt.variable} ${spaceMono.variable}`}>
+    <html lang="es" className={cn(prompt.variable, "font-mono", jetbrainsMono.variable)}>
       <body className="antialiased selection:bg-(--accent-color) selection:text-white">
         <AuthProvider>
           <GlobalProgress />
