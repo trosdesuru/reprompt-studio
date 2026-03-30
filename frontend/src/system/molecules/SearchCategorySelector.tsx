@@ -4,6 +4,8 @@ import { EH_CATEGORIES } from "@/src/constants/filters";
 import { IconChevronDown } from "@tabler/icons-react";
 import {
   Combobox,
+  ComboboxChips,
+  ComboboxChipsInput,
   ComboboxContent,
   ComboboxEmpty,
   ComboboxItem,
@@ -38,16 +40,14 @@ export function SearchCategorySelector({ activeCategories, onToggle }: Props) {
         });
       }}
     >
-      {/* IMPORTANTE: El div con el anchor debe estar presente. 
-         Añadimos type="button" para evitar que el click refresque o haga submit 
-      */}
-      <div
+      {/* 🟢 FIX: Restauramos ComboboxChips original, pero con nuestros estilos */}
+      <ComboboxChips
         ref={anchor}
-        className="w-140px h-full flex items-center justify-between px-3 bg-muted/60 dark:bg-white/5 border-r border-border/50 cursor-pointer hover:bg-muted transition-colors group"
+        className="relative w-140px h-full flex items-center px-3 bg-muted/60 dark:bg-white/5 border-transparent border-r-border/50 cursor-pointer hover:bg-muted transition-colors rounded-none shadow-none"
       >
         <ComboboxValue>
           {(values) => (
-            <div className="flex items-center gap-1 overflow-hidden">
+            <div className="flex items-center justify-between w-full pointer-events-none z-10">
               {values.length === 0 ? (
                 <span className="text-[11px] font-bold text-muted-foreground uppercase">
                   Filtros
@@ -57,39 +57,45 @@ export function SearchCategorySelector({ activeCategories, onToggle }: Props) {
                   {values.length === EH_CATEGORIES.length ? "Todo" : `${values.length} CAT`}
                 </span>
               )}
+              <IconChevronDown size={14} className="text-muted-foreground" />
             </div>
           )}
         </ComboboxValue>
-        <IconChevronDown
-          size={14}
-          className="text-muted-foreground group-hover:text-foreground transition-transform"
-        />
-      </div>
 
-      {/* FIX: Forzamos el portal o el z-index alto y revisamos el anclaje
-       */}
+        {/* 🟢 FIX: El input nativo que "escucha" el click, pero invisible */}
+        <ComboboxChipsInput
+          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20"
+          readOnly
+        />
+      </ComboboxChips>
+
       <ComboboxContent
         anchor={anchor}
-        className="z-101 min-w-220px bg-background border border-border shadow-2xl animate-in fade-in zoom-in-95 duration-100"
+        className="z-101 min-w-200px bg-background border border-border shadow-xl"
       >
         <ComboboxEmpty className="p-2 text-xs text-muted-foreground">
           No hay categorías.
         </ComboboxEmpty>
-        <ComboboxList className="p-1 max-h-300px overflow-y-auto">
-          {EH_CATEGORIES.map((cat) => (
-            <ComboboxItem
-              key={cat.id}
-              value={cat.label}
-              className="text-xs font-medium cursor-pointer p-2 rounded-sm hover:bg-muted"
-            >
-              <div className="flex items-center justify-between w-full">
-                {cat.label}
-                {activeCategories[cat.id] && (
-                  <div className="w-1.5 h-1.5 bg-(--accent-color) rounded-full" />
-                )}
-              </div>
-            </ComboboxItem>
-          ))}
+        <ComboboxList className="max-h-300px overflow-y-auto">
+          {(item) => {
+            const cat = EH_CATEGORIES.find((c) => c.label === item);
+            const isActive = cat ? activeCategories[cat.id] : false;
+
+            return (
+              <ComboboxItem
+                key={item}
+                value={item}
+                className="text-xs font-medium cursor-pointer p-2 hover:bg-muted"
+              >
+                <div className="flex items-center justify-between w-full">
+                  {item}
+                  {isActive && (
+                    <div className="w-1.5 h-1.5 bg-(--accent-color) rounded-full shadow-[0_0_5px_var(--accent-color)]" />
+                  )}
+                </div>
+              </ComboboxItem>
+            );
+          }}
         </ComboboxList>
       </ComboboxContent>
     </Combobox>
