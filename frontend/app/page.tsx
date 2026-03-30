@@ -16,16 +16,12 @@ import { SearchResults } from "@/src/system/organisms/Search/SearchResults";
 export default function Home() {
   const {
     query,
-    setQuery,
     results,
     isLoading,
     isLoadingMore: isLoadingMoreResults,
     hasMore,
     error,
-    handleSearch,
     loadMore,
-    activeCategories,
-    toggleCategory,
   } = useSearch();
 
   const { trending, fetchTrending } = useSearchStore();
@@ -67,14 +63,7 @@ export default function Home() {
 
   return (
     <main className="min-h-screen bg-background text-foreground font-sans">
-      <HeroSearch
-        query={query}
-        setQuery={setQuery}
-        onSearch={handleSearch}
-        isLoading={isLoading}
-        activeCategories={activeCategories}
-        toggleCategory={toggleCategory}
-      />
+      <HeroSearch />
 
       {error && (
         <div className="text-center text-red-500 mb-8 font-mono p-4 bg-red-500/10 neo-border neo-shadow max-w-md mx-auto">
@@ -90,8 +79,8 @@ export default function Home() {
             onDownloadTotal={handleDownloadTotal}
           />
         )}
-        
-       {!isLoading && results.length > 0 && (
+
+        {!isLoading && results.length > 0 && (
           <SearchResults
             results={results}
             onOpenVisor={handleOpenVisor}
