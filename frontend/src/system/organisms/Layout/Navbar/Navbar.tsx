@@ -20,8 +20,8 @@ export function Navbar() {
       <div className="flex items-center gap-6">
         <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
           <Image
-            src="/brand.svg"
-            alt="EH Explorer Bunker"
+            src="/logo-brand.svg"
+            alt="reprompt logo"
             width={150} // El ancho base de renderizado
             height={40} // El alto proporcional (ej: 150 * (484/1750))
             priority // CRÍTICO: El logo siempre debe cargar primero, sin lazy-loading
