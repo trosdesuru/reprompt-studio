@@ -371,6 +371,41 @@ def navegador_seguro():
         driver.quit()
 </file>
 
+<file path="backend/app/models/user.py">
+from typing import Optional
+from sqlmodel import Field, SQLModel
+from datetime import datetime, timezone
+
+
+class InviteCode(SQLModel, table=True):
+    """Códigos de un solo uso para acceder a la plataforma"""
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    code: str = Field(index=True, unique=True, nullable=False)
+    is_used: bool = Field(default=False)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    used_by_id: Optional[int] = Field(default=None, foreign_key="user.id")
+
+
+class User(SQLModel, table=True):
+    """Usuarios de la plataforma con RBAC (Roles)"""
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    username: str = Field(index=True, unique=True, nullable=False)
+    hashed_password: str = Field(nullable=False)
+    role: str = Field(default="voyager")  # voyager, artist, admin
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    is_active: bool = Field(default=True)
+
+
+class AuditLog(SQLModel, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+    username: str = Field(index=True)
+    action: str
+    details: str | None = None
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+</file>
+
 <file path="backend/app/schemas/__init__.py">
 
 </file>
@@ -1350,41 +1385,6 @@ class GalleryMetric(SQLModel, table=True):
     # Trazabilidad
     last_accessed: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-</file>
-
-<file path="backend/app/models/user.py">
-from typing import Optional
-from sqlmodel import Field, SQLModel
-from datetime import datetime, timezone
-
-
-class InviteCode(SQLModel, table=True):
-    """Códigos de un solo uso para acceder a la plataforma"""
-
-    id: Optional[int] = Field(default=None, primary_key=True)
-    code: str = Field(index=True, unique=True, nullable=False)
-    is_used: bool = Field(default=False)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    used_by_id: Optional[int] = Field(default=None, foreign_key="user.id")
-
-
-class User(SQLModel, table=True):
-    """Usuarios de la plataforma con RBAC (Roles)"""
-
-    id: Optional[int] = Field(default=None, primary_key=True)
-    username: str = Field(index=True, unique=True, nullable=False)
-    hashed_password: str = Field(nullable=False)
-    role: str = Field(default="voyager")  # voyager, artist, admin
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    is_active: bool = Field(default=True)
-
-
-class AuditLog(SQLModel, table=True):
-    id: int | None = Field(default=None, primary_key=True)
-    username: str = Field(index=True)
-    action: str
-    details: str | None = None
-    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 </file>
 
 <file path="backend/app/schemas/requests.py">
@@ -4378,80 +4378,6 @@ export function usePromptExtractor() {
 }
 </file>
 
-<file path="frontend/src/system/molecules/SearchCategorySelector.tsx">
-"use client";
-import * as React from "react";
-import { EH_CATEGORIES } from "@/src/constants/filters";
-import {
-  Combobox,
-  ComboboxChip,
-  ComboboxChips,
-  ComboboxChipsInput,
-  ComboboxContent,
-  ComboboxEmpty,
-  ComboboxItem,
-  ComboboxList,
-  ComboboxValue,
-  useComboboxAnchor,
-} from "@/components/ui/combobox";
-
-interface Props {
-  activeCategories: Record<string, boolean>;
-  onToggle: (id: string) => void;
-}
-
-export function SearchCategorySelector({ activeCategories, onToggle }: Props) {
-  const anchor = useComboboxAnchor();
-
-  // Convertimos el objeto de estado a array para el componente
-  const selectedValues = React.useMemo(
-    () => EH_CATEGORIES.filter((c) => activeCategories[c.id]).map((c) => c.label),
-    [activeCategories],
-  );
-
-  return (
-    <Combobox
-      multiple
-      items={EH_CATEGORIES.map((c) => c.label)}
-      value={selectedValues}
-      onValueChange={(labels) => {
-        // Lógica para sincronizar con tu store de Zustand
-        EH_CATEGORIES.forEach((c) => {
-          const isActive = activeCategories[c.id];
-          const shouldBeActive = labels.includes(c.label);
-          if (isActive !== shouldBeActive) onToggle(c.id);
-        });
-      }}
-    >
-      <ComboboxChips ref={anchor} className="w-full border-none bg-transparent p-0 min-h-32px">
-        <ComboboxValue>
-          {(values) => (
-            <div className="flex flex-wrap gap-1">
-              {values.map((value: string) => (
-                <ComboboxChip key={value} className="text-[10px] h-6 bg-accent/20 border-accent/30">
-                  {value}
-                </ComboboxChip>
-              ))}
-              <ComboboxChipsInput placeholder="Filtrar por categoría..." className="text-xs" />
-            </div>
-          )}
-        </ComboboxValue>
-      </ComboboxChips>
-      <ComboboxContent anchor={anchor} className="z-100">
-        <ComboboxEmpty>No hay resultados.</ComboboxEmpty>
-        <ComboboxList>
-          {(item) => (
-            <ComboboxItem key={item} value={item} className="text-xs">
-              {item}
-            </ComboboxItem>
-          )}
-        </ComboboxList>
-      </ComboboxContent>
-    </Combobox>
-  );
-}
-</file>
-
 <file path="frontend/src/system/organisms/Admin/AuditTable.tsx">
 // frontend/features/admin/components/AuditTable.tsx
 import { Button } from "@/src/system/atoms/Button";
@@ -5712,42 +5638,6 @@ export const handleError = (error: unknown, context?: string): string => {
 };
 </file>
 
-<file path="frontend/src/utils/hooks/useTheme.ts">
-import { useState, useEffect } from "react";
-
-export function useTheme() {
-  const [isDark, setIsDark] = useState<boolean>(true);
-
-  useEffect(() => {
-    const savedTheme = localStorage.getItem("theme");
-    const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-
-    if (savedTheme === "dark" || (!savedTheme && prefersDark)) {
-      setIsDark(true);
-      document.documentElement.classList.add("dark");
-    } else {
-      setIsDark(false);
-      document.documentElement.classList.remove("dark");
-    }
-  }, []);
-
-  const toggleTheme = () => {
-    const newValue = !isDark;
-    setIsDark(newValue);
-
-    if (newValue) {
-      document.documentElement.classList.add("dark");
-      localStorage.setItem("theme", "dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-      localStorage.setItem("theme", "light");
-    }
-  };
-
-  return { isDark, toggleTheme };
-}
-</file>
-
 <file path="backend/app/core/security.py">
 # backend/app/core/security.py
 import os
@@ -5814,6 +5704,143 @@ def create_refresh_token(data: dict, family_id: str = None) -> dict:
 
     # Devolvemos el JWT y sus IDs para que el router los guarde en Redis
     return {"token": encoded_jwt, "jti": token_id, "family_id": token_family}
+</file>
+
+<file path="backend/app/init_db.py">
+import secrets
+import logging
+from sqlmodel import SQLModel, Session, select
+from app.core.db import engine
+from app.models.user import InviteCode, User, AuditLog
+from app.models.gallery import GalleryMetric
+from app.models.prompt import SavedPrompt
+
+# Configuración del logger para que sea visible en Docker
+logger = logging.getLogger("init_db")
+
+def init_db():
+    logger.info("⏳ Conectando a Neon.tech y sincronizando tablas...")
+    try:
+        # Esto crea las tablas que NO existan. No borra datos existentes.
+        SQLModel.metadata.create_all(engine)
+        logger.info("✅ Sincronización de tablas completada.")
+    except Exception as e:
+        logger.error(f"❌ Error crítico sincronizando tablas: {e}")
+        raise e
+
+    with Session(engine) as session:
+        # Usamos la sintaxis recomendada de SQLModel para la consulta
+        existing_code = session.exec(select(InviteCode)).first()
+        
+        if not existing_code:
+            # Generar código VIP estilo "TROYA-A1B2C3D4"
+            master_code = f"TROYA-{secrets.token_hex(4).upper()}"
+            new_invite = InviteCode(code=master_code)
+            
+            session.add(new_invite)
+            session.commit()
+            
+            # Usamos logger para asegurar visibilidad en los logs de Docker
+            logger.info("✨ Base de Datos inicializada por primera vez.")
+            logger.warning("="*40)
+            logger.warning(f"🔑 TU CÓDIGO MAESTRO ES: {master_code}")
+            logger.warning("⚠️ Cópialo ahora. Úsalo para crear tu cuenta Admin.")
+            logger.warning("="*40)
+        else:
+            logger.info("✅ Las tablas ya existían y la base de datos está lista.")
+
+if __name__ == "__main__":
+    # Configuración básica por si se ejecuta el archivo directamente
+    logging.basicConfig(level=logging.INFO)
+    init_db()
+</file>
+
+<file path="frontend/app/admin/page.tsx">
+// frontend/app/admin/page.tsx
+"use client";
+
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useAuthStore } from "@/src/store/authStore";
+import { useAdminDashboard } from "@/src/features/admin/hooks/useAdminDashboard";
+import { InviteManager } from "@/src/system/organisms/Admin/InviteManager";
+import { SecurityModule } from "@/src/system/organisms/Admin/SecurityModule";
+import { AuditTable } from "@/src/system/organisms/Admin/AuditTable";
+
+export default function AdminDashboard() {
+  const { user, isLoadingAuth } = useAuthStore();
+  const router = useRouter();
+
+  const {
+    logs,
+    isLoadingLogs,
+    inviteCode,
+    isLoadingInvite,
+    fetchLogs,
+    handleGenerateInvite,
+    handleRevokeAll,
+  } = useAdminDashboard();
+
+  // 🛡️ Protección de ruta: Solo admins pasan de aquí
+  useEffect(() => {
+    if (!isLoadingAuth && (!user || user.role !== "admin")) {
+      router.push("/");
+    }
+  }, [user, isLoadingAuth, router]);
+
+  // Cargar datos al entrar
+  useEffect(() => {
+    if (user?.role === "admin") {
+      fetchLogs();
+    }
+  }, [user, fetchLogs]);
+
+  // Pantalla de carga mientras verificamos identidad
+  if (isLoadingAuth || !user || user.role !== "admin") {
+    return (
+      <div className="min-h-screen flex items-center justify-center font-mono text-foreground bg-background">
+        <span className="animate-pulse">CARGANDO PROTOCOLOS DE MANDO...</span>
+      </div>
+    );
+  }
+
+  // 🎨 La Interfaz Declarativa (Orquestación)
+  return (
+    <main className="min-h-screen bg-background text-foreground p-4 md:p-8 font-sans pb-20">
+      <div className="max-w-7xl mx-auto">
+        <header className="mb-12 border-b-4 border-(--border-color) pb-6">
+          <h1 className="text-4xl md:text-6xl font-black font-mono uppercase italic">
+            Admin<span className="text-(--accent-color)">_</span>Terminal
+          </h1>
+          <p className="text-(--text-secondary) font-mono text-sm mt-2">
+            Acceso concedido a: {user.username} [ROOT_ACCESS]
+          </p>
+        </header>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12">
+          <InviteManager
+            onGenerate={handleGenerateInvite}
+            isLoading={isLoadingInvite}
+            inviteCode={inviteCode}
+          />
+
+          <SecurityModule onRevokeAll={handleRevokeAll} />
+
+          <section className="bg-(--bg-secondary) p-6 neo-border neo-shadow flex flex-col items-center justify-center text-center">
+            <span className="text-7xl font-black font-mono text-(--accent-color)">
+              {logs.length}
+            </span>
+            <span className="text-[10px] font-bold uppercase tracking-widest mt-2 opacity-60">
+              Eventos en Auditoría
+            </span>
+          </section>
+        </div>
+
+        <AuditTable logs={logs} isLoading={isLoadingLogs} onRefresh={fetchLogs} />
+      </div>
+    </main>
+  );
+}
 </file>
 
 <file path="frontend/app/login/page.tsx">
@@ -6188,16 +6215,16 @@ export const useSearchStore = create<SearchState>((set, get) => ({
   nextCursor: null,
   hasMore: false,
   activeCategories: {
-    misc: true,
+    misc: false,
     doujinshi: true,
-    manga: true,
-    artistcg: true,
-    gamecg: true,
-    western: true,
-    nonh: true,
-    imageset: true,
-    cosplay: true,
-    asianporn: true,
+    manga: false,
+    artistcg: false,
+    gamecg: false,
+    western: false,
+    nonh: false,
+    imageset: false,
+    cosplay: false,
+    asianporn: false,
   },
 
   setQuery: (q) => set({ query: q }),
@@ -6272,6 +6299,106 @@ export const useSearchStore = create<SearchState>((set, get) => ({
     }
   },
 }));
+</file>
+
+<file path="frontend/src/system/molecules/SearchCategorySelector.tsx">
+"use client";
+import * as React from "react";
+import { EH_CATEGORIES } from "@/src/constants/filters";
+import { IconChevronDown } from "@tabler/icons-react";
+import {
+  Combobox,
+  ComboboxContent,
+  ComboboxEmpty,
+  ComboboxItem,
+  ComboboxList,
+  ComboboxValue,
+  useComboboxAnchor,
+} from "@/components/ui/combobox";
+
+interface Props {
+  activeCategories: Record<string, boolean>;
+  onToggle: (id: string) => void;
+}
+
+export function SearchCategorySelector({ activeCategories, onToggle }: Props) {
+  const anchor = useComboboxAnchor();
+
+  const selectedLabels = React.useMemo(
+    () => EH_CATEGORIES.filter((c) => activeCategories[c.id]).map((c) => c.label),
+    [activeCategories],
+  );
+
+  return (
+    <Combobox
+      multiple
+      items={EH_CATEGORIES.map((c) => c.label)}
+      value={selectedLabels}
+      onValueChange={(labels) => {
+        EH_CATEGORIES.forEach((c) => {
+          const isActive = !!activeCategories[c.id];
+          const shouldBeActive = labels.includes(c.label);
+          if (isActive !== shouldBeActive) onToggle(c.id);
+        });
+      }}
+    >
+      {/* IMPORTANTE: El div con el anchor debe estar presente. 
+         Añadimos type="button" para evitar que el click refresque o haga submit 
+      */}
+      <div
+        ref={anchor}
+        className="w-140px h-full flex items-center justify-between px-3 bg-muted/60 dark:bg-white/5 border-r border-border/50 cursor-pointer hover:bg-muted transition-colors group"
+      >
+        <ComboboxValue>
+          {(values) => (
+            <div className="flex items-center gap-1 overflow-hidden">
+              {values.length === 0 ? (
+                <span className="text-[11px] font-bold text-muted-foreground uppercase">
+                  Filtros
+                </span>
+              ) : (
+                <span className="text-[11px] font-black text-(--accent-color) uppercase tracking-tight">
+                  {values.length === EH_CATEGORIES.length ? "Todo" : `${values.length} CAT`}
+                </span>
+              )}
+            </div>
+          )}
+        </ComboboxValue>
+        <IconChevronDown
+          size={14}
+          className="text-muted-foreground group-hover:text-foreground transition-transform"
+        />
+      </div>
+
+      {/* FIX: Forzamos el portal o el z-index alto y revisamos el anclaje
+       */}
+      <ComboboxContent
+        anchor={anchor}
+        className="z-101 min-w-220px bg-background border border-border shadow-2xl animate-in fade-in zoom-in-95 duration-100"
+      >
+        <ComboboxEmpty className="p-2 text-xs text-muted-foreground">
+          No hay categorías.
+        </ComboboxEmpty>
+        <ComboboxList className="p-1 max-h-300px overflow-y-auto">
+          {EH_CATEGORIES.map((cat) => (
+            <ComboboxItem
+              key={cat.id}
+              value={cat.label}
+              className="text-xs font-medium cursor-pointer p-2 rounded-sm hover:bg-muted"
+            >
+              <div className="flex items-center justify-between w-full">
+                {cat.label}
+                {activeCategories[cat.id] && (
+                  <div className="w-1.5 h-1.5 bg-(--accent-color) rounded-full" />
+                )}
+              </div>
+            </ComboboxItem>
+          ))}
+        </ComboboxList>
+      </ComboboxContent>
+    </Combobox>
+  );
+}
 </file>
 
 <file path="frontend/src/system/organisms/Search/SearchResults.tsx">
@@ -6651,6 +6778,44 @@ export class NetworkError extends AppError {
 }
 </file>
 
+<file path="frontend/src/utils/hooks/useTheme.ts">
+"use client";
+
+import { useState, useEffect } from "react";
+
+export function useTheme() {
+  const [isDark, setIsDark] = useState<boolean>(true);
+
+  useEffect(() => {
+    const savedTheme = localStorage.getItem("theme");
+    const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+
+    if (savedTheme === "dark" || (!savedTheme && prefersDark)) {
+      setIsDark(true);
+      document.documentElement.classList.add("dark");
+    } else {
+      setIsDark(false);
+      document.documentElement.classList.remove("dark");
+    }
+  }, []);
+
+  const toggleTheme = () => {
+    const newValue = !isDark;
+    setIsDark(newValue);
+
+    if (newValue) {
+      document.documentElement.classList.add("dark");
+      localStorage.setItem("theme", "dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+      localStorage.setItem("theme", "light");
+    }
+  };
+
+  return { isDark, toggleTheme };
+}
+</file>
+
 <file path="backend/app/schemas/prompt.py">
 from pydantic import BaseModel
 from typing import Optional, Dict, Any
@@ -6681,143 +6846,6 @@ class PromptResponse(PromptCreate):
 
     class Config:
         from_attributes = True
-</file>
-
-<file path="backend/app/init_db.py">
-import secrets
-import logging
-from sqlmodel import SQLModel, Session, select
-from app.core.db import engine
-from app.models.user import InviteCode, User, AuditLog
-from app.models.gallery import GalleryMetric
-from app.models.prompt import SavedPrompt
-
-# Configuración del logger para que sea visible en Docker
-logger = logging.getLogger("init_db")
-
-def init_db():
-    logger.info("⏳ Conectando a Neon.tech y sincronizando tablas...")
-    try:
-        # Esto crea las tablas que NO existan. No borra datos existentes.
-        SQLModel.metadata.create_all(engine)
-        logger.info("✅ Sincronización de tablas completada.")
-    except Exception as e:
-        logger.error(f"❌ Error crítico sincronizando tablas: {e}")
-        raise e
-
-    with Session(engine) as session:
-        # Usamos la sintaxis recomendada de SQLModel para la consulta
-        existing_code = session.exec(select(InviteCode)).first()
-        
-        if not existing_code:
-            # Generar código VIP estilo "TROYA-A1B2C3D4"
-            master_code = f"TROYA-{secrets.token_hex(4).upper()}"
-            new_invite = InviteCode(code=master_code)
-            
-            session.add(new_invite)
-            session.commit()
-            
-            # Usamos logger para asegurar visibilidad en los logs de Docker
-            logger.info("✨ Base de Datos inicializada por primera vez.")
-            logger.warning("="*40)
-            logger.warning(f"🔑 TU CÓDIGO MAESTRO ES: {master_code}")
-            logger.warning("⚠️ Cópialo ahora. Úsalo para crear tu cuenta Admin.")
-            logger.warning("="*40)
-        else:
-            logger.info("✅ Las tablas ya existían y la base de datos está lista.")
-
-if __name__ == "__main__":
-    # Configuración básica por si se ejecuta el archivo directamente
-    logging.basicConfig(level=logging.INFO)
-    init_db()
-</file>
-
-<file path="frontend/app/admin/page.tsx">
-// frontend/app/admin/page.tsx
-"use client";
-
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { useAuthStore } from "@/src/store/authStore";
-import { useAdminDashboard } from "@/src/features/admin/hooks/useAdminDashboard";
-import { InviteManager } from "@/src/system/organisms/Admin/InviteManager";
-import { SecurityModule } from "@/src/system/organisms/Admin/SecurityModule";
-import { AuditTable } from "@/src/system/organisms/Admin/AuditTable";
-
-export default function AdminDashboard() {
-  const { user, isLoadingAuth } = useAuthStore();
-  const router = useRouter();
-
-  const {
-    logs,
-    isLoadingLogs,
-    inviteCode,
-    isLoadingInvite,
-    fetchLogs,
-    handleGenerateInvite,
-    handleRevokeAll,
-  } = useAdminDashboard();
-
-  // 🛡️ Protección de ruta: Solo admins pasan de aquí
-  useEffect(() => {
-    if (!isLoadingAuth && (!user || user.role !== "admin")) {
-      router.push("/");
-    }
-  }, [user, isLoadingAuth, router]);
-
-  // Cargar datos al entrar
-  useEffect(() => {
-    if (user?.role === "admin") {
-      fetchLogs();
-    }
-  }, [user, fetchLogs]);
-
-  // Pantalla de carga mientras verificamos identidad
-  if (isLoadingAuth || !user || user.role !== "admin") {
-    return (
-      <div className="min-h-screen flex items-center justify-center font-mono text-foreground bg-background">
-        <span className="animate-pulse">CARGANDO PROTOCOLOS DE MANDO...</span>
-      </div>
-    );
-  }
-
-  // 🎨 La Interfaz Declarativa (Orquestación)
-  return (
-    <main className="min-h-screen bg-background text-foreground p-4 md:p-8 font-sans pb-20">
-      <div className="max-w-7xl mx-auto">
-        <header className="mb-12 border-b-4 border-(--border-color) pb-6">
-          <h1 className="text-4xl md:text-6xl font-black font-mono uppercase italic">
-            Admin<span className="text-(--accent-color)">_</span>Terminal
-          </h1>
-          <p className="text-(--text-secondary) font-mono text-sm mt-2">
-            Acceso concedido a: {user.username} [ROOT_ACCESS]
-          </p>
-        </header>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12">
-          <InviteManager
-            onGenerate={handleGenerateInvite}
-            isLoading={isLoadingInvite}
-            inviteCode={inviteCode}
-          />
-
-          <SecurityModule onRevokeAll={handleRevokeAll} />
-
-          <section className="bg-(--bg-secondary) p-6 neo-border neo-shadow flex flex-col items-center justify-center text-center">
-            <span className="text-7xl font-black font-mono text-(--accent-color)">
-              {logs.length}
-            </span>
-            <span className="text-[10px] font-bold uppercase tracking-widest mt-2 opacity-60">
-              Eventos en Auditoría
-            </span>
-          </section>
-        </div>
-
-        <AuditTable logs={logs} isLoading={isLoadingLogs} onRefresh={fetchLogs} />
-      </div>
-    </main>
-  );
-}
 </file>
 
 <file path="frontend/app/studio/page.tsx">
@@ -6916,6 +6944,20 @@ export const promptApi = {
 
   obtenerMisPrompts: () => fetchSeguro(`${API_URL}/prompts/`),
   eliminarPrompt: (id: number) => fetchSeguro(`${API_URL}/prompts/${id}`, { method: "DELETE" }),
+};
+</file>
+
+<file path="frontend/src/services/api.ts">
+import { authApi } from "./api/auth";
+import { searchApi } from "./api/search";
+import { downloadApi } from "./api/downloads";
+import { promptApi } from "./api/prompts";
+
+export const api = {
+  ...authApi,
+  ...searchApi,
+  ...downloadApi,
+  ...promptApi,
 };
 </file>
 
@@ -7217,49 +7259,6 @@ app.include_router(search_router, prefix="/api")
 app.include_router(download_router, prefix="/api")
 app.include_router(auth_router, prefix="/api/auth", tags=["Autenticación"])
 app.include_router(prompt_router, prefix="/api/prompts", tags=["Reprompt Studio"])
-</file>
-
-<file path="frontend/src/services/api.ts">
-import { authApi } from "./api/auth";
-import { searchApi } from "./api/search";
-import { downloadApi } from "./api/downloads";
-import { promptApi } from "./api/prompts";
-
-export const api = {
-  ...authApi,
-  ...searchApi,
-  ...downloadApi,
-  ...promptApi,
-};
-</file>
-
-<file path="frontend/src/system/organisms/Layout/Navbar/NavbarSearch.tsx">
-// frontend/src/system/organisms/Layout/Navbar/NavbarSearch.tsx
-import { SearchCategorySelector } from "@/src/system/molecules/SearchCategorySelector";
-import { useSearch } from "@/src/features/search/hooks/useSearch";
-
-export function NavbarSearch() {
-  const { query, setQuery, handleSearch, activeCategories, toggleCategory } = useSearch();
-
-  return (
-    <div className="w-full max-w-2xl mx-auto flex flex-col gap-1.5">
-      {/* Input de Búsqueda */}
-      <form onSubmit={handleSearch} className="relative">
-        <input
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          className="w-full h-10 bg-muted/50 rounded-lg px-4 text-sm border border-transparent focus:border-accent outline-none"
-          placeholder="Buscar..."
-        />
-      </form>
-
-      {/* El componente que querías mantener debajo */}
-      <div className="px-1">
-        <SearchCategorySelector activeCategories={activeCategories} onToggle={toggleCategory} />
-      </div>
-    </div>
-  );
-}
 </file>
 
 <file path="frontend/src/system/organisms/Viewer/ImageViewerModal/components/ViewerGrid.tsx">
@@ -7713,6 +7712,41 @@ body {
 }
 </file>
 
+<file path="frontend/src/system/organisms/Layout/Navbar/NavbarSearch.tsx">
+"use client";
+
+import { useSearch } from "@/src/features/search/hooks/useSearch";
+import { SearchCategorySelector } from "@/src/system/molecules/SearchCategorySelector";
+import { IconSearch } from "@tabler/icons-react";
+
+export function NavbarSearch() {
+  const { query, setQuery, handleSearch, activeCategories, toggleCategory } = useSearch();
+
+  return (
+    <div className="w-full max-w-2xl flex items-center h-10 bg-muted/30 dark:bg-white/0.03 border border-border/50 rounded-lg overflow-hidden focus-within:border-(--accent-color)/50 focus-within:ring-1 focus-within:ring-(--accent-color)/20 transition-all">
+      {/* 1. Filtro acoplado a la izquierda */}
+      <SearchCategorySelector activeCategories={activeCategories} onToggle={toggleCategory} />
+
+      {/* 2. Buscador */}
+      <form onSubmit={handleSearch} className="flex-1 h-full flex items-center relative">
+        <input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          className="w-full h-full bg-transparent px-4 text-sm outline-none placeholder:text-muted-foreground/60"
+          placeholder="Buscar prompts, artistas..."
+        />
+        <button
+          type="submit"
+          className="absolute right-3 text-muted-foreground hover:text-foreground"
+        >
+          <IconSearch size={18} stroke={2} />
+        </button>
+      </form>
+    </div>
+  );
+}
+</file>
+
 <file path="backend/app/api/routes_auth.py">
 # backend/app/api/routes_auth.py
 import secrets
@@ -7918,45 +7952,6 @@ def revoke_all_sessions(current_admin: User = Depends(get_current_admin)):
     return {"status": "success", "message": "Todas las sesiones han sido revocadas."}
 </file>
 
-<file path="frontend/src/system/organisms/Layout/Navbar/Navbar.tsx">
-// frontend/src/system/organisms/Layout/Navbar/Navbar.tsx
-"use client";
-
-import { NavbarSearch } from "./NavbarSearch";
-import { UserDropdown } from "./UserDropdown";
-import { useTheme } from "@/src/utils/hooks/useTheme";
-import { IconSun, IconMoon } from "@tabler/icons-react";
-
-export function Navbar() {
-  const { isDark, toggleTheme } = useTheme();
-
-  return (
-    <nav className="sticky top-0 z-50 w-full bg-background/80 backdrop-blur-md border-b border-border shadow-sm">
-      <div className="max-w-1600px mx-auto px-4 md:px-6 py-2 flex items-start gap-4">
-        {/* Logo - Alineado arriba */}
-        <div className="pt-2 shrink-0">
-          <img src="/logo-brand.svg" className="w-32" alt="Logo" />
-        </div>
-
-        {/* Buscador y Filtros - Contenedor Central Dinámico */}
-        <div className="flex-1 flex flex-col gap-2">
-          <NavbarSearch />
-          {/* El NavbarSearch ahora contiene el Combobox debajo del input */}
-        </div>
-
-        {/* Acciones Derecha */}
-        <div className="flex items-center gap-3 pt-1">
-          <button onClick={toggleTheme} className="p-2 hover:bg-muted rounded-full">
-            {isDark ? <IconSun size={20} /> : <IconMoon size={20} />}
-          </button>
-          <UserDropdown />
-        </div>
-      </div>
-    </nav>
-  );
-}
-</file>
-
 <file path="frontend/package.json">
 {
   "name": "frontend-galeria",
@@ -8119,6 +8114,44 @@ def registrar_interaccion(
         return {"status": "success"}
     except Exception as e:
         return {"status": "error", "message": str(e)}
+</file>
+
+<file path="frontend/src/system/organisms/Layout/Navbar/Navbar.tsx">
+"use client";
+
+import { useTheme } from "@/src/utils/hooks/useTheme";
+import Link from "next/link";
+import { NavbarSearch } from "./NavbarSearch";
+import { UserDropdown } from "./UserDropdown";
+import { IconMoon, IconSun } from "@tabler/icons-react";
+
+export function Navbar() {
+  const { isDark, toggleTheme } = useTheme();
+
+  return (
+    <nav className="sticky top-0 z-50 w-full bg-background/80 backdrop-blur-md border-b border-border shadow-sm">
+      <div className="max-w-1600px mx-auto px-4 md:px-8 h-16 flex items-center gap-4 lg:gap-8">
+        <Link href="/" className="shrink-0">
+          <img src="/logo-brand.svg" className="w-32 md:w-36" alt="Reprompt" />
+        </Link>
+
+        <div className="flex-1 flex justify-center">
+          <NavbarSearch />
+        </div>
+
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            onClick={toggleTheme}
+            className="p-2 hover:bg-muted rounded-full text-muted-foreground hover:text-foreground transition-colors"
+          >
+            {isDark ? <IconSun size={20} /> : <IconMoon size={20} />}
+          </button>
+          <UserDropdown />
+        </div>
+      </div>
+    </nav>
+  );
+}
 </file>
 
 <file path="backend/app/services/scraper.py">
@@ -8389,7 +8422,7 @@ def extraer_imagen_real(url_visor: str):
 
 <file path="frontend/app/layout.tsx">
 import type { Metadata } from "next";
-import { Space_Mono, Prompt, JetBrains_Mono } from "next/font/google";
+import { Prompt, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/src/features/auth/AuthProvider";
 import { Navbar } from "@/src/system/organisms/Layout/Navbar/Navbar";
@@ -8403,11 +8436,11 @@ const prompt = Prompt({
   variable: "--font-prompt",
 });
 
-const jetbrainsMono = JetBrains_Mono({subsets:['latin'],variable:'--font-mono'});
+const jetbrainsMono = JetBrains_Mono({ subsets: ["latin"], variable: "--font-mono" });
 
 export const metadata: Metadata = {
-  title: "EH Explorer",
-  description: "Plataforma de extracción y visor de alto rendimiento",
+  title: "reprompt",
+  description: "Wallet para guardar tus imágenes y prompts",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

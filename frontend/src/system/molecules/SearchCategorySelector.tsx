@@ -1,5 +1,4 @@
 "use client";
-
 import * as React from "react";
 import { EH_CATEGORIES } from "@/src/constants/filters";
 import { IconChevronDown } from "@tabler/icons-react";
@@ -39,7 +38,9 @@ export function SearchCategorySelector({ activeCategories, onToggle }: Props) {
         });
       }}
     >
-      {/* Contenedor con ancho fijo y estilo diferenciado */}
+      {/* IMPORTANTE: El div con el anchor debe estar presente. 
+         Añadimos type="button" para evitar que el click refresque o haga submit 
+      */}
       <div
         ref={anchor}
         className="w-140px h-full flex items-center justify-between px-3 bg-muted/60 dark:bg-white/5 border-r border-border/50 cursor-pointer hover:bg-muted transition-colors group"
@@ -52,11 +53,9 @@ export function SearchCategorySelector({ activeCategories, onToggle }: Props) {
                   Filtros
                 </span>
               ) : (
-                <div className="flex gap-1">
-                  <span className="text-[11px] font-black text-(--accent-color) uppercase tracking-tight">
-                    {values.length === EH_CATEGORIES.length ? "Todo" : `${values.length} CAT`}
-                  </span>
-                </div>
+                <span className="text-[11px] font-black text-(--accent-color) uppercase tracking-tight">
+                  {values.length === EH_CATEGORIES.length ? "Todo" : `${values.length} CAT`}
+                </span>
               )}
             </div>
           )}
@@ -67,14 +66,30 @@ export function SearchCategorySelector({ activeCategories, onToggle }: Props) {
         />
       </div>
 
-      <ComboboxContent anchor={anchor} className="z-100 min-w-200px">
-        <ComboboxEmpty>No hay categorías.</ComboboxEmpty>
-        <ComboboxList>
-          {(item) => (
-            <ComboboxItem key={item} value={item} className="text-xs font-medium">
-              {item}
+      {/* FIX: Forzamos el portal o el z-index alto y revisamos el anclaje
+       */}
+      <ComboboxContent
+        anchor={anchor}
+        className="z-101 min-w-220px bg-background border border-border shadow-2xl animate-in fade-in zoom-in-95 duration-100"
+      >
+        <ComboboxEmpty className="p-2 text-xs text-muted-foreground">
+          No hay categorías.
+        </ComboboxEmpty>
+        <ComboboxList className="p-1 max-h-300px overflow-y-auto">
+          {EH_CATEGORIES.map((cat) => (
+            <ComboboxItem
+              key={cat.id}
+              value={cat.label}
+              className="text-xs font-medium cursor-pointer p-2 rounded-sm hover:bg-muted"
+            >
+              <div className="flex items-center justify-between w-full">
+                {cat.label}
+                {activeCategories[cat.id] && (
+                  <div className="w-1.5 h-1.5 bg-(--accent-color) rounded-full" />
+                )}
+              </div>
             </ComboboxItem>
-          )}
+          ))}
         </ComboboxList>
       </ComboboxContent>
     </Combobox>

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Space_Mono, Prompt, JetBrains_Mono } from "next/font/google";
+import { Prompt, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/src/features/auth/AuthProvider";
 import { Navbar } from "@/src/system/organisms/Layout/Navbar/Navbar";
@@ -13,11 +13,11 @@ const prompt = Prompt({
   variable: "--font-prompt",
 });
 
-const jetbrainsMono = JetBrains_Mono({subsets:['latin'],variable:'--font-mono'});
+const jetbrainsMono = JetBrains_Mono({ subsets: ["latin"], variable: "--font-mono" });
 
 export const metadata: Metadata = {
-  title: "EH Explorer",
-  description: "Plataforma de extracción y visor de alto rendimiento",
+  title: "reprompt",
+  description: "Wallet para guardar tus imágenes y prompts",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
