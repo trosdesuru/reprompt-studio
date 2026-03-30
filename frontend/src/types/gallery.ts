@@ -15,6 +15,16 @@ export interface GalleryItem {
   added_at?: string;
 }
 
+export interface AgnosticImageCard {
+  id: string | number;
+  imageUrl: string;
+  title: string;
+  prompt?: string;
+  tags?: string[];
+  source?: string;
+  aspectRatio?: "portrait" | "landscape" | "square";
+}
+
 export interface ViewerPageItem {
   page_url: string;
   thumb_url: string;
