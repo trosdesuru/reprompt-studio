@@ -20,13 +20,11 @@ export function SearchResults({
   isLoadingMore = false,
   onLoadMore,
 }: Props) {
-  // 🟢 Configuramos el "Centinela"
   const { ref, inView } = useInView({
     threshold: 0,
-    rootMargin: "400px", // Dispara la carga 400px antes de llegar al final real
+    rootMargin: "400px",
   });
 
-  // 🟢 Si el centinela entra en pantalla y hay más resultados, cargamos
   useEffect(() => {
     if (inView && hasMore && !isLoadingMore && onLoadMore) {
       onLoadMore();
