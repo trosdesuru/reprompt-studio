@@ -48,7 +48,7 @@ export function SearchCategorySelector({ options, activeCategories, onToggle }: 
     >
       <ComboboxChips 
         ref={anchor} 
-        className="relative w-[140px] h-full flex items-center px-3 bg-muted/60 dark:bg-white/5 border-transparent border-r-border/50 cursor-pointer hover:bg-muted transition-colors rounded-none shadow-none"
+        className="relative w-140px h-full flex items-center px-3 bg-muted/60 dark:bg-white/5 border-transparent border-r-border/50 cursor-pointer hover:bg-muted transition-colors rounded-none shadow-none"
       >
         <ComboboxValue>
           {(values) => (
@@ -56,7 +56,7 @@ export function SearchCategorySelector({ options, activeCategories, onToggle }: 
               {values.length === 0 ? (
                 <span className="text-[11px] font-bold text-muted-foreground uppercase">Filtros</span>
               ) : (
-                <span className="text-[11px] font-black text-[var(--accent-color)] uppercase tracking-tight">
+                <span className="text-[11px] font-black text-var(--accent-color) uppercase tracking-tight">
                   {values.length === options.length ? "Todo" : `${values.length} CAT`}
                 </span>
               )}
@@ -67,9 +67,9 @@ export function SearchCategorySelector({ options, activeCategories, onToggle }: 
         <ComboboxChipsInput className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20" readOnly />
       </ComboboxChips>
 
-      <ComboboxContent anchor={anchor} className="z-[101] min-w-[200px] bg-background border border-border shadow-xl">
+      <ComboboxContent anchor={anchor} className="z-101 min-w-200px bg-background border border-border shadow-xl">
         <ComboboxEmpty className="p-2 text-xs text-muted-foreground">No hay categorías.</ComboboxEmpty>
-        <ComboboxList className="max-h-[300px] overflow-y-auto">
+        <ComboboxList className="max-h-300px overflow-y-auto">
           {(item) => {
             const cat = options.find(c => c.label === item);
             const isActive = cat ? activeCategories[cat.id] : false;
@@ -78,7 +78,7 @@ export function SearchCategorySelector({ options, activeCategories, onToggle }: 
               <ComboboxItem key={item} value={item} className="text-xs font-medium cursor-pointer p-2 hover:bg-muted">
                 <div className="flex items-center justify-between w-full">
                   {item}
-                  {isActive && <div className="w-1.5 h-1.5 bg-[var(--accent-color)] rounded-full shadow-[0_0_5px_var(--accent-color)]" />}
+                  {isActive && <div className="w-1.5 h-1.5 bg-var(--accent-color) rounded-full shadow-[0_0_5px_var(--accent-color)]" />}
                 </div>
               </ComboboxItem>
             );

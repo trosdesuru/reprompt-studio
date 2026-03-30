@@ -62,7 +62,6 @@ export function SearchCategorySelector({ activeCategories, onToggle }: Props) {
           )}
         </ComboboxValue>
 
-        {/* 🟢 FIX: El input nativo que "escucha" el click, pero invisible */}
         <ComboboxChipsInput
           className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20"
           readOnly
