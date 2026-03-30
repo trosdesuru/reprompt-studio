@@ -1,28 +1,26 @@
-"use client";
-
+// frontend/src/system/organisms/Layout/Navbar/NavbarSearch.tsx
+import { SearchCategorySelector } from "@/src/system/molecules/SearchCategorySelector";
 import { useSearch } from "@/src/features/search/hooks/useSearch";
-import { SearchTextInput } from "@/src/system/molecules/SearchTextInput";
-import { FilterBar } from "@/src/system/molecules/FilterBar";
 
 export function NavbarSearch() {
-  const { query, setQuery, handleSearch, isLoading, activeCategories, toggleCategory } =
-    useSearch();
+  const { query, setQuery, handleSearch, activeCategories, toggleCategory } = useSearch();
 
   return (
-    <div className="w-full flex flex-col items-center">
-      {/* Buscador Superior */}
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          handleSearch(e);
-        }}
-        className="w-full flex items-center bg-muted/30 focus-within:bg-background focus-within:ring-1 focus-within:ring-border rounded-xl border border-border/50 transition-all h-12 shadow-sm"
-      >
-        <SearchTextInput query={query} isLoading={isLoading} onChange={setQuery} />
+    <div className="w-full max-w-2xl mx-auto flex flex-col gap-1.5">
+      {/* Input de Búsqueda */}
+      <form onSubmit={handleSearch} className="relative">
+        <input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          className="w-full h-10 bg-muted/50 rounded-lg px-4 text-sm border border-transparent focus:border-accent outline-none"
+          placeholder="Buscar..."
+        />
       </form>
 
-      {/* Filtros Inferiores */}
-      <FilterBar activeCategories={activeCategories} onToggle={toggleCategory} />
+      {/* El componente que querías mantener debajo */}
+      <div className="px-1">
+        <SearchCategorySelector activeCategories={activeCategories} onToggle={toggleCategory} />
+      </div>
     </div>
   );
 }

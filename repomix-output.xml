@@ -171,12 +171,14 @@ frontend/
       atoms/
         Badge.tsx
         Button.tsx
+        FilterChip.tsx
         Heading.tsx
         Overlay.tsx
         Progress.tsx
         ProgressBar.tsx
         Skeleton.tsx
       molecules/
+        FilterBar.tsx
         FormField.tsx
         NotificationsItem.tsx
         SearchCategorySelector.tsx
@@ -2994,6 +2996,33 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
 Button.displayName = "Button";
 </file>
 
+<file path="frontend/src/system/atoms/FilterChip.tsx">
+import { cn } from "@/src/utils/lib/cn";
+
+interface FilterChipProps {
+  label: string;
+  isActive: boolean;
+  onClick: () => void;
+}
+
+export function FilterChip({ label, isActive, onClick }: FilterChipProps) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "px-4 py-1.5 rounded-full text-xs font-bold transition-all border whitespace-nowrap",
+        isActive
+          ? "bg-(--accent-color) border-(--accent-color) text-white shadow-[0_0_10px_rgba(var(--accent-color-rgb),0.3)]"
+          : "bg-muted/50 border-border text-muted-foreground hover:border-foreground/30",
+      )}
+    >
+      {label}
+    </button>
+  );
+}
+</file>
+
 <file path="frontend/src/system/atoms/Heading.tsx">
 import React from "react";
 import { cn } from "@/src/utils/lib/cn";
@@ -3185,6 +3214,37 @@ export function ProgressBar({
 <file path="frontend/src/system/atoms/Skeleton.tsx">
 export function Skeleton({ className = "" }: { className?: string }) {
   return <div className={`animate-pulse bg-(--border-color)/20 rounded ${className}`} />;
+}
+</file>
+
+<file path="frontend/src/system/molecules/FilterBar.tsx">
+import { EH_CATEGORIES } from "@/src/constants/filters";
+import { FilterChip } from "../atoms/FilterChip";
+import { Carousel, CarouselContent, CarouselItem } from "@/components/ui/carousel";
+
+interface FilterBarProps {
+  activeCategories: Record<string, boolean>;
+  onToggle: (id: string) => void;
+}
+
+export function FilterBar({ activeCategories, onToggle }: FilterBarProps) {
+  return (
+    <div className="w-full mt-4">
+      <Carousel opts={{ align: "start", dragFree: true }} className="w-full">
+        <CarouselContent className="-ml-2">
+          {EH_CATEGORIES.map((cat) => (
+            <CarouselItem key={cat.id} className="pl-2 basis-auto">
+              <FilterChip
+                label={cat.label}
+                isActive={!!activeCategories[cat.id]}
+                onClick={() => onToggle(cat.id)}
+              />
+            </CarouselItem>
+          ))}
+        </CarouselContent>
+      </Carousel>
+    </div>
+  );
 }
 </file>
 
@@ -3795,15 +3855,6 @@ export function useClickOutside(ref: RefObject<HTMLElement | null>, handler: () 
       document.removeEventListener("touchstart", listener);
     };
   }, [ref, handler]);
-}
-</file>
-
-<file path="frontend/src/utils/hooks/useTheme.ts">
-import { useState } from 'react';
-export function useTheme() {
-  const [isDark, setIsDark] = useState(true);
-  const toggleTheme = () => setIsDark(!isDark);
-  return { isDark, toggleTheme };
 }
 </file>
 
@@ -5688,6 +5739,42 @@ export const handleError = (error: unknown, context?: string): string => {
 };
 </file>
 
+<file path="frontend/src/utils/hooks/useTheme.ts">
+import { useState, useEffect } from "react";
+
+export function useTheme() {
+  const [isDark, setIsDark] = useState<boolean>(true);
+
+  useEffect(() => {
+    const savedTheme = localStorage.getItem("theme");
+    const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+
+    if (savedTheme === "dark" || (!savedTheme && prefersDark)) {
+      setIsDark(true);
+      document.documentElement.classList.add("dark");
+    } else {
+      setIsDark(false);
+      document.documentElement.classList.remove("dark");
+    }
+  }, []);
+
+  const toggleTheme = () => {
+    const newValue = !isDark;
+    setIsDark(newValue);
+
+    if (newValue) {
+      document.documentElement.classList.add("dark");
+      localStorage.setItem("theme", "dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+      localStorage.setItem("theme", "light");
+    }
+  };
+
+  return { isDark, toggleTheme };
+}
+</file>
+
 <file path="backend/app/core/security.py">
 # backend/app/core/security.py
 import os
@@ -6212,39 +6299,6 @@ export const useSearchStore = create<SearchState>((set, get) => ({
     }
   },
 }));
-</file>
-
-<file path="frontend/src/system/organisms/Layout/Navbar/NavbarSearch.tsx">
-"use client";
-
-import React from "react";
-import { useSearch } from "@/src/features/search/hooks/useSearch";
-import { SearchCategorySelector } from "@/src/system/molecules/SearchCategorySelector";
-import { SearchTextInput } from "@/src/system/molecules/SearchTextInput";
-
-export function NavbarSearch() {
-  const { query, setQuery, handleSearch, isLoading, activeCategories, toggleCategory } =
-    useSearch();
-
-  const onSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    handleSearch(e);
-  };
-
-  return (
-    <form
-      onSubmit={onSubmit}
-      className="w-full flex items-center bg-muted/30 focus-within:bg-background focus-within:ring-1 focus-within:ring-border rounded-lg border border-border/50 transition-all h-10 shadow-sm"
-    >
-      <SearchCategorySelector
-        activeCategories={activeCategories}
-        onToggleCategory={toggleCategory}
-      />
-
-      <SearchTextInput query={query} isLoading={isLoading} onChange={setQuery} />
-    </form>
-  );
-}
 </file>
 
 <file path="frontend/src/system/organisms/Search/SearchResults.tsx">
@@ -6951,6 +7005,37 @@ export const useAuthStore = create<AuthState>((set) => ({
     }
   },
 }));
+</file>
+
+<file path="frontend/src/system/organisms/Layout/Navbar/NavbarSearch.tsx">
+"use client";
+
+import { useSearch } from "@/src/features/search/hooks/useSearch";
+import { SearchTextInput } from "@/src/system/molecules/SearchTextInput";
+import { FilterBar } from "@/src/system/molecules/FilterBar";
+
+export function NavbarSearch() {
+  const { query, setQuery, handleSearch, isLoading, activeCategories, toggleCategory } =
+    useSearch();
+
+  return (
+    <div className="w-full flex flex-col items-center">
+      {/* Buscador Superior */}
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          handleSearch(e);
+        }}
+        className="w-full flex items-center bg-muted/30 focus-within:bg-background focus-within:ring-1 focus-within:ring-border rounded-xl border border-border/50 transition-all h-12 shadow-sm"
+      >
+        <SearchTextInput query={query} isLoading={isLoading} onChange={setQuery} />
+      </form>
+
+      {/* Filtros Inferiores */}
+      <FilterBar activeCategories={activeCategories} onToggle={toggleCategory} />
+    </div>
+  );
+}
 </file>
 
 <file path="frontend/src/system/organisms/Search/HeroSearch.tsx">

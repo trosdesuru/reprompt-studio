@@ -1,5 +1,4 @@
 "use client";
-
 import * as React from "react";
 import { EH_CATEGORIES } from "@/src/constants/filters";
 import {
@@ -15,79 +14,53 @@ import {
   useComboboxAnchor,
 } from "@/components/ui/combobox";
 
-interface SearchCategorySelectorProps {
+interface Props {
   activeCategories: Record<string, boolean>;
-  onToggleCategory: (id: string) => void;
+  onToggle: (id: string) => void;
 }
 
-export function SearchCategorySelector({
-  activeCategories,
-  onToggleCategory,
-}: SearchCategorySelectorProps) {
+export function SearchCategorySelector({ activeCategories, onToggle }: Props) {
   const anchor = useComboboxAnchor();
 
-  // 1. Traducir el diccionario { misc: true } a ["Misc"] [cite: 288, 485]
-  const selectedLabels = React.useMemo(() => {
-    return EH_CATEGORIES.filter((cat) => activeCategories[cat.id]).map((cat) => cat.label);
-  }, [activeCategories]);
-
-  // 2. Traducir el cambio de Shadcn a nuestra función toggleCategory [cite: 485]
-  const handleValueChange = (newValues: string[]) => {
-    EH_CATEGORIES.forEach((cat) => {
-      const isCurrentlyActive = activeCategories[cat.id];
-      const isNowSelected = newValues.includes(cat.label);
-
-      if (isCurrentlyActive !== isNowSelected) {
-        onToggleCategory(cat.id);
-      }
-    });
-  };
+  // Convertimos el objeto de estado a array para el componente
+  const selectedValues = React.useMemo(
+    () => EH_CATEGORIES.filter((c) => activeCategories[c.id]).map((c) => c.label),
+    [activeCategories],
+  );
 
   return (
     <Combobox
       multiple
-      autoHighlight
       items={EH_CATEGORIES.map((c) => c.label)}
-      value={selectedLabels}
-      onValueChange={handleValueChange}
+      value={selectedValues}
+      onValueChange={(labels) => {
+        // Lógica para sincronizar con tu store de Zustand
+        EH_CATEGORIES.forEach((c) => {
+          const isActive = activeCategories[c.id];
+          const shouldBeActive = labels.includes(c.label);
+          if (isActive !== shouldBeActive) onToggle(c.id);
+        });
+      }}
     >
-      <ComboboxChips
-        ref={anchor}
-        className="h-full border-border/50 bg-transparent hover:bg-muted/50 transition-colors rounded-l-lg rounded-r-none border-r max-w-200px overflow-hidden"
-      >
+      <ComboboxChips ref={anchor} className="w-full border-none bg-transparent p-0 min-h-32px">
         <ComboboxValue>
           {(values) => (
-            <React.Fragment>
+            <div className="flex flex-wrap gap-1">
               {values.map((value: string) => (
-                <ComboboxChip
-                  key={value}
-                  className="bg-(--accent-color)/10 text-(--accent-color) border-(--accent-color)/20 text-[10px] uppercase font-bold"
-                >
+                <ComboboxChip key={value} className="text-[10px] h-6 bg-accent/20 border-accent/30">
                   {value}
                 </ComboboxChip>
               ))}
-              <ComboboxChipsInput
-                placeholder="Filtrar..."
-                className="text-xs placeholder:text-muted-foreground"
-              />
-            </React.Fragment>
+              <ComboboxChipsInput placeholder="Filtrar por categoría..." className="text-xs" />
+            </div>
           )}
         </ComboboxValue>
       </ComboboxChips>
-      <ComboboxContent
-        anchor={anchor}
-        className="z-50 bg-background border border-border shadow-xl rounded-lg"
-      >
-        <ComboboxEmpty className="text-xs font-mono p-4 text-muted-foreground">
-          No hay categorías.
-        </ComboboxEmpty>
-        <ComboboxList className="custom-scrollbar max-h-60">
+      <ComboboxContent anchor={anchor} className="z-100">
+        <ComboboxEmpty>No hay resultados.</ComboboxEmpty>
+        <ComboboxList>
           {(item) => (
-            <ComboboxItem
-              key={item}
-              value={item}
-              className="text-xs font-medium hover:bg-muted cursor-pointer"
-            >
+            <ComboboxItem key={item} value={item} className="text-xs">
               {item}
             </ComboboxItem>
           )}
