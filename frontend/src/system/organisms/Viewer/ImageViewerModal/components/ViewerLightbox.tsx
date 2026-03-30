@@ -120,6 +120,7 @@ export function ViewerLightbox({
         <button
           onClick={onPrev}
           className="absolute left-0 z-50 px-4 md:px-8 text-white/30 hover:text-white transition-colors h-full flex items-center hover:bg-linear-to-r hover:from-black/50 hover:to-transparent"
+          aria-label="Imagen anterior"
         >
           <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -132,6 +133,7 @@ export function ViewerLightbox({
         <button
           onClick={onNext}
           className="absolute right-0 z-50 px-4 md:px-8 text-white/30 hover:text-white transition-colors h-full flex items-center hover:bg-linear-to-l hover:from-black/50 hover:to-transparent"
+          aria-label="Imagen siguiente"
         >
           <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />

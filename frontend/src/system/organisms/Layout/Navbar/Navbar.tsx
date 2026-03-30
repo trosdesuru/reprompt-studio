@@ -18,14 +18,14 @@ export function Navbar() {
   return (
     <nav className="bg-(--bg-secondary) border-b-4 border-(--border-color) px-4 sm:px-6 py-4 flex justify-between items-center z-40 sticky top-0 transition-colors">
       <div className="flex items-center gap-6">
-        <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
+        <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity" aria-label="Ir al inicio">
           <Image
             src="/logo-brand.svg"
             alt="reprompt logo"
             width={150} // El ancho base de renderizado
             height={40} // El alto proporcional (ej: 150 * (484/1750))
             priority // CRÍTICO: El logo siempre debe cargar primero, sin lazy-loading
-            className="w-auto h-auto max-h-10" // Asegura que el logo no exceda los 40px de altura, manteniendo la proporción 
+            className="w-150px h-40px object-contain" // Asegura que el logo no exceda los 40px de altura, manteniendo la proporción 
           />
         </Link>
 
@@ -44,7 +44,7 @@ export function Navbar() {
       <div className="flex gap-3 sm:gap-4 items-center">
         {user && (
           <>
-            <Link href="/studio" className="flex md:hidden p-2 hover:text-(--accent-color)">
+            <Link href="/studio" className="flex md:hidden p-2 hover:text-(--accent-color)" aria-label="Ir a Mi Estudio">
               <IconArchive size={20} />
             </Link>
 

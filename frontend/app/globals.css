@@ -6,7 +6,7 @@
   --text-primary: #1d1f21;
   --text-secondary: #4b5563;
   --border-color: #1d1f21;
-  --accent-color: #f64900;
+  --accent-color: #D83C00;
   /* Un naranja técnico estilo PostHog */
   --shadow-color: #1d1f21;
 }
@@ -18,7 +18,7 @@
     --text-primary: #f4f5f5;
     --text-secondary: #a1a1aa;
     --border-color: #3f3f46;
-    --accent-color: #f64900;
+    --accent-color: #D83C00;
     --shadow-color: #000000;
   }
 }
@@ -39,7 +39,7 @@
   --text-primary: #f4f5f5;
   --text-secondary: #a1a1aa;
   --border-color: #3f3f46;
-  --accent-color: #f64900;
+  --accent-color: #D83C00;
   --shadow-color: #000000;
 }
 
