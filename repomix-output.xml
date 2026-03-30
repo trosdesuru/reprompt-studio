@@ -1227,6 +1227,107 @@ sonar.python.version=3.11
 sonar.javascript.node.maxspace=4096
 </file>
 
+<file path="backend/app/api/deps.py">
+# backend/app/api/deps.py
+import os
+import redis
+from fastapi import Depends, HTTPException, status, Request
+from jose import jwt, JWTError
+from sqlmodel import Session, select
+from app.core.db import get_session
+from app.models.user import User
+
+SECRET_KEY = os.getenv("SECRET_KEY", "super_clave_secreta_de_respaldo")
+ALGORITHM = "HS256"
+
+# 🟢 CONFIGURACIÓN REDIS
+REDIS_URL = os.getenv("REDIS_URL", "redis://redis:6379/0")
+redis_limiter = redis.from_url(REDIS_URL, decode_responses=True)
+
+
+class RateLimiter:
+    """Escudo Anti-Fuerza Bruta por IP para rutas específicas."""
+
+    def __init__(self, max_requests: int, window_seconds: int):
+        self.max_requests = max_requests
+        self.window_seconds = window_seconds
+
+    def __call__(self, request: Request):
+        client_ip = request.client.host if request.client else "127.0.0.1"
+        redis_key = f"rate_limit:{client_ip}:{request.url.path}"
+
+        try:
+            current_requests = redis_limiter.incr(redis_key)
+            if current_requests == 1:
+                redis_limiter.expire(redis_key, self.window_seconds)
+
+            if current_requests > self.max_requests:
+                raise HTTPException(
+                    status_code=429,
+                    detail=f"Límite de seguridad excedido. Máximo {self.max_requests} intentos cada {self.window_seconds} segundos.",
+                )
+        except redis.RedisError:
+            pass
+
+
+class GlobalRateLimiter:
+    """Escudo Anti-DDoS Global. Corta la corriente si el servidor entero se satura."""
+
+    def __init__(self, max_global_requests: int, window_seconds: int):
+        self.max_requests = max_global_requests
+        self.window_seconds = window_seconds
+
+    def __call__(self, request: Request):
+        global_key = f"global_limit:{request.url.path}"
+        try:
+            current_requests = redis_limiter.incr(global_key)
+            if current_requests == 1:
+                redis_limiter.expire(global_key, self.window_seconds)
+
+            if current_requests > self.max_requests:
+                raise HTTPException(
+                    status_code=503,
+                    detail="El servidor está experimentando un pico de tráfico anómalo. Por favor, espera unos segundos.",
+                )
+        except redis.RedisError:
+            pass
+
+
+def get_current_user(request: Request, session: Session = Depends(get_session)):
+    """Verifica el JWT leyéndolo directamente desde la Cookie HttpOnly."""
+    token = request.cookies.get("access_token")
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED, detail="No autenticado"
+    )
+
+    if not token:
+        raise credentials_exception
+
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        username: str = payload.get("sub")
+        if username is None:
+            raise credentials_exception
+    except JWTError:
+        raise credentials_exception
+
+    user = session.exec(select(User).where(User.username == username)).first()
+    if user is None:
+        raise credentials_exception
+
+    return user
+
+
+def get_current_admin(current_user: User = Depends(get_current_user)):
+    """Dependencia de RBAC: Verifica que el usuario logueado sea Administrador."""
+    if current_user.role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No tienes suficientes privilegios (Requiere rol Admin)",
+        )
+    return current_user
+</file>
+
 <file path="backend/app/models/gallery.py">
 # backend/app/models/gallery.py
 from typing import Optional
@@ -3310,107 +3411,6 @@ export function NotificationItem({
 }
 </file>
 
-<file path="frontend/src/system/molecules/SearchCategorySelector.tsx">
-"use client";
-
-import * as React from "react";
-import { EH_CATEGORIES } from "@/src/constants/filters";
-import {
-  Combobox,
-  ComboboxChip,
-  ComboboxChips,
-  ComboboxChipsInput,
-  ComboboxContent,
-  ComboboxEmpty,
-  ComboboxItem,
-  ComboboxList,
-  ComboboxValue,
-  useComboboxAnchor,
-} from "@/components/ui/combobox";
-
-interface SearchCategorySelectorProps {
-  activeCategories: Record<string, boolean>;
-  onToggleCategory: (id: string) => void;
-}
-
-export function SearchCategorySelector({
-  activeCategories,
-  onToggleCategory,
-}: SearchCategorySelectorProps) {
-  const anchor = useComboboxAnchor();
-
-  // 1. Traducir el diccionario { misc: true } a ["Misc"] [cite: 288, 485]
-  const selectedLabels = React.useMemo(() => {
-    return EH_CATEGORIES.filter((cat) => activeCategories[cat.id]).map((cat) => cat.label);
-  }, [activeCategories]);
-
-  // 2. Traducir el cambio de Shadcn a nuestra función toggleCategory [cite: 485]
-  const handleValueChange = (newValues: string[]) => {
-    EH_CATEGORIES.forEach((cat) => {
-      const isCurrentlyActive = activeCategories[cat.id];
-      const isNowSelected = newValues.includes(cat.label);
-
-      if (isCurrentlyActive !== isNowSelected) {
-        onToggleCategory(cat.id);
-      }
-    });
-  };
-
-  return (
-    <Combobox
-      multiple
-      autoHighlight
-      items={EH_CATEGORIES.map((c) => c.label)}
-      value={selectedLabels}
-      onValueChange={handleValueChange}
-    >
-      <ComboboxChips
-        ref={anchor}
-        className="h-full border-border/50 bg-transparent hover:bg-muted/50 transition-colors rounded-l-lg rounded-r-none border-r max-w-200px overflow-hidden"
-      >
-        <ComboboxValue>
-          {(values) => (
-            <React.Fragment>
-              {values.map((value: string) => (
-                <ComboboxChip
-                  key={value}
-                  className="bg-(--accent-color)/10 text-(--accent-color) border-(--accent-color)/20 text-[10px] uppercase font-bold"
-                >
-                  {value}
-                </ComboboxChip>
-              ))}
-              <ComboboxChipsInput
-                placeholder="Filtrar..."
-                className="text-xs placeholder:text-muted-foreground"
-              />
-            </React.Fragment>
-          )}
-        </ComboboxValue>
-      </ComboboxChips>
-      <ComboboxContent
-        anchor={anchor}
-        className="z-50 bg-background border border-border shadow-xl rounded-lg"
-      >
-        <ComboboxEmpty className="text-xs font-mono p-4 text-muted-foreground">
-          No hay categorías.
-        </ComboboxEmpty>
-        <ComboboxList className="custom-scrollbar max-h-60">
-          {(item) => (
-            <ComboboxItem
-              key={item}
-              value={item}
-              className="text-xs font-medium hover:bg-muted cursor-pointer"
-            >
-              {item}
-            </ComboboxItem>
-          )}
-        </ComboboxList>
-      </ComboboxContent>
-    </Combobox>
-  );
-}
-</file>
-
 <file path="frontend/src/system/molecules/SearchTextInput.tsx">
 "use client";
 
@@ -3899,107 +3899,6 @@ export function cn(...inputs: ClassValue[]) {
 Eres Arquitecto FullStack y Diseñador UX/UI. El sistema de diseño es minimalismo extremo estilo Civitai: baja carga cognitiva, interfaz invisible y contenido como protagonista absoluto. Elimina cualquier rastro de neo-brutalismo. Reglas estéticas obligatorias con Tailwind CSS: fondos neutros sólidos, bordes sutiles de 1px (border-border), esquinas redondeadas (rounded-lg o rounded-xl), sombras suaves desenfocadas (shadow-sm a shadow-lg), tipografía sans-serif limpia y legible, uso estratégico del espacio negativo. Reglas técnicas obligatorias: TypeScript estricto, arquitectura atómica modular, cero dependencias externas innecesarias, optimización extrema de Core Web Vitals (cero CLS), programación defensiva y manejo estricto de nulos. Ejecuta las tareas con código limpio y escalable. No des explicaciones innecesarias, aplica soluciones directas y eficientes.
 </file>
 
-<file path="backend/app/api/deps.py">
-# backend/app/api/deps.py
-import os
-import redis
-from fastapi import Depends, HTTPException, status, Request
-from jose import jwt, JWTError
-from sqlmodel import Session, select
-from app.core.db import get_session
-from app.models.user import User
-
-SECRET_KEY = os.getenv("SECRET_KEY", "super_clave_secreta_de_respaldo")
-ALGORITHM = "HS256"
-
-# 🟢 CONFIGURACIÓN REDIS
-REDIS_URL = os.getenv("REDIS_URL", "redis://redis:6379/0")
-redis_limiter = redis.from_url(REDIS_URL, decode_responses=True)
-
-
-class RateLimiter:
-    """Escudo Anti-Fuerza Bruta por IP para rutas específicas."""
-
-    def __init__(self, max_requests: int, window_seconds: int):
-        self.max_requests = max_requests
-        self.window_seconds = window_seconds
-
-    def __call__(self, request: Request):
-        client_ip = request.client.host if request.client else "127.0.0.1"
-        redis_key = f"rate_limit:{client_ip}:{request.url.path}"
-
-        try:
-            current_requests = redis_limiter.incr(redis_key)
-            if current_requests == 1:
-                redis_limiter.expire(redis_key, self.window_seconds)
-
-            if current_requests > self.max_requests:
-                raise HTTPException(
-                    status_code=429,
-                    detail=f"Límite de seguridad excedido. Máximo {self.max_requests} intentos cada {self.window_seconds} segundos.",
-                )
-        except redis.RedisError:
-            pass
-
-
-class GlobalRateLimiter:
-    """Escudo Anti-DDoS Global. Corta la corriente si el servidor entero se satura."""
-
-    def __init__(self, max_global_requests: int, window_seconds: int):
-        self.max_requests = max_global_requests
-        self.window_seconds = window_seconds
-
-    def __call__(self, request: Request):
-        global_key = f"global_limit:{request.url.path}"
-        try:
-            current_requests = redis_limiter.incr(global_key)
-            if current_requests == 1:
-                redis_limiter.expire(global_key, self.window_seconds)
-
-            if current_requests > self.max_requests:
-                raise HTTPException(
-                    status_code=503,
-                    detail="El servidor está experimentando un pico de tráfico anómalo. Por favor, espera unos segundos.",
-                )
-        except redis.RedisError:
-            pass
-
-
-def get_current_user(request: Request, session: Session = Depends(get_session)):
-    """Verifica el JWT leyéndolo directamente desde la Cookie HttpOnly."""
-    token = request.cookies.get("access_token")
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED, detail="No autenticado"
-    )
-
-    if not token:
-        raise credentials_exception
-
-    try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        username: str = payload.get("sub")
-        if username is None:
-            raise credentials_exception
-    except JWTError:
-        raise credentials_exception
-
-    user = session.exec(select(User).where(User.username == username)).first()
-    if user is None:
-        raise credentials_exception
-
-    return user
-
-
-def get_current_admin(current_user: User = Depends(get_current_user)):
-    """Dependencia de RBAC: Verifica que el usuario logueado sea Administrador."""
-    if current_user.role != "admin":
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="No tienes suficientes privilegios (Requiere rol Admin)",
-        )
-    return current_user
-</file>
-
 <file path="backend/app/api/routes_download.py">
 from fastapi import Depends
 from app.api.deps import get_current_user
@@ -4476,6 +4375,80 @@ export function usePromptExtractor() {
     clearBatch,
     clearSkipped,
   };
+}
+</file>
+
+<file path="frontend/src/system/molecules/SearchCategorySelector.tsx">
+"use client";
+import * as React from "react";
+import { EH_CATEGORIES } from "@/src/constants/filters";
+import {
+  Combobox,
+  ComboboxChip,
+  ComboboxChips,
+  ComboboxChipsInput,
+  ComboboxContent,
+  ComboboxEmpty,
+  ComboboxItem,
+  ComboboxList,
+  ComboboxValue,
+  useComboboxAnchor,
+} from "@/components/ui/combobox";
+
+interface Props {
+  activeCategories: Record<string, boolean>;
+  onToggle: (id: string) => void;
+}
+
+export function SearchCategorySelector({ activeCategories, onToggle }: Props) {
+  const anchor = useComboboxAnchor();
+
+  // Convertimos el objeto de estado a array para el componente
+  const selectedValues = React.useMemo(
+    () => EH_CATEGORIES.filter((c) => activeCategories[c.id]).map((c) => c.label),
+    [activeCategories],
+  );
+
+  return (
+    <Combobox
+      multiple
+      items={EH_CATEGORIES.map((c) => c.label)}
+      value={selectedValues}
+      onValueChange={(labels) => {
+        // Lógica para sincronizar con tu store de Zustand
+        EH_CATEGORIES.forEach((c) => {
+          const isActive = activeCategories[c.id];
+          const shouldBeActive = labels.includes(c.label);
+          if (isActive !== shouldBeActive) onToggle(c.id);
+        });
+      }}
+    >
+      <ComboboxChips ref={anchor} className="w-full border-none bg-transparent p-0 min-h-32px">
+        <ComboboxValue>
+          {(values) => (
+            <div className="flex flex-wrap gap-1">
+              {values.map((value: string) => (
+                <ComboboxChip key={value} className="text-[10px] h-6 bg-accent/20 border-accent/30">
+                  {value}
+                </ComboboxChip>
+              ))}
+              <ComboboxChipsInput placeholder="Filtrar por categoría..." className="text-xs" />
+            </div>
+          )}
+        </ComboboxValue>
+      </ComboboxChips>
+      <ComboboxContent anchor={anchor} className="z-100">
+        <ComboboxEmpty>No hay resultados.</ComboboxEmpty>
+        <ComboboxList>
+          {(item) => (
+            <ComboboxItem key={item} value={item} className="text-xs">
+              {item}
+            </ComboboxItem>
+          )}
+        </ComboboxList>
+      </ComboboxContent>
+    </Combobox>
+  );
 }
 </file>
 
@@ -7007,37 +6980,6 @@ export const useAuthStore = create<AuthState>((set) => ({
 }));
 </file>
 
-<file path="frontend/src/system/organisms/Layout/Navbar/NavbarSearch.tsx">
-"use client";
-
-import { useSearch } from "@/src/features/search/hooks/useSearch";
-import { SearchTextInput } from "@/src/system/molecules/SearchTextInput";
-import { FilterBar } from "@/src/system/molecules/FilterBar";
-
-export function NavbarSearch() {
-  const { query, setQuery, handleSearch, isLoading, activeCategories, toggleCategory } =
-    useSearch();
-
-  return (
-    <div className="w-full flex flex-col items-center">
-      {/* Buscador Superior */}
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          handleSearch(e);
-        }}
-        className="w-full flex items-center bg-muted/30 focus-within:bg-background focus-within:ring-1 focus-within:ring-border rounded-xl border border-border/50 transition-all h-12 shadow-sm"
-      >
-        <SearchTextInput query={query} isLoading={isLoading} onChange={setQuery} />
-      </form>
-
-      {/* Filtros Inferiores */}
-      <FilterBar activeCategories={activeCategories} onToggle={toggleCategory} />
-    </div>
-  );
-}
-</file>
-
 <file path="frontend/src/system/organisms/Search/HeroSearch.tsx">
 "use client";
 
@@ -7275,6 +7217,49 @@ app.include_router(search_router, prefix="/api")
 app.include_router(download_router, prefix="/api")
 app.include_router(auth_router, prefix="/api/auth", tags=["Autenticación"])
 app.include_router(prompt_router, prefix="/api/prompts", tags=["Reprompt Studio"])
+</file>
+
+<file path="frontend/src/services/api.ts">
+import { authApi } from "./api/auth";
+import { searchApi } from "./api/search";
+import { downloadApi } from "./api/downloads";
+import { promptApi } from "./api/prompts";
+
+export const api = {
+  ...authApi,
+  ...searchApi,
+  ...downloadApi,
+  ...promptApi,
+};
+</file>
+
+<file path="frontend/src/system/organisms/Layout/Navbar/NavbarSearch.tsx">
+// frontend/src/system/organisms/Layout/Navbar/NavbarSearch.tsx
+import { SearchCategorySelector } from "@/src/system/molecules/SearchCategorySelector";
+import { useSearch } from "@/src/features/search/hooks/useSearch";
+
+export function NavbarSearch() {
+  const { query, setQuery, handleSearch, activeCategories, toggleCategory } = useSearch();
+
+  return (
+    <div className="w-full max-w-2xl mx-auto flex flex-col gap-1.5">
+      {/* Input de Búsqueda */}
+      <form onSubmit={handleSearch} className="relative">
+        <input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          className="w-full h-10 bg-muted/50 rounded-lg px-4 text-sm border border-transparent focus:border-accent outline-none"
+          placeholder="Buscar..."
+        />
+      </form>
+
+      {/* El componente que querías mantener debajo */}
+      <div className="px-1">
+        <SearchCategorySelector activeCategories={activeCategories} onToggle={toggleCategory} />
+      </div>
+    </div>
+  );
+}
 </file>
 
 <file path="frontend/src/system/organisms/Viewer/ImageViewerModal/components/ViewerGrid.tsx">
@@ -7728,124 +7713,6 @@ body {
 }
 </file>
 
-<file path="frontend/src/services/api.ts">
-import { authApi } from "./api/auth";
-import { searchApi } from "./api/search";
-import { downloadApi } from "./api/downloads";
-import { promptApi } from "./api/prompts";
-
-export const api = {
-  ...authApi,
-  ...searchApi,
-  ...downloadApi,
-  ...promptApi,
-};
-</file>
-
-<file path="frontend/src/system/organisms/Layout/Navbar/Navbar.tsx">
-"use client";
-
-import { useState } from "react";
-import Link from "next/link";
-import Image from "next/image";
-import { NavbarSearch } from "./NavbarSearch";
-import { NotificationDropdown } from "./NotificationDropdown";
-import { UserDropdown } from "./UserDropdown";
-import { useAuthStore } from "@/src/store/authStore";
-import { IconWand, IconArchive, IconMenu2, IconX } from "@tabler/icons-react";
-
-export function Navbar() {
-  const { user } = useAuthStore();
-  // 🟢 CORRECCIÓN: Restaurado el estado del menú móvil
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-
-  return (
-    <nav className="sticky top-0 z-50 w-full bg-background/80 backdrop-blur-md border-b border-border transition-colors">
-      <div className="flex items-center justify-between h-16 px-4 md:px-8 gap-4 max-w-1600px mx-auto">
-        {/* 1. LOGO */}
-        <Link href="/" className="shrink-0">
-          <Image src="/logo-brand.svg" alt="Logo" width={140} height={35} priority />
-        </Link>
-
-        {/* 2. BUSCADOR (Solo Desktop) */}
-        <div className="hidden md:flex flex-1 max-w-2xl">
-          <NavbarSearch />
-        </div>
-
-        {/* 3. ACCIONES DERECHA */}
-        <div className="flex items-center gap-2 md:gap-4">
-          {user ? (
-            <>
-              {/* Botones exclusivos de Desktop */}
-              <div className="hidden md:flex items-center gap-2">
-                <Link
-                  href="/reprompt"
-                  className="flex items-center gap-2 px-4 py-2 bg-foreground text-background rounded-lg text-sm font-bold hover:opacity-90 transition-opacity"
-                >
-                  <IconWand size={18} /> Reprompt Studio
-                </Link>
-                <Link
-                  href="/studio"
-                  className="p-2 text-muted-foreground hover:text-foreground transition-colors"
-                  title="Mi Estudio"
-                >
-                  <IconArchive size={22} />
-                </Link>
-              </div>
-
-              {/* Siempre visibles (Notificaciones y Menú Usuario) */}
-              <NotificationDropdown />
-              <UserDropdown />
-
-              {/* Toggle Menú Móvil */}
-              <button
-                className="md:hidden p-2 text-foreground hover:bg-muted rounded-md transition-colors"
-                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                aria-label="Abrir menú"
-              >
-                {isMobileMenuOpen ? <IconX size={24} /> : <IconMenu2 size={24} />}
-              </button>
-            </>
-          ) : (
-            <Link
-              href="/login"
-              className="text-sm font-bold px-4 py-2 bg-foreground text-background rounded-lg hover:opacity-90"
-            >
-              Entrar
-            </Link>
-          )}
-        </div>
-      </div>
-
-      {/* 4. MENÚ HAMBURGUESA (Móvil) */}
-      {isMobileMenuOpen && user && (
-        <div className="md:hidden absolute top-16 left-0 w-full bg-background border-b border-border shadow-2xl p-4 flex flex-col gap-4 animate-in slide-in-from-top-2 z-50">
-          {/* El buscador inyectado en la vista móvil */}
-          <NavbarSearch />
-
-          <div className="flex flex-col gap-2 pt-2 border-t border-border/50">
-            <Link
-              href="/reprompt"
-              className="flex items-center gap-3 p-3 rounded-md hover:bg-muted font-bold text-sm text-foreground transition-colors"
-              onClick={() => setIsMobileMenuOpen(false)}
-            >
-              <IconWand size={20} /> Reprompt Studio
-            </Link>
-            <Link
-              href="/studio"
-              className="flex items-center gap-3 p-3 rounded-md hover:bg-muted font-bold text-sm text-foreground transition-colors"
-              onClick={() => setIsMobileMenuOpen(false)}
-            >
-              <IconArchive size={20} /> Mi Estudio
-            </Link>
-          </div>
-        </div>
-      )}
-    </nav>
-  );
-}
-</file>
-
 <file path="backend/app/api/routes_auth.py">
 # backend/app/api/routes_auth.py
 import secrets
@@ -8049,6 +7916,45 @@ def list_active_sessions(current_admin: User = Depends(get_current_admin)):
 def revoke_all_sessions(current_admin: User = Depends(get_current_admin)):
     AuthService.revoke_all_sessions(current_admin.username, redis_client)
     return {"status": "success", "message": "Todas las sesiones han sido revocadas."}
+</file>
+
+<file path="frontend/src/system/organisms/Layout/Navbar/Navbar.tsx">
+// frontend/src/system/organisms/Layout/Navbar/Navbar.tsx
+"use client";
+
+import { NavbarSearch } from "./NavbarSearch";
+import { UserDropdown } from "./UserDropdown";
+import { useTheme } from "@/src/utils/hooks/useTheme";
+import { IconSun, IconMoon } from "@tabler/icons-react";
+
+export function Navbar() {
+  const { isDark, toggleTheme } = useTheme();
+
+  return (
+    <nav className="sticky top-0 z-50 w-full bg-background/80 backdrop-blur-md border-b border-border shadow-sm">
+      <div className="max-w-1600px mx-auto px-4 md:px-6 py-2 flex items-start gap-4">
+        {/* Logo - Alineado arriba */}
+        <div className="pt-2 shrink-0">
+          <img src="/logo-brand.svg" className="w-32" alt="Logo" />
+        </div>
+
+        {/* Buscador y Filtros - Contenedor Central Dinámico */}
+        <div className="flex-1 flex flex-col gap-2">
+          <NavbarSearch />
+          {/* El NavbarSearch ahora contiene el Combobox debajo del input */}
+        </div>
+
+        {/* Acciones Derecha */}
+        <div className="flex items-center gap-3 pt-1">
+          <button onClick={toggleTheme} className="p-2 hover:bg-muted rounded-full">
+            {isDark ? <IconSun size={20} /> : <IconMoon size={20} />}
+          </button>
+          <UserDropdown />
+        </div>
+      </div>
+    </nav>
+  );
+}
 </file>
 
 <file path="frontend/package.json">
