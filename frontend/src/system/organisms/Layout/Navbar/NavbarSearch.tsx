@@ -1,30 +1,28 @@
 "use client";
 
-import React from "react";
 import { useSearch } from "@/src/features/search/hooks/useSearch";
-import { SearchCategorySelector } from "@/src/system/molecules/SearchCategorySelector";
 import { SearchTextInput } from "@/src/system/molecules/SearchTextInput";
+import { FilterBar } from "@/src/system/molecules/FilterBar";
 
 export function NavbarSearch() {
   const { query, setQuery, handleSearch, isLoading, activeCategories, toggleCategory } =
     useSearch();
 
-  const onSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    handleSearch(e);
-  };
-
   return (
-    <form
-      onSubmit={onSubmit}
-      className="w-full flex items-center bg-muted/30 focus-within:bg-background focus-within:ring-1 focus-within:ring-border rounded-lg border border-border/50 transition-all h-10 shadow-sm"
-    >
-      <SearchCategorySelector
-        activeCategories={activeCategories}
-        onToggleCategory={toggleCategory}
-      />
+    <div className="w-full flex flex-col items-center">
+      {/* Buscador Superior */}
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          handleSearch(e);
+        }}
+        className="w-full flex items-center bg-muted/30 focus-within:bg-background focus-within:ring-1 focus-within:ring-border rounded-xl border border-border/50 transition-all h-12 shadow-sm"
+      >
+        <SearchTextInput query={query} isLoading={isLoading} onChange={setQuery} />
+      </form>
 
-      <SearchTextInput query={query} isLoading={isLoading} onChange={setQuery} />
-    </form>
+      {/* Filtros Inferiores */}
+      <FilterBar activeCategories={activeCategories} onToggle={toggleCategory} />
+    </div>
   );
 }
