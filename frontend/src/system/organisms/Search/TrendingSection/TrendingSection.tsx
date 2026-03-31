@@ -21,15 +21,19 @@ export function TrendingSection({ trending, onOpenVisor, onDownloadTotal }: Tren
         </h2>
       </div>
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-        {trending.map((item) => (
-          <UniversalMediaCard
-            key={item.gid}
-            data={mapSearchToMediaCard(item)}
-            variant="gallery"
-            onClick={() => onOpenVisor(item)}
-            onDownload={() => onDownloadTotal(item)}
-          />
-        ))}
+        {trending.map((item, index) => {
+          // 🛡️ PRAGMATISMO: Clave compuesta hiper-estable para evitar re-renders.
+          const stableKey = item.gid ? `trend-${item.gid}` : `trend-idx-${index}`;
+          return (
+            <UniversalMediaCard
+              key={stableKey}
+              data={mapSearchToMediaCard(item)}
+              variant="gallery"
+              onClick={() => onOpenVisor(item)}
+              onDownload={() => onDownloadTotal(item)}
+            />
+          );
+        })}
       </div>
     </section>
   );

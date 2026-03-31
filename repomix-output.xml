@@ -1277,16 +1277,6 @@ export const config = {
 };
 </file>
 
-<file path="frontend/next.config.ts">
-import type { NextConfig } from "next";
-
-const nextConfig: NextConfig = {
-  
-};
-
-export default nextConfig;
-</file>
-
 <file path="frontend/postcss.config.mjs">
 const config = {
   plugins: {
@@ -3244,6 +3234,45 @@ export function useStudio() {
 }
 </file>
 
+<file path="frontend/src/services/api/search.ts">
+import { API_URL, fetchSeguro } from "./client";
+
+export const searchApi = {
+  buscar: (
+    query: string,
+    next_id: string | null = null,
+    categories: Record<string, boolean> | null = null,
+  ) => {
+    let endpoint = `${API_URL}/buscar?query=${encodeURIComponent(query)}`;
+    if (next_id) endpoint += `&next_id=${next_id}`;
+    if (categories) endpoint += `&categories=${encodeURIComponent(JSON.stringify(categories))}`;
+    return fetchSeguro(endpoint);
+  },
+  leer: (url: string, p: number = 0) =>
+    fetchSeguro(`${API_URL}/leer?url=${encodeURIComponent(url)}&p=${p}`),
+
+  resolverImagen: (url: string) =>
+    fetchSeguro(`${API_URL}/resolver_imagen?url=${encodeURIComponent(url)}`),
+
+  obtenerTendencias: (limit: number = 5) => fetchSeguro(`${API_URL}/tendencias?limit=${limit}`),
+
+  registrarInteraccion: (
+    item: { url: string; title: string; thumb: string },
+    type: "view" | "download",
+  ) =>
+    fetchSeguro(`${API_URL}/interact`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        url: item.url,
+        title: item.title,
+        thumb: item.thumb,
+        interaction_type: type,
+      }),
+    }),
+};
+</file>
+
 <file path="frontend/src/services/api.ts">
 import { authApi } from "./api/auth";
 import { searchApi } from "./api/search";
@@ -4366,6 +4395,22 @@ export function cn(...inputs: ClassValue[]) {
   "menuAccent": "subtle",
   "registries": {}
 }
+</file>
+
+<file path="frontend/next.config.ts">
+import type { NextConfig } from "next";
+
+const nextConfig: NextConfig = {
+  images: {
+    remotePatterns: [
+      { protocol: "https", hostname: "media.kitsu.io", port: "", pathname: "/**" },
+      { protocol: "https", hostname: "**.e-hentai.org", port: "", pathname: "/**" },
+      { protocol: "https", hostname: "**.hatenablog.com", port: "", pathname: "/**" },
+    ],
+  },
+};
+
+export default nextConfig;
 </file>
 
 <file path="frontend/repomix-output.xml">
@@ -11535,96 +11580,127 @@ export const fetchSeguro = async <T = any>(
 };
 </file>
 
-<file path="frontend/src/services/api/search.ts">
-import { API_URL, fetchSeguro } from "./client";
+<file path="frontend/src/store/searchStore.ts">
+// frontend/src/store/searchStore.ts
+import { create } from "zustand";
+import { api } from "@/src/services/api";
+import { GalleryItem } from "@/src/types/gallery";
+import { handleError } from "../utils/errors/ErrorHandler";
 
-export const searchApi = {
-  buscar: (
-    query: string,
-    next_id: string | null = null,
-    categories: Record<string, boolean> | null = null,
-  ) => {
-    let endpoint = `${API_URL}/buscar?query=${encodeURIComponent(query)}`;
-    if (next_id) endpoint += `&next_id=${next_id}`;
-    if (categories) endpoint += `&categories=${encodeURIComponent(JSON.stringify(categories))}`;
-    return fetchSeguro(endpoint);
+interface SearchState {
+  query: string;
+  results: GalleryItem[];
+  isLoading: boolean;
+  isLoadingMore: boolean;
+  error: string | null;
+  nextCursor: string | null;
+  hasMore: boolean;
+  activeCategories: Record<string, boolean>;
+
+  // Acciones
+  setQuery: (q: string) => void;
+  toggleCategory: (id: string) => void;
+  executeSearch: () => Promise<void>;
+  loadMore: () => Promise<void>;
+
+  trending: GalleryItem[];
+  fetchTrending: () => Promise<void>;
+}
+
+export const useSearchStore = create<SearchState>((set, get) => ({
+  query: "",
+  results: [],
+  trending: [],
+  isLoading: false,
+  isLoadingMore: false,
+  error: null,
+  nextCursor: null,
+  hasMore: false,
+  activeCategories: {
+    misc: false,
+    doujinshi: true,
+    manga: false,
+    artistcg: false,
+    gamecg: false,
+    western: false,
+    nonh: false,
+    imageset: false,
+    cosplay: false,
+    asianporn: false,
   },
-  leer: (url: string, p: number = 0) =>
-    fetchSeguro(`${API_URL}/leer?url=${encodeURIComponent(url)}&p=${p}`),
 
-  resolverImagen: (url: string) =>
-    fetchSeguro(`${API_URL}/resolver_imagen?url=${encodeURIComponent(url)}`),
+  setQuery: (q) => set({ query: q }),
 
-  obtenerTendencias: (limit: number = 5) => fetchSeguro(`${API_URL}/tendencias?limit=${limit}`),
+  toggleCategory: (id) =>
+    set((state) => ({
+      activeCategories: {
+        ...state.activeCategories,
+        [id]: !state.activeCategories[id],
+      },
+    })),
 
-  registrarInteraccion: (
-    item: { url: string; title: string; thumb: string },
-    type: "view" | "download",
-  ) =>
-    fetchSeguro(`${API_URL}/interact`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        url: item.url,
-        title: item.title,
-        thumb: item.thumb,
-        interaction_type: type,
-      }),
-    }),
-};
-</file>
+  executeSearch: async () => {
+    const { query, activeCategories } = get();
+    if (!query) return;
 
-<file path="frontend/src/system/atoms/MediaCover.tsx">
-"use client";
+    set({ isLoading: true, error: null, results: [], nextCursor: null, hasMore: true });
 
-import Image from "next/image";
-import { cn } from "@/src/utils/lib/cn";
-import { AspectRatio } from "@/src/types/gallery";
+    try {
+      const data = await api.buscar(query, null, activeCategories);
+      if (data.status === "success") {
+        set({
+          results: data.data,
+          nextCursor: data.next_id || null,
+          hasMore: !!data.next_id,
+        });
+      }
+    } catch (err: unknown) {
+      const cleanMessage = handleError(err, "SearchStore");
+      set({ error: cleanMessage });
+    } finally {
+      set({ isLoading: false });
+    }
+  },
 
-interface MediaCoverProps {
-  src: string | null | undefined;
-  alt: string;
-  aspectRatio?: AspectRatio;
-}
+  loadMore: async () => {
+    const { query, nextCursor, hasMore, isLoadingMore, activeCategories, results } = get();
+    if (isLoadingMore || !hasMore || !nextCursor) return;
 
-export function MediaCover({ src, alt, aspectRatio = "portrait" }: MediaCoverProps) {
-  // 🛡️ FIX: Si no hay src, renderizamos un placeholder elegante en lugar de romper Next.js
-  if (!src || src === "" || typeof src !== "string") {
-    return (
-      <div className={cn(
-        "relative w-full flex items-center justify-center bg-muted/20 animate-pulse",
-        aspectRatio === "portrait" ? "aspect-2/3" : 
-        aspectRatio === "landscape" ? "aspect-3/2" : 
-        aspectRatio === "square" ? "aspect-square" : "h-96"
-      )}>
-        <div className="flex flex-col items-center gap-2">
-          <div className="w-8 h-8 rounded-full border-2 border-muted border-t-var(--accent-color) animate-spin" />
-          <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/50">Cargando Media...</span>
-        </div>
-      </div>
-    );
-  }
+    set({ isLoadingMore: true });
 
-  const ratioClasses = {
-    portrait: "aspect-[2/3]",
-    landscape: "aspect-[3/2]",
-    square: "aspect-square",
-    auto: "aspect-auto w-full min-h-[300px]",
-  };
+    try {
+      const data = await api.buscar(query, nextCursor, activeCategories);
+      if (data.status === "success" && data.data.length > 0) {
+        // Evitamos duplicados con un Map
+        const combined = [...results, ...data.data];
+        const unique = Array.from(new Map(combined.map((item) => [item.url, item])).values());
 
-  return (
-    <div className={cn("relative w-full overflow-hidden bg-muted/20", ratioClasses[aspectRatio])}>
-      <Image
-        src={src}
-        alt={alt || "Media content"}
-        fill
-        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 70vw, 50vw"
-        unoptimized
-        className="object-contain md:object-cover transition-transform duration-700 ease-out group-hover:scale-105"
-      />
-    </div>
-  );
-}
+        set({
+          results: unique,
+          nextCursor: data.next_id || null,
+          hasMore: !!data.next_id,
+        });
+      } else {
+        set({ hasMore: false });
+      }
+    } catch (err) {
+      console.error("Error al cargar más:", err);
+    } finally {
+      set({ isLoadingMore: false });
+    }
+  },
+
+  fetchTrending: async () => {
+    try {
+      const data = await api.obtenerTendencias(5); // Pedimos el Top 5
+      if (data.status === "success") {
+        set({ trending: data.data });
+      }
+    } catch (err) {
+      console.error("Error cargando tendencias:", err);
+    }
+  },
+}));
 </file>
 
 <file path="frontend/src/system/organisms/Admin/AuditTable.tsx">
@@ -13378,127 +13454,58 @@ export function useSearch() {
 }
 </file>
 
-<file path="frontend/src/store/searchStore.ts">
-// frontend/src/store/searchStore.ts
-import { create } from "zustand";
-import { api } from "@/src/services/api";
-import { GalleryItem } from "@/src/types/gallery";
-import { handleError } from "../utils/errors/ErrorHandler";
+<file path="frontend/src/system/atoms/MediaCover.tsx">
+"use client";
 
-interface SearchState {
-  query: string;
-  results: GalleryItem[];
-  isLoading: boolean;
-  isLoadingMore: boolean;
-  error: string | null;
-  nextCursor: string | null;
-  hasMore: boolean;
-  activeCategories: Record<string, boolean>;
+import Image from "next/image";
+import { cn } from "@/src/utils/lib/cn";
+import { AspectRatio } from "@/src/types/gallery";
 
-  // Acciones
-  setQuery: (q: string) => void;
-  toggleCategory: (id: string) => void;
-  executeSearch: () => Promise<void>;
-  loadMore: () => Promise<void>;
-
-  trending: GalleryItem[];
-  fetchTrending: () => Promise<void>;
+interface MediaCoverProps {
+  src: string | null | undefined;
+  alt: string;
+  aspectRatio?: AspectRatio;
 }
 
-export const useSearchStore = create<SearchState>((set, get) => ({
-  query: "",
-  results: [],
-  trending: [],
-  isLoading: false,
-  isLoadingMore: false,
-  error: null,
-  nextCursor: null,
-  hasMore: false,
-  activeCategories: {
-    misc: false,
-    doujinshi: true,
-    manga: false,
-    artistcg: false,
-    gamecg: false,
-    western: false,
-    nonh: false,
-    imageset: false,
-    cosplay: false,
-    asianporn: false,
-  },
+export function MediaCover({ src, alt, aspectRatio = "portrait" }: MediaCoverProps) {
+  // 🛡️ FIX: Si no hay src, renderizamos un placeholder elegante en lugar de romper Next.js
+  if (!src || src === "" || typeof src !== "string") {
+    return (
+      <div className={cn(
+        "relative w-full flex items-center justify-center bg-muted/20 animate-pulse",
+        aspectRatio === "portrait" ? "aspect-2/3" : 
+        aspectRatio === "landscape" ? "aspect-3/2" : 
+        aspectRatio === "square" ? "aspect-square" : "h-96"
+      )}>
+        <div className="flex flex-col items-center gap-2">
+          <div className="w-8 h-8 rounded-full border-2 border-muted border-t-var(--accent-color) animate-spin" />
+          <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/50">Cargando Media...</span>
+        </div>
+      </div>
+    );
+  }
 
-  setQuery: (q) => set({ query: q }),
+  const ratioClasses = {
+    portrait: "aspect-[2/3]",
+    landscape: "aspect-[3/2]",
+    square: "aspect-square",
+    auto: "aspect-auto w-full min-h-[300px]",
+  };
 
-  toggleCategory: (id) =>
-    set((state) => ({
-      activeCategories: {
-        ...state.activeCategories,
-        [id]: !state.activeCategories[id],
-      },
-    })),
-
-  executeSearch: async () => {
-    const { query, activeCategories } = get();
-    if (!query) return;
-
-    set({ isLoading: true, error: null, results: [], nextCursor: null, hasMore: true });
-
-    try {
-      const data = await api.buscar(query, null, activeCategories);
-      if (data.status === "success") {
-        set({
-          results: data.data,
-          nextCursor: data.next_id || null,
-          hasMore: !!data.next_id,
-        });
-      }
-    } catch (err: unknown) {
-      const cleanMessage = handleError(err, "SearchStore");
-      set({ error: cleanMessage });
-    } finally {
-      set({ isLoading: false });
-    }
-  },
-
-  loadMore: async () => {
-    const { query, nextCursor, hasMore, isLoadingMore, activeCategories, results } = get();
-    if (isLoadingMore || !hasMore || !nextCursor) return;
-
-    set({ isLoadingMore: true });
-
-    try {
-      const data = await api.buscar(query, nextCursor, activeCategories);
-      if (data.status === "success" && data.data.length > 0) {
-        // Evitamos duplicados con un Map
-        const combined = [...results, ...data.data];
-        const unique = Array.from(new Map(combined.map((item) => [item.url, item])).values());
-
-        set({
-          results: unique,
-          nextCursor: data.next_id || null,
-          hasMore: !!data.next_id,
-        });
-      } else {
-        set({ hasMore: false });
-      }
-    } catch (err) {
-      console.error("Error al cargar más:", err);
-    } finally {
-      set({ isLoadingMore: false });
-    }
-  },
-
-  fetchTrending: async () => {
-    try {
-      const data = await api.obtenerTendencias(5); // Pedimos el Top 5
-      if (data.status === "success") {
-        set({ trending: data.data });
-      }
-    } catch (err) {
-      console.error("Error cargando tendencias:", err);
-    }
-  },
-}));
+  return (
+    <div className={cn("relative w-full overflow-hidden bg-muted/20", ratioClasses[aspectRatio])}>
+      <Image
+        src={src}
+        alt={alt || "Media content"}
+        fill
+        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 70vw, 50vw"
+        className="object-contain md:object-cover transition-transform duration-700 ease-out group-hover:scale-105"
+        quality={75}
+        decoding="async"
+      />
+    </div>
+  );
+}
 </file>
 
 <file path="frontend/src/system/organisms/Studio/PromptCard.tsx">
@@ -14453,6 +14460,118 @@ export function ViewerGrid({ pages, currentIndex, onSelect, hasMorePages, isLoad
 }
 </file>
 
+<file path="backend/app/api/routes_search.py">
+# backend/app/api/routes_search.py
+import json
+from typing import Optional, Dict, Any
+from fastapi import APIRouter, Query, Depends, Body
+from sqlmodel import Session, select
+from app.services import scraper
+from app.core.db import get_session
+from app.models.gallery import GalleryMetric
+
+router = APIRouter()
+
+
+@router.get("/buscar")
+def buscar(
+    query: str = Query(""),
+    next_id: Optional[str] = None,
+    categories: Optional[str] = None,
+):
+    cats_dict = json.loads(categories) if categories else None
+    res = scraper.buscar_galerias(query, next_id, cats_dict)
+    return {
+        "status": "success",
+        "data": res.get("data", []),
+        "next_id": res.get("next_id"),
+    }
+
+
+@router.get("/tendencias")
+def obtener_tendencias(limit: int = 5, session: Session = Depends(get_session)):
+    try:
+        statement = (
+            select(GalleryMetric)
+            .order_by(GalleryMetric.downloads.desc(), GalleryMetric.views.desc())
+            .limit(limit)
+        )
+        results = session.exec(statement).all()
+        data = [
+            {
+                "url": r.url,
+                "title": r.title,
+                "thumb": r.thumb,
+                "downloads": r.downloads,
+                "views": r.views,
+            }
+            for r in results
+        ]
+        return {"status": "success", "data": data}
+    except Exception as e:
+        return {"status": "error", "message": str(e), "data": []}
+
+
+@router.get("/leer")
+def leer_galeria(url: str, p: int = 0):
+    try:
+        res = scraper.obtener_enlaces_paginas(url, p)
+        return {
+            "status": "success",
+            "data": res.get("enlaces", []),
+            "has_next": res.get("has_next", False),
+        }
+    except Exception as e:
+        return {"status": "error", "message": str(e), "data": []}
+
+
+# 🟢 FIX 1: Cambiamos el guion medio por guion bajo para que coincida con el Frontend
+@router.get("/resolver_imagen")
+def resolver_imagen(url: str):
+    try:
+        res = scraper.extraer_imagen_real(url)
+        return {"status": "success", "url_img": res}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+
+@router.post("/interact")
+def registrar_interaccion(
+    data: dict = Body(...), session: Session = Depends(get_session)
+):
+    try:
+        url = data.get("url")
+        title = data.get("title", "Sin título")
+        thumb = data.get("thumb")
+        i_type = data.get("type") or data.get("interaction_type") or "view"
+
+        if not url:
+            return {"status": "error", "message": "Falta la URL"}
+
+        statement = select(GalleryMetric).where(GalleryMetric.url == url)
+        metric = session.exec(statement).first()
+
+        if not metric:
+            metric = GalleryMetric(
+                url=url, title=title, thumb=thumb, views=0, downloads=0
+            )
+            session.add(metric)
+        else:
+            # Por si acaso era una galería antigua sin thumb, lo actualizamos
+            if thumb and not metric.thumb:
+                metric.thumb = thumb
+
+        if i_type == "view":
+            metric.views += 1
+        elif i_type == "download":
+            metric.downloads += 1
+
+        session.commit()
+        return {"status": "success"}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+</file>
+
 <file path="frontend/app/reprompt/page.tsx">
 "use client";
 
@@ -14935,118 +15054,6 @@ export interface GalleryItem {
 }
 </file>
 
-<file path="backend/app/api/routes_search.py">
-# backend/app/api/routes_search.py
-import json
-from typing import Optional, Dict, Any
-from fastapi import APIRouter, Query, Depends, Body
-from sqlmodel import Session, select
-from app.services import scraper
-from app.core.db import get_session
-from app.models.gallery import GalleryMetric
-
-router = APIRouter()
-
-
-@router.get("/buscar")
-def buscar(
-    query: str = Query(""),
-    next_id: Optional[str] = None,
-    categories: Optional[str] = None,
-):
-    cats_dict = json.loads(categories) if categories else None
-    res = scraper.buscar_galerias(query, next_id, cats_dict)
-    return {
-        "status": "success",
-        "data": res.get("data", []),
-        "next_id": res.get("next_id"),
-    }
-
-
-@router.get("/tendencias")
-def obtener_tendencias(limit: int = 5, session: Session = Depends(get_session)):
-    try:
-        statement = (
-            select(GalleryMetric)
-            .order_by(GalleryMetric.downloads.desc(), GalleryMetric.views.desc())
-            .limit(limit)
-        )
-        results = session.exec(statement).all()
-        data = [
-            {
-                "url": r.url,
-                "title": r.title,
-                "thumb": r.thumb,
-                "downloads": r.downloads,
-                "views": r.views,
-            }
-            for r in results
-        ]
-        return {"status": "success", "data": data}
-    except Exception as e:
-        return {"status": "error", "message": str(e), "data": []}
-
-
-@router.get("/leer")
-def leer_galeria(url: str, p: int = 0):
-    try:
-        res = scraper.obtener_enlaces_paginas(url, p)
-        return {
-            "status": "success",
-            "data": res.get("enlaces", []),
-            "has_next": res.get("has_next", False),
-        }
-    except Exception as e:
-        return {"status": "error", "message": str(e), "data": []}
-
-
-# 🟢 FIX 1: Cambiamos el guion medio por guion bajo para que coincida con el Frontend
-@router.get("/resolver_imagen")
-def resolver_imagen(url: str):
-    try:
-        res = scraper.extraer_imagen_real(url)
-        return {"status": "success", "url_img": res}
-    except Exception as e:
-        return {"status": "error", "message": str(e)}
-
-
-@router.post("/interact")
-def registrar_interaccion(
-    data: dict = Body(...), session: Session = Depends(get_session)
-):
-    try:
-        url = data.get("url")
-        title = data.get("title", "Sin título")
-        thumb = data.get("thumb")
-        i_type = data.get("type") or data.get("interaction_type") or "view"
-
-        if not url:
-            return {"status": "error", "message": "Falta la URL"}
-
-        statement = select(GalleryMetric).where(GalleryMetric.url == url)
-        metric = session.exec(statement).first()
-
-        if not metric:
-            metric = GalleryMetric(
-                url=url, title=title, thumb=thumb, views=0, downloads=0
-            )
-            session.add(metric)
-        else:
-            # Por si acaso era una galería antigua sin thumb, lo actualizamos
-            if thumb and not metric.thumb:
-                metric.thumb = thumb
-
-        if i_type == "view":
-            metric.views += 1
-        elif i_type == "download":
-            metric.downloads += 1
-
-        session.commit()
-        return {"status": "success"}
-    except Exception as e:
-        return {"status": "error", "message": str(e)}
-</file>
-
 <file path="frontend/src/system/organisms/Layout/Navbar/NavbarSearch.tsx">
 "use client";
 import React, { useCallback } from "react";
@@ -15410,56 +15417,6 @@ def extraer_imagen_real(url_visor: str):
         return None
 </file>
 
-<file path="frontend/src/system/organisms/Layout/Navbar/Navbar.tsx">
-"use client";
-
-import Link from "next/link";
-import { NavbarSearch } from "./NavbarSearch";
-import { NavbarActions } from "./NavbarActions";
-import { NavbarMobile } from "./NavbarMobile";
-import Image from "next/image";
-
-export function Navbar() {
-  return (
-    <nav className="sticky top-0 z-50 w-full bg-background/80 backdrop-blur-md border-b border-border shadow-sm">
-      <div className="max-w-1600px mx-auto px-4 md:px-8 h-16 flex items-center justify-between gap-4 lg:gap-8">
-
-        <Link href="/" className="shrink-0 flex items-center" aria-label="Ir al inicio">
-          <Image
-            src="/logo-brand-black.svg"
-            alt="Reprompt Logo"
-            width={140}
-            height={40}
-            priority
-            className="block dark:hidden w-32 md:w-36 h-auto object-contain"
-          />
-
-          <Image
-            src="/logo-brand-white.svg"
-            alt="Reprompt Logo"
-            width={140}
-            height={40}
-            priority
-            className="hidden dark:block w-32 md:w-36 h-auto object-contain"
-          />
-        </Link>
-
-        {/* Buscador (Centro) */}
-        <div className="hidden md:flex flex-1 justify-center">
-          <NavbarSearch />
-        </div>
-
-        {/* Acciones de Usuario y Tema (Derecha) */}
-        <NavbarActions />
-
-        {/* Menú Móvil */}
-        <NavbarMobile />
-      </div>
-    </nav>
-  );
-}
-</file>
-
 <file path="frontend/app/layout.tsx">
 import type { Metadata } from "next";
 import { Prompt, JetBrains_Mono } from "next/font/google";
@@ -15495,6 +15452,56 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         </AuthProvider>
       </body>
     </html>
+  );
+}
+</file>
+
+<file path="frontend/src/system/organisms/Layout/Navbar/Navbar.tsx">
+"use client";
+
+import Link from "next/link";
+import { NavbarSearch } from "./NavbarSearch";
+import { NavbarActions } from "./NavbarActions";
+import { NavbarMobile } from "./NavbarMobile";
+import Image from "next/image";
+
+export function Navbar() {
+  return (
+    <nav className="sticky top-0 z-50 w-full bg-background/80 backdrop-blur-md border-b border-border shadow-sm">
+      <div className="max-w-1600px mx-auto px-4 md:px-8 h-16 flex items-center justify-between gap-4 lg:gap-8">
+
+        <Link href="/" className="shrink-0 flex items-center" aria-label="Ir al inicio">
+          <Image
+            src="/logo-brand-black.svg"
+            alt="Reprompt Logo"
+            width={140}
+            height={40}
+            priority={true}
+            className="block dark:hidden w-32 md:w-36 h-auto object-contain"
+          />
+
+          <Image
+            src="/logo-brand-white.svg"
+            alt="Reprompt Logo"
+            width={140}
+            height={40}
+            priority={true}
+            className="hidden dark:block w-32 md:w-36 h-auto object-contain"
+          />
+        </Link>
+
+        {/* Buscador (Centro) */}
+        <div className="hidden md:flex flex-1 justify-center">
+          <NavbarSearch />
+        </div>
+
+        {/* Acciones de Usuario y Tema (Derecha) */}
+        <NavbarActions />
+
+        {/* Menú Móvil */}
+        <NavbarMobile />
+      </div>
+    </nav>
   );
 }
 </file>
