@@ -1,113 +1,76 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { api } from "@/src/services/api";
-import { useNotificationStore } from "@/src/store/notificationStore";
+import { useEffect } from "react";
+import dynamic from "next/dynamic";
 import { useSearchStore } from "@/src/store/searchStore";
-import { GalleryItem } from "@/src/types/gallery";
 import { useSearch } from "@/src/features/search/hooks/useSearch";
-import { useViewerSync } from "@/src/features/image-viewer/hooks/useViewerSync";
-import { TrendingSection } from "@/src/system/organisms/Search/TrendingSection/TrendingSection";
-import { ImageViewerModal } from "@/src/system/organisms/Viewer/ImageViewerModal/ImageViewerModal";
+import { useHomeInteraction } from "@/src/features/home/hooks/useHomeInteraction";
+
+// 🧱 Componentes Síncronos (Vitales para el primer renderizado y SEO)
 import { HeroSearch } from "@/src/system/organisms/Search/HeroSearch";
+import { TrendingSection } from "@/src/system/organisms/Search/TrendingSection/TrendingSection";
 import { SearchResults } from "@/src/system/organisms/Search/SearchResults/SearchResults";
+import { FeedState } from "@/src/system/molecules/Feedback/FeedState";
+
+const ImageViewerModal = dynamic(
+  () =>
+    import("@/src/system/organisms/Viewer/ImageViewerModal/ImageViewerModal").then(
+      (mod) => mod.ImageViewerModal,
+    ),
+  { ssr: false },
+);
 
 export default function Home() {
-  const { notify } = useNotificationStore();
-
-  const {
-    query,
-    results,
-    isLoading,
-    isLoadingMore: isLoadingMoreResults,
-    hasMore,
-    error,
-    loadMore,
-  } = useSearch();
+  const { query, results, isLoading, isLoadingMore, hasMore, error, loadMore } = useSearch();
   const { trending, fetchTrending } = useSearchStore();
 
-  const [activeUrl, setActiveUrl] = useState("");
-  const [activeTitle, setActiveTitle] = useState("");
-
-  const {
-    viewerPages,
-    isViewerLoading,
-    isLoadingMore: isLoadingMorePages,
-    isViewerOpen,
-    openViewer,
-    closeViewer,
-    hasMorePages,
-    loadNextPage,
-  } = useViewerSync(activeUrl);
-
-  const handleOpenVisor = (item: GalleryItem) => {
-    setActiveUrl(item.url);
-    setActiveTitle(item.title);
-    openViewer(item.url);
-    api.registrarInteraccion(item, "view").catch(console.error);
-  };
-
-  const handleDownloadTotal = async (item: GalleryItem) => {
-    try {
-      await api.descargarTotal(item.url, item.title);
-      api.registrarInteraccion(item, "download").catch(console.error);
-      notify("Descarga", `⬇️ Descarga iniciada: ${item.title}`, "success");
-    } catch (err) {
-      notify("Error", "❌ Error al encolar la descarga.", "error");
-    }
-  };
+  const interactions = useHomeInteraction();
 
   useEffect(() => {
     fetchTrending();
-  }, []);
+  }, [fetchTrending]);
 
-  // 🚨 SENSOR DE RENDERIZADO PRINCIPAL
-  if (process.env.NODE_ENV === "development")
-    console.log("🚨 TELEMETRÍA [HOME]:", {
-      estadoCarga: isLoading,
-      cantidadResultados: results?.length,
-      tieneMas: hasMore,
-      busquedaActual: query,
-    });
+  if (process.env.NODE_ENV === "development") {
+    console.log("🚨 TELEMETRÍA [HOME]:", { isLoading, count: results?.length, hasMore, query });
+  }
 
   return (
     <main className="min-h-screen bg-background text-foreground font-sans">
       <HeroSearch />
-      {error && (
-        <div className="text-center text-red-500 mb-8 font-mono p-4 bg-red-500/10 neo-border neo-shadow max-w-md mx-auto">
-          {error}
-        </div>
-      )}
-      <div className="max-w-90rem mx-auto px-4">
-        {query === "" && (
+
+      {error && <FeedState type="error" message={error} />}
+
+      <div className="max-w-90rem mx-auto px-4 pb-12">
+        {!query ? (
           <TrendingSection
             trending={trending}
-            onOpenVisor={handleOpenVisor}
-            onDownloadTotal={handleDownloadTotal}
+            onOpenVisor={interactions.handleOpenVisor}
+            onDownloadTotal={interactions.handleDownloadTotal}
           />
-        )}
-
-        {/* 🛡️ NOTA MENTAL: Observa si esta condición se cumple realmente */}
-        {!isLoading && results.length > 0 && (
+        ) : isLoading && results.length === 0 ? (
+          <FeedState type="loading" />
+        ) : !isLoading && results.length === 0 ? (
+          <FeedState type="empty" highlight={query} />
+        ) : (
           <SearchResults
             results={results}
-            onOpenVisor={handleOpenVisor}
-            onDownloadTotal={handleDownloadTotal}
+            onOpenVisor={interactions.handleOpenVisor}
+            onDownloadTotal={interactions.handleDownloadTotal}
             hasMore={hasMore}
-            isLoadingMore={isLoadingMoreResults}
+            isLoadingMore={isLoadingMore}
             onLoadMore={loadMore}
           />
         )}
 
-        {isViewerOpen && (
+        {interactions.viewerSync.isViewerOpen && (
           <ImageViewerModal
-            title={activeTitle}
-            pages={viewerPages}
-            isLoading={isViewerLoading}
-            isLoadingMore={isLoadingMorePages}
-            hasMorePages={hasMorePages}
-            onLoadMore={loadNextPage}
-            onClose={closeViewer}
+            title={interactions.activeTitle}
+            pages={interactions.viewerSync.viewerPages}
+            isLoading={interactions.viewerSync.isViewerLoading}
+            isLoadingMore={interactions.viewerSync.isLoadingMore}
+            hasMorePages={interactions.viewerSync.hasMorePages}
+            onLoadMore={interactions.viewerSync.loadNextPage}
+            onClose={interactions.viewerSync.closeViewer}
           />
         )}
       </div>

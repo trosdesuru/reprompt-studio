@@ -223,11 +223,12 @@ frontend/
         Media/
           UniversalMediaCard.tsx
         Search/
+          SearchResults/
+            SearchResults.tsx
           TrendingSection/
             index.ts
             TrendingSection.tsx
           HeroSearch.tsx
-          SearchResults.tsx
         Studio/
           PromptCard.tsx
         Viewer/
@@ -241,6 +242,7 @@ frontend/
             index.ts
           StandardImageCard.tsx
     types/
+      auth.types.ts
       gallery.ts
     utils/
       adapters/
@@ -1100,43 +1102,6 @@ export const EH_CATEGORIES = [
     bit: 128,
   },
 ];
-</file>
-
-<file path="frontend/src/services/api/auth.ts">
-import { API_URL, fetchSeguro } from "./client";
-
-export const authApi = {
-  registrar: (userData: any) =>
-    fetchSeguro(`${API_URL}/auth/register`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(userData),
-    }),
-  login: (credentials: any) =>
-    fetchSeguro(`${API_URL}/auth/login`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(credentials),
-    }),
-  logout: async () => {
-    await fetchSeguro(`${API_URL}/auth/logout`, { method: "POST" });
-    window.location.href = "/login";
-  },
-  cambiarPassword: (data: any) =>
-    fetchSeguro(`${API_URL}/auth/change-password`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
-    }),
-  obtenerPerfil: () => fetchSeguro(`${API_URL}/auth/me`),
-  generarInvitacion: (role: string = "voyager") =>
-    fetchSeguro(`${API_URL}/auth/invite-codes?role_requested=${role}`, { method: "POST" }),
-  obtenerLogsAuditoria: (limit: number = 50) =>
-    fetchSeguro(`${API_URL}/auth/admin/logs?limit=${limit}`),
-  revocarTodasLasSesiones: () =>
-    fetchSeguro(`${API_URL}/auth/admin/sessions/revoke-all`, { method: "POST" }),
-  refrescarToken: () => fetchSeguro(`${API_URL}/auth/refresh`, { method: "POST" }),
-};
 </file>
 
 <file path="frontend/src/services/api/downloads.ts">
@@ -3276,6 +3241,44 @@ export function useStudio() {
 }
 </file>
 
+<file path="frontend/src/services/api/auth.ts">
+import { UserLogin, UserRegister } from "@/src/types/auth.types";
+import { API_URL, fetchSeguro } from "./client";
+
+export const authApi = {
+  registrar: (userData: UserRegister) =>
+    fetchSeguro(`${API_URL}/auth/register`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(userData),
+    }),
+  login: (credentials: UserLogin) =>
+    fetchSeguro(`${API_URL}/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(credentials),
+    }),
+  logout: async () => {
+    await fetchSeguro(`${API_URL}/auth/logout`, { method: "POST" });
+    window.location.href = "/login";
+  },
+  cambiarPassword: (data: any) =>
+    fetchSeguro(`${API_URL}/auth/change-password`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    }),
+  obtenerPerfil: () => fetchSeguro(`${API_URL}/auth/me`),
+  generarInvitacion: (role: string = "voyager") =>
+    fetchSeguro(`${API_URL}/auth/invite-codes?role_requested=${role}`, { method: "POST" }),
+  obtenerLogsAuditoria: (limit: number = 50) =>
+    fetchSeguro(`${API_URL}/auth/admin/logs?limit=${limit}`),
+  revocarTodasLasSesiones: () =>
+    fetchSeguro(`${API_URL}/auth/admin/sessions/revoke-all`, { method: "POST" }),
+  refrescarToken: () => fetchSeguro(`${API_URL}/auth/refresh`, { method: "POST" }),
+};
+</file>
+
 <file path="frontend/src/services/api.ts">
 import { authApi } from "./api/auth";
 import { searchApi } from "./api/search";
@@ -4342,6 +4345,20 @@ export function StandardImageCard({ imageUrl, index, isSprite, spriteOffset, spr
       </button>
     </div>
   );
+}
+</file>
+
+<file path="frontend/src/types/auth.types.ts">
+export interface UserLogin {
+  username: string;
+  password?: string;
+}
+
+export interface UserRegister {
+  username: string;
+  email?: string;
+  password?: string;
+  [key: string]: any;
 }
 </file>
 
@@ -12941,6 +12958,104 @@ export function UniversalMediaCard({
 }
 </file>
 
+<file path="frontend/src/system/organisms/Search/SearchResults/SearchResults.tsx">
+"use client";
+import { useEffect } from "react";
+import { useInView } from "react-intersection-observer";
+import { IconLoader2, IconRefresh } from "@tabler/icons-react";
+import { UniversalMediaCard } from "@/src/system/organisms/Media/UniversalMediaCard";
+import { mapSearchToMediaCard } from "@/src/utils/adapters/mediaAdapters";
+import { GalleryItem } from "@/src/types/gallery";
+
+interface SearchResultsProps {
+  results: GalleryItem[];
+  onOpenVisor: (item: GalleryItem) => void;
+  onDownloadTotal: (item: GalleryItem) => void;
+  hasMore: boolean;
+  isLoadingMore: boolean;
+  onLoadMore: () => void;
+}
+
+export function SearchResults({
+  results,
+  onOpenVisor,
+  onDownloadTotal,
+  hasMore,
+  isLoadingMore,
+  onLoadMore,
+}: SearchResultsProps) {
+  // Margen de 400px para cargar con antelación y que el usuario ni note la carga
+  const { ref, inView } = useInView({ rootMargin: "400px" });
+
+  useEffect(() => {
+    if (inView && hasMore && !isLoadingMore) {
+      onLoadMore();
+    }
+  }, [inView, hasMore, isLoadingMore, onLoadMore]);
+
+  if (!results || results.length === 0) return null;
+
+  return (
+    <section className="w-full py-8 animate-in fade-in duration-700">
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-xl font-bold uppercase tracking-widest text-foreground/80">
+          Resultados de la <span className="text-var(--accent-color)">Búsqueda</span>
+        </h2>
+        <span className="text-sm font-mono text-muted-foreground bg-muted/30 px-3 py-1 neo-border shadow-sm">
+          {results.length} recuperados
+        </span>
+      </div>
+
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 min-h-[50vh]">
+        {results.map((item, index) => {
+          const stableKey = item.gid ? `search-${item.gid}` : `search-idx-${index}`;
+          return (
+            <UniversalMediaCard
+              key={stableKey}
+              data={mapSearchToMediaCard(item)}
+              variant="search"
+              onClick={() => onOpenVisor(item)}
+              onDownload={() => onDownloadTotal(item)}
+            />
+          );
+        })}
+      </div>
+
+      {/* 🛡️ CENTINELA HÍBRIDO (Auto Scroll + Fallback Manual + End of Line) */}
+      <div className="mt-16 flex justify-center items-center h-24">
+        {hasMore ? (
+          <div ref={ref} className="w-full flex justify-center">
+            {isLoadingMore ? (
+              <div className="flex flex-col items-center gap-3 text-var(--accent-color) animate-pulse">
+                <IconLoader2 className="animate-spin" size={32} />
+                <span className="font-mono text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                  Decodificando Red...
+                </span>
+              </div>
+            ) : (
+              <button
+                onClick={onLoadMore}
+                className="group flex items-center gap-2 px-6 py-3 bg-muted/20 border-2 border-border text-muted-foreground hover:text-foreground hover:border-foreground hover:bg-muted/50 neo-border font-mono text-xs font-bold uppercase transition-all"
+              >
+                <IconRefresh
+                  size={16}
+                  className="group-hover:rotate-180 transition-transform duration-500"
+                />
+                Forzar Carga
+              </button>
+            )}
+          </div>
+        ) : (
+          <div className="text-center font-mono text-xs text-muted-foreground uppercase tracking-widest bg-muted/10 px-6 py-3 neo-border border-dashed">
+            Has llegado al final del abismo
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
+</file>
+
 <file path="frontend/src/utils/errors/ErrorHandler.ts">
 import { AppError, AuthError, ExtractionError, NetworkError } from "./AppErrors";
 
@@ -13881,6 +13996,118 @@ export function useTheme() {
 }
 </file>
 
+<file path="backend/app/api/routes_search.py">
+# backend/app/api/routes_search.py
+import json
+from typing import Optional, Dict, Any
+from fastapi import APIRouter, Query, Depends, Body
+from sqlmodel import Session, select
+from app.services import scraper
+from app.core.db import get_session
+from app.models.gallery import GalleryMetric
+
+router = APIRouter()
+
+
+@router.get("/buscar")
+def buscar(
+    query: str = Query(""),
+    next_id: Optional[str] = None,
+    categories: Optional[str] = None,
+):
+    cats_dict = json.loads(categories) if categories else None
+    res = scraper.buscar_galerias(query, next_id, cats_dict)
+    return {
+        "status": "success",
+        "data": res.get("data", []),
+        "next_id": res.get("next_id"),
+    }
+
+
+@router.get("/tendencias")
+def obtener_tendencias(limit: int = 5, session: Session = Depends(get_session)):
+    try:
+        statement = (
+            select(GalleryMetric)
+            .order_by(GalleryMetric.downloads.desc(), GalleryMetric.views.desc())
+            .limit(limit)
+        )
+        results = session.exec(statement).all()
+        data = [
+            {
+                "url": r.url,
+                "title": r.title,
+                "thumb": r.thumb,
+                "downloads": r.downloads,
+                "views": r.views,
+            }
+            for r in results
+        ]
+        return {"status": "success", "data": data}
+    except Exception as e:
+        return {"status": "error", "message": str(e), "data": []}
+
+
+@router.get("/leer")
+def leer_galeria(url: str, p: int = 0):
+    try:
+        res = scraper.obtener_enlaces_paginas(url, p)
+        return {
+            "status": "success",
+            "data": res.get("enlaces", []),
+            "has_next": res.get("has_next", False),
+        }
+    except Exception as e:
+        return {"status": "error", "message": str(e), "data": []}
+
+
+# 🟢 FIX 1: Cambiamos el guion medio por guion bajo para que coincida con el Frontend
+@router.get("/resolver_imagen")
+def resolver_imagen(url: str):
+    try:
+        res = scraper.extraer_imagen_real(url)
+        return {"status": "success", "url_img": res}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+
+@router.post("/interact")
+def registrar_interaccion(
+    data: dict = Body(...), session: Session = Depends(get_session)
+):
+    try:
+        url = data.get("url")
+        title = data.get("title", "Sin título")
+        thumb = data.get("thumb")
+        i_type = data.get("type") or data.get("interaction_type") or "view"
+
+        if not url:
+            return {"status": "error", "message": "Falta la URL"}
+
+        statement = select(GalleryMetric).where(GalleryMetric.url == url)
+        metric = session.exec(statement).first()
+
+        if not metric:
+            metric = GalleryMetric(
+                url=url, title=title, thumb=thumb, views=0, downloads=0
+            )
+            session.add(metric)
+        else:
+            # Por si acaso era una galería antigua sin thumb, lo actualizamos
+            if thumb and not metric.thumb:
+                metric.thumb = thumb
+
+        if i_type == "view":
+            metric.views += 1
+        elif i_type == "download":
+            metric.downloads += 1
+
+        session.commit()
+        return {"status": "success"}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+</file>
+
 <file path="backend/app/schemas/prompt.py">
 from pydantic import BaseModel
 from typing import Optional, Dict, Any
@@ -14314,59 +14541,6 @@ export const promptApi = {
 };
 </file>
 
-<file path="frontend/src/store/searchStore.ts">
-import { create } from "zustand";
-import { api } from "@/src/services/api";
-import { GalleryItem } from "@/src/types/gallery";
-import { handleError } from "../utils/errors/ErrorHandler";
-
-interface SearchState {
-  query: string; results: GalleryItem[]; isLoading: boolean; isLoadingMore: boolean; error: string | null; nextCursor: string | null; hasMore: boolean; activeCategories: Record<string, boolean>;
-  setQuery: (q: string) => void; toggleCategory: (id: string) => void; executeSearch: () => Promise<void>; loadMore: () => Promise<void>; trending: GalleryItem[]; fetchTrending: () => Promise<void>;
-}
-
-export const useSearchStore = create<SearchState>((set, get) => ({
-  query: "", results: [], trending: [], isLoading: false, isLoadingMore: false, error: null, nextCursor: null, hasMore: false,
-  activeCategories: { misc: false, doujinshi: true, manga: false, artistcg: false, gamecg: false, western: false, nonh: false, imageset: false, cosplay: false, asianporn: false },
-  
-  setQuery: (q) => set({ query: q }),
-  toggleCategory: (id) => set((state) => ({ activeCategories: { ...state.activeCategories, [id]: !state.activeCategories[id] } })),
-
-  executeSearch: async () => {
-    const { query, activeCategories } = get();
-    if (!query) return;
-    
-    set({ isLoading: true, error: null, results: [], nextCursor: null, hasMore: true });
-
-    try {
-      const data = await api.buscar(query, null, activeCategories);
-      
-      // 🚨 SENSOR DE API (El más importante)
-      console.log("🚨 TELEMETRÍA [API RESPONSE RAW]:", data);
-
-      if (data.status === "success") {
-        set({
-          results: data.data || [],
-          nextCursor: data.next_id || null,
-          hasMore: !!data.next_id,
-        });
-      } else {
-        console.warn("🚨 TELEMETRÍA [API FALLÓ SILENCIOSAMENTE]:", data);
-      }
-    } catch (err: unknown) {
-      console.error("🚨 TELEMETRÍA [API CATCH ERROR]:", err);
-      const cleanMessage = handleError(err, "SearchStore");
-      set({ error: cleanMessage });
-    } finally {
-      set({ isLoading: false });
-    }
-  },
-
-  loadMore: async () => { /* Mantengo tu Circuit Breaker intacto aquí... */ },
-  fetchTrending: async () => { /* ... */ },
-}));
-</file>
-
 <file path="frontend/src/system/organisms/Search/HeroSearch.tsx">
 "use client";
 
@@ -14524,118 +14698,6 @@ def delete_prompt(
         raise HTTPException(status_code=500, detail="Error al eliminar el prompt.")
 </file>
 
-<file path="backend/app/api/routes_search.py">
-# backend/app/api/routes_search.py
-import json
-from typing import Optional, Dict, Any
-from fastapi import APIRouter, Query, Depends, Body
-from sqlmodel import Session, select
-from app.services import scraper
-from app.core.db import get_session
-from app.models.gallery import GalleryMetric
-
-router = APIRouter()
-
-
-@router.get("/buscar")
-def buscar(
-    query: str = Query(""),
-    next_id: Optional[str] = None,
-    categories: Optional[str] = None,
-):
-    cats_dict = json.loads(categories) if categories else None
-    res = scraper.buscar_galerias(query, next_id, cats_dict)
-    return {
-        "status": "success",
-        "data": res.get("data", []),
-        "next_id": res.get("next_id"),
-    }
-
-
-@router.get("/tendencias")
-def obtener_tendencias(limit: int = 5, session: Session = Depends(get_session)):
-    try:
-        statement = (
-            select(GalleryMetric)
-            .order_by(GalleryMetric.downloads.desc(), GalleryMetric.views.desc())
-            .limit(limit)
-        )
-        results = session.exec(statement).all()
-        data = [
-            {
-                "url": r.url,
-                "title": r.title,
-                "thumb": r.thumb,
-                "downloads": r.downloads,
-                "views": r.views,
-            }
-            for r in results
-        ]
-        return {"status": "success", "data": data}
-    except Exception as e:
-        return {"status": "error", "message": str(e), "data": []}
-
-
-@router.get("/leer")
-def leer_galeria(url: str, p: int = 0):
-    try:
-        res = scraper.obtener_enlaces_paginas(url, p)
-        return {
-            "status": "success",
-            "data": res.get("enlaces", []),
-            "has_next": res.get("has_next", False),
-        }
-    except Exception as e:
-        return {"status": "error", "message": str(e), "data": []}
-
-
-# 🟢 FIX 1: Cambiamos el guion medio por guion bajo para que coincida con el Frontend
-@router.get("/resolver_imagen")
-def resolver_imagen(url: str):
-    try:
-        res = scraper.extraer_imagen_real(url)
-        return {"status": "success", "url_img": res}
-    except Exception as e:
-        return {"status": "error", "message": str(e)}
-
-
-@router.post("/interact")
-def registrar_interaccion(
-    data: dict = Body(...), session: Session = Depends(get_session)
-):
-    try:
-        url = data.get("url")
-        title = data.get("title", "Sin título")
-        thumb = data.get("thumb")
-        i_type = data.get("type") or data.get("interaction_type") or "view"
-
-        if not url:
-            return {"status": "error", "message": "Falta la URL"}
-
-        statement = select(GalleryMetric).where(GalleryMetric.url == url)
-        metric = session.exec(statement).first()
-
-        if not metric:
-            metric = GalleryMetric(
-                url=url, title=title, thumb=thumb, views=0, downloads=0
-            )
-            session.add(metric)
-        else:
-            # Por si acaso era una galería antigua sin thumb, lo actualizamos
-            if thumb and not metric.thumb:
-                metric.thumb = thumb
-
-        if i_type == "view":
-            metric.views += 1
-        elif i_type == "download":
-            metric.downloads += 1
-
-        session.commit()
-        return {"status": "success"}
-    except Exception as e:
-        return {"status": "error", "message": str(e)}
-</file>
-
 <file path="frontend/src/system/organisms/Search/TrendingSection/TrendingSection.tsx">
 "use client";
 
@@ -14675,77 +14737,6 @@ export function TrendingSection({ trending, onOpenVisor, onDownloadTotal }: Tren
         })}
       </div>
     </section>
-  );
-}
-</file>
-
-<file path="frontend/src/system/organisms/Search/SearchResults.tsx">
-import { useEffect } from "react";
-import { useInView } from "react-intersection-observer";
-import { GalleryItem } from "@/src/types/gallery";
-import { UniversalMediaCard } from "../Media/UniversalMediaCard";
-
-interface Props {
-  results: GalleryItem[];
-  onOpenVisor: (item: GalleryItem) => void;
-  onDownloadTotal: (item: GalleryItem) => void;
-  hasMore?: boolean;
-  isLoadingMore?: boolean;
-  onLoadMore?: () => void;
-}
-
-export function SearchResults({
-  results,
-  onOpenVisor,
-  onDownloadTotal,
-  hasMore = false,
-  isLoadingMore = false,
-  onLoadMore,
-}: Props) {
-  const { ref, inView } = useInView({
-    threshold: 0,
-    rootMargin: "400px",
-  });
-
-  useEffect(() => {
-    if (inView && hasMore && !isLoadingMore && onLoadMore) {
-      onLoadMore();
-    }
-  }, [inView, hasMore, isLoadingMore, onLoadMore]);
-
-  if (!results || results.length === 0) return null;
-
-  return (
-    <div className="flex flex-col gap-8 pb-20">
-      {/* 1. La Cuadrícula de Resultados */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-        {results.map((item, index) => (
-          <UniversalMediaCard
-            key={item.id || item.url || `gallery-${index}`}
-            item={item}
-            onOpenVisor={onOpenVisor}
-            onDownloadTotal={onDownloadTotal}
-          />
-        ))}
-      </div>
-
-      {/* 2. EL CENTINELA (Invisible o Spinner) */}
-      {hasMore && (
-        <div ref={ref} className="w-full flex justify-center py-10">
-          {isLoadingMore ? (
-            <div className="flex flex-col items-center gap-3 text-(--accent-color) animate-pulse">
-              <div className="w-8 h-8 rounded-full border-4 border-current border-t-transparent animate-spin" />
-              <span className="font-mono text-[10px] uppercase font-black tracking-widest text-(--text-secondary)">
-                Decodificando más resultados...
-              </span>
-            </div>
-          ) : (
-            // Un div invisible que activa el observer justo antes de que se necesite el spinner
-            <div className="h-4 w-full" />
-          )}
-        </div>
-      )}
-    </div>
   );
 }
 </file>
@@ -14824,27 +14815,6 @@ export function ViewerGrid({ pages, currentIndex, onSelect, hasMorePages, isLoad
 }
 </file>
 
-<file path="frontend/src/utils/adapters/mediaAdapters.ts">
-import { MediaCardData, GalleryItem } from "@/src/types/gallery";
-
-export const mapSearchToMediaCard = (item: GalleryItem): MediaCardData => {
-  // 🚨 SENSOR DE TRANSFORMACIÓN
-  if (!item) console.error("🚨 TELEMETRÍA [ADAPTER]: Item recibido es NULO o UNDEFINED");
-  if (item && !item.thumb) console.warn("🚨 TELEMETRÍA [ADAPTER]: Item no tiene imagen (thumb)", item);
-
-  return {
-    id: item?.gid || item?.url || crypto.randomUUID(), 
-    imageUrl: item?.thumb || "",
-    title: item?.title || "Sin título",
-    tags: item?.tags || [],
-    source: "E-Hentai",
-    aspectRatio: "portrait",
-  };
-};
-
-export const mapViewerToMediaCard = (page: any, index: number): MediaCardData => { /* ... */ return { id: `p-${index}`, imageUrl: page?.image_url || "", title: page?.name || "", aspectRatio: "auto" }; };
-</file>
-
 <file path="frontend/app/reprompt/page.tsx">
 "use client";
 
@@ -14899,6 +14869,136 @@ export default function RepromptPage() {
     </main>
   );
 }
+</file>
+
+<file path="frontend/src/store/searchStore.ts">
+import { create } from "zustand";
+import { api } from "@/src/services/api";
+import { GalleryItem } from "@/src/types/gallery";
+import { handleError } from "../utils/errors/ErrorHandler";
+
+interface SearchState {
+  query: string;
+  results: GalleryItem[];
+  isLoading: boolean;
+  isLoadingMore: boolean;
+  error: string | null;
+  nextCursor: string | null;
+  hasMore: boolean;
+  activeCategories: Record<string, boolean>;
+  
+  setQuery: (q: string) => void;
+  toggleCategory: (id: string) => void;
+  executeSearch: () => Promise<void>;
+  loadMore: () => Promise<void>;
+  trending: GalleryItem[];
+  fetchTrending: () => Promise<void>;
+}
+
+export const useSearchStore = create<SearchState>((set, get) => ({
+  query: "",
+  results: [],
+  trending: [],
+  isLoading: false,
+  isLoadingMore: false,
+  error: null,
+  nextCursor: null,
+  hasMore: false,
+  activeCategories: {
+    misc: false, doujinshi: true, manga: false, artistcg: false, gamecg: false,
+    western: false, nonh: false, imageset: false, cosplay: false, asianporn: false,
+  },
+
+  setQuery: (q) => set({ query: q }),
+  
+  toggleCategory: (id) =>
+    set((state) => ({
+      activeCategories: { ...state.activeCategories, [id]: !state.activeCategories[id] },
+    })),
+
+  executeSearch: async () => {
+    const { query, activeCategories } = get();
+    if (!query) return;
+    
+    set({ isLoading: true, error: null, results: [], nextCursor: null, hasMore: true });
+
+    try {
+      const data = await api.buscar(query, null, activeCategories);
+      if (process.env.NODE_ENV === "development") console.log("🚨 TELEMETRÍA [API INITIAL SEARCH]:", data);
+
+      if (data.status === "success") {
+        set({
+          results: data.data || [],
+          nextCursor: data.next_id || null,
+          hasMore: !!data.next_id,
+        });
+      }
+    } catch (err: unknown) {
+      const cleanMessage = handleError(err, "SearchStore");
+      set({ error: cleanMessage });
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+
+  // ✅ AQUÍ ESTÁ EL CÓDIGO REAL RESTAURADO
+  loadMore: async () => {
+    const { query, nextCursor, hasMore, isLoadingMore, activeCategories, results } = get();
+    
+    if (process.env.NODE_ENV === "development") console.log("🚨 TELEMETRÍA [STORE]: Ejecutando loadMore. Estado actual:", { isLoadingMore, hasMore, nextCursor });
+
+    // Bloqueamos si ya está cargando o no hay más páginas
+    if (isLoadingMore || !hasMore || !nextCursor) {
+      if (process.env.NODE_ENV === "development") console.warn("🚨 TELEMETRÍA [STORE]: Petición bloqueada (ya cargando o sin cursor).");
+      return;
+    }
+    
+    set({ isLoadingMore: true });
+
+    try {
+      console.log(`🚨 TELEMETRÍA [STORE]: Pidiendo página con cursor: ${nextCursor}`);
+      const data = await api.buscar(query, nextCursor, activeCategories);
+      
+      if (process.env.NODE_ENV === "development") console.log("🚨 TELEMETRÍA [API LOAD MORE]:", data);
+
+      if (data.status === "success" && data.data && data.data.length > 0) {
+        const combined = [...results, ...data.data];
+        
+        // Filtramos duplicados usando la URL como ID único
+        const unique = Array.from(new Map(combined.map((item) => [item.url, item])).values());
+
+        // 🛡️ CIRCUIT BREAKER
+        if (unique.length === results.length) {
+          if (process.env.NODE_ENV === "development") console.warn("🚨 CIRCUIT BREAKER: El Backend mandó los mismos resultados. Cortando el bucle.");
+          set({ hasMore: false });
+        } else {
+          set({
+            results: unique,
+            nextCursor: data.next_id || null,
+            hasMore: !!data.next_id, // Si no hay next_id, desactivamos el Infinite Scroll
+          });
+        }
+      } else {
+        if (process.env.NODE_ENV === "development") console.warn("🚨 TELEMETRÍA [STORE]: La API devolvió un array vacío. Fin de los resultados.");
+        set({ hasMore: false });
+      }
+    } catch (err) {
+      if (process.env.NODE_ENV === "development") console.error("🚨 TELEMETRÍA [STORE]: Error al cargar más:", err);
+    } finally {
+      set({ isLoadingMore: false });
+    }
+  },
+
+  // ✅ CÓDIGO RESTAURADO PARA LAS TENDENCIAS DE LA HOME
+  fetchTrending: async () => {
+    try {
+      const data = await api.obtenerTendencias(5);
+      if (data.status === "success") set({ trending: data.data });
+    } catch (err) {
+      console.error("Error cargando tendencias:", err);
+    }
+  },
+}));
 </file>
 
 <file path="frontend/src/system/molecules/SearchCategorySelector.tsx">
@@ -15114,6 +15214,27 @@ export interface GalleryItem {
 }
 </file>
 
+<file path="frontend/src/utils/adapters/mediaAdapters.ts">
+import { MediaCardData, GalleryItem } from "@/src/types/gallery";
+
+export const mapSearchToMediaCard = (item: GalleryItem): MediaCardData => {
+  // 🚨 SENSOR DE TRANSFORMACIÓN
+  if (!item && process.env.NODE_ENV === "development") console.error("🚨 TELEMETRÍA [ADAPTER]: Item recibido es NULO o UNDEFINED");
+  if (item && !item.thumb && process.env.NODE_ENV === "development") console.warn("🚨 TELEMETRÍA [ADAPTER]: Item no tiene imagen (thumb)", item);
+
+  return {
+    id: item?.gid || item?.url || crypto.randomUUID(), 
+    imageUrl: item?.thumb || "",
+    title: item?.title || "Sin título",
+    tags: item?.tags || [],
+    source: "E-Hentai",
+    aspectRatio: "portrait",
+  };
+};
+
+export const mapViewerToMediaCard = (page: any, index: number): MediaCardData => { /* ... */ return { id: `p-${index}`, imageUrl: page?.image_url || "", title: page?.name || "", aspectRatio: "auto" }; };
+</file>
+
 <file path="frontend/src/system/organisms/Layout/Navbar/NavbarSearch.tsx">
 "use client";
 import React, { useCallback, useEffect, useRef } from "react";
@@ -15173,67 +15294,6 @@ export function NavbarSearch() {
       </form>
     </div>
   );
-}
-</file>
-
-<file path="frontend/package.json">
-{
-  "name": "frontend-galeria",
-  "version": "0.1.0",
-  "private": true,
-  "scripts": {
-    "dev": "node diagnose.js && next dev",
-    "build": "next build",
-    "format": "prettier --write \"{app,src}/**/*.{ts,tsx,css}\"",
-    "start": "next start",
-    "lint": "next lint",
-    "test": "jest",
-    "test:watch": "jest --watch"
-  },
-  "dependencies": {
-    "@base-ui/react": "^1.3.0",
-    "@phosphor-icons/react": "^2.1.10",
-    "@tabler/icons-react": "^3.41.0",
-    "class-variance-authority": "^0.7.1",
-    "clsx": "^2.1.1",
-    "embla-carousel-react": "^8.6.0",
-    "exifr": "^7.1.3",
-    "jszip": "^3.10.1",
-    "next": "16.2.1",
-    "png-chunk-text": "^1.0.0",
-    "png-chunks-extract": "^1.0.0",
-    "radix-ui": "^1.4.3",
-    "react": "19.2.4",
-    "react-dom": "19.2.4",
-    "react-dropzone": "^15.0.0",
-    "react-hot-toast": "^2.6.0",
-    "react-intersection-observer": "^10.0.3",
-    "tailwind-merge": "^3.5.0",
-    "tw-animate-css": "^1.4.0",
-    "zustand": "^5.0.12"
-  },
-  "devDependencies": {
-    "@tailwindcss/postcss": "^4",
-    "@testing-library/jest-dom": "^6.9.1",
-    "@testing-library/react": "^16.3.2",
-    "@testing-library/user-event": "^14.6.1",
-    "@types/jest": "^30.0.0",
-    "@types/jszip": "^3.4.0",
-    "@types/node": "^20.19.37",
-    "@types/png-chunk-text": "^1.0.3",
-    "@types/png-chunks-extract": "^1.0.2",
-    "@types/react": "^19.2.14",
-    "@types/react-dom": "^19.2.3",
-    "eslint": "^9",
-    "eslint-config-next": "16.2.1",
-    "jest": "^30.3.0",
-    "jest-environment-jsdom": "^30.3.0",
-    "prettier": "^3.8.1",
-    "shadcn": "^4.1.1",
-    "tailwindcss": "^4",
-    "ts-node": "^10.9.2",
-    "typescript": "^5.9.3"
-  }
 }
 </file>
 
@@ -15503,6 +15563,67 @@ def extraer_imagen_real(url_visor: str):
         return None
 </file>
 
+<file path="frontend/package.json">
+{
+  "name": "frontend-galeria",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "node diagnose.js && next dev",
+    "build": "next build",
+    "format": "prettier --write \"{app,src}/**/*.{ts,tsx,css}\"",
+    "start": "next start",
+    "lint": "next lint",
+    "test": "jest",
+    "test:watch": "jest --watch"
+  },
+  "dependencies": {
+    "@base-ui/react": "^1.3.0",
+    "@phosphor-icons/react": "^2.1.10",
+    "@tabler/icons-react": "^3.41.0",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "embla-carousel-react": "^8.6.0",
+    "exifr": "^7.1.3",
+    "jszip": "^3.10.1",
+    "next": "16.2.1",
+    "png-chunk-text": "^1.0.0",
+    "png-chunks-extract": "^1.0.0",
+    "radix-ui": "^1.4.3",
+    "react": "19.2.4",
+    "react-dom": "19.2.4",
+    "react-dropzone": "^15.0.0",
+    "react-hot-toast": "^2.6.0",
+    "react-intersection-observer": "^10.0.3",
+    "tailwind-merge": "^3.5.0",
+    "tw-animate-css": "^1.4.0",
+    "zustand": "^5.0.12"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.1",
+    "@types/jest": "^30.0.0",
+    "@types/jszip": "^3.4.0",
+    "@types/node": "^20.19.37",
+    "@types/png-chunk-text": "^1.0.3",
+    "@types/png-chunks-extract": "^1.0.2",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "eslint": "^9",
+    "eslint-config-next": "16.2.1",
+    "jest": "^30.3.0",
+    "jest-environment-jsdom": "^30.3.0",
+    "prettier": "^3.8.1",
+    "shadcn": "^4.1.1",
+    "tailwindcss": "^4",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3"
+  }
+}
+</file>
+
 <file path="frontend/app/layout.tsx">
 import type { Metadata } from "next";
 import { Prompt, JetBrains_Mono } from "next/font/google";
@@ -15538,121 +15659,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         </AuthProvider>
       </body>
     </html>
-  );
-}
-</file>
-
-<file path="frontend/app/page.tsx">
-"use client";
-
-import { useState, useEffect } from "react";
-import { api } from "@/src/services/api";
-import { useSearchStore } from "@/src/store/searchStore";
-import { GalleryItem } from "@/src/types/gallery";
-import { useSearch } from "@/src/features/search/hooks/useSearch";
-import { useViewerSync } from "@/src/features/image-viewer/hooks/useViewerSync";
-import { TrendingSection } from "@/src/system/organisms/Search/TrendingSection/TrendingSection";
-import { ImageViewerModal } from "@/src/system/organisms/Viewer/ImageViewerModal/ImageViewerModal";
-import { HeroSearch } from "@/src/system/organisms/Search/HeroSearch";
-import { SearchResults } from "@/src/system/organisms/Search/SearchResults";
-
-export default function Home() {
-  const {
-    query,
-    results,
-    isLoading,
-    isLoadingMore: isLoadingMoreResults,
-    hasMore,
-    error,
-    loadMore,
-  } = useSearch();
-  const { trending, fetchTrending } = useSearchStore();
-
-  const [activeUrl, setActiveUrl] = useState("");
-  const [activeTitle, setActiveTitle] = useState("");
-
-  const {
-    viewerPages,
-    isViewerLoading,
-    isLoadingMore: isLoadingMorePages,
-    isViewerOpen,
-    openViewer,
-    closeViewer,
-    hasMorePages,
-    loadNextPage,
-  } = useViewerSync(activeUrl);
-
-  const handleOpenVisor = (item: GalleryItem) => {
-    setActiveUrl(item.url);
-    setActiveTitle(item.title);
-    openViewer(item.url);
-    api.registrarInteraccion(item, "view").catch(console.error);
-  };
-
-  const handleDownloadTotal = async (item: GalleryItem) => {
-    try {
-      await api.descargarTotal(item.url, item.title);
-      api.registrarInteraccion(item, "download").catch(console.error);
-      alert(`⬇️ Descarga iniciada: ${item.title}`);
-    } catch (err) {
-      alert("❌ Error al encolar la descarga.");
-    }
-  };
-
-  useEffect(() => {
-    fetchTrending();
-  }, []);
-
-  // 🚨 SENSOR DE RENDERIZADO PRINCIPAL
-  console.log("🚨 TELEMETRÍA [HOME]:", {
-    estadoCarga: isLoading,
-    cantidadResultados: results?.length,
-    tieneMas: hasMore,
-    busquedaActual: query,
-  });
-
-  return (
-    <main className="min-h-screen bg-background text-foreground font-sans">
-      <HeroSearch />
-      {error && (
-        <div className="text-center text-red-500 mb-8 font-mono p-4 bg-red-500/10 neo-border neo-shadow max-w-md mx-auto">
-          {error}
-        </div>
-      )}
-      <div className="max-w-90rem mx-auto px-4">
-        {query === "" && (
-          <TrendingSection
-            trending={trending}
-            onOpenVisor={handleOpenVisor}
-            onDownloadTotal={handleDownloadTotal}
-          />
-        )}
-
-        {/* 🛡️ NOTA MENTAL: Observa si esta condición se cumple realmente */}
-        {!isLoading && results.length > 0 && (
-          <SearchResults
-            results={results}
-            onOpenVisor={handleOpenVisor}
-            onDownloadTotal={handleDownloadTotal}
-            hasMore={hasMore}
-            isLoadingMore={isLoadingMoreResults}
-            onLoadMore={loadMore}
-          />
-        )}
-
-        {isViewerOpen && (
-          <ImageViewerModal
-            title={activeTitle}
-            pages={viewerPages}
-            isLoading={isViewerLoading}
-            isLoadingMore={isLoadingMorePages}
-            hasMorePages={hasMorePages}
-            onLoadMore={loadNextPage}
-            onClose={closeViewer}
-          />
-        )}
-      </div>
-    </main>
   );
 }
 </file>
@@ -15703,6 +15709,125 @@ export function Navbar() {
         <NavbarMobile />
       </div>
     </nav>
+  );
+}
+</file>
+
+<file path="frontend/app/page.tsx">
+"use client";
+
+import { useState, useEffect } from "react";
+import { api } from "@/src/services/api";
+import { useNotificationStore } from "@/src/store/notificationStore";
+import { useSearchStore } from "@/src/store/searchStore";
+import { GalleryItem } from "@/src/types/gallery";
+import { useSearch } from "@/src/features/search/hooks/useSearch";
+import { useViewerSync } from "@/src/features/image-viewer/hooks/useViewerSync";
+import { TrendingSection } from "@/src/system/organisms/Search/TrendingSection/TrendingSection";
+import { ImageViewerModal } from "@/src/system/organisms/Viewer/ImageViewerModal/ImageViewerModal";
+import { HeroSearch } from "@/src/system/organisms/Search/HeroSearch";
+import { SearchResults } from "@/src/system/organisms/Search/SearchResults/SearchResults";
+
+export default function Home() {
+  const { notify } = useNotificationStore();
+
+  const {
+    query,
+    results,
+    isLoading,
+    isLoadingMore: isLoadingMoreResults,
+    hasMore,
+    error,
+    loadMore,
+  } = useSearch();
+  const { trending, fetchTrending } = useSearchStore();
+
+  const [activeUrl, setActiveUrl] = useState("");
+  const [activeTitle, setActiveTitle] = useState("");
+
+  const {
+    viewerPages,
+    isViewerLoading,
+    isLoadingMore: isLoadingMorePages,
+    isViewerOpen,
+    openViewer,
+    closeViewer,
+    hasMorePages,
+    loadNextPage,
+  } = useViewerSync(activeUrl);
+
+  const handleOpenVisor = (item: GalleryItem) => {
+    setActiveUrl(item.url);
+    setActiveTitle(item.title);
+    openViewer(item.url);
+    api.registrarInteraccion(item, "view").catch(console.error);
+  };
+
+  const handleDownloadTotal = async (item: GalleryItem) => {
+    try {
+      await api.descargarTotal(item.url, item.title);
+      api.registrarInteraccion(item, "download").catch(console.error);
+      notify("Descarga", `⬇️ Descarga iniciada: ${item.title}`, "success");
+    } catch (err) {
+      notify("Error", "❌ Error al encolar la descarga.", "error");
+    }
+  };
+
+  useEffect(() => {
+    fetchTrending();
+  }, []);
+
+  // 🚨 SENSOR DE RENDERIZADO PRINCIPAL
+  if (process.env.NODE_ENV === "development")
+    console.log("🚨 TELEMETRÍA [HOME]:", {
+      estadoCarga: isLoading,
+      cantidadResultados: results?.length,
+      tieneMas: hasMore,
+      busquedaActual: query,
+    });
+
+  return (
+    <main className="min-h-screen bg-background text-foreground font-sans">
+      <HeroSearch />
+      {error && (
+        <div className="text-center text-red-500 mb-8 font-mono p-4 bg-red-500/10 neo-border neo-shadow max-w-md mx-auto">
+          {error}
+        </div>
+      )}
+      <div className="max-w-90rem mx-auto px-4">
+        {query === "" && (
+          <TrendingSection
+            trending={trending}
+            onOpenVisor={handleOpenVisor}
+            onDownloadTotal={handleDownloadTotal}
+          />
+        )}
+
+        {/* 🛡️ NOTA MENTAL: Observa si esta condición se cumple realmente */}
+        {!isLoading && results.length > 0 && (
+          <SearchResults
+            results={results}
+            onOpenVisor={handleOpenVisor}
+            onDownloadTotal={handleDownloadTotal}
+            hasMore={hasMore}
+            isLoadingMore={isLoadingMoreResults}
+            onLoadMore={loadMore}
+          />
+        )}
+
+        {isViewerOpen && (
+          <ImageViewerModal
+            title={activeTitle}
+            pages={viewerPages}
+            isLoading={isViewerLoading}
+            isLoadingMore={isLoadingMorePages}
+            hasMorePages={hasMorePages}
+            onLoadMore={loadNextPage}
+            onClose={closeViewer}
+          />
+        )}
+      </div>
+    </main>
   );
 }
 </file>
