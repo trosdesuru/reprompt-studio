@@ -2564,11 +2564,11 @@ export function useSearch() {
       store.setQuery(input);
     }
 
-    useProgressStore.getState().startWork();
+    useProgressStore.getState().start();
     try {
       await store.executeSearch();
     } finally {
-      useProgressStore.getState().stopWork();
+      useProgressStore.getState().done();
     }
   };
 
@@ -3013,13 +3013,11 @@ export const useProgressStore = create<ProgressState>((set) => {
     isAnimating: false,
     progress: 0,
     start: () => {
-      set({ isAnimating: true, progress: 5 }); // Arranca al 5%
+      set({ isAnimating: true, progress: 5 });
       clearInterval(timer);
-      // Simulación de avance logarítmico (se frena al 90% esperando el cierre real)
       timer = setInterval(() => {
         set((state) => ({
-          progress:
-            state.progress >= 90 ? state.progress : state.progress + (10 - state.progress / 10),
+          progress: state.progress >= 90 ? state.progress : state.progress + (10 - state.progress / 10),
         }));
       }, 300);
     },
@@ -3028,15 +3026,18 @@ export const useProgressStore = create<ProgressState>((set) => {
     },
     done: () => {
       clearInterval(timer);
-      set({ progress: 100 });
-      // Oculta la barra suavemente tras llegar al 100%
-      setTimeout(() => set({ isAnimating: false, progress: 0 }), 400);
+      // 🛡️ FIX CRÍTICO: Forzamos isAnimating a true para que se vea el viaje al 100%
+      set({ isAnimating: true, progress: 100 });
+      setTimeout(() => {
+        set({ isAnimating: false, progress: 0 });
+      }, 400);
     },
   };
 });
 </file>
 
 <file path="src/store/searchStore.ts">
+import { useProgressStore } from "./progressStore";
 import { create } from "zustand";
 import { api } from "@/src/services/api";
 import { GalleryItem } from "@/src/types/gallery";
@@ -3082,6 +3083,7 @@ export const useSearchStore = create<SearchState>((set, get) => ({
     })),
 
   executeSearch: async () => {
+    useProgressStore.getState().start();
     const { query, activeCategories } = get();
     if (!query) return;
     
@@ -3103,11 +3105,13 @@ export const useSearchStore = create<SearchState>((set, get) => ({
       set({ error: cleanMessage });
     } finally {
       set({ isLoading: false });
+      useProgressStore.getState().done();
     }
   },
 
   // ✅ AQUÍ ESTÁ EL CÓDIGO REAL RESTAURADO
   loadMore: async () => {
+    useProgressStore.getState().start();
     const { query, nextCursor, hasMore, isLoadingMore, activeCategories, results } = get();
     
     if (process.env.NODE_ENV === "development") console.log("🚨 TELEMETRÍA [STORE]: Ejecutando loadMore. Estado actual:", { isLoadingMore, hasMore, nextCursor });
@@ -3151,16 +3155,20 @@ export const useSearchStore = create<SearchState>((set, get) => ({
       if (process.env.NODE_ENV === "development") console.error("🚨 TELEMETRÍA [STORE]: Error al cargar más:", err);
     } finally {
       set({ isLoadingMore: false });
+      useProgressStore.getState().done();
     }
   },
 
   // ✅ CÓDIGO RESTAURADO PARA LAS TENDENCIAS DE LA HOME
   fetchTrending: async () => {
+    useProgressStore.getState().start();
     try {
       const data = await api.obtenerTendencias(5);
       if (data.status === "success") set({ trending: data.data });
+      useProgressStore.getState().done();
     } catch (err) {
       console.error("Error cargando tendencias:", err);
+      useProgressStore.getState().done();
     }
   },
 }));
@@ -5594,25 +5602,45 @@ export function AppToaster() {
 import { useEffect } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useProgressStore } from "@/src/store/progressStore";
-import { ProgressBar } from "@/src/system/atoms/ProgressBar"; // Asumiendo que esta es la ruta de tu atom
+import { ProgressBar } from "@/src/system/atoms/ProgressBar";
 
 export function GlobalProgress() {
-  const { isAnimating, progress, done } = useProgressStore();
+  const { isAnimating, progress, start, done } = useProgressStore();
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
-  // 🛡️ EFECTO 1: Cambios de Ruta en Next.js App Router
-  // Cada vez que cambia la URL (pathname o params), cerramos la barra de progreso
+  // 1. Detener la barra al terminar la navegación (cuando la ruta ya cambió)
   useEffect(() => {
     done();
   }, [pathname, searchParams, done]);
 
+  // 2. 🚀 EL ESPÍA GLOBAL: Interceptar cualquier click en un Link interno
+  useEffect(() => {
+    const handleAnchorClick = (e: MouseEvent) => {
+      const anchor = (e.target as HTMLElement).closest("a");
+      if (!anchor) return;
+      
+      const href = anchor.getAttribute("href");
+      const target = anchor.getAttribute("target");
+      
+      // Si es un link interno y va a una ruta diferente, disparamos la barra
+      if (href && href.startsWith("/") && target !== "_blank" && href !== pathname) {
+        start();
+      }
+    };
+
+    document.addEventListener("click", handleAnchorClick, true);
+    return () => document.removeEventListener("click", handleAnchorClick, true);
+  }, [pathname, start]);
+
   if (!isAnimating) return null;
 
   return (
-    <div className="fixed top-0 left-0 w-full z-9999 pointer-events-none">
-      {/* Pasamos los props que necesite tu atom. Asumo value={progress} */}
-      <ProgressBar value={progress} className="h-1 rounded-none bg-var(--accent-color) shadow-[0_0_10px_var(--accent-color)] transition-all duration-300 ease-out" />
+    <div className="fixed top-0 left-0 w-full z-99999 pointer-events-none">
+      <ProgressBar 
+        value={progress} 
+        className="h-1 bg-var(--accent-color) shadow-[0_0_15px_var(--accent-color)] transition-all duration-300 ease-out" 
+      />
     </div>
   );
 }
