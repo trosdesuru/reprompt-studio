@@ -9,7 +9,7 @@ import { useViewerSync } from "@/src/features/image-viewer/hooks/useViewerSync";
 import { TrendingSection } from "@/src/system/organisms/Search/TrendingSection/TrendingSection";
 import { ImageViewerModal } from "@/src/system/organisms/Viewer/ImageViewerModal/ImageViewerModal";
 import { HeroSearch } from "@/src/system/organisms/Search/HeroSearch";
-import { SearchResults } from "@/src/system/organisms/Search/SearchResults";
+import { SearchResults } from "@/src/system/organisms/Search/SearchResults/SearchResults";
 
 export default function Home() {
   const {

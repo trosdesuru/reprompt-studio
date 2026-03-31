@@ -286,6 +286,58 @@ This section contains the contents of the repository's files.
 
 </file>
 
+<file path="backend/app/api/routes_download.py">
+from fastapi import Depends
+from app.api.deps import get_current_user
+from sqlmodel import Session
+from app.models.user import User
+
+import re
+
+from sqlmodel import Session
+from fastapi import APIRouter, Depends
+from app.core.db import get_session
+from app.services.audit_service import AuditService
+
+from app.core.redis_config import download_queue
+from app.schemas.requests import DescargaRequest, DescargaUnaRequest
+from app.services.downloader import ejecutar_descarga, ejecutar_descarga_individual
+from app.services.audit_service import AuditService
+from app.utils.storage import preparar_directorio
+
+router = APIRouter()
+
+
+@router.post("/descargar")
+def endpoint_descargar(
+    req: DescargaRequest,
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),  # 🟢 ¡Faltaba pedir la sesión aquí!
+):
+    carpeta_limpia = re.sub(r'[\\/*?:"<>|]', "", req.title).strip() or "galeria"
+    download_dir = preparar_directorio("/storage/galleries", carpeta_limpia)
+
+    job = download_queue.enqueue(ejecutar_descarga, req.url, download_dir)
+    return {"status": "success", "message": "Descarga enviada a la cola"}
+
+
+@router.post("/descargar_imagen")
+def endpoint_descargar_imagen(
+    req: DescargaUnaRequest, current_user: User = Depends(get_current_user)
+):
+    carpeta_limpia = re.sub(r'[\\/*?:"<>|]', "", req.title).strip() or "galeria"
+
+    # 1. Usamos nuestra utilidad para crear la carpeta
+    download_dir = preparar_directorio("/storage/galleries", carpeta_limpia)
+
+    # 2. Enviamos a la cola de Redis
+    job = download_queue.enqueue(
+        ejecutar_descarga_individual, req.url_img, download_dir, req.index
+    )
+
+    return {"status": "success", "message": f"Imagen {req.index} enviada a la cola"}
+</file>
+
 <file path="backend/app/core/__init__.py">
 
 </file>
@@ -507,6 +559,28 @@ class AuditLog(SQLModel, table=True):
 
 <file path="backend/app/schemas/__init__.py">
 
+</file>
+
+<file path="backend/app/schemas/requests.py">
+from pydantic import BaseModel
+
+
+class DescargaRequest(BaseModel):
+    url: str
+    title: str
+
+
+class DescargaUnaRequest(BaseModel):
+    url_img: str
+    title: str
+    index: int
+
+
+class InteractionRequest(BaseModel):
+    url: str
+    title: str
+    thumb: str
+    interaction_type: str  # Puede ser "view" o "download"
 </file>
 
 <file path="backend/app/schemas/user.py">
@@ -1084,6 +1158,45 @@ export const downloadApi = {
 };
 </file>
 
+<file path="frontend/src/services/api/search.ts">
+import { API_URL, fetchSeguro } from "./client";
+
+export const searchApi = {
+  buscar: (
+    query: string,
+    next_id: string | null = null,
+    categories: Record<string, boolean> | null = null,
+  ) => {
+    let endpoint = `${API_URL}/buscar?query=${encodeURIComponent(query)}`;
+    if (next_id) endpoint += `&next_id=${next_id}`;
+    if (categories) endpoint += `&categories=${encodeURIComponent(JSON.stringify(categories))}`;
+    return fetchSeguro(endpoint);
+  },
+  leer: (url: string, p: number = 0) =>
+    fetchSeguro(`${API_URL}/leer?url=${encodeURIComponent(url)}&p=${p}`),
+
+  resolverImagen: (url: string) =>
+    fetchSeguro(`${API_URL}/resolver_imagen?url=${encodeURIComponent(url)}`),
+
+  obtenerTendencias: (limit: number = 5) => fetchSeguro(`${API_URL}/tendencias?limit=${limit}`),
+
+  registrarInteraccion: (
+    item: { url: string; title: string; thumb: string },
+    type: "view" | "download",
+  ) =>
+    fetchSeguro(`${API_URL}/interact`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        url: item.url,
+        title: item.title,
+        thumb: item.thumb,
+        interaction_type: type,
+      }),
+    }),
+};
+</file>
+
 <file path="frontend/.gitignore">
 # See https:
 
@@ -1578,80 +1691,6 @@ def get_current_admin(current_user: User = Depends(get_current_user)):
             detail="No tienes suficientes privilegios (Requiere rol Admin)",
         )
     return current_user
-</file>
-
-<file path="backend/app/api/routes_download.py">
-from fastapi import Depends
-from app.api.deps import get_current_user
-from sqlmodel import Session
-from app.models.user import User
-
-import re
-
-from sqlmodel import Session
-from fastapi import APIRouter, Depends
-from app.core.db import get_session
-from app.services.audit_service import AuditService
-
-from app.core.redis_config import download_queue
-from app.schemas.requests import DescargaRequest, DescargaUnaRequest
-from app.services.downloader import ejecutar_descarga, ejecutar_descarga_individual
-from app.services.audit_service import AuditService
-from app.utils.storage import preparar_directorio
-
-router = APIRouter()
-
-
-@router.post("/descargar")
-def endpoint_descargar(
-    req: DescargaRequest,
-    current_user: User = Depends(get_current_user),
-    session: Session = Depends(get_session),  # 🟢 ¡Faltaba pedir la sesión aquí!
-):
-    carpeta_limpia = re.sub(r'[\\/*?:"<>|]', "", req.title).strip() or "galeria"
-    download_dir = preparar_directorio("/storage/galleries", carpeta_limpia)
-
-    job = download_queue.enqueue(ejecutar_descarga, req.url, download_dir)
-    return {"status": "success", "message": "Descarga enviada a la cola"}
-
-
-@router.post("/descargar_imagen")
-def endpoint_descargar_imagen(
-    req: DescargaUnaRequest, current_user: User = Depends(get_current_user)
-):
-    carpeta_limpia = re.sub(r'[\\/*?:"<>|]', "", req.title).strip() or "galeria"
-
-    # 1. Usamos nuestra utilidad para crear la carpeta
-    download_dir = preparar_directorio("/storage/galleries", carpeta_limpia)
-
-    # 2. Enviamos a la cola de Redis
-    job = download_queue.enqueue(
-        ejecutar_descarga_individual, req.url_img, download_dir, req.index
-    )
-
-    return {"status": "success", "message": f"Imagen {req.index} enviada a la cola"}
-</file>
-
-<file path="backend/app/schemas/requests.py">
-from pydantic import BaseModel
-
-
-class DescargaRequest(BaseModel):
-    url: str
-    title: str
-
-
-class DescargaUnaRequest(BaseModel):
-    url_img: str
-    title: str
-    index: int
-
-
-class InteractionRequest(BaseModel):
-    url: str
-    title: str
-    thumb: str
-    interaction_type: str  # Puede ser "view" o "download"
 </file>
 
 <file path="backend/app/services/auth_service.py">
@@ -3235,45 +3274,6 @@ export function useStudio() {
 
   return { prompts, isLoading, error, refetch: fetchPrompts, deletePrompt };
 }
-</file>
-
-<file path="frontend/src/services/api/search.ts">
-import { API_URL, fetchSeguro } from "./client";
-
-export const searchApi = {
-  buscar: (
-    query: string,
-    next_id: string | null = null,
-    categories: Record<string, boolean> | null = null,
-  ) => {
-    let endpoint = `${API_URL}/buscar?query=${encodeURIComponent(query)}`;
-    if (next_id) endpoint += `&next_id=${next_id}`;
-    if (categories) endpoint += `&categories=${encodeURIComponent(JSON.stringify(categories))}`;
-    return fetchSeguro(endpoint);
-  },
-  leer: (url: string, p: number = 0) =>
-    fetchSeguro(`${API_URL}/leer?url=${encodeURIComponent(url)}&p=${p}`),
-
-  resolverImagen: (url: string) =>
-    fetchSeguro(`${API_URL}/resolver_imagen?url=${encodeURIComponent(url)}`),
-
-  obtenerTendencias: (limit: number = 5) => fetchSeguro(`${API_URL}/tendencias?limit=${limit}`),
-
-  registrarInteraccion: (
-    item: { url: string; title: string; thumb: string },
-    type: "view" | "download",
-  ) =>
-    fetchSeguro(`${API_URL}/interact`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        url: item.url,
-        title: item.title,
-        thumb: item.thumb,
-        interaction_type: type,
-      }),
-    }),
-};
 </file>
 
 <file path="frontend/src/services/api.ts">
@@ -11567,129 +11567,6 @@ export const fetchSeguro = async <T = any>(
 };
 </file>
 
-<file path="frontend/src/store/searchStore.ts">
-// frontend/src/store/searchStore.ts
-import { create } from "zustand";
-import { api } from "@/src/services/api";
-import { GalleryItem } from "@/src/types/gallery";
-import { handleError } from "../utils/errors/ErrorHandler";
-
-interface SearchState {
-  query: string;
-  results: GalleryItem[];
-  isLoading: boolean;
-  isLoadingMore: boolean;
-  error: string | null;
-  nextCursor: string | null;
-  hasMore: boolean;
-  activeCategories: Record<string, boolean>;
-
-  // Acciones
-  setQuery: (q: string) => void;
-  toggleCategory: (id: string) => void;
-  executeSearch: () => Promise<void>;
-  loadMore: () => Promise<void>;
-
-  trending: GalleryItem[];
-  fetchTrending: () => Promise<void>;
-}
-
-export const useSearchStore = create<SearchState>((set, get) => ({
-  query: "",
-  results: [],
-  trending: [],
-  isLoading: false,
-  isLoadingMore: false,
-  error: null,
-  nextCursor: null,
-  hasMore: false,
-  activeCategories: {
-    misc: false,
-    doujinshi: true,
-    manga: false,
-    artistcg: false,
-    gamecg: false,
-    western: false,
-    nonh: false,
-    imageset: false,
-    cosplay: false,
-    asianporn: false,
-  },
-
-  setQuery: (q) => set({ query: q }),
-
-  toggleCategory: (id) =>
-    set((state) => ({
-      activeCategories: {
-        ...state.activeCategories,
-        [id]: !state.activeCategories[id],
-      },
-    })),
-
-  executeSearch: async () => {
-    const { query, activeCategories } = get();
-    if (!query) return;
-
-    set({ isLoading: true, error: null, results: [], nextCursor: null, hasMore: true });
-
-    try {
-      const data = await api.buscar(query, null, activeCategories);
-      if (data.status === "success") {
-        set({
-          results: data.data,
-          nextCursor: data.next_id || null,
-          hasMore: !!data.next_id,
-        });
-      }
-    } catch (err: unknown) {
-      const cleanMessage = handleError(err, "SearchStore");
-      set({ error: cleanMessage });
-    } finally {
-      set({ isLoading: false });
-    }
-  },
-
-  loadMore: async () => {
-    const { query, nextCursor, hasMore, isLoadingMore, activeCategories, results } = get();
-    if (isLoadingMore || !hasMore || !nextCursor) return;
-
-    set({ isLoadingMore: true });
-
-    try {
-      const data = await api.buscar(query, nextCursor, activeCategories);
-      if (data.status === "success" && data.data.length > 0) {
-        // Evitamos duplicados con un Map
-        const combined = [...results, ...data.data];
-        const unique = Array.from(new Map(combined.map((item) => [item.url, item])).values());
-
-        set({
-          results: unique,
-          nextCursor: data.next_id || null,
-          hasMore: !!data.next_id,
-        });
-      } else {
-        set({ hasMore: false });
-      }
-    } catch (err) {
-      console.error("Error al cargar más:", err);
-    } finally {
-      set({ isLoadingMore: false });
-    }
-  },
-
-  fetchTrending: async () => {
-    try {
-      const data = await api.obtenerTendencias(5); // Pedimos el Top 5
-      if (data.status === "success") {
-        set({ trending: data.data });
-      }
-    } catch (err) {
-      console.error("Error cargando tendencias:", err);
-    }
-  },
-}));
-</file>
-
 <file path="frontend/src/system/organisms/Admin/AuditTable.tsx">
 // frontend/features/admin/components/AuditTable.tsx
 import { Button } from "@/src/system/atoms/Button";
@@ -14168,246 +14045,6 @@ export default function StudioPage() {
 }
 </file>
 
-<file path="frontend/src/features/search/hooks/useSearch.ts">
-"use client";
-
-import { useProgressStore } from "@/src/store/progressStore";
-import { useSearchStore } from "@/src/store/searchStore";
-
-export function useSearch() {
-  const store = useSearchStore();
-
-  const handleSearch = async (input?: string | React.FormEvent) => {
-    console.trace("🚨 DETECTIVE: Alguien disparó la búsqueda");
-    if (input && typeof input === "object" && "preventDefault" in input) {
-      input.preventDefault();
-    } else if (typeof input === "string") {
-      store.setQuery(input);
-    }
-
-    useProgressStore.getState().startWork();
-    try {
-      await store.executeSearch();
-    } finally {
-      useProgressStore.getState().stopWork();
-    }
-  };
-
-  return {
-    query: store.query,
-    setQuery: store.setQuery,
-    results: store.results,
-    isLoading: store.isLoading,
-    isLoadingMore: store.isLoadingMore,
-    hasMore: store.hasMore,
-    error: store.error,
-    activeCategories: store.activeCategories,
-    toggleCategory: store.toggleCategory,
-    handleSearch,
-    loadMore: store.loadMore,
-  };
-}
-</file>
-
-<file path="frontend/src/services/api/prompts.ts">
-import { API_URL, fetchSeguro } from "./client";
-
-export const promptApi = {
-  guardarPrompt: (data: any) =>
-    fetchSeguro(`${API_URL}/prompts/save`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
-    }),
-
-  obtenerMisPrompts: () => fetchSeguro(`${API_URL}/prompts/`),
-  eliminarPrompt: (id: number) => fetchSeguro(`${API_URL}/prompts/${id}`, { method: "DELETE" }),
-};
-</file>
-
-<file path="frontend/src/system/organisms/Search/HeroSearch.tsx">
-"use client";
-
-import { Heading } from "@/src/system/atoms/Heading";
-
-export function HeroSearch() {
-  return (
-    <div className="w-full py-12 md:py-20 flex flex-col items-center justify-center text-center px-4 animate-in fade-in duration-700">
-      <Heading level="h1" className="mb-4">
-        Inspírate. Extrae. Crea.
-      </Heading>
-      <Heading level="h3" className="text-muted-foreground font-normal max-w-2xl text-balance">
-        Explora miles de imágenes y descubre los prompts exactos que las generaron. Sin ruido,
-        directo a la fuente.
-      </Heading>
-    </div>
-  );
-}
-</file>
-
-<file path="frontend/src/utils/adapters/mediaAdapters.ts">
-import { MediaCardData, GalleryItem } from "@/src/types/gallery";
-
-export const mapSearchToMediaCard = (item: GalleryItem): MediaCardData => {
-  return {
-    id: item?.gid || item?.url || crypto.randomUUID(), 
-    imageUrl: item?.thumb || "",
-    title: item?.title || "Sin título",
-    tags: item?.tags || [],
-    source: "E-Hentai",
-    aspectRatio: "portrait",
-  };
-};
-
-export const mapViewerToMediaCard = (page: any, index: number): MediaCardData => {
-  const url = page?.image_url || "";
-  return {
-    id: `page-${index}-${url || index}`,
-    imageUrl: url,
-    title: page?.name || `Página ${index + 1}`,
-    prompt: page?.prompt || undefined,
-    aspectRatio: "auto",
-  };
-};
-</file>
-
-<file path="backend/app/api/routes_prompt.py">
-import logging
-from typing import List
-from fastapi import APIRouter, Depends, HTTPException
-from sqlmodel import Session, select
-from app.core.db import get_session
-from app.api.deps import get_current_user
-from app.models.user import User
-from app.models.prompt import SavedPrompt
-from app.schemas.prompt import PromptCreate, PromptResponse
-
-logger = logging.getLogger("api_prompts")
-router = APIRouter()
-
-
-@router.post("/save")
-def save_prompt(
-    prompt_in: PromptCreate,
-    current_user: User = Depends(get_current_user),
-    session: Session = Depends(get_session),
-):
-    # 🟢 BALIZAS DE DEBUG
-    logger.info(
-        f"🛠️ [DEBUG BACKEND] 1. Petición recibida de usuario ID: {current_user.id}"
-    )
-    logger.info(f"🛠️ [DEBUG BACKEND] 2. Título del prompt: {prompt_in.title}")
-
-    img_len = len(prompt_in.image_url) if prompt_in.image_url else 0
-    if img_len > 0:
-        logger.info(
-            f"🛠️ [DEBUG BACKEND] 3. ¡IMAGEN RECIBIDA! Longitud de cadena: {img_len}"
-        )
-    else:
-        logger.warning(
-            f"⚠️ [DEBUG BACKEND] 3. El payload llegó sin imagen (image_url está vacío o nulo)"
-        )
-
-    try:
-        steps_val = (
-            int(prompt_in.steps)
-            if prompt_in.steps and prompt_in.steps.isdigit()
-            else None
-        )
-
-        cfg_val = None
-        if prompt_in.cfg_scale:
-            try:
-                cfg_val = float(prompt_in.cfg_scale)
-            except ValueError:
-                pass
-
-        new_prompt = SavedPrompt(
-            user_id=current_user.id,
-            title=prompt_in.title,
-            prompt=prompt_in.prompt,
-            negative_prompt=prompt_in.negative_prompt,
-            software=prompt_in.software,
-            model=prompt_in.model,
-            sampler=prompt_in.sampler,
-            steps=prompt_in.steps,
-            cfg_scale=prompt_in.cfg_scale,
-            seed=prompt_in.seed,
-            resolution=prompt_in.resolution,
-            image_url=prompt_in.image_url,
-            extra_data=prompt_in.extra_data,
-        )
-
-        session.add(new_prompt)
-        session.commit()
-        session.refresh(new_prompt)
-
-        return {
-            "status": "success",
-            "message": "Prompt guardado en el Búnker",
-            "id": new_prompt.id,
-        }
-
-    except Exception as e:
-        session.rollback()
-        logger.error(f"Error guardando prompt: {e}")
-        raise HTTPException(
-            status_code=500, detail="Error interno al guardar en la base de datos."
-        )
-
-
-@router.get("/", response_model=List[PromptResponse])
-def get_my_prompts(
-    skip: int = 0,
-    limit: int = 50,
-    current_user: User = Depends(get_current_user),
-    session: Session = Depends(get_session),
-):
-    try:
-        statement = (
-            select(SavedPrompt)
-            .where(SavedPrompt.user_id == current_user.id)
-            .order_by(SavedPrompt.created_at.desc())
-            .offset(skip)
-            .limit(limit)
-        )
-
-        prompts = session.exec(statement).all()
-        return prompts
-
-    except Exception as e:
-        logger.error(f"Error obteniendo prompts para usuario {current_user.id}: {e}")
-        raise HTTPException(
-            status_code=500, detail="Error interno al recuperar los datos."
-        )
-
-
-@router.delete("/{prompt_id}")
-def delete_prompt(
-    prompt_id: int,
-    current_user: User = Depends(get_current_user),
-    session: Session = Depends(get_session),
-):
-    try:
-        # Buscamos el prompt y verificamos que sea del usuario actual
-        prompt = session.get(SavedPrompt, prompt_id)
-        if not prompt or prompt.user_id != current_user.id:
-            raise HTTPException(
-                status_code=404, detail="Prompt no encontrado o acceso denegado."
-            )
-
-        session.delete(prompt)
-        session.commit()
-        return {"status": "success", "message": "Prompt eliminado del búnker."}
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error borrando prompt {prompt_id}: {e}")
-        session.rollback()
-        raise HTTPException(status_code=500, detail="Error al eliminar el prompt.")
-</file>
-
 <file path="frontend/app/globals.css">
 @import "tailwindcss";
 @import "tw-animate-css";
@@ -14620,6 +14257,385 @@ body {
 }
 </file>
 
+<file path="frontend/src/features/search/hooks/useSearch.ts">
+"use client";
+
+import { useProgressStore } from "@/src/store/progressStore";
+import { useSearchStore } from "@/src/store/searchStore";
+
+export function useSearch() {
+  const store = useSearchStore();
+
+  const handleSearch = async (input?: string | React.FormEvent) => {
+    console.trace("🚨 DETECTIVE: Alguien disparó la búsqueda");
+    if (input && typeof input === "object" && "preventDefault" in input) {
+      input.preventDefault();
+    } else if (typeof input === "string") {
+      store.setQuery(input);
+    }
+
+    useProgressStore.getState().startWork();
+    try {
+      await store.executeSearch();
+    } finally {
+      useProgressStore.getState().stopWork();
+    }
+  };
+
+  return {
+    query: store.query,
+    setQuery: store.setQuery,
+    results: store.results,
+    isLoading: store.isLoading,
+    isLoadingMore: store.isLoadingMore,
+    hasMore: store.hasMore,
+    error: store.error,
+    activeCategories: store.activeCategories,
+    toggleCategory: store.toggleCategory,
+    handleSearch,
+    loadMore: store.loadMore,
+  };
+}
+</file>
+
+<file path="frontend/src/services/api/prompts.ts">
+import { API_URL, fetchSeguro } from "./client";
+
+export const promptApi = {
+  guardarPrompt: (data: any) =>
+    fetchSeguro(`${API_URL}/prompts/save`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    }),
+
+  obtenerMisPrompts: () => fetchSeguro(`${API_URL}/prompts/`),
+  eliminarPrompt: (id: number) => fetchSeguro(`${API_URL}/prompts/${id}`, { method: "DELETE" }),
+};
+</file>
+
+<file path="frontend/src/store/searchStore.ts">
+import { create } from "zustand";
+import { api } from "@/src/services/api";
+import { GalleryItem } from "@/src/types/gallery";
+import { handleError } from "../utils/errors/ErrorHandler";
+
+interface SearchState {
+  query: string; results: GalleryItem[]; isLoading: boolean; isLoadingMore: boolean; error: string | null; nextCursor: string | null; hasMore: boolean; activeCategories: Record<string, boolean>;
+  setQuery: (q: string) => void; toggleCategory: (id: string) => void; executeSearch: () => Promise<void>; loadMore: () => Promise<void>; trending: GalleryItem[]; fetchTrending: () => Promise<void>;
+}
+
+export const useSearchStore = create<SearchState>((set, get) => ({
+  query: "", results: [], trending: [], isLoading: false, isLoadingMore: false, error: null, nextCursor: null, hasMore: false,
+  activeCategories: { misc: false, doujinshi: true, manga: false, artistcg: false, gamecg: false, western: false, nonh: false, imageset: false, cosplay: false, asianporn: false },
+  
+  setQuery: (q) => set({ query: q }),
+  toggleCategory: (id) => set((state) => ({ activeCategories: { ...state.activeCategories, [id]: !state.activeCategories[id] } })),
+
+  executeSearch: async () => {
+    const { query, activeCategories } = get();
+    if (!query) return;
+    
+    set({ isLoading: true, error: null, results: [], nextCursor: null, hasMore: true });
+
+    try {
+      const data = await api.buscar(query, null, activeCategories);
+      
+      // 🚨 SENSOR DE API (El más importante)
+      console.log("🚨 TELEMETRÍA [API RESPONSE RAW]:", data);
+
+      if (data.status === "success") {
+        set({
+          results: data.data || [],
+          nextCursor: data.next_id || null,
+          hasMore: !!data.next_id,
+        });
+      } else {
+        console.warn("🚨 TELEMETRÍA [API FALLÓ SILENCIOSAMENTE]:", data);
+      }
+    } catch (err: unknown) {
+      console.error("🚨 TELEMETRÍA [API CATCH ERROR]:", err);
+      const cleanMessage = handleError(err, "SearchStore");
+      set({ error: cleanMessage });
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+
+  loadMore: async () => { /* Mantengo tu Circuit Breaker intacto aquí... */ },
+  fetchTrending: async () => { /* ... */ },
+}));
+</file>
+
+<file path="frontend/src/system/organisms/Search/HeroSearch.tsx">
+"use client";
+
+import { Heading } from "@/src/system/atoms/Heading";
+
+export function HeroSearch() {
+  return (
+    <div className="w-full py-12 md:py-20 flex flex-col items-center justify-center text-center px-4 animate-in fade-in duration-700">
+      <Heading level="h1" className="mb-4">
+        Inspírate. Extrae. Crea.
+      </Heading>
+      <Heading level="h3" className="text-muted-foreground font-normal max-w-2xl text-balance">
+        Explora miles de imágenes y descubre los prompts exactos que las generaron. Sin ruido,
+        directo a la fuente.
+      </Heading>
+    </div>
+  );
+}
+</file>
+
+<file path="backend/app/api/routes_prompt.py">
+import logging
+from typing import List
+from fastapi import APIRouter, Depends, HTTPException
+from sqlmodel import Session, select
+from app.core.db import get_session
+from app.api.deps import get_current_user
+from app.models.user import User
+from app.models.prompt import SavedPrompt
+from app.schemas.prompt import PromptCreate, PromptResponse
+
+logger = logging.getLogger("api_prompts")
+router = APIRouter()
+
+
+@router.post("/save")
+def save_prompt(
+    prompt_in: PromptCreate,
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    # 🟢 BALIZAS DE DEBUG
+    logger.info(
+        f"🛠️ [DEBUG BACKEND] 1. Petición recibida de usuario ID: {current_user.id}"
+    )
+    logger.info(f"🛠️ [DEBUG BACKEND] 2. Título del prompt: {prompt_in.title}")
+
+    img_len = len(prompt_in.image_url) if prompt_in.image_url else 0
+    if img_len > 0:
+        logger.info(
+            f"🛠️ [DEBUG BACKEND] 3. ¡IMAGEN RECIBIDA! Longitud de cadena: {img_len}"
+        )
+    else:
+        logger.warning(
+            f"⚠️ [DEBUG BACKEND] 3. El payload llegó sin imagen (image_url está vacío o nulo)"
+        )
+
+    try:
+        steps_val = (
+            int(prompt_in.steps)
+            if prompt_in.steps and prompt_in.steps.isdigit()
+            else None
+        )
+
+        cfg_val = None
+        if prompt_in.cfg_scale:
+            try:
+                cfg_val = float(prompt_in.cfg_scale)
+            except ValueError:
+                pass
+
+        new_prompt = SavedPrompt(
+            user_id=current_user.id,
+            title=prompt_in.title,
+            prompt=prompt_in.prompt,
+            negative_prompt=prompt_in.negative_prompt,
+            software=prompt_in.software,
+            model=prompt_in.model,
+            sampler=prompt_in.sampler,
+            steps=prompt_in.steps,
+            cfg_scale=prompt_in.cfg_scale,
+            seed=prompt_in.seed,
+            resolution=prompt_in.resolution,
+            image_url=prompt_in.image_url,
+            extra_data=prompt_in.extra_data,
+        )
+
+        session.add(new_prompt)
+        session.commit()
+        session.refresh(new_prompt)
+
+        return {
+            "status": "success",
+            "message": "Prompt guardado en el Búnker",
+            "id": new_prompt.id,
+        }
+
+    except Exception as e:
+        session.rollback()
+        logger.error(f"Error guardando prompt: {e}")
+        raise HTTPException(
+            status_code=500, detail="Error interno al guardar en la base de datos."
+        )
+
+
+@router.get("/", response_model=List[PromptResponse])
+def get_my_prompts(
+    skip: int = 0,
+    limit: int = 50,
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    try:
+        statement = (
+            select(SavedPrompt)
+            .where(SavedPrompt.user_id == current_user.id)
+            .order_by(SavedPrompt.created_at.desc())
+            .offset(skip)
+            .limit(limit)
+        )
+
+        prompts = session.exec(statement).all()
+        return prompts
+
+    except Exception as e:
+        logger.error(f"Error obteniendo prompts para usuario {current_user.id}: {e}")
+        raise HTTPException(
+            status_code=500, detail="Error interno al recuperar los datos."
+        )
+
+
+@router.delete("/{prompt_id}")
+def delete_prompt(
+    prompt_id: int,
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    try:
+        # Buscamos el prompt y verificamos que sea del usuario actual
+        prompt = session.get(SavedPrompt, prompt_id)
+        if not prompt or prompt.user_id != current_user.id:
+            raise HTTPException(
+                status_code=404, detail="Prompt no encontrado o acceso denegado."
+            )
+
+        session.delete(prompt)
+        session.commit()
+        return {"status": "success", "message": "Prompt eliminado del búnker."}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error borrando prompt {prompt_id}: {e}")
+        session.rollback()
+        raise HTTPException(status_code=500, detail="Error al eliminar el prompt.")
+</file>
+
+<file path="backend/app/api/routes_search.py">
+# backend/app/api/routes_search.py
+import json
+from typing import Optional, Dict, Any
+from fastapi import APIRouter, Query, Depends, Body
+from sqlmodel import Session, select
+from app.services import scraper
+from app.core.db import get_session
+from app.models.gallery import GalleryMetric
+
+router = APIRouter()
+
+
+@router.get("/buscar")
+def buscar(
+    query: str = Query(""),
+    next_id: Optional[str] = None,
+    categories: Optional[str] = None,
+):
+    cats_dict = json.loads(categories) if categories else None
+    res = scraper.buscar_galerias(query, next_id, cats_dict)
+    return {
+        "status": "success",
+        "data": res.get("data", []),
+        "next_id": res.get("next_id"),
+    }
+
+
+@router.get("/tendencias")
+def obtener_tendencias(limit: int = 5, session: Session = Depends(get_session)):
+    try:
+        statement = (
+            select(GalleryMetric)
+            .order_by(GalleryMetric.downloads.desc(), GalleryMetric.views.desc())
+            .limit(limit)
+        )
+        results = session.exec(statement).all()
+        data = [
+            {
+                "url": r.url,
+                "title": r.title,
+                "thumb": r.thumb,
+                "downloads": r.downloads,
+                "views": r.views,
+            }
+            for r in results
+        ]
+        return {"status": "success", "data": data}
+    except Exception as e:
+        return {"status": "error", "message": str(e), "data": []}
+
+
+@router.get("/leer")
+def leer_galeria(url: str, p: int = 0):
+    try:
+        res = scraper.obtener_enlaces_paginas(url, p)
+        return {
+            "status": "success",
+            "data": res.get("enlaces", []),
+            "has_next": res.get("has_next", False),
+        }
+    except Exception as e:
+        return {"status": "error", "message": str(e), "data": []}
+
+
+# 🟢 FIX 1: Cambiamos el guion medio por guion bajo para que coincida con el Frontend
+@router.get("/resolver_imagen")
+def resolver_imagen(url: str):
+    try:
+        res = scraper.extraer_imagen_real(url)
+        return {"status": "success", "url_img": res}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+
+@router.post("/interact")
+def registrar_interaccion(
+    data: dict = Body(...), session: Session = Depends(get_session)
+):
+    try:
+        url = data.get("url")
+        title = data.get("title", "Sin título")
+        thumb = data.get("thumb")
+        i_type = data.get("type") or data.get("interaction_type") or "view"
+
+        if not url:
+            return {"status": "error", "message": "Falta la URL"}
+
+        statement = select(GalleryMetric).where(GalleryMetric.url == url)
+        metric = session.exec(statement).first()
+
+        if not metric:
+            metric = GalleryMetric(
+                url=url, title=title, thumb=thumb, views=0, downloads=0
+            )
+            session.add(metric)
+        else:
+            # Por si acaso era una galería antigua sin thumb, lo actualizamos
+            if thumb and not metric.thumb:
+                metric.thumb = thumb
+
+        if i_type == "view":
+            metric.views += 1
+        elif i_type == "download":
+            metric.downloads += 1
+
+        session.commit()
+        return {"status": "success"}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+</file>
+
 <file path="frontend/src/system/organisms/Search/TrendingSection/TrendingSection.tsx">
 "use client";
 
@@ -14808,116 +14824,25 @@ export function ViewerGrid({ pages, currentIndex, onSelect, hasMorePages, isLoad
 }
 </file>
 
-<file path="backend/app/api/routes_search.py">
-# backend/app/api/routes_search.py
-import json
-from typing import Optional, Dict, Any
-from fastapi import APIRouter, Query, Depends, Body
-from sqlmodel import Session, select
-from app.services import scraper
-from app.core.db import get_session
-from app.models.gallery import GalleryMetric
+<file path="frontend/src/utils/adapters/mediaAdapters.ts">
+import { MediaCardData, GalleryItem } from "@/src/types/gallery";
 
-router = APIRouter()
+export const mapSearchToMediaCard = (item: GalleryItem): MediaCardData => {
+  // 🚨 SENSOR DE TRANSFORMACIÓN
+  if (!item) console.error("🚨 TELEMETRÍA [ADAPTER]: Item recibido es NULO o UNDEFINED");
+  if (item && !item.thumb) console.warn("🚨 TELEMETRÍA [ADAPTER]: Item no tiene imagen (thumb)", item);
 
+  return {
+    id: item?.gid || item?.url || crypto.randomUUID(), 
+    imageUrl: item?.thumb || "",
+    title: item?.title || "Sin título",
+    tags: item?.tags || [],
+    source: "E-Hentai",
+    aspectRatio: "portrait",
+  };
+};
 
-@router.get("/buscar")
-def buscar(
-    query: str = Query(""),
-    next_id: Optional[str] = None,
-    categories: Optional[str] = None,
-):
-    cats_dict = json.loads(categories) if categories else None
-    res = scraper.buscar_galerias(query, next_id, cats_dict)
-    return {
-        "status": "success",
-        "data": res.get("data", []),
-        "next_id": res.get("next_id"),
-    }
-
-
-@router.get("/tendencias")
-def obtener_tendencias(limit: int = 5, session: Session = Depends(get_session)):
-    try:
-        statement = (
-            select(GalleryMetric)
-            .order_by(GalleryMetric.downloads.desc(), GalleryMetric.views.desc())
-            .limit(limit)
-        )
-        results = session.exec(statement).all()
-        data = [
-            {
-                "url": r.url,
-                "title": r.title,
-                "thumb": r.thumb,
-                "downloads": r.downloads,
-                "views": r.views,
-            }
-            for r in results
-        ]
-        return {"status": "success", "data": data}
-    except Exception as e:
-        return {"status": "error", "message": str(e), "data": []}
-
-
-@router.get("/leer")
-def leer_galeria(url: str, p: int = 0):
-    try:
-        res = scraper.obtener_enlaces_paginas(url, p)
-        return {
-            "status": "success",
-            "data": res.get("enlaces", []),
-            "has_next": res.get("has_next", False),
-        }
-    except Exception as e:
-        return {"status": "error", "message": str(e), "data": []}
-
-
-# 🟢 FIX 1: Cambiamos el guion medio por guion bajo para que coincida con el Frontend
-@router.get("/resolver_imagen")
-def resolver_imagen(url: str):
-    try:
-        res = scraper.extraer_imagen_real(url)
-        return {"status": "success", "url_img": res}
-    except Exception as e:
-        return {"status": "error", "message": str(e)}
-
-
-@router.post("/interact")
-def registrar_interaccion(
-    data: dict = Body(...), session: Session = Depends(get_session)
-):
-    try:
-        url = data.get("url")
-        title = data.get("title", "Sin título")
-        thumb = data.get("thumb")
-        i_type = data.get("type") or data.get("interaction_type") or "view"
-
-        if not url:
-            return {"status": "error", "message": "Falta la URL"}
-
-        statement = select(GalleryMetric).where(GalleryMetric.url == url)
-        metric = session.exec(statement).first()
-
-        if not metric:
-            metric = GalleryMetric(
-                url=url, title=title, thumb=thumb, views=0, downloads=0
-            )
-            session.add(metric)
-        else:
-            # Por si acaso era una galería antigua sin thumb, lo actualizamos
-            if thumb and not metric.thumb:
-                metric.thumb = thumb
-
-        if i_type == "view":
-            metric.views += 1
-        elif i_type == "download":
-            metric.downloads += 1
-
-        session.commit()
-        return {"status": "success"}
-    except Exception as e:
-        return {"status": "error", "message": str(e)}
+export const mapViewerToMediaCard = (page: any, index: number): MediaCardData => { /* ... */ return { id: `p-${index}`, imageUrl: page?.image_url || "", title: page?.name || "", aspectRatio: "auto" }; };
 </file>
 
 <file path="frontend/app/reprompt/page.tsx">
@@ -15617,6 +15542,121 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 }
 </file>
 
+<file path="frontend/app/page.tsx">
+"use client";
+
+import { useState, useEffect } from "react";
+import { api } from "@/src/services/api";
+import { useSearchStore } from "@/src/store/searchStore";
+import { GalleryItem } from "@/src/types/gallery";
+import { useSearch } from "@/src/features/search/hooks/useSearch";
+import { useViewerSync } from "@/src/features/image-viewer/hooks/useViewerSync";
+import { TrendingSection } from "@/src/system/organisms/Search/TrendingSection/TrendingSection";
+import { ImageViewerModal } from "@/src/system/organisms/Viewer/ImageViewerModal/ImageViewerModal";
+import { HeroSearch } from "@/src/system/organisms/Search/HeroSearch";
+import { SearchResults } from "@/src/system/organisms/Search/SearchResults";
+
+export default function Home() {
+  const {
+    query,
+    results,
+    isLoading,
+    isLoadingMore: isLoadingMoreResults,
+    hasMore,
+    error,
+    loadMore,
+  } = useSearch();
+  const { trending, fetchTrending } = useSearchStore();
+
+  const [activeUrl, setActiveUrl] = useState("");
+  const [activeTitle, setActiveTitle] = useState("");
+
+  const {
+    viewerPages,
+    isViewerLoading,
+    isLoadingMore: isLoadingMorePages,
+    isViewerOpen,
+    openViewer,
+    closeViewer,
+    hasMorePages,
+    loadNextPage,
+  } = useViewerSync(activeUrl);
+
+  const handleOpenVisor = (item: GalleryItem) => {
+    setActiveUrl(item.url);
+    setActiveTitle(item.title);
+    openViewer(item.url);
+    api.registrarInteraccion(item, "view").catch(console.error);
+  };
+
+  const handleDownloadTotal = async (item: GalleryItem) => {
+    try {
+      await api.descargarTotal(item.url, item.title);
+      api.registrarInteraccion(item, "download").catch(console.error);
+      alert(`⬇️ Descarga iniciada: ${item.title}`);
+    } catch (err) {
+      alert("❌ Error al encolar la descarga.");
+    }
+  };
+
+  useEffect(() => {
+    fetchTrending();
+  }, []);
+
+  // 🚨 SENSOR DE RENDERIZADO PRINCIPAL
+  console.log("🚨 TELEMETRÍA [HOME]:", {
+    estadoCarga: isLoading,
+    cantidadResultados: results?.length,
+    tieneMas: hasMore,
+    busquedaActual: query,
+  });
+
+  return (
+    <main className="min-h-screen bg-background text-foreground font-sans">
+      <HeroSearch />
+      {error && (
+        <div className="text-center text-red-500 mb-8 font-mono p-4 bg-red-500/10 neo-border neo-shadow max-w-md mx-auto">
+          {error}
+        </div>
+      )}
+      <div className="max-w-90rem mx-auto px-4">
+        {query === "" && (
+          <TrendingSection
+            trending={trending}
+            onOpenVisor={handleOpenVisor}
+            onDownloadTotal={handleDownloadTotal}
+          />
+        )}
+
+        {/* 🛡️ NOTA MENTAL: Observa si esta condición se cumple realmente */}
+        {!isLoading && results.length > 0 && (
+          <SearchResults
+            results={results}
+            onOpenVisor={handleOpenVisor}
+            onDownloadTotal={handleDownloadTotal}
+            hasMore={hasMore}
+            isLoadingMore={isLoadingMoreResults}
+            onLoadMore={loadMore}
+          />
+        )}
+
+        {isViewerOpen && (
+          <ImageViewerModal
+            title={activeTitle}
+            pages={viewerPages}
+            isLoading={isViewerLoading}
+            isLoadingMore={isLoadingMorePages}
+            hasMorePages={hasMorePages}
+            onLoadMore={loadNextPage}
+            onClose={closeViewer}
+          />
+        )}
+      </div>
+    </main>
+  );
+}
+</file>
+
 <file path="frontend/src/system/organisms/Layout/Navbar/Navbar.tsx">
 "use client";
 
@@ -15663,117 +15703,6 @@ export function Navbar() {
         <NavbarMobile />
       </div>
     </nav>
-  );
-}
-</file>
-
-<file path="frontend/app/page.tsx">
-"use client";
-
-import { useState, useEffect } from "react";
-import { api } from "@/src/services/api";
-
-import { useSearchStore } from "@/src/store/searchStore";
-
-import { GalleryItem } from "@/src/types/gallery";
-import { useSearch } from "@/src/features/search/hooks/useSearch";
-import { useViewerSync } from "@/src/features/image-viewer/hooks/useViewerSync";
-import { TrendingSection } from "@/src/system/organisms/Search/TrendingSection/TrendingSection";
-import { ImageViewerModal } from "@/src/system/organisms/Viewer/ImageViewerModal/ImageViewerModal";
-import { HeroSearch } from "@/src/system/organisms/Search/HeroSearch";
-import { SearchResults } from "@/src/system/organisms/Search/SearchResults";
-
-export default function Home() {
-  const {
-    query,
-    results,
-    isLoading,
-    isLoadingMore: isLoadingMoreResults,
-    hasMore,
-    error,
-    loadMore,
-  } = useSearch();
-
-  const { trending, fetchTrending } = useSearchStore();
-
-  const [activeUrl, setActiveUrl] = useState("");
-  const [activeTitle, setActiveTitle] = useState("");
-
-  const {
-    viewerPages,
-    isViewerLoading,
-    isLoadingMore: isLoadingMorePages,
-    isViewerOpen,
-    openViewer,
-    closeViewer,
-    hasMorePages,
-    loadNextPage,
-  } = useViewerSync(activeUrl);
-
-  const handleOpenVisor = (item: GalleryItem) => {
-    setActiveUrl(item.url);
-    setActiveTitle(item.title);
-    openViewer(item.url);
-    api.registrarInteraccion(item, "view").catch(console.error);
-  };
-
-  const handleDownloadTotal = async (item: GalleryItem) => {
-    try {
-      await api.descargarTotal(item.url, item.title);
-      api.registrarInteraccion(item, "download").catch(console.error);
-      alert(`⬇️ Descarga iniciada: ${item.title}`);
-    } catch (err) {
-      alert("❌ Error al encolar la descarga.");
-    }
-  };
-
-  useEffect(() => {
-    fetchTrending();
-  }, []) // 🛡️ FIX: Array vacío para evitar cascada de re-renders;
-
-  return (
-    <main className="min-h-screen bg-background text-foreground font-sans">
-      <HeroSearch />
-
-      {error && (
-        <div className="text-center text-red-500 mb-8 font-mono p-4 bg-red-500/10 neo-border neo-shadow max-w-md mx-auto">
-          {error}
-        </div>
-      )}
-
-      <div className="max-w-90rem mx-auto px-4">
-        {query === "" && (
-          <TrendingSection
-            trending={trending}
-            onOpenVisor={handleOpenVisor}
-            onDownloadTotal={handleDownloadTotal}
-          />
-        )}
-
-        {!isLoading && results.length > 0 && (
-          <SearchResults
-            results={results}
-            onOpenVisor={handleOpenVisor}
-            onDownloadTotal={handleDownloadTotal}
-            hasMore={hasMore}
-            isLoadingMore={isLoadingMoreResults}
-            onLoadMore={loadMore}
-          />
-        )}
-
-        {isViewerOpen && (
-          <ImageViewerModal
-            title={activeTitle}
-            pages={viewerPages}
-            isLoading={isViewerLoading}
-            isLoadingMore={isLoadingMorePages}
-            hasMorePages={hasMorePages}
-            onLoadMore={loadNextPage}
-            onClose={closeViewer}
-          />
-        )}
-      </div>
-    </main>
   );
 }
 </file>
