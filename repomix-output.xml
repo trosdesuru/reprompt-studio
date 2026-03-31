@@ -213,6 +213,7 @@ frontend/
             Navbar.tsx
             NavbarActions.tsx
             NavbarMobile.tsx
+            NavbarSearch.test.tsx
             NavbarSearch.tsx
             NotificationDropdown.tsx
             SearchCategorySelector.tsx
@@ -262,6 +263,8 @@ frontend/
   docker-compose.yml
   Dockerfile
   eslint.config.mjs
+  jest.config.js
+  jest.setup.js
   middleware.ts
   next.config.ts
   package.json
@@ -12545,6 +12548,92 @@ export function InspectorResources({ data }: { data: ExtractedPromptData }) {
 }
 </file>
 
+<file path="frontend/src/system/organisms/Layout/Navbar/NavbarSearch.test.tsx">
+import "@testing-library/jest-dom";
+
+import userEvent from "@testing-library/user-event";
+import { useSearch } from "@/src/features/search/hooks/useSearch";
+import { render, screen, fireEvent } from "@testing-library/react";
+import { NavbarSearch } from "./NavbarSearch";
+
+jest.mock("@/src/features/search/hooks/useSearch");
+const mockUseSearch = useSearch as jest.MockedFunction<typeof useSearch>;
+
+describe("Organism: NavbarSearch", () => {
+  const defaultMockState = {
+    query: "",
+    setQuery: jest.fn(),
+    handleSearch: jest.fn((e) => {
+      if (e?.preventDefault) e.preventDefault();
+      return Promise.resolve();
+    }),
+    isLoading: false,
+    activeCategories: { misc: true },
+    toggleCategory: jest.fn(),
+    results: [],
+    isLoadingMore: false,
+    hasMore: false,
+    error: null,
+    loadMore: jest.fn(() => Promise.resolve()),
+  };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockUseSearch.mockReturnValue(defaultMockState as any);
+  });
+
+  describe("Renderizado Inicial", () => {
+    it("debe renderizar el input de búsqueda correctamente", () => {
+      render(<NavbarSearch />);
+      const input = screen.getByPlaceholderText(/Buscar prompts/i);
+      expect(input).toBeInTheDocument();
+    });
+  });
+
+  describe("Interacción del Usuario (Happy Path)", () => {
+    it("debe llamar a setQuery cuando el usuario escribe", () => {
+      render(<NavbarSearch />);
+      const input = screen.getByPlaceholderText(/Buscar prompts/i);
+
+      // 🛡️ FIX TEST: Como el mock es estático y no re-renderiza con el nuevo 'query',
+      // usamos fireEvent para inyectar el valor final de golpe en lugar de userEvent (tecla a tecla)
+      fireEvent.change(input, { target: { value: "Cyberpunk" } });
+
+      expect(defaultMockState.setQuery).toHaveBeenCalledWith("Cyberpunk");
+    });
+
+    it("debe llamar a handleSearch EXACTAMENTE UNA VEZ al enviar el formulario", async () => {
+      render(<NavbarSearch />);
+      const input = screen.getByPlaceholderText(/Buscar prompts/i);
+
+      await userEvent.type(input, "Goku{enter}");
+
+      expect(defaultMockState.handleSearch).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe("Casos Límite y UX Avanzada (Edge Cases)", () => {
+    it("debe desactivar el botón de búsqueda si está cargando (isLoading: true)", () => {
+      mockUseSearch.mockReturnValue({ ...defaultMockState, isLoading: true } as any);
+      render(<NavbarSearch />);
+
+      const button = screen.getByRole("button");
+      expect(button).toBeDisabled();
+    });
+
+    it('atajo de teclado "/": debe hacer focus en el input sin escribir la barra', () => {
+      render(<NavbarSearch />);
+      const input = screen.getByPlaceholderText(/Buscar prompts/i);
+
+      fireEvent.keyDown(window, { key: "/" });
+
+      expect(input).toHaveFocus();
+      expect(defaultMockState.setQuery).not.toHaveBeenCalledWith("/");
+    });
+  });
+});
+</file>
+
 <file path="frontend/src/system/organisms/Layout/Navbar/NotificationDropdown.tsx">
 "use client";
 
@@ -13013,6 +13102,32 @@ export const handleError = (error: unknown, context?: string): string => {
 };
 </file>
 
+<file path="frontend/jest.config.js">
+const nextJest = require('next/jest')
+
+const createJestConfig = nextJest({
+  // Ruta a tu app Next.js
+  dir: './',
+})
+
+const customJestConfig = {
+  // Archivo que se ejecuta antes de las pruebas para cargar los matchers (toBeInTheDocument, etc.)
+  setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
+  // 🛡️ FIX CRÍTICO: Simular un navegador en lugar de Node.js
+  testEnvironment: 'jest-environment-jsdom',
+  // Mapeo de alias para que Jest entienda las rutas con "@/"
+  moduleNameMapper: {
+    '^@/(.*)$': '<rootDir>/$1',
+  },
+}
+
+module.exports = createJestConfig(customJestConfig)
+</file>
+
+<file path="frontend/jest.setup.js">
+import '@testing-library/jest-dom'
+</file>
+
 <file path="frontend/next.config.ts">
 import type { NextConfig } from "next";
 
@@ -13432,44 +13547,65 @@ export function useViewerSync(activeUrl: string) {
 }
 </file>
 
-<file path="frontend/src/features/search/hooks/useSearch.ts">
-"use client";
+<file path="frontend/src/store/authStore.ts">
+import { create } from "zustand";
+import { api } from "@/src/services/api";
+import { handleError } from "../utils/errors/ErrorHandler";
 
-import { useProgressStore } from "@/src/store/progressStore";
-import { useSearchStore } from "@/src/store/searchStore";
-
-export function useSearch() {
-  const store = useSearchStore();
-
-  const handleSearch = async (input?: string | React.FormEvent) => {
-    if (input && typeof input === "object" && "preventDefault" in input) {
-      input.preventDefault();
-    } else if (typeof input === "string") {
-      store.setQuery(input);
-    }
-
-    useProgressStore.getState().startWork();
-    try {
-      await store.executeSearch();
-    } finally {
-      useProgressStore.getState().stopWork();
-    }
-  };
-
-  return {
-    query: store.query,
-    setQuery: store.setQuery,
-    results: store.results,
-    isLoading: store.isLoading,
-    isLoadingMore: store.isLoadingMore,
-    hasMore: store.hasMore,
-    error: store.error,
-    activeCategories: store.activeCategories,
-    toggleCategory: store.toggleCategory,
-    handleSearch,
-    loadMore: store.loadMore,
-  };
+interface User {
+  username: string;
+  role: string;
 }
+
+interface AuthState {
+  user: User | null;
+  isLoadingAuth: boolean;
+  login: (userData: User) => void;
+  logout: () => Promise<void>;
+  checkAuth: () => Promise<void>;
+}
+
+export const useAuthStore = create<AuthState>((set) => ({
+  user: null,
+  isLoadingAuth: true,
+
+  login: (userData) => set({ user: userData, isLoadingAuth: false }),
+
+  logout: async () => {
+    try {
+      await api.logout();
+    } catch (error) {
+      console.error("Error logout:", error);
+    } finally {
+      set({ user: null });
+      if (typeof window !== "undefined") {
+        window.location.href = "/login";
+      }
+    }
+  },
+
+  checkAuth: async () => {
+    set({ isLoadingAuth: true });
+    try {
+      const res = await api.obtenerPerfil();
+      console.log("🕵️‍♂️ QA [authStore] Respuesta Backend:", res);
+
+      const username = res?.username || res?.data?.username || res?.user?.username;
+      const role = res?.role || res?.data?.role || res?.user?.role || "user";
+
+      if (username) {
+        console.log(`✅ QA [authStore] Usuario detectado: ${username} (${role})`);
+        set({ user: { username, role }, isLoadingAuth: false });
+      } else {
+        console.warn("⚠️ QA [authStore] 200 OK pero JSON no tiene 'username':", res);
+        set({ user: null, isLoadingAuth: false });
+      }
+    } catch (error: unknown) {
+      handleError(error, "AuthStore");
+      set({ user: null, isLoadingAuth: false });
+    }
+  },
+}));
 </file>
 
 <file path="frontend/src/system/atoms/MediaCover.tsx">
@@ -13791,34 +13927,6 @@ export function ViewerLightbox({
 }
 </file>
 
-<file path="frontend/src/utils/adapters/mediaAdapters.ts">
-import { MediaCardData, GalleryItem } from "@/src/types/gallery";
-
-export const mapSearchToMediaCard = (item: GalleryItem): MediaCardData => {
-  return {
-    id: item?.gid || crypto.randomUUID(),
-    imageUrl: item?.thumb || "",
-    title: item?.title || "Sin título",
-    tags: item?.tags || [],
-    source: "E-Hentai",
-    aspectRatio: "portrait",
-  };
-};
-
-export const mapViewerToMediaCard = (page: any, index: number): MediaCardData => {
-  // 🛡️ Aseguramos que si la página es nula o no tiene URL, el átomo sepa manejarlo
-  const url = page?.image_url || "";
-  
-  return {
-    id: `page-${index}-${url || index}`,
-    imageUrl: url,
-    title: page?.name || `Página ${index + 1}`,
-    prompt: page?.prompt || undefined,
-    aspectRatio: "auto",
-  };
-};
-</file>
-
 <file path="frontend/src/utils/errors/AppErrors.ts">
 export class AppError extends Error {
   constructor(
@@ -14060,6 +14168,47 @@ export default function StudioPage() {
 }
 </file>
 
+<file path="frontend/src/features/search/hooks/useSearch.ts">
+"use client";
+
+import { useProgressStore } from "@/src/store/progressStore";
+import { useSearchStore } from "@/src/store/searchStore";
+
+export function useSearch() {
+  const store = useSearchStore();
+
+  const handleSearch = async (input?: string | React.FormEvent) => {
+    console.trace("🚨 DETECTIVE: Alguien disparó la búsqueda");
+    if (input && typeof input === "object" && "preventDefault" in input) {
+      input.preventDefault();
+    } else if (typeof input === "string") {
+      store.setQuery(input);
+    }
+
+    useProgressStore.getState().startWork();
+    try {
+      await store.executeSearch();
+    } finally {
+      useProgressStore.getState().stopWork();
+    }
+  };
+
+  return {
+    query: store.query,
+    setQuery: store.setQuery,
+    results: store.results,
+    isLoading: store.isLoading,
+    isLoadingMore: store.isLoadingMore,
+    hasMore: store.hasMore,
+    error: store.error,
+    activeCategories: store.activeCategories,
+    toggleCategory: store.toggleCategory,
+    handleSearch,
+    loadMore: store.loadMore,
+  };
+}
+</file>
+
 <file path="frontend/src/services/api/prompts.ts">
 import { API_URL, fetchSeguro } from "./client";
 
@@ -14074,67 +14223,6 @@ export const promptApi = {
   obtenerMisPrompts: () => fetchSeguro(`${API_URL}/prompts/`),
   eliminarPrompt: (id: number) => fetchSeguro(`${API_URL}/prompts/${id}`, { method: "DELETE" }),
 };
-</file>
-
-<file path="frontend/src/store/authStore.ts">
-import { create } from "zustand";
-import { api } from "@/src/services/api";
-import { handleError } from "../utils/errors/ErrorHandler";
-
-interface User {
-  username: string;
-  role: string;
-}
-
-interface AuthState {
-  user: User | null;
-  isLoadingAuth: boolean;
-  login: (userData: User) => void;
-  logout: () => Promise<void>;
-  checkAuth: () => Promise<void>;
-}
-
-export const useAuthStore = create<AuthState>((set) => ({
-  user: null,
-  isLoadingAuth: true,
-
-  login: (userData) => set({ user: userData, isLoadingAuth: false }),
-
-  logout: async () => {
-    try {
-      await api.logout();
-    } catch (error) {
-      console.error("Error logout:", error);
-    } finally {
-      set({ user: null });
-      if (typeof window !== "undefined") {
-        window.location.href = "/login";
-      }
-    }
-  },
-
-  checkAuth: async () => {
-    set({ isLoadingAuth: true });
-    try {
-      const res = await api.obtenerPerfil();
-      console.log("🕵️‍♂️ QA [authStore] Respuesta Backend:", res);
-
-      const username = res?.username || res?.data?.username || res?.user?.username;
-      const role = res?.role || res?.data?.role || res?.user?.role || "user";
-
-      if (username) {
-        console.log(`✅ QA [authStore] Usuario detectado: ${username} (${role})`);
-        set({ user: { username, role }, isLoadingAuth: false });
-      } else {
-        console.warn("⚠️ QA [authStore] 200 OK pero JSON no tiene 'username':", res);
-        set({ user: null, isLoadingAuth: false });
-      }
-    } catch (error: unknown) {
-      handleError(error, "AuthStore");
-      set({ user: null, isLoadingAuth: false });
-    }
-  },
-}));
 </file>
 
 <file path="frontend/src/system/organisms/Search/HeroSearch.tsx">
@@ -14155,6 +14243,32 @@ export function HeroSearch() {
     </div>
   );
 }
+</file>
+
+<file path="frontend/src/utils/adapters/mediaAdapters.ts">
+import { MediaCardData, GalleryItem } from "@/src/types/gallery";
+
+export const mapSearchToMediaCard = (item: GalleryItem): MediaCardData => {
+  return {
+    id: item?.gid || item?.url || crypto.randomUUID(), 
+    imageUrl: item?.thumb || "",
+    title: item?.title || "Sin título",
+    tags: item?.tags || [],
+    source: "E-Hentai",
+    aspectRatio: "portrait",
+  };
+};
+
+export const mapViewerToMediaCard = (page: any, index: number): MediaCardData => {
+  const url = page?.image_url || "";
+  return {
+    id: `page-${index}-${url || index}`,
+    imageUrl: url,
+    title: page?.name || `Página ${index + 1}`,
+    prompt: page?.prompt || undefined,
+    aspectRatio: "auto",
+  };
+};
 </file>
 
 <file path="backend/app/api/routes_prompt.py">
@@ -14292,6 +14406,218 @@ def delete_prompt(
         logger.error(f"Error borrando prompt {prompt_id}: {e}")
         session.rollback()
         raise HTTPException(status_code=500, detail="Error al eliminar el prompt.")
+</file>
+
+<file path="frontend/app/globals.css">
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  --bg-primary: #f4f5f5;
+  --bg-secondary: #ffffff;
+  --text-primary: #1d1f21;
+  --text-secondary: #4b5563;
+  --border-color: #1d1f21;
+  --accent-color: #D83C00;
+  /* Un naranja técnico estilo PostHog */
+  --shadow-color: #1d1f21;
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.145 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
+  --primary: oklch(0.205 0 0);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.97 0 0);
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: oklch(0.556 0 0);
+  --accent: oklch(0.97 0 0);
+  --accent-foreground: oklch(0.205 0 0);
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: oklch(0.922 0 0);
+  --input: oklch(0.922 0 0);
+  --ring: oklch(0.708 0 0);
+  --chart-1: oklch(0.87 0 0);
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
+  --radius: 0.625rem;
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-primary: oklch(0.205 0 0);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.97 0 0);
+  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-border: oklch(0.922 0 0);
+  --sidebar-ring: oklch(0.708 0 0);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg-primary: #0a0a0a;
+    --bg-secondary: #171717;
+    --text-primary: #f4f5f5;
+    --text-secondary: #a1a1aa;
+    --border-color: #3f3f46;
+    --accent-color: #D83C00;
+    --shadow-color: #000000;
+  }
+}
+
+@keyframes progress-stripes {
+  from {
+    background-position: 1rem 0;
+  }
+
+  to {
+    background-position: 0 0;
+  }
+}
+
+.dark {
+  --bg-primary: #0a0a0a;
+  --bg-secondary: #171717;
+  --text-primary: #f4f5f5;
+  --text-secondary: #a1a1aa;
+  --border-color: #3f3f46;
+  --accent-color: #D83C00;
+  --shadow-color: #000000;
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.205 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.205 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.922 0 0);
+  --primary-foreground: oklch(0.205 0 0);
+  --secondary: oklch(0.269 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.269 0 0);
+  --muted-foreground: oklch(0.708 0 0);
+  --accent: oklch(0.269 0 0);
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.556 0 0);
+  --chart-1: oklch(0.87 0 0);
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
+  --sidebar: oklch(0.205 0 0);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.488 0.243 264.376);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.269 0 0);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.556 0 0);
+}
+
+body {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: var(--font-sans), Arial, Helvetica, sans-serif;
+  scroll-behavior: smooth;
+}
+
+.neo-border {
+  border: 2px solid var(--border-color);
+  border-radius: 0.5rem;
+}
+
+.neo-shadow {
+  box-shadow: 4px 4px 0px 0px var(--shadow-color);
+  transition: all 0.2s ease-in-out;
+}
+
+.neo-shadow:hover {
+  transform: translate(2px, 2px);
+  box-shadow: 2px 2px 0px 0px var(--shadow-color);
+}
+
+.neo-shadow-accent {
+  box-shadow: 4px 4px 0px 0px var(--accent-color);
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-primary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-secondary);
+}
+
+@theme inline {
+  --font-heading: var(--font-mono);
+  --font-mono: var(--font-mono);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --color-foreground: var(--foreground);
+  --color-background: var(--background);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  html {
+    @apply font-mono;
+  }
+}
 </file>
 
 <file path="frontend/src/system/organisms/Search/TrendingSection/TrendingSection.tsx">
@@ -14650,218 +14976,6 @@ export default function RepromptPage() {
 }
 </file>
 
-<file path="frontend/app/globals.css">
-@import "tailwindcss";
-@import "tw-animate-css";
-@import "shadcn/tailwind.css";
-
-@custom-variant dark (&:is(.dark *));
-
-:root {
-  --bg-primary: #f4f5f5;
-  --bg-secondary: #ffffff;
-  --text-primary: #1d1f21;
-  --text-secondary: #4b5563;
-  --border-color: #1d1f21;
-  --accent-color: #D83C00;
-  /* Un naranja técnico estilo PostHog */
-  --shadow-color: #1d1f21;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg-primary: #0a0a0a;
-    --bg-secondary: #171717;
-    --text-primary: #f4f5f5;
-    --text-secondary: #a1a1aa;
-    --border-color: #3f3f46;
-    --accent-color: #D83C00;
-    --shadow-color: #000000;
-  }
-}
-
-@keyframes progress-stripes {
-  from {
-    background-position: 1rem 0;
-  }
-
-  to {
-    background-position: 0 0;
-  }
-}
-
-.dark {
-  --bg-primary: #0a0a0a;
-  --bg-secondary: #171717;
-  --text-primary: #f4f5f5;
-  --text-secondary: #a1a1aa;
-  --border-color: #3f3f46;
-  --accent-color: #D83C00;
-  --shadow-color: #000000;
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
-}
-
-body {
-  background: var(--bg-primary);
-  color: var(--text-primary);
-  font-family: var(--font-sans), Arial, Helvetica, sans-serif;
-  scroll-behavior: smooth;
-}
-
-.neo-border {
-  border: 2px solid var(--border-color);
-  border-radius: 0.5rem;
-}
-
-.neo-shadow {
-  box-shadow: 4px 4px 0px 0px var(--shadow-color);
-  transition: all 0.2s ease-in-out;
-}
-
-.neo-shadow:hover {
-  transform: translate(2px, 2px);
-  box-shadow: 2px 2px 0px 0px var(--shadow-color);
-}
-
-.neo-shadow-accent {
-  box-shadow: 4px 4px 0px 0px var(--accent-color);
-}
-
-::-webkit-scrollbar {
-  width: 8px;
-}
-
-::-webkit-scrollbar-track {
-  background: var(--bg-primary);
-}
-
-::-webkit-scrollbar-thumb {
-  background: var(--border-color);
-  border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: var(--text-secondary);
-}
-
-@theme inline {
-  --font-heading: var(--font-mono);
-  --font-mono: var(--font-mono);
-  --color-sidebar-ring: var(--sidebar-ring);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar: var(--sidebar);
-  --color-chart-5: var(--chart-5);
-  --color-chart-4: var(--chart-4);
-  --color-chart-3: var(--chart-3);
-  --color-chart-2: var(--chart-2);
-  --color-chart-1: var(--chart-1);
-  --color-ring: var(--ring);
-  --color-input: var(--input);
-  --color-border: var(--border);
-  --color-destructive: var(--destructive);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-accent: var(--accent);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-muted: var(--muted);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-secondary: var(--secondary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-primary: var(--primary);
-  --color-popover-foreground: var(--popover-foreground);
-  --color-popover: var(--popover);
-  --color-card-foreground: var(--card-foreground);
-  --color-card: var(--card);
-  --color-foreground: var(--foreground);
-  --color-background: var(--background);
-  --radius-sm: calc(var(--radius) * 0.6);
-  --radius-md: calc(var(--radius) * 0.8);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) * 1.4);
-  --radius-2xl: calc(var(--radius) * 1.8);
-  --radius-3xl: calc(var(--radius) * 2.2);
-  --radius-4xl: calc(var(--radius) * 2.6);
-}
-
-@layer base {
-  * {
-    @apply border-border outline-ring/50;
-  }
-  body {
-    @apply bg-background text-foreground;
-  }
-  html {
-    @apply font-mono;
-  }
-}
-</file>
-
 <file path="frontend/src/system/molecules/SearchCategorySelector.tsx">
 "use client";
 import * as React from "react";
@@ -15054,7 +15168,6 @@ export function ImageViewerModal({ title, pages, isLoading, isLoadingMore, hasMo
 export type MediaVariant = "gallery" | "viewer" | "search";
 export type AspectRatio = "portrait" | "landscape" | "square" | "auto";
 
-// Contrato agnóstico (Frontend puro)
 export interface MediaCardData {
   id: string | number;
   imageUrl: string;
@@ -15065,12 +15178,12 @@ export interface MediaCardData {
   aspectRatio?: AspectRatio;
 }
 
-// Contrato del Backend/Scraper (Datos crudos)
 export interface GalleryItem {
-  gid: string;
-  token: string;
+  url: string;        // <-- CRÍTICO: Requerido por la API de interacciones
   title: string;
   thumb: string;
+  gid?: string;       // Opcional, por si el scraper antiguo lo usa
+  token?: string;     // Opcional
   tags?: string[];
   [key: string]: any;
 }
@@ -15078,17 +15191,16 @@ export interface GalleryItem {
 
 <file path="frontend/src/system/organisms/Layout/Navbar/NavbarSearch.tsx">
 "use client";
-import React, { useCallback } from "react";
+import React, { useCallback, useEffect, useRef } from "react";
 import { useSearch } from "@/src/features/search/hooks/useSearch";
 import { SearchCategorySelector } from "./SearchCategorySelector";
-import { IconSearch } from "@tabler/icons-react";
+import { IconSearch, IconLoader2 } from "@tabler/icons-react";
 import { EH_CATEGORIES } from "@/src/constants/filters";
 
 export function NavbarSearch() {
-  // Optimizando la extracción del estado (ISP)
-  const { query, setQuery, handleSearch, activeCategories, toggleCategory } = useSearch();
+  const { query, setQuery, handleSearch, activeCategories, toggleCategory, isLoading } = useSearch();
+  const inputRef = useRef<HTMLInputElement>(null);
 
-  // Abstracción del evento de submit (Clean Code)
   const onSubmit = useCallback((e: React.FormEvent) => {
     e.preventDefault();
     handleSearch(e);
@@ -15097,6 +15209,19 @@ export function NavbarSearch() {
   const onInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     setQuery(e.target.value);
   }, [setQuery]);
+
+  // 🛡️ FIX UX: Atajo de teclado '/' para hacer focus rápido
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Solo actuar si pulsa '/' y no está escribiendo ya en un input
+      if (e.key === '/' && document.activeElement?.tagName !== 'INPUT' && document.activeElement?.tagName !== 'TEXTAREA') {
+        e.preventDefault(); // Evita que se escriba la barra en el input
+        inputRef.current?.focus();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   return (
     <div className="w-full max-w-2xl flex items-center h-10 bg-muted/30 dark:bg-white/0.03 border border-border/50 rounded-lg overflow-hidden focus-within:border-var(--accent-color)/50 focus-within:ring-1 focus-within:ring-var(--accent-color)/20 transition-all">
@@ -15107,13 +15232,18 @@ export function NavbarSearch() {
       />
       <form onSubmit={onSubmit} className="flex-1 h-full flex items-center relative">
         <input 
+          ref={inputRef}
           value={query}
           onChange={onInputChange}
           className="w-full h-full bg-transparent px-4 text-sm outline-none placeholder:text-muted-foreground/60"
-          placeholder="Buscar prompts, artistas..."
+          placeholder="Buscar prompts, artistas... (Pulsa '/')"
         />
-        <button type="submit" className="absolute right-3 text-muted-foreground hover:text-foreground">
-          <IconSearch size={18} stroke={2} />
+        <button 
+          type="submit" 
+          disabled={isLoading}
+          className="absolute right-3 text-muted-foreground hover:text-foreground disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        >
+          {isLoading ? <IconLoader2 size={18} className="animate-spin" /> : <IconSearch size={18} stroke={2} />}
         </button>
       </form>
     </div>
@@ -15131,7 +15261,9 @@ export function NavbarSearch() {
     "build": "next build",
     "format": "prettier --write \"{app,src}/**/*.{ts,tsx,css}\"",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "test": "jest",
+    "test:watch": "jest --watch"
   },
   "dependencies": {
     "@base-ui/react": "^1.3.0",
@@ -15157,6 +15289,10 @@ export function NavbarSearch() {
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.1",
+    "@types/jest": "^30.0.0",
     "@types/jszip": "^3.4.0",
     "@types/node": "^20.19.37",
     "@types/png-chunk-text": "^1.0.3",
@@ -15165,9 +15301,12 @@ export function NavbarSearch() {
     "@types/react-dom": "^19.2.3",
     "eslint": "^9",
     "eslint-config-next": "16.2.1",
+    "jest": "^30.3.0",
+    "jest-environment-jsdom": "^30.3.0",
     "prettier": "^3.8.1",
     "shadcn": "^4.1.1",
     "tailwindcss": "^4",
+    "ts-node": "^10.9.2",
     "typescript": "^5.9.3"
   }
 }
