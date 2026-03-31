@@ -59,7 +59,7 @@ export default function Home() {
 
   useEffect(() => {
     fetchTrending();
-  }, [fetchTrending]);
+  }, []) // 🛡️ FIX: Array vacío para evitar cascada de re-renders;
 
   return (
     <main className="min-h-screen bg-background text-foreground font-sans">
