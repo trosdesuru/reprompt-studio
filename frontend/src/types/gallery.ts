@@ -1,7 +1,6 @@
 export type MediaVariant = "gallery" | "viewer" | "search";
 export type AspectRatio = "portrait" | "landscape" | "square" | "auto";
 
-// Contrato agnóstico (Frontend puro)
 export interface MediaCardData {
   id: string | number;
   imageUrl: string;
@@ -12,12 +11,12 @@ export interface MediaCardData {
   aspectRatio?: AspectRatio;
 }
 
-// Contrato del Backend/Scraper (Datos crudos)
 export interface GalleryItem {
-  gid: string;
-  token: string;
+  url: string;        // <-- CRÍTICO: Requerido por la API de interacciones
   title: string;
   thumb: string;
+  gid?: string;       // Opcional, por si el scraper antiguo lo usa
+  token?: string;     // Opcional
   tags?: string[];
   [key: string]: any;
 }

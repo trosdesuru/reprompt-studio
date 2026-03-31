@@ -2,7 +2,7 @@ import { MediaCardData, GalleryItem } from "@/src/types/gallery";
 
 export const mapSearchToMediaCard = (item: GalleryItem): MediaCardData => {
   return {
-    id: item?.gid || crypto.randomUUID(),
+    id: item?.gid || item?.url || crypto.randomUUID(), 
     imageUrl: item?.thumb || "",
     title: item?.title || "Sin título",
     tags: item?.tags || [],
@@ -12,9 +12,7 @@ export const mapSearchToMediaCard = (item: GalleryItem): MediaCardData => {
 };
 
 export const mapViewerToMediaCard = (page: any, index: number): MediaCardData => {
-  // 🛡️ Aseguramos que si la página es nula o no tiene URL, el átomo sepa manejarlo
   const url = page?.image_url || "";
-  
   return {
     id: `page-${index}-${url || index}`,
     imageUrl: url,

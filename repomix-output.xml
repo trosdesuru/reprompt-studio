@@ -4397,22 +4397,6 @@ export function cn(...inputs: ClassValue[]) {
 }
 </file>
 
-<file path="frontend/next.config.ts">
-import type { NextConfig } from "next";
-
-const nextConfig: NextConfig = {
-  images: {
-    remotePatterns: [
-      { protocol: "https", hostname: "media.kitsu.io", port: "", pathname: "/**" },
-      { protocol: "https", hostname: "**.e-hentai.org", port: "", pathname: "/**" },
-      { protocol: "https", hostname: "**.hatenablog.com", port: "", pathname: "/**" },
-    ],
-  },
-};
-
-export default nextConfig;
-</file>
-
 <file path="frontend/repomix-output.xml">
 This file is a merged representation of the entire codebase, combined into a single document by Repomix.
 
@@ -13029,6 +13013,40 @@ export const handleError = (error: unknown, context?: string): string => {
 };
 </file>
 
+<file path="frontend/next.config.ts">
+import type { NextConfig } from "next";
+
+const nextConfig: NextConfig = {
+  images: {
+    // 🛡️ SEGURIDAD EN EL BORDE: Patrones permitidos
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: '**.e-hentai.org',
+      },
+      {
+        protocol: 'https',
+        hostname: 'ehgt.org',
+      },
+      {
+        protocol: 'https',
+        hostname: '**.ehgt.org',
+      },
+      {
+        protocol: 'https',
+        hostname: '**.hatenablog.com',
+      }
+    ],
+    // Habilitar formatos modernos reduce el peso un 30% adicional
+    formats: ['image/avif', 'image/webp'],
+    // Límite de vida de la caché de imágenes optimizadas (7 días)
+    minimumCacheTTL: 604800,
+  },
+};
+
+export default nextConfig;
+</file>
+
 <file path="backend/app/api/routes_auth.py">
 # backend/app/api/routes_auth.py
 import secrets
@@ -14119,45 +14137,6 @@ export const useAuthStore = create<AuthState>((set) => ({
 }));
 </file>
 
-<file path="frontend/src/system/organisms/Search/TrendingSection/TrendingSection.tsx">
-"use client";
-
-import { UniversalMediaCard } from "@/src/system/organisms/Media/UniversalMediaCard";
-import { mapSearchToMediaCard } from "@/src/utils/adapters/mediaAdapters";
-import { GalleryItem } from "@/src/types/gallery";
-
-interface TrendingSectionProps {
-  trending: GalleryItem[];
-  onOpenVisor: (item: GalleryItem) => void;
-  onDownloadTotal: (item: GalleryItem) => void;
-}
-
-export function TrendingSection({ trending, onOpenVisor, onDownloadTotal }: TrendingSectionProps) {
-  if (!trending || trending.length === 0) return null;
-
-  return (
-    <section className="w-full mt-8 animate-in fade-in duration-700">
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-xl font-bold uppercase tracking-widest text-foreground/80">
-          Tendencias <span className="text-var(--accent-color)">E-Hentai</span>
-        </h2>
-      </div>
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-        {trending.map((item) => (
-          <UniversalMediaCard
-            key={item.gid}
-            data={mapSearchToMediaCard(item)}
-            variant="gallery"
-            onClick={() => onOpenVisor(item)}
-            onDownload={() => onDownloadTotal(item)}
-          />
-        ))}
-      </div>
-    </section>
-  );
-}
-</file>
-
 <file path="frontend/src/system/organisms/Search/HeroSearch.tsx">
 "use client";
 
@@ -14313,6 +14292,49 @@ def delete_prompt(
         logger.error(f"Error borrando prompt {prompt_id}: {e}")
         session.rollback()
         raise HTTPException(status_code=500, detail="Error al eliminar el prompt.")
+</file>
+
+<file path="frontend/src/system/organisms/Search/TrendingSection/TrendingSection.tsx">
+"use client";
+
+import { UniversalMediaCard } from "@/src/system/organisms/Media/UniversalMediaCard";
+import { mapSearchToMediaCard } from "@/src/utils/adapters/mediaAdapters";
+import { GalleryItem } from "@/src/types/gallery";
+
+interface TrendingSectionProps {
+  trending: GalleryItem[];
+  onOpenVisor: (item: GalleryItem) => void;
+  onDownloadTotal: (item: GalleryItem) => void;
+}
+
+export function TrendingSection({ trending, onOpenVisor, onDownloadTotal }: TrendingSectionProps) {
+  if (!trending || trending.length === 0) return null;
+
+  return (
+    <section className="w-full mt-8 animate-in fade-in duration-700">
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-xl font-bold uppercase tracking-widest text-foreground/80">
+          Tendencias <span className="text-var(--accent-color)">E-Hentai</span>
+        </h2>
+      </div>
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+        {trending.map((item, index) => {
+          // 🛡️ PRAGMATISMO: Clave compuesta hiper-estable para evitar re-renders.
+          const stableKey = item.gid ? `trend-${item.gid}` : `trend-idx-${index}`;
+          return (
+            <UniversalMediaCard
+              key={stableKey}
+              data={mapSearchToMediaCard(item)}
+              variant="gallery"
+              onClick={() => onOpenVisor(item)}
+              onDownload={() => onDownloadTotal(item)}
+            />
+          );
+        })}
+      </div>
+    </section>
+  );
+}
 </file>
 
 <file path="frontend/src/system/organisms/Search/SearchResults.tsx">
@@ -15568,7 +15590,7 @@ export default function Home() {
 
   useEffect(() => {
     fetchTrending();
-  }, [fetchTrending]);
+  }, []) // 🛡️ FIX: Array vacío para evitar cascada de re-renders;
 
   return (
     <main className="min-h-screen bg-background text-foreground font-sans">
