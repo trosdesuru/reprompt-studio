@@ -1,24 +1,32 @@
 # ==========================================
 # 🐳 DOCKER: ORQUESTACIÓN Y RESETEOS
 # ==========================================
-.PHONY: docker-up docker-fast docker-reset docker-nuke
+.PHONY: up stop down restart reset nuke
 
-docker-up:
+up:
 	@echo "🚀 Levantando contenedores (Build normal)..."
 	docker-compose up -d --build
 
-docker-fast:
+stop:
+	@echo "⏸️  Pausando contenedores (Sin borrarlos)..."
+	docker-compose stop
+
+down:
+	@echo "🛑 Deteniendo y eliminando contenedores de la red..."
+	docker-compose down
+
+restart:
 	@echo "⚡ RESETEO RÁPIDO: Reiniciando servicios sin reconstruir..."
 	docker-compose restart
 
-docker-reset:
+reset:
 	@echo "🔄 Reiniciando el frontend limpiamente..."
 	docker-compose stop frontend
 	docker-compose rm -f frontend
 	docker-compose build --no-cache frontend
 	docker-compose up -d frontend
 
-docker-nuke:
+nuke:
 	@echo "💣 DESTRUCCIÓN TOTAL: Borrando contenedores, volúmenes, redes e imágenes huérfanas..."
 	docker-compose down -v --remove-orphans --rmi local
 	@echo "🏗️ Reconstruyendo desde cero absoluto..."
@@ -28,26 +36,26 @@ docker-nuke:
 # ==========================================
 # 📦 REPOMIX: EXTRACCIÓN DE PROYECTO
 # ==========================================
-.PHONY: repo-front repo-back repo-all
+.PHONY: repofront repoback repoall
 
-repo-front:
+repofront:
 	@echo "🧠 Extrayendo código del Frontend..."
 	npx repomix frontend -o repomix-frontend.xml
 
-repo-back:
+repoback:
 	@echo "🧠 Extrayendo código del Backend..."
 	npx repomix backend -o repomix-backend.xml
 
-repo-all:
+repoall:
 	@echo "🧠 Extrayendo TODO el proyecto..."
 	npx repomix . -o repomix-full.xml
 
 # ==========================================
 # ⚙️ MANTENIMIENTO E INSTALACIONES
 # ==========================================
-.PHONY: install-front
+.PHONY: installfront
 
-install-front:
+installfront:
 	@echo "📦 Instalando dependencias del frontend limpiamente..."
 	cd frontend && rm -rf node_modules package-lock.json && npm install
 
