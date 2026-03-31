@@ -1,11 +1,15 @@
 # ==========================================
 # 🐳 DOCKER: ORQUESTACIÓN Y RESETEOS
 # ==========================================
-.PHONY: up stop down restart reset nuke
+.PHONY: up build stop down restart reset nuke
 
 up:
 	@echo "🚀 Levantando contenedores (Build normal)..."
-	docker-compose up -d --build
+	docker-compose up
+
+build:
+	@echo "🔨 Construyendo contenedores sin cache..."
+	docker-compose build --no-cache
 
 stop:
 	@echo "⏸️  Pausando contenedores (Sin borrarlos)..."
