@@ -54,9 +54,9 @@ install-front:
 # ==========================================
 # 🐙 GIT: AUTOMATIZACIÓN DE CONTROL DE VERSIONES
 # ==========================================
-.PHONY: git-auto
+.PHONY: git
 
-git-auto:
+git:
 	@echo "🔍 Analizando estado del repositorio..."
 	git status -s
 	@echo "📦 Añadiendo cambios al Stage..."
