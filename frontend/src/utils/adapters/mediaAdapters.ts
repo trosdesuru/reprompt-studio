@@ -2,8 +2,8 @@ import { MediaCardData, GalleryItem } from "@/src/types/gallery";
 
 export const mapSearchToMediaCard = (item: GalleryItem): MediaCardData => {
   // 🚨 SENSOR DE TRANSFORMACIÓN
-  if (!item) console.error("🚨 TELEMETRÍA [ADAPTER]: Item recibido es NULO o UNDEFINED");
-  if (item && !item.thumb) console.warn("🚨 TELEMETRÍA [ADAPTER]: Item no tiene imagen (thumb)", item);
+  if (!item && process.env.NODE_ENV === "development") console.error("🚨 TELEMETRÍA [ADAPTER]: Item recibido es NULO o UNDEFINED");
+  if (item && !item.thumb && process.env.NODE_ENV === "development") console.warn("🚨 TELEMETRÍA [ADAPTER]: Item no tiene imagen (thumb)", item);
 
   return {
     id: item?.gid || item?.url || crypto.randomUUID(), 

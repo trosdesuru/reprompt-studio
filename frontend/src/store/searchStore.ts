@@ -50,7 +50,7 @@ export const useSearchStore = create<SearchState>((set, get) => ({
 
     try {
       const data = await api.buscar(query, null, activeCategories);
-      console.log("🚨 TELEMETRÍA [API INITIAL SEARCH]:", data);
+      if (process.env.NODE_ENV === "development") console.log("🚨 TELEMETRÍA [API INITIAL SEARCH]:", data);
 
       if (data.status === "success") {
         set({
@@ -71,11 +71,11 @@ export const useSearchStore = create<SearchState>((set, get) => ({
   loadMore: async () => {
     const { query, nextCursor, hasMore, isLoadingMore, activeCategories, results } = get();
     
-    console.log("🚨 TELEMETRÍA [STORE]: Ejecutando loadMore. Estado actual:", { isLoadingMore, hasMore, nextCursor });
+    if (process.env.NODE_ENV === "development") console.log("🚨 TELEMETRÍA [STORE]: Ejecutando loadMore. Estado actual:", { isLoadingMore, hasMore, nextCursor });
 
     // Bloqueamos si ya está cargando o no hay más páginas
     if (isLoadingMore || !hasMore || !nextCursor) {
-      console.warn("🚨 TELEMETRÍA [STORE]: Petición bloqueada (ya cargando o sin cursor).");
+      if (process.env.NODE_ENV === "development") console.warn("🚨 TELEMETRÍA [STORE]: Petición bloqueada (ya cargando o sin cursor).");
       return;
     }
     
@@ -85,7 +85,7 @@ export const useSearchStore = create<SearchState>((set, get) => ({
       console.log(`🚨 TELEMETRÍA [STORE]: Pidiendo página con cursor: ${nextCursor}`);
       const data = await api.buscar(query, nextCursor, activeCategories);
       
-      console.log("🚨 TELEMETRÍA [API LOAD MORE]:", data);
+      if (process.env.NODE_ENV === "development") console.log("🚨 TELEMETRÍA [API LOAD MORE]:", data);
 
       if (data.status === "success" && data.data && data.data.length > 0) {
         const combined = [...results, ...data.data];
@@ -95,7 +95,7 @@ export const useSearchStore = create<SearchState>((set, get) => ({
 
         // 🛡️ CIRCUIT BREAKER
         if (unique.length === results.length) {
-          console.warn("🚨 CIRCUIT BREAKER: El Backend mandó los mismos resultados. Cortando el bucle.");
+          if (process.env.NODE_ENV === "development") console.warn("🚨 CIRCUIT BREAKER: El Backend mandó los mismos resultados. Cortando el bucle.");
           set({ hasMore: false });
         } else {
           set({
@@ -105,11 +105,11 @@ export const useSearchStore = create<SearchState>((set, get) => ({
           });
         }
       } else {
-        console.warn("🚨 TELEMETRÍA [STORE]: La API devolvió un array vacío. Fin de los resultados.");
+        if (process.env.NODE_ENV === "development") console.warn("🚨 TELEMETRÍA [STORE]: La API devolvió un array vacío. Fin de los resultados.");
         set({ hasMore: false });
       }
     } catch (err) {
-      console.error("🚨 TELEMETRÍA [STORE]: Error al cargar más:", err);
+      if (process.env.NODE_ENV === "development") console.error("🚨 TELEMETRÍA [STORE]: Error al cargar más:", err);
     } finally {
       set({ isLoadingMore: false });
     }

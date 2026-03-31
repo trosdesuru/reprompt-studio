@@ -1,13 +1,14 @@
+import { UserLogin, UserRegister } from "@/src/types/auth.types";
 import { API_URL, fetchSeguro } from "./client";
 
 export const authApi = {
-  registrar: (userData: any) =>
+  registrar: (userData: UserRegister) =>
     fetchSeguro(`${API_URL}/auth/register`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(userData),
     }),
-  login: (credentials: any) =>
+  login: (credentials: UserLogin) =>
     fetchSeguro(`${API_URL}/auth/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },

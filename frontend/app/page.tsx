@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { api } from "@/src/services/api";
+import { useNotificationStore } from "@/src/store/notificationStore";
 import { useSearchStore } from "@/src/store/searchStore";
 import { GalleryItem } from "@/src/types/gallery";
 import { useSearch } from "@/src/features/search/hooks/useSearch";
@@ -12,6 +13,8 @@ import { HeroSearch } from "@/src/system/organisms/Search/HeroSearch";
 import { SearchResults } from "@/src/system/organisms/Search/SearchResults/SearchResults";
 
 export default function Home() {
+  const { notify } = useNotificationStore();
+
   const {
     query,
     results,
@@ -48,9 +51,9 @@ export default function Home() {
     try {
       await api.descargarTotal(item.url, item.title);
       api.registrarInteraccion(item, "download").catch(console.error);
-      alert(`⬇️ Descarga iniciada: ${item.title}`);
+      notify("Descarga", `⬇️ Descarga iniciada: ${item.title}`, "success");
     } catch (err) {
-      alert("❌ Error al encolar la descarga.");
+      notify("Error", "❌ Error al encolar la descarga.", "error");
     }
   };
 
@@ -59,12 +62,13 @@ export default function Home() {
   }, []);
 
   // 🚨 SENSOR DE RENDERIZADO PRINCIPAL
-  console.log("🚨 TELEMETRÍA [HOME]:", {
-    estadoCarga: isLoading,
-    cantidadResultados: results?.length,
-    tieneMas: hasMore,
-    busquedaActual: query,
-  });
+  if (process.env.NODE_ENV === "development")
+    console.log("🚨 TELEMETRÍA [HOME]:", {
+      estadoCarga: isLoading,
+      cantidadResultados: results?.length,
+      tieneMas: hasMore,
+      busquedaActual: query,
+    });
 
   return (
     <main className="min-h-screen bg-background text-foreground font-sans">
