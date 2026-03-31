@@ -2996,47 +2996,44 @@ export const useNotificationStore = create<NotificationState>((set) => ({
 </file>
 
 <file path="src/store/progressStore.ts">
-import { create } from 'zustand';
+import { create } from "zustand";
 
 interface ProgressState {
-  isWorking: boolean;
+  isAnimating: boolean;
   progress: number;
-  startWork: () => void;
-  stopWork: () => void;
-  setProgress: (val: number) => void;
+  start: () => void;
+  setProgress: (value: number) => void;
+  done: () => void;
 }
 
-export const useProgressStore = create<ProgressState>((set) => ({
-  isWorking: false,
-  progress: 0,
-  
-  // Inicia la barra simulando un progreso automático que frena al 90%
-  startWork: () => {
-    set({ isWorking: true, progress: 10 });
-    // Simulamos avance (esto lo hace parecer "vivo" aunque no sepamos cuánto falta real)
-    const interval = setInterval(() => {
-      set((state) => {
-        if (!state.isWorking) {
-          clearInterval(interval);
-          return state;
-        }
-        // Sube rápido al principio, luego se frena al 90% esperando el stopWork
-        const next = state.progress + (100 - state.progress) * 0.1;
-        return { progress: next > 90 ? 90 : next };
-      });
-    }, 300);
-  },
+export const useProgressStore = create<ProgressState>((set) => {
+  let timer: NodeJS.Timeout;
 
-  // Completa la barra al 100% y la oculta
-  stopWork: () => {
-    set({ progress: 100 });
-    setTimeout(() => {
-      set({ isWorking: false, progress: 0 });
-    }, 500); // Le damos medio segundo para que el usuario vea que llegó al 100%
-  },
-
-  setProgress: (val: number) => set({ progress: val }),
-}));
+  return {
+    isAnimating: false,
+    progress: 0,
+    start: () => {
+      set({ isAnimating: true, progress: 5 }); // Arranca al 5%
+      clearInterval(timer);
+      // Simulación de avance logarítmico (se frena al 90% esperando el cierre real)
+      timer = setInterval(() => {
+        set((state) => ({
+          progress:
+            state.progress >= 90 ? state.progress : state.progress + (10 - state.progress / 10),
+        }));
+      }, 300);
+    },
+    setProgress: (value) => {
+      set({ isAnimating: true, progress: value });
+    },
+    done: () => {
+      clearInterval(timer);
+      set({ progress: 100 });
+      // Oculta la barra suavemente tras llegar al 100%
+      setTimeout(() => set({ isAnimating: false, progress: 0 }), 400);
+    },
+  };
+});
 </file>
 
 <file path="src/store/searchStore.ts">
@@ -5594,22 +5591,28 @@ export function AppToaster() {
 <file path="src/system/organisms/Layout/GlobalProgress.tsx">
 "use client";
 
+import { useEffect } from "react";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useProgressStore } from "@/src/store/progressStore";
+import { ProgressBar } from "@/src/system/atoms/ProgressBar"; // Asumiendo que esta es la ruta de tu atom
 
 export function GlobalProgress() {
-  const { isWorking, progress } = useProgressStore();
+  const { isAnimating, progress, done } = useProgressStore();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
 
-  if (!isWorking && progress === 0) return null;
+  // 🛡️ EFECTO 1: Cambios de Ruta en Next.js App Router
+  // Cada vez que cambia la URL (pathname o params), cerramos la barra de progreso
+  useEffect(() => {
+    done();
+  }, [pathname, searchParams, done]);
+
+  if (!isAnimating) return null;
 
   return (
-    <div className="fixed top-0 left-0 w-full z-100 pointer-events-none">
-      <div 
-        className="h-1 bg-var(--accent-color) transition-all duration-300 ease-out shadow-[0_0_10px_var(--accent-color)]"
-        style={{ width: `${progress}%` }}
-      >
-        {/* Efecto de brillo en la punta de la barra */}
-        <div className="absolute right-0 top-0 h-full w-20 bg-linear-to-r from-transparent to-white/50 opacity-50 blur-[2px]" />
-      </div>
+    <div className="fixed top-0 left-0 w-full z-9999 pointer-events-none">
+      {/* Pasamos los props que necesite tu atom. Asumo value={progress} */}
+      <ProgressBar value={progress} className="h-1 rounded-none bg-var(--accent-color) shadow-[0_0_10px_var(--accent-color)] transition-all duration-300 ease-out" />
     </div>
   );
 }

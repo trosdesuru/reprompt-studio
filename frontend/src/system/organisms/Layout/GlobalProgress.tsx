@@ -21,7 +21,7 @@ export function GlobalProgress() {
   return (
     <div className="fixed top-0 left-0 w-full z-9999 pointer-events-none">
       {/* Pasamos los props que necesite tu atom. Asumo value={progress} */}
-      <ProgressBar value={progress} className="h-1 rounded-none bg-[var(--accent-color)] shadow-[0_0_10px_var(--accent-color)] transition-all duration-300 ease-out" />
+      <ProgressBar value={progress} className="h-1 rounded-none bg-var(--accent-color) shadow-[0_0_10px_var(--accent-color)] transition-all duration-300 ease-out" />
     </div>
   );
 }
