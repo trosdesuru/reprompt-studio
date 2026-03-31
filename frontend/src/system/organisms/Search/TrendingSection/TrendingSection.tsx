@@ -1,5 +1,6 @@
 // frontend/features/search/TrendingSection/TrendingSection.tsx
-import { GalleryCard } from "@/src/system/organisms/Search/GalleryCard";
+
+import { UniversalMediaCard } from "../../Media/UniversalMediaCard";
 import { TrendingSectionProps } from "./TrendingSection.types";
 
 export function TrendingSection({ trending, onOpenVisor, onDownloadTotal }: TrendingSectionProps) {
@@ -24,11 +25,15 @@ export function TrendingSection({ trending, onOpenVisor, onDownloadTotal }: Tren
 
             <div className="border-4 border-transparent group-hover:border-yellow-400 transition-colors duration-300 h-full">
               {/* 🟢 Pasamos las funciones que ahora aceptan el item completo */}
-              <GalleryCard
-                item={item}
-                onOpenVisor={onOpenVisor}
-                onDownloadTotal={onDownloadTotal}
-              />
+              {trending.map((item) => (
+                <UniversalMediaCard
+                  key={item.gid}
+                  data={mapSearchToMediaCard(item)}
+                  variant="gallery"
+                  onClick={() => onOpenVisor(item)}
+                  onDownload={() => onDownloadTotal(item)}
+                />
+              ))}
             </div>
 
             {/* Contador de descargas */}
