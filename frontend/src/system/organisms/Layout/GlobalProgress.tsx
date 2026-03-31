@@ -1,21 +1,27 @@
 "use client";
 
+import { useEffect } from "react";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useProgressStore } from "@/src/store/progressStore";
+import { ProgressBar } from "@/src/system/atoms/ProgressBar"; // Asumiendo que esta es la ruta de tu atom
 
 export function GlobalProgress() {
-  const { isWorking, progress } = useProgressStore();
+  const { isAnimating, progress, done } = useProgressStore();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
 
-  if (!isWorking && progress === 0) return null;
+  // 🛡️ EFECTO 1: Cambios de Ruta en Next.js App Router
+  // Cada vez que cambia la URL (pathname o params), cerramos la barra de progreso
+  useEffect(() => {
+    done();
+  }, [pathname, searchParams, done]);
+
+  if (!isAnimating) return null;
 
   return (
-    <div className="fixed top-0 left-0 w-full z-100 pointer-events-none">
-      <div 
-        className="h-1 bg-var(--accent-color) transition-all duration-300 ease-out shadow-[0_0_10px_var(--accent-color)]"
-        style={{ width: `${progress}%` }}
-      >
-        {/* Efecto de brillo en la punta de la barra */}
-        <div className="absolute right-0 top-0 h-full w-20 bg-linear-to-r from-transparent to-white/50 opacity-50 blur-[2px]" />
-      </div>
+    <div className="fixed top-0 left-0 w-full z-9999 pointer-events-none">
+      {/* Pasamos los props que necesite tu atom. Asumo value={progress} */}
+      <ProgressBar value={progress} className="h-1 rounded-none bg-[var(--accent-color)] shadow-[0_0_10px_var(--accent-color)] transition-all duration-300 ease-out" />
     </div>
   );
 }

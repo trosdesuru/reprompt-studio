@@ -98,6 +98,9 @@ src/
           stringUtils.ts
           types.ts
         promptParser.ts
+    home/
+      hooks/
+        useHomeInteraction.ts
     image-viewer/
       hooks/
         useViewerNavigation.ts
@@ -133,6 +136,8 @@ src/
       ProgressBar.tsx
       Skeleton.tsx
     molecules/
+      Feedback/
+        FeedState.tsx
       FilterBar.tsx
       FormField.tsx
       MediaOverlay.tsx
@@ -779,114 +784,77 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 <file path="app/page.tsx">
 "use client";
 
-import { useState, useEffect } from "react";
-import { api } from "@/src/services/api";
-import { useNotificationStore } from "@/src/store/notificationStore";
+import { useEffect } from "react";
+import dynamic from "next/dynamic";
 import { useSearchStore } from "@/src/store/searchStore";
-import { GalleryItem } from "@/src/types/gallery";
 import { useSearch } from "@/src/features/search/hooks/useSearch";
-import { useViewerSync } from "@/src/features/image-viewer/hooks/useViewerSync";
-import { TrendingSection } from "@/src/system/organisms/Search/TrendingSection/TrendingSection";
-import { ImageViewerModal } from "@/src/system/organisms/Viewer/ImageViewerModal/ImageViewerModal";
+import { useHomeInteraction } from "@/src/features/home/hooks/useHomeInteraction";
+
+// 🧱 Componentes Síncronos (Vitales para el primer renderizado y SEO)
 import { HeroSearch } from "@/src/system/organisms/Search/HeroSearch";
+import { TrendingSection } from "@/src/system/organisms/Search/TrendingSection/TrendingSection";
 import { SearchResults } from "@/src/system/organisms/Search/SearchResults/SearchResults";
+import { FeedState } from "@/src/system/molecules/Feedback/FeedState";
+
+const ImageViewerModal = dynamic(
+  () =>
+    import("@/src/system/organisms/Viewer/ImageViewerModal/ImageViewerModal").then(
+      (mod) => mod.ImageViewerModal,
+    ),
+  { ssr: false },
+);
 
 export default function Home() {
-  const { notify } = useNotificationStore();
-
-  const {
-    query,
-    results,
-    isLoading,
-    isLoadingMore: isLoadingMoreResults,
-    hasMore,
-    error,
-    loadMore,
-  } = useSearch();
+  const { query, results, isLoading, isLoadingMore, hasMore, error, loadMore } = useSearch();
   const { trending, fetchTrending } = useSearchStore();
 
-  const [activeUrl, setActiveUrl] = useState("");
-  const [activeTitle, setActiveTitle] = useState("");
-
-  const {
-    viewerPages,
-    isViewerLoading,
-    isLoadingMore: isLoadingMorePages,
-    isViewerOpen,
-    openViewer,
-    closeViewer,
-    hasMorePages,
-    loadNextPage,
-  } = useViewerSync(activeUrl);
-
-  const handleOpenVisor = (item: GalleryItem) => {
-    setActiveUrl(item.url);
-    setActiveTitle(item.title);
-    openViewer(item.url);
-    api.registrarInteraccion(item, "view").catch(console.error);
-  };
-
-  const handleDownloadTotal = async (item: GalleryItem) => {
-    try {
-      await api.descargarTotal(item.url, item.title);
-      api.registrarInteraccion(item, "download").catch(console.error);
-      notify("Descarga", `⬇️ Descarga iniciada: ${item.title}`, "success");
-    } catch (err) {
-      notify("Error", "❌ Error al encolar la descarga.", "error");
-    }
-  };
+  const interactions = useHomeInteraction();
 
   useEffect(() => {
     fetchTrending();
-  }, []);
+  }, [fetchTrending]);
 
-  // 🚨 SENSOR DE RENDERIZADO PRINCIPAL
-  if (process.env.NODE_ENV === "development")
-    console.log("🚨 TELEMETRÍA [HOME]:", {
-      estadoCarga: isLoading,
-      cantidadResultados: results?.length,
-      tieneMas: hasMore,
-      busquedaActual: query,
-    });
+  if (process.env.NODE_ENV === "development") {
+    console.log("🚨 TELEMETRÍA [HOME]:", { isLoading, count: results?.length, hasMore, query });
+  }
 
   return (
     <main className="min-h-screen bg-background text-foreground font-sans">
       <HeroSearch />
-      {error && (
-        <div className="text-center text-red-500 mb-8 font-mono p-4 bg-red-500/10 neo-border neo-shadow max-w-md mx-auto">
-          {error}
-        </div>
-      )}
-      <div className="max-w-90rem mx-auto px-4">
-        {query === "" && (
+
+      {error && <FeedState type="error" message={error} />}
+
+      <div className="max-w-90rem mx-auto px-4 pb-12">
+        {!query ? (
           <TrendingSection
             trending={trending}
-            onOpenVisor={handleOpenVisor}
-            onDownloadTotal={handleDownloadTotal}
+            onOpenVisor={interactions.handleOpenVisor}
+            onDownloadTotal={interactions.handleDownloadTotal}
           />
-        )}
-
-        {/* 🛡️ NOTA MENTAL: Observa si esta condición se cumple realmente */}
-        {!isLoading && results.length > 0 && (
+        ) : isLoading && results.length === 0 ? (
+          <FeedState type="loading" />
+        ) : !isLoading && results.length === 0 ? (
+          <FeedState type="empty" highlight={query} />
+        ) : (
           <SearchResults
             results={results}
-            onOpenVisor={handleOpenVisor}
-            onDownloadTotal={handleDownloadTotal}
+            onOpenVisor={interactions.handleOpenVisor}
+            onDownloadTotal={interactions.handleDownloadTotal}
             hasMore={hasMore}
-            isLoadingMore={isLoadingMoreResults}
+            isLoadingMore={isLoadingMore}
             onLoadMore={loadMore}
           />
         )}
 
-        {isViewerOpen && (
+        {interactions.viewerSync.isViewerOpen && (
           <ImageViewerModal
-            title={activeTitle}
-            pages={viewerPages}
-            isLoading={isViewerLoading}
-            isLoadingMore={isLoadingMorePages}
-            hasMorePages={hasMorePages}
-            onLoadMore={loadNextPage}
-            onClose={closeViewer}
+            title={interactions.activeTitle}
+            pages={interactions.viewerSync.viewerPages}
+            isLoading={interactions.viewerSync.isViewerLoading}
+            isLoadingMore={interactions.viewerSync.isLoadingMore}
+            hasMorePages={interactions.viewerSync.hasMorePages}
+            onLoadMore={interactions.viewerSync.loadNextPage}
+            onClose={interactions.viewerSync.closeViewer}
           />
         )}
       </div>
@@ -2399,6 +2367,51 @@ export function parsePromptData(rawText: string): ExtractedPromptData {
 }
 </file>
 
+<file path="src/features/home/hooks/useHomeInteraction.ts">
+import { useState, useCallback } from "react";
+import { api } from "@/src/services/api";
+import { useNotificationStore } from "@/src/store/notificationStore";
+import { useViewerSync } from "@/src/features/image-viewer/hooks/useViewerSync";
+import { GalleryItem } from "@/src/types/gallery";
+
+export function useHomeInteraction() {
+  const { notify } = useNotificationStore();
+  const [activeUrl, setActiveUrl] = useState("");
+  const [activeTitle, setActiveTitle] = useState("");
+
+  const viewerSync = useViewerSync(activeUrl);
+
+  const handleOpenVisor = useCallback((item: GalleryItem) => {
+    setActiveUrl(item.url);
+    setActiveTitle(item.title);
+    viewerSync.openViewer(item.url);
+    
+    // Disparamos la métrica en background sin esperar (Fire and Forget)
+    api.registrarInteraccion(item, "view").catch((err) => 
+      console.error("Fallo al registrar vista:", err)
+    );
+  }, [viewerSync]);
+
+  const handleDownloadTotal = useCallback(async (item: GalleryItem) => {
+    try {
+      notify("Descarga", `⬇️ Preparando ${item.title}...`, "info");
+      await api.descargarTotal(item.url, item.title);
+      api.registrarInteraccion(item, "download").catch(console.error);
+      notify("Éxito", `✅ Descarga encolada: ${item.title}`, "success");
+    } catch (err) {
+      notify("Error", "❌ Falla crítica al encolar la descarga.", "error");
+    }
+  }, [notify]);
+
+  return {
+    activeTitle,
+    viewerSync,
+    handleOpenVisor,
+    handleDownloadTotal,
+  };
+}
+</file>
+
 <file path="src/features/image-viewer/hooks/useViewerNavigation.ts">
 import { useState, useCallback, useEffect } from "react";
 
@@ -3526,6 +3539,46 @@ export function ProgressBar({
 <file path="src/system/atoms/Skeleton.tsx">
 export function Skeleton({ className = "" }: { className?: string }) {
   return <div className={`animate-pulse bg-(--border-color)/20 rounded ${className}`} />;
+}
+</file>
+
+<file path="src/system/molecules/Feedback/FeedState.tsx">
+import { IconDatabaseOff, IconLoader2, IconAlertTriangle } from "@tabler/icons-react";
+
+interface FeedStateProps {
+  type: "loading" | "empty" | "error";
+  message?: string;
+  highlight?: string;
+}
+
+export function FeedState({ type, message, highlight }: FeedStateProps) {
+  if (type === "loading") {
+    return (
+      <div className="flex flex-col items-center justify-center py-24 text-muted-foreground animate-pulse">
+        <IconLoader2 size={48} className="animate-spin mb-4 text-var(--accent-color)" />
+        <p className="font-mono text-sm tracking-widest uppercase">Decodificando galerías...</p>
+      </div>
+    );
+  }
+
+  if (type === "error") {
+    return (
+      <div className="max-w-md mx-auto mt-8 p-4 bg-red-500/10 border border-red-500/20 text-red-500 rounded-lg flex items-start gap-3 shadow-sm animate-in fade-in slide-in-from-top-4">
+        <IconAlertTriangle size={24} className="shrink-0 mt-0.5" />
+        <div className="font-mono text-sm leading-relaxed">{message}</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col items-center justify-center py-24 text-muted-foreground bg-muted/10 neo-border border-dashed rounded-lg mt-8">
+      <IconDatabaseOff size={64} stroke={1} className="mb-4 opacity-50" />
+      <h3 className="text-xl font-bold text-foreground mb-2">Abismo vacío</h3>
+      <p className="text-sm max-w-md text-center">
+        No encontramos resultados para <span className="text-foreground font-bold">"{highlight}"</span>.
+      </p>
+    </div>
+  );
 }
 </file>
 
