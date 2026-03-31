@@ -1,16 +1,14 @@
-import { render, screeen, fireEvent } from "@testing-library/react";
+import "@testing-library/jest-dom";
+
 import userEvent from "@testing-library/user-event";
-import "@testing-library/jest-dom"; // 🛡️ FIX 1: Importamos los matchers del DOM para TS
-
-import { NavbarSearch } from "./NavbarSearch";
 import { useSearch } from "@/src/features/search/hooks/useSearch";
+import { render, screen, fireEvent } from "@testing-library/react";
+import { NavbarSearch } from "./NavbarSearch";
 
-// Aislamos el componente para no hacer peticiones reales
 jest.mock("@/src/features/search/hooks/useSearch");
 const mockUseSearch = useSearch as jest.MockedFunction<typeof useSearch>;
 
 describe("Organism: NavbarSearch", () => {
-  // 🛡️ FIX 2: Completamos el contrato estricto de TypeScript
   const defaultMockState = {
     query: "",
     setQuery: jest.fn(),
@@ -21,7 +19,6 @@ describe("Organism: NavbarSearch", () => {
     isLoading: false,
     activeCategories: { misc: true },
     toggleCategory: jest.fn(),
-    // Añadimos las propiedades faltantes para calmar a TypeScript
     results: [],
     isLoadingMore: false,
     hasMore: false,
@@ -31,8 +28,6 @@ describe("Organism: NavbarSearch", () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    // Forzamos el tipado any temporal si TS sigue siendo excesivamente estricto
-    // con firmas de funciones complejas
     mockUseSearch.mockReturnValue(defaultMockState as any);
   });
 
@@ -45,14 +40,14 @@ describe("Organism: NavbarSearch", () => {
   });
 
   describe("Interacción del Usuario (Happy Path)", () => {
-    it("debe llamar a setQuery cuando el usuario escribe", async () => {
+    it("debe llamar a setQuery cuando el usuario escribe", () => {
       render(<NavbarSearch />);
       const input = screen.getByPlaceholderText(/Buscar prompts/i);
 
-      await userEvent.type(input, "Cyberpunk");
+      // 🛡️ FIX TEST: Como el mock es estático y no re-renderiza con el nuevo 'query',
+      // usamos fireEvent para inyectar el valor final de golpe en lugar de userEvent (tecla a tecla)
+      fireEvent.change(input, { target: { value: "Cyberpunk" } });
 
-      // Verificamos que Zustand reciba las actualizaciones
-      expect(defaultMockState.setQuery).toHaveBeenCalledWith("C");
       expect(defaultMockState.setQuery).toHaveBeenCalledWith("Cyberpunk");
     });
 
@@ -69,15 +64,13 @@ describe("Organism: NavbarSearch", () => {
   describe("Casos Límite y UX Avanzada (Edge Cases)", () => {
     it("debe desactivar el botón de búsqueda si está cargando (isLoading: true)", () => {
       mockUseSearch.mockReturnValue({ ...defaultMockState, isLoading: true } as any);
-
       render(<NavbarSearch />);
-      // Buscamos el botón por su tipo de rol y atributo submit
-      const button = screen.getByRole("button");
 
+      const button = screen.getByRole("button");
       expect(button).toBeDisabled();
     });
 
-    it('atajo de teclado "/": debe hacer focus en el input sin escribir la barra', async () => {
+    it('atajo de teclado "/": debe hacer focus en el input sin escribir la barra', () => {
       render(<NavbarSearch />);
       const input = screen.getByPlaceholderText(/Buscar prompts/i);
 
