@@ -47,7 +47,7 @@ export function ProgressBar({
       >
         {/* Relleno de la barra */}
         <div
-          className={`h-full bg-(--accent-color) border-r-2 border-black transition-all duration-500 ease-out relative overflow-hidden`}
+          className={`h-full bg-(--accent-color) border-r-2 border-white transition-all duration-500 ease-out relative overflow-hidden`}
           style={{ width: `${clampedValue}%` }}
         >
           {/* El truco mágico: Franjas animadas con puro CSS de Tailwind */}
