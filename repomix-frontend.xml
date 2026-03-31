@@ -543,7 +543,7 @@ export default function StudioPage() {
   --text-primary: #1d1f21;
   --text-secondary: #4b5563;
   --border-color: #1d1f21;
-  --accent-color: #1bccd8;
+  --accent-color: #128a93;
   --shadow-color: #1d1f21;
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
@@ -586,7 +586,7 @@ export default function StudioPage() {
     --text-primary: #f4f5f5;
     --text-secondary: #a1a1aa;
     --border-color: #3f3f46;
-    --accent-color: #1bccd8;
+    --accent-color: #0d9ca6;
     --shadow-color: #000000;
   }
 }
@@ -607,7 +607,7 @@ export default function StudioPage() {
   --text-primary: #f4f5f5;
   --text-secondary: #a1a1aa;
   --border-color: #3f3f46;
-  --accent-color: #D83C00;
+  --accent-color: #1bccd8;
   --shadow-color: #000000;
   --background: oklch(0.145 0 0);
   --foreground: oklch(0.985 0 0);
