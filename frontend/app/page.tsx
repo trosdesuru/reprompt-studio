@@ -2,9 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { api } from "@/src/services/api";
-
 import { useSearchStore } from "@/src/store/searchStore";
-
 import { GalleryItem } from "@/src/types/gallery";
 import { useSearch } from "@/src/features/search/hooks/useSearch";
 import { useViewerSync } from "@/src/features/image-viewer/hooks/useViewerSync";
@@ -23,7 +21,6 @@ export default function Home() {
     error,
     loadMore,
   } = useSearch();
-
   const { trending, fetchTrending } = useSearchStore();
 
   const [activeUrl, setActiveUrl] = useState("");
@@ -59,18 +56,24 @@ export default function Home() {
 
   useEffect(() => {
     fetchTrending();
-  }, []) // 🛡️ FIX: Array vacío para evitar cascada de re-renders;
+  }, []);
+
+  // 🚨 SENSOR DE RENDERIZADO PRINCIPAL
+  console.log("🚨 TELEMETRÍA [HOME]:", {
+    estadoCarga: isLoading,
+    cantidadResultados: results?.length,
+    tieneMas: hasMore,
+    busquedaActual: query,
+  });
 
   return (
     <main className="min-h-screen bg-background text-foreground font-sans">
       <HeroSearch />
-
       {error && (
         <div className="text-center text-red-500 mb-8 font-mono p-4 bg-red-500/10 neo-border neo-shadow max-w-md mx-auto">
           {error}
         </div>
       )}
-
       <div className="max-w-90rem mx-auto px-4">
         {query === "" && (
           <TrendingSection
@@ -80,6 +83,7 @@ export default function Home() {
           />
         )}
 
+        {/* 🛡️ NOTA MENTAL: Observa si esta condición se cumple realmente */}
         {!isLoading && results.length > 0 && (
           <SearchResults
             results={results}
