@@ -443,6 +443,30 @@ def navegador_seguro():
         driver.quit()
 </file>
 
+<file path="backend/app/models/gallery.py">
+# backend/app/models/gallery.py
+from typing import Optional
+from sqlmodel import Field, SQLModel
+from datetime import datetime, timezone
+
+
+class GalleryMetric(SQLModel, table=True):
+    """Tabla para almacenar las métricas locales de las galerías scrapeadas"""
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    url: str = Field(index=True, unique=True, nullable=False)
+    title: str
+    thumb: str | None = None
+
+    # 🟢 Métricas Core
+    views: int = Field(default=0)
+    downloads: int = Field(default=0)
+
+    # Trazabilidad
+    last_accessed: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+</file>
+
 <file path="backend/app/models/user.py">
 from typing import Optional
 from sqlmodel import Field, SQLModel
@@ -574,6 +598,58 @@ def generar_resumen_analitico(db: list):
     resumen += f"{'='*40}\n"
     
     logger.info(resumen)
+</file>
+
+<file path="backend/app/services/audit_service.py">
+from sqlmodel import Session, select
+from datetime import datetime, timezone
+
+from app.models.user import AuditLog
+from app.models.gallery import GalleryMetric
+
+
+class AuditService:
+    @staticmethod
+    def log_action(session: Session, username: str, action: str, details: str):
+        """Registra una acción en el AuditLog de forma silenciosa."""
+        try:
+            log = AuditLog(username=username, action=action, details=details)
+            session.add(log)
+            session.commit()
+        except Exception as e:
+            # Nunca rompemos la app por un fallo en el log
+            session.rollback()
+            print(f"⚠️ Error al registrar auditoría: {e}")
+
+    @staticmethod
+    def log_gallery_interaction(
+        session: Session, url: str, title: str, thumb: str, interaction_type: str
+    ):
+        """interaction_type puede ser 'view' o 'download'"""
+        try:
+            # Buscamos si la galería ya existe en nuestra base de datos
+            metric = session.exec(
+                select(GalleryMetric).where(GalleryMetric.url == url)
+            ).first()
+
+            if not metric:
+                # Si no existe, la registramos por primera vez
+                metric = GalleryMetric(url=url, title=title, thumb=thumb)
+                session.add(metric)
+
+            # Sumamos la métrica
+            if interaction_type == "view":
+                metric.views += 1
+            elif interaction_type == "download":
+                metric.downloads += 1
+
+            metric.last_accessed = datetime.now(timezone.utc)
+
+            session.add(metric)
+            session.commit()
+        except Exception as e:
+            session.rollback()
+            print(f"⚠️ Error al actualizar métricas de galería: {e}")
 </file>
 
 <file path="backend/app/services/downloader.py">
@@ -1511,28 +1587,56 @@ def get_current_admin(current_user: User = Depends(get_current_user)):
     return current_user
 </file>
 
-<file path="backend/app/models/gallery.py">
-# backend/app/models/gallery.py
-from typing import Optional
-from sqlmodel import Field, SQLModel
-from datetime import datetime, timezone
+<file path="backend/app/api/routes_download.py">
+from fastapi import Depends
+from app.api.deps import get_current_user
+from sqlmodel import Session
+from app.models.user import User
+
+import re
+
+from sqlmodel import Session
+from fastapi import APIRouter, Depends
+from app.core.db import get_session
+from app.services.audit_service import AuditService
+
+from app.core.redis_config import download_queue
+from app.schemas.requests import DescargaRequest, DescargaUnaRequest
+from app.services.downloader import ejecutar_descarga, ejecutar_descarga_individual
+from app.services.audit_service import AuditService
+from app.utils.storage import preparar_directorio
+
+router = APIRouter()
 
 
-class GalleryMetric(SQLModel, table=True):
-    """Tabla para almacenar las métricas locales de las galerías scrapeadas"""
+@router.post("/descargar")
+def endpoint_descargar(
+    req: DescargaRequest,
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),  # 🟢 ¡Faltaba pedir la sesión aquí!
+):
+    carpeta_limpia = re.sub(r'[\\/*?:"<>|]', "", req.title).strip() or "galeria"
+    download_dir = preparar_directorio("/storage/galleries", carpeta_limpia)
 
-    id: Optional[int] = Field(default=None, primary_key=True)
-    url: str = Field(index=True, unique=True, nullable=False)
-    title: str
-    thumb: str | None = None
+    job = download_queue.enqueue(ejecutar_descarga, req.url, download_dir)
+    return {"status": "success", "message": "Descarga enviada a la cola"}
 
-    # 🟢 Métricas Core
-    views: int = Field(default=0)
-    downloads: int = Field(default=0)
 
-    # Trazabilidad
-    last_accessed: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+@router.post("/descargar_imagen")
+def endpoint_descargar_imagen(
+    req: DescargaUnaRequest, current_user: User = Depends(get_current_user)
+):
+    carpeta_limpia = re.sub(r'[\\/*?:"<>|]', "", req.title).strip() or "galeria"
+
+    # 1. Usamos nuestra utilidad para crear la carpeta
+    download_dir = preparar_directorio("/storage/galleries", carpeta_limpia)
+
+    # 2. Enviamos a la cola de Redis
+    job = download_queue.enqueue(
+        ejecutar_descarga_individual, req.url_img, download_dir, req.index
+    )
+
+    return {"status": "success", "message": f"Imagen {req.index} enviada a la cola"}
 </file>
 
 <file path="backend/app/schemas/requests.py">
@@ -1555,58 +1659,6 @@ class InteractionRequest(BaseModel):
     title: str
     thumb: str
     interaction_type: str  # Puede ser "view" o "download"
-</file>
-
-<file path="backend/app/services/audit_service.py">
-from sqlmodel import Session, select
-from datetime import datetime, timezone
-
-from app.models.user import AuditLog
-from app.models.gallery import GalleryMetric
-
-
-class AuditService:
-    @staticmethod
-    def log_action(session: Session, username: str, action: str, details: str):
-        """Registra una acción en el AuditLog de forma silenciosa."""
-        try:
-            log = AuditLog(username=username, action=action, details=details)
-            session.add(log)
-            session.commit()
-        except Exception as e:
-            # Nunca rompemos la app por un fallo en el log
-            session.rollback()
-            print(f"⚠️ Error al registrar auditoría: {e}")
-
-    @staticmethod
-    def log_gallery_interaction(
-        session: Session, url: str, title: str, thumb: str, interaction_type: str
-    ):
-        """interaction_type puede ser 'view' o 'download'"""
-        try:
-            # Buscamos si la galería ya existe en nuestra base de datos
-            metric = session.exec(
-                select(GalleryMetric).where(GalleryMetric.url == url)
-            ).first()
-
-            if not metric:
-                # Si no existe, la registramos por primera vez
-                metric = GalleryMetric(url=url, title=title, thumb=thumb)
-                session.add(metric)
-
-            # Sumamos la métrica
-            if interaction_type == "view":
-                metric.views += 1
-            elif interaction_type == "download":
-                metric.downloads += 1
-
-            metric.last_accessed = datetime.now(timezone.utc)
-
-            session.add(metric)
-            session.commit()
-        except Exception as e:
-            session.rollback()
-            print(f"⚠️ Error al actualizar métricas de galería: {e}")
 </file>
 
 <file path="backend/app/services/auth_service.py">
@@ -3500,43 +3552,6 @@ export function Heading({ level = "h2", children, className, ...props }: Heading
 }
 </file>
 
-<file path="frontend/src/system/atoms/MediaCover.tsx">
-"use client";
-
-import Image from "next/image";
-import { cn } from "@/src/utils/lib/cn";
-import { AspectRatio } from "@/src/types/gallery";
-
-interface MediaCoverProps {
-  src: string;
-  alt: string;
-  aspectRatio?: AspectRatio;
-}
-
-export function MediaCover({ src, alt, aspectRatio = "portrait" }: MediaCoverProps) {
-  // Traducimos el aspect ratio semántico a clases de Tailwind
-  const ratioClasses = {
-    portrait: "aspect-[2/3]",
-    landscape: "aspect-[3/2]",
-    square: "aspect-square",
-    auto: "aspect-auto h-full",
-  };
-
-  return (
-    <div className={cn("relative w-full overflow-hidden bg-muted/20", ratioClasses[aspectRatio])}>
-      <Image
-        src={src}
-        alt={alt}
-        fill
-        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-        unoptimized // Evita errores de Next.js Image con dominios externos no configurados
-        className="object-cover transition-transform duration-700 ease-out group-hover:scale-105"
-      />
-    </div>
-  );
-}
-</file>
-
 <file path="frontend/src/system/atoms/Overlay.tsx">
 export function Overlay({ isOpen, onClick }: { isOpen: boolean; onClick: () => void }) {
   if (!isOpen) return null;
@@ -4190,64 +4205,6 @@ export function AppToaster() {
         },
       }}
     />
-  );
-}
-</file>
-
-<file path="frontend/src/system/organisms/Media/UniversalMediaCard.tsx">
-"use client";
-
-import React from "react";
-import { MediaCardData, MediaVariant } from "@/src/types/gallery";
-import { MediaCover } from "@/src/system/atoms/MediaCover";
-import { MediaOverlay } from "@/src/system/molecules/MediaOverlay";
-import { cn } from "@/src/utils/lib/cn";
-
-interface UniversalMediaCardProps {
-  data: MediaCardData;
-  variant?: MediaVariant;
-  className?: string;
-  onClick?: () => void;
-  onDownload?: () => void;
-}
-
-export function UniversalMediaCard({ 
-  data, 
-  variant = "gallery", 
-  className,
-  onClick, 
-  onDownload 
-}: UniversalMediaCardProps) {
-  
-  // Detenemos la propagación para que el click en "descargar" no abra el visor
-  const handleDownload = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    onDownload?.();
-  };
-
-  return (
-    <div 
-      className={cn(
-        "group relative w-full overflow-hidden rounded-xl cursor-pointer border border-border/10 shadow-sm hover:shadow-md transition-all duration-300",
-        variant === "viewer" ? "bg-black/50" : "bg-muted/20",
-        className
-      )}
-      onClick={onClick}
-    >
-      <MediaCover 
-        src={data.imageUrl} 
-        alt={data.title} 
-        aspectRatio={data.aspectRatio} 
-      />
-      
-      <MediaOverlay 
-        title={data.title}
-        prompt={data.prompt}
-        tags={data.tags}
-        variant={variant}
-        onDownload={onDownload ? handleDownload : undefined}
-      />
-    </div>
   );
 }
 </file>
@@ -11179,58 +11136,6 @@ Check out our [Next.js deployment documentation](https:
 Eres Arquitecto FullStack y Diseñador UX/UI. El sistema de diseño es minimalismo extremo estilo Civitai: baja carga cognitiva, interfaz invisible y contenido como protagonista absoluto. Elimina cualquier rastro de neo-brutalismo. Reglas estéticas obligatorias con Tailwind CSS: fondos neutros sólidos, bordes sutiles de 1px (border-border), esquinas redondeadas (rounded-lg o rounded-xl), sombras suaves desenfocadas (shadow-sm a shadow-lg), tipografía sans-serif limpia y legible, uso estratégico del espacio negativo. Reglas técnicas obligatorias: TypeScript estricto, arquitectura atómica modular, cero dependencias externas innecesarias, optimización extrema de Core Web Vitals (cero CLS), programación defensiva y manejo estricto de nulos. Ejecuta las tareas con código limpio y escalable. No des explicaciones innecesarias, aplica soluciones directas y eficientes.
 </file>
 
-<file path="backend/app/api/routes_download.py">
-from fastapi import Depends
-from app.api.deps import get_current_user
-from sqlmodel import Session
-from app.models.user import User
-
-import re
-
-from sqlmodel import Session
-from fastapi import APIRouter, Depends
-from app.core.db import get_session
-from app.services.audit_service import AuditService
-
-from app.core.redis_config import download_queue
-from app.schemas.requests import DescargaRequest, DescargaUnaRequest
-from app.services.downloader import ejecutar_descarga, ejecutar_descarga_individual
-from app.services.audit_service import AuditService
-from app.utils.storage import preparar_directorio
-
-router = APIRouter()
-
-
-@router.post("/descargar")
-def endpoint_descargar(
-    req: DescargaRequest,
-    current_user: User = Depends(get_current_user),
-    session: Session = Depends(get_session),  # 🟢 ¡Faltaba pedir la sesión aquí!
-):
-    carpeta_limpia = re.sub(r'[\\/*?:"<>|]', "", req.title).strip() or "galeria"
-    download_dir = preparar_directorio("/storage/galleries", carpeta_limpia)
-
-    job = download_queue.enqueue(ejecutar_descarga, req.url, download_dir)
-    return {"status": "success", "message": "Descarga enviada a la cola"}
-
-
-@router.post("/descargar_imagen")
-def endpoint_descargar_imagen(
-    req: DescargaUnaRequest, current_user: User = Depends(get_current_user)
-):
-    carpeta_limpia = re.sub(r'[\\/*?:"<>|]', "", req.title).strip() or "galeria"
-
-    # 1. Usamos nuestra utilidad para crear la carpeta
-    download_dir = preparar_directorio("/storage/galleries", carpeta_limpia)
-
-    # 2. Enviamos a la cola de Redis
-    job = download_queue.enqueue(
-        ejecutar_descarga_individual, req.url_img, download_dir, req.index
-    )
-
-    return {"status": "success", "message": f"Imagen {req.index} enviada a la cola"}
-</file>
-
 <file path="backend/app/models/prompt.py">
 from sqlmodel import SQLModel, Field, Column, JSON, String
 from sqlalchemy import Text  # 🟢 NUEVO: Importamos Text directamente de SQLAlchemy
@@ -11256,6 +11161,55 @@ class SavedPrompt(SQLModel, table=True):
 
     extra_data: Dict[str, Any] = Field(default_factory=dict, sa_column=Column(JSON))
     created_at: datetime = Field(default_factory=datetime.utcnow)
+</file>
+
+<file path="backend/app/init_db.py">
+import secrets
+import logging
+from sqlmodel import SQLModel, Session, select
+from app.core.db import engine
+from app.models.user import InviteCode, User, AuditLog
+from app.models.gallery import GalleryMetric
+from app.models.prompt import SavedPrompt
+
+# Configuración del logger para que sea visible en Docker
+logger = logging.getLogger("init_db")
+
+def init_db():
+    logger.info("⏳ Conectando a Neon.tech y sincronizando tablas...")
+    try:
+        # Esto crea las tablas que NO existan. No borra datos existentes.
+        SQLModel.metadata.create_all(engine)
+        logger.info("✅ Sincronización de tablas completada.")
+    except Exception as e:
+        logger.error(f"❌ Error crítico sincronizando tablas: {e}")
+        raise e
+
+    with Session(engine) as session:
+        # Usamos la sintaxis recomendada de SQLModel para la consulta
+        existing_code = session.exec(select(InviteCode)).first()
+        
+        if not existing_code:
+            # Generar código VIP estilo "TROYA-A1B2C3D4"
+            master_code = f"TROYA-{secrets.token_hex(4).upper()}"
+            new_invite = InviteCode(code=master_code)
+            
+            session.add(new_invite)
+            session.commit()
+            
+            # Usamos logger para asegurar visibilidad en los logs de Docker
+            logger.info("✨ Base de Datos inicializada por primera vez.")
+            logger.warning("="*40)
+            logger.warning(f"🔑 TU CÓDIGO MAESTRO ES: {master_code}")
+            logger.warning("⚠️ Cópialo ahora. Úsalo para crear tu cuenta Admin.")
+            logger.warning("="*40)
+        else:
+            logger.info("✅ Las tablas ya existían y la base de datos está lista.")
+
+if __name__ == "__main__":
+    # Configuración básica por si se ejecuta el archivo directamente
+    logging.basicConfig(level=logging.INFO)
+    init_db()
 </file>
 
 <file path="frontend/app/admin/page.tsx">
@@ -11618,6 +11572,59 @@ export const searchApi = {
       }),
     }),
 };
+</file>
+
+<file path="frontend/src/system/atoms/MediaCover.tsx">
+"use client";
+
+import Image from "next/image";
+import { cn } from "@/src/utils/lib/cn";
+import { AspectRatio } from "@/src/types/gallery";
+
+interface MediaCoverProps {
+  src: string | null | undefined;
+  alt: string;
+  aspectRatio?: AspectRatio;
+}
+
+export function MediaCover({ src, alt, aspectRatio = "portrait" }: MediaCoverProps) {
+  // 🛡️ FIX: Si no hay src, renderizamos un placeholder elegante en lugar de romper Next.js
+  if (!src || src === "" || typeof src !== "string") {
+    return (
+      <div className={cn(
+        "relative w-full flex items-center justify-center bg-muted/20 animate-pulse",
+        aspectRatio === "portrait" ? "aspect-2/3" : 
+        aspectRatio === "landscape" ? "aspect-3/2" : 
+        aspectRatio === "square" ? "aspect-square" : "h-96"
+      )}>
+        <div className="flex flex-col items-center gap-2">
+          <div className="w-8 h-8 rounded-full border-2 border-muted border-t-var(--accent-color) animate-spin" />
+          <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/50">Cargando Media...</span>
+        </div>
+      </div>
+    );
+  }
+
+  const ratioClasses = {
+    portrait: "aspect-[2/3]",
+    landscape: "aspect-[3/2]",
+    square: "aspect-square",
+    auto: "aspect-auto w-full min-h-[300px]",
+  };
+
+  return (
+    <div className={cn("relative w-full overflow-hidden bg-muted/20", ratioClasses[aspectRatio])}>
+      <Image
+        src={src}
+        alt={alt || "Media content"}
+        fill
+        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 70vw, 50vw"
+        unoptimized
+        className="object-contain md:object-cover transition-transform duration-700 ease-out group-hover:scale-105"
+      />
+    </div>
+  );
+}
 </file>
 
 <file path="frontend/src/system/organisms/Admin/AuditTable.tsx">
@@ -12851,29 +12858,61 @@ export function GlobalProgress() {
 }
 </file>
 
-<file path="frontend/src/utils/adapters/mediaAdapters.ts">
-import { MediaCardData, GalleryItem } from "@/src/types/gallery";
+<file path="frontend/src/system/organisms/Media/UniversalMediaCard.tsx">
+"use client";
 
-export const mapSearchToMediaCard = (item: GalleryItem): MediaCardData => {
-  return {
-    id: item.gid || crypto.randomUUID(),
-    imageUrl: item.thumb || "",
-    title: item.title || "Sin título",
-    tags: item.tags || [],
-    source: "E-Hentai",
-    aspectRatio: "portrait",
-  };
-};
+import React from "react";
+import { MediaCardData, MediaVariant } from "@/src/types/gallery";
+import { MediaCover } from "@/src/system/atoms/MediaCover";
+import { MediaOverlay } from "@/src/system/molecules/MediaOverlay";
+import { cn } from "@/src/utils/lib/cn";
 
-export const mapViewerToMediaCard = (page: any, index: number): MediaCardData => {
-  return {
-    id: `page-${index}-${page.image_url || crypto.randomUUID()}`,
-    imageUrl: page.image_url || "",
-    title: page.name || `Página ${index + 1}`,
-    prompt: page.prompt || undefined,
-    aspectRatio: "auto",
+interface UniversalMediaCardProps {
+  data: MediaCardData;
+  variant?: MediaVariant;
+  className?: string;
+  onClick?: () => void;
+  onDownload?: () => void;
+}
+
+export function UniversalMediaCard({
+  data,
+  variant = "gallery",
+  className,
+  onClick,
+  onDownload,
+}: UniversalMediaCardProps) {
+  if (!data) return null;
+
+  const handleDownload = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onDownload?.();
   };
-};
+
+  return (
+    <div
+      className={cn(
+        "group relative w-full overflow-hidden rounded-xl cursor-pointer border border-border/10 shadow-sm hover:shadow-md transition-all duration-300",
+        variant === "viewer" ? "bg-black/20" : "bg-muted/20",
+        className,
+      )}
+      onClick={onClick}
+    >
+      <MediaCover src={data.imageUrl} alt={data.title} aspectRatio={data.aspectRatio} />
+
+      {/* Solo mostramos el overlay si hay una imagen válida para evitar ruido visual */}
+      {data.imageUrl && (
+        <MediaOverlay
+          title={data.title}
+          prompt={data.prompt}
+          tags={data.tags}
+          variant={variant}
+          onDownload={onDownload ? handleDownload : undefined}
+        />
+      )}
+    </div>
+  );
+}
 </file>
 
 <file path="frontend/src/utils/errors/ErrorHandler.ts">
@@ -13117,55 +13156,6 @@ def list_active_sessions(current_admin: User = Depends(get_current_admin)):
 def revoke_all_sessions(current_admin: User = Depends(get_current_admin)):
     AuthService.revoke_all_sessions(current_admin.username, redis_client)
     return {"status": "success", "message": "Todas las sesiones han sido revocadas."}
-</file>
-
-<file path="backend/app/init_db.py">
-import secrets
-import logging
-from sqlmodel import SQLModel, Session, select
-from app.core.db import engine
-from app.models.user import InviteCode, User, AuditLog
-from app.models.gallery import GalleryMetric
-from app.models.prompt import SavedPrompt
-
-# Configuración del logger para que sea visible en Docker
-logger = logging.getLogger("init_db")
-
-def init_db():
-    logger.info("⏳ Conectando a Neon.tech y sincronizando tablas...")
-    try:
-        # Esto crea las tablas que NO existan. No borra datos existentes.
-        SQLModel.metadata.create_all(engine)
-        logger.info("✅ Sincronización de tablas completada.")
-    except Exception as e:
-        logger.error(f"❌ Error crítico sincronizando tablas: {e}")
-        raise e
-
-    with Session(engine) as session:
-        # Usamos la sintaxis recomendada de SQLModel para la consulta
-        existing_code = session.exec(select(InviteCode)).first()
-        
-        if not existing_code:
-            # Generar código VIP estilo "TROYA-A1B2C3D4"
-            master_code = f"TROYA-{secrets.token_hex(4).upper()}"
-            new_invite = InviteCode(code=master_code)
-            
-            session.add(new_invite)
-            session.commit()
-            
-            # Usamos logger para asegurar visibilidad en los logs de Docker
-            logger.info("✨ Base de Datos inicializada por primera vez.")
-            logger.warning("="*40)
-            logger.warning(f"🔑 TU CÓDIGO MAESTRO ES: {master_code}")
-            logger.warning("⚠️ Cópialo ahora. Úsalo para crear tu cuenta Admin.")
-            logger.warning("="*40)
-        else:
-            logger.info("✅ Las tablas ya existían y la base de datos está lista.")
-
-if __name__ == "__main__":
-    # Configuración básica por si se ejecuta el archivo directamente
-    logging.basicConfig(level=logging.INFO)
-    init_db()
 </file>
 
 <file path="frontend/app/login/page.tsx">
@@ -13774,6 +13764,34 @@ export function ViewerLightbox({
     </div>
   );
 }
+</file>
+
+<file path="frontend/src/utils/adapters/mediaAdapters.ts">
+import { MediaCardData, GalleryItem } from "@/src/types/gallery";
+
+export const mapSearchToMediaCard = (item: GalleryItem): MediaCardData => {
+  return {
+    id: item?.gid || crypto.randomUUID(),
+    imageUrl: item?.thumb || "",
+    title: item?.title || "Sin título",
+    tags: item?.tags || [],
+    source: "E-Hentai",
+    aspectRatio: "portrait",
+  };
+};
+
+export const mapViewerToMediaCard = (page: any, index: number): MediaCardData => {
+  // 🛡️ Aseguramos que si la página es nula o no tiene URL, el átomo sepa manejarlo
+  const url = page?.image_url || "";
+  
+  return {
+    id: `page-${index}-${url || index}`,
+    imageUrl: url,
+    title: page?.name || `Página ${index + 1}`,
+    prompt: page?.prompt || undefined,
+    aspectRatio: "auto",
+  };
+};
 </file>
 
 <file path="frontend/src/utils/errors/AppErrors.ts">
@@ -14891,51 +14909,6 @@ export function ImageViewerModal({ title, pages, isLoading, isLoadingMore, hasMo
 }
 </file>
 
-<file path="frontend/src/system/organisms/Layout/Navbar/NavbarSearch.tsx">
-"use client";
-import React, { useCallback } from "react";
-import { useSearch } from "@/src/features/search/hooks/useSearch";
-import { SearchCategorySelector } from "./SearchCategorySelector";
-import { IconSearch } from "@tabler/icons-react";
-import { EH_CATEGORIES } from "@/src/constants/filters";
-
-export function NavbarSearch() {
-  // Optimizando la extracción del estado (ISP)
-  const { query, setQuery, handleSearch, activeCategories, toggleCategory } = useSearch();
-
-  // Abstracción del evento de submit (Clean Code)
-  const onSubmit = useCallback((e: React.FormEvent) => {
-    e.preventDefault();
-    handleSearch(e);
-  }, [handleSearch]);
-
-  const onInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    setQuery(e.target.value);
-  }, [setQuery]);
-
-  return (
-    <div className="w-full max-w-2xl flex items-center h-10 bg-muted/30 dark:bg-white/0.03 border border-border/50 rounded-lg overflow-hidden focus-within:border-var(--accent-color)/50 focus-within:ring-1 focus-within:ring-var(--accent-color)/20 transition-all">
-      <SearchCategorySelector 
-        options={EH_CATEGORIES}
-        activeCategories={activeCategories} 
-        onToggle={toggleCategory} 
-      />
-      <form onSubmit={onSubmit} className="flex-1 h-full flex items-center relative">
-        <input 
-          value={query}
-          onChange={onInputChange}
-          className="w-full h-full bg-transparent px-4 text-sm outline-none placeholder:text-muted-foreground/60"
-          placeholder="Buscar prompts, artistas..."
-        />
-        <button type="submit" className="absolute right-3 text-muted-foreground hover:text-foreground">
-          <IconSearch size={18} stroke={2} />
-        </button>
-      </form>
-    </div>
-  );
-}
-</file>
-
 <file path="frontend/src/types/gallery.ts">
 export type MediaVariant = "gallery" | "viewer" | "search";
 export type AspectRatio = "portrait" | "landscape" | "square" | "auto";
@@ -15072,6 +15045,51 @@ def registrar_interaccion(
         return {"status": "success"}
     except Exception as e:
         return {"status": "error", "message": str(e)}
+</file>
+
+<file path="frontend/src/system/organisms/Layout/Navbar/NavbarSearch.tsx">
+"use client";
+import React, { useCallback } from "react";
+import { useSearch } from "@/src/features/search/hooks/useSearch";
+import { SearchCategorySelector } from "./SearchCategorySelector";
+import { IconSearch } from "@tabler/icons-react";
+import { EH_CATEGORIES } from "@/src/constants/filters";
+
+export function NavbarSearch() {
+  // Optimizando la extracción del estado (ISP)
+  const { query, setQuery, handleSearch, activeCategories, toggleCategory } = useSearch();
+
+  // Abstracción del evento de submit (Clean Code)
+  const onSubmit = useCallback((e: React.FormEvent) => {
+    e.preventDefault();
+    handleSearch(e);
+  }, [handleSearch]);
+
+  const onInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setQuery(e.target.value);
+  }, [setQuery]);
+
+  return (
+    <div className="w-full max-w-2xl flex items-center h-10 bg-muted/30 dark:bg-white/0.03 border border-border/50 rounded-lg overflow-hidden focus-within:border-var(--accent-color)/50 focus-within:ring-1 focus-within:ring-var(--accent-color)/20 transition-all">
+      <SearchCategorySelector 
+        options={EH_CATEGORIES}
+        activeCategories={activeCategories} 
+        onToggle={toggleCategory} 
+      />
+      <form onSubmit={onSubmit} className="flex-1 h-full flex items-center relative">
+        <input 
+          value={query}
+          onChange={onInputChange}
+          className="w-full h-full bg-transparent px-4 text-sm outline-none placeholder:text-muted-foreground/60"
+          placeholder="Buscar prompts, artistas..."
+        />
+        <button type="submit" className="absolute right-3 text-muted-foreground hover:text-foreground">
+          <IconSearch size={18} stroke={2} />
+        </button>
+      </form>
+    </div>
+  );
+}
 </file>
 
 <file path="frontend/package.json">

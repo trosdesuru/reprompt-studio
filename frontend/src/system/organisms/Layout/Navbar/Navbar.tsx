@@ -17,7 +17,7 @@ export function Navbar() {
             alt="Reprompt Logo"
             width={140}
             height={40}
-            priority
+            priority={true}
             className="block dark:hidden w-32 md:w-36 h-auto object-contain"
           />
 
@@ -26,7 +26,7 @@ export function Navbar() {
             alt="Reprompt Logo"
             width={140}
             height={40}
-            priority
+            priority={true}
             className="hidden dark:block w-32 md:w-36 h-auto object-contain"
           />
         </Link>

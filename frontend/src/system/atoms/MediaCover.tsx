@@ -42,8 +42,9 @@ export function MediaCover({ src, alt, aspectRatio = "portrait" }: MediaCoverPro
         alt={alt || "Media content"}
         fill
         sizes="(max-width: 768px) 100vw, (max-width: 1200px) 70vw, 50vw"
-        unoptimized
         className="object-contain md:object-cover transition-transform duration-700 ease-out group-hover:scale-105"
+        quality={75}
+        decoding="async"
       />
     </div>
   );
