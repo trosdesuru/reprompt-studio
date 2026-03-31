@@ -538,7 +538,7 @@ export default function StudioPage() {
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  --bg-primary: #f4f5f5;
+  --bg-primary: #ffffff;
   --bg-secondary: #ffffff;
   --text-primary: #1d1f21;
   --text-secondary: #4b5563;
