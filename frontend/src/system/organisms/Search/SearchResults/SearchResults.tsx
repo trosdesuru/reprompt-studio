@@ -1,11 +1,10 @@
 "use client";
-
+import { useEffect } from "react";
 import { useInView } from "react-intersection-observer";
-import { IconLoader2 } from "@tabler/icons-react";
+import { IconLoader2, IconRefresh } from "@tabler/icons-react";
 import { UniversalMediaCard } from "@/src/system/organisms/Media/UniversalMediaCard";
 import { mapSearchToMediaCard } from "@/src/utils/adapters/mediaAdapters";
 import { GalleryItem } from "@/src/types/gallery";
-import { useEffect } from "react";
 
 interface SearchResultsProps {
   results: GalleryItem[];
@@ -24,13 +23,11 @@ export function SearchResults({
   isLoadingMore,
   onLoadMore,
 }: SearchResultsProps) {
-  // 🛡️ PRAGMATISMO: rootMargin de 200px para que empiece a cargar un poco antes del final real
-  const { ref, inView } = useInView({ rootMargin: "200px" });
+  // Margen de 400px para cargar con antelación y que el usuario ni note la carga
+  const { ref, inView } = useInView({ rootMargin: "400px" });
 
   useEffect(() => {
-    // Si el centinela es visible, hay más páginas y NO estamos cargando ya, disparamos
     if (inView && hasMore && !isLoadingMore) {
-      console.log("🚨 TELEMETRÍA [OBSERVER]: Centinela detectado. Cargando más...");
       onLoadMore();
     }
   }, [inView, hasMore, isLoadingMore, onLoadMore]);
@@ -38,18 +35,17 @@ export function SearchResults({
   if (!results || results.length === 0) return null;
 
   return (
-    <section className="w-full py-8 animate-fade-in">
+    <section className="w-full py-8 animate-in fade-in duration-700">
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-xl font-bold uppercase tracking-widest text-foreground/80">
           Resultados de la <span className="text-var(--accent-color)">Búsqueda</span>
         </h2>
-        <span className="text-sm font-mono text-muted-foreground bg-muted/30 px-3 py-1 neo-border">
-          {results.length} prompts
+        <span className="text-sm font-mono text-muted-foreground bg-muted/30 px-3 py-1 neo-border shadow-sm">
+          {results.length} recuperados
         </span>
       </div>
 
-      {/* 🛡️ FIX CRÍTICO: min-h-screen asegura que la cuadrícula siempre tenga al menos el alto de la pantalla, empujando al centinela fuera de la vista y ROMPIENDO EL BUCLE */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 min-h-screen">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 min-h-[50vh]">
         {results.map((item, index) => {
           const stableKey = item.gid ? `search-${item.gid}` : `search-idx-${index}`;
           return (
@@ -64,21 +60,36 @@ export function SearchResults({
         })}
       </div>
 
-      {/* EL CENTINELA */}
-      {hasMore && (
-        <div ref={ref} className="mt-12 flex justify-center items-center h-20">
-          {isLoadingMore ? (
-            <div className="flex flex-col items-center gap-2 text-var(--accent-color)">
-              <IconLoader2 className="animate-spin" size={32} />
-              <span className="font-mono text-[10px] font-black uppercase tracking-widest">
-                Decodificando Red...
-              </span>
-            </div>
-          ) : (
-            <div className="h-4 w-full" />
-          )}
-        </div>
-      )}
+      {/* 🛡️ CENTINELA HÍBRIDO (Auto Scroll + Fallback Manual + End of Line) */}
+      <div className="mt-16 flex justify-center items-center h-24">
+        {hasMore ? (
+          <div ref={ref} className="w-full flex justify-center">
+            {isLoadingMore ? (
+              <div className="flex flex-col items-center gap-3 text-var(--accent-color) animate-pulse">
+                <IconLoader2 className="animate-spin" size={32} />
+                <span className="font-mono text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                  Decodificando Red...
+                </span>
+              </div>
+            ) : (
+              <button
+                onClick={onLoadMore}
+                className="group flex items-center gap-2 px-6 py-3 bg-muted/20 border-2 border-border text-muted-foreground hover:text-foreground hover:border-foreground hover:bg-muted/50 neo-border font-mono text-xs font-bold uppercase transition-all"
+              >
+                <IconRefresh
+                  size={16}
+                  className="group-hover:rotate-180 transition-transform duration-500"
+                />
+                Forzar Carga
+              </button>
+            )}
+          </div>
+        ) : (
+          <div className="text-center font-mono text-xs text-muted-foreground uppercase tracking-widest bg-muted/10 px-6 py-3 neo-border border-dashed">
+            Has llegado al final del abismo
+          </div>
+        )}
+      </div>
     </section>
   );
 }
