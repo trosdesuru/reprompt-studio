@@ -14,42 +14,41 @@ interface UniversalMediaCardProps {
   onDownload?: () => void;
 }
 
-export function UniversalMediaCard({ 
-  data, 
-  variant = "gallery", 
+export function UniversalMediaCard({
+  data,
+  variant = "gallery",
   className,
-  onClick, 
-  onDownload 
+  onClick,
+  onDownload,
 }: UniversalMediaCardProps) {
-  
-  // Detenemos la propagación para que el click en "descargar" no abra el visor
+  if (!data) return null;
+
   const handleDownload = (e: React.MouseEvent) => {
     e.stopPropagation();
     onDownload?.();
   };
 
   return (
-    <div 
+    <div
       className={cn(
         "group relative w-full overflow-hidden rounded-xl cursor-pointer border border-border/10 shadow-sm hover:shadow-md transition-all duration-300",
-        variant === "viewer" ? "bg-black/50" : "bg-muted/20",
-        className
+        variant === "viewer" ? "bg-black/20" : "bg-muted/20",
+        className,
       )}
       onClick={onClick}
     >
-      <MediaCover 
-        src={data.imageUrl} 
-        alt={data.title} 
-        aspectRatio={data.aspectRatio} 
-      />
-      
-      <MediaOverlay 
-        title={data.title}
-        prompt={data.prompt}
-        tags={data.tags}
-        variant={variant}
-        onDownload={onDownload ? handleDownload : undefined}
-      />
+      <MediaCover src={data.imageUrl} alt={data.title} aspectRatio={data.aspectRatio} />
+
+      {/* Solo mostramos el overlay si hay una imagen válida para evitar ruido visual */}
+      {data.imageUrl && (
+        <MediaOverlay
+          title={data.title}
+          prompt={data.prompt}
+          tags={data.tags}
+          variant={variant}
+          onDownload={onDownload ? handleDownload : undefined}
+        />
+      )}
     </div>
   );
 }
