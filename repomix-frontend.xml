@@ -543,8 +543,7 @@ export default function StudioPage() {
   --text-primary: #1d1f21;
   --text-secondary: #4b5563;
   --border-color: #1d1f21;
-  --accent-color: #D83C00;
-  /* Un naranja técnico estilo PostHog */
+  --accent-color: #1bccd8;
   --shadow-color: #1d1f21;
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
@@ -587,7 +586,7 @@ export default function StudioPage() {
     --text-primary: #f4f5f5;
     --text-secondary: #a1a1aa;
     --border-color: #3f3f46;
-    --accent-color: #D83C00;
+    --accent-color: #1bccd8;
     --shadow-color: #000000;
   }
 }
@@ -3013,22 +3012,27 @@ export const useProgressStore = create<ProgressState>((set) => {
     isAnimating: false,
     progress: 0,
     start: () => {
+      console.log("🚨 [STORE] 🟢 START llamado. Animating: true, Progress: 5");
       set({ isAnimating: true, progress: 5 });
       clearInterval(timer);
       timer = setInterval(() => {
-        set((state) => ({
-          progress: state.progress >= 90 ? state.progress : state.progress + (10 - state.progress / 10),
-        }));
+        set((state) => {
+          const nextProgress = state.progress >= 90 ? state.progress : state.progress + (10 - state.progress / 10);
+          console.log(`🚨 [STORE] ⏱️ Tick del Timer -> Progress: ${nextProgress.toFixed(2)}`);
+          return { progress: nextProgress };
+        });
       }, 300);
     },
     setProgress: (value) => {
+      console.log(`🚨 [STORE] 🔵 setProgress llamado -> Value: ${value}`);
       set({ isAnimating: true, progress: value });
     },
     done: () => {
+      console.log("🚨 [STORE] 🔴 DONE llamado. Forzando Progress: 100");
       clearInterval(timer);
-      // 🛡️ FIX CRÍTICO: Forzamos isAnimating a true para que se vea el viaje al 100%
       set({ isAnimating: true, progress: 100 });
       setTimeout(() => {
+        console.log("🚨 [STORE] 👻 Timeout 400ms terminado. Apagando barra (Animating: false, Progress: 0)");
         set({ isAnimating: false, progress: 0 });
       }, 400);
     },
@@ -3519,7 +3523,7 @@ export function ProgressBar({
       >
         {/* Relleno de la barra */}
         <div
-          className={`h-full bg-(--accent-color) border-r-2 border-black transition-all duration-500 ease-out relative overflow-hidden`}
+          className={`h-full bg-(--accent-color) border-r-2 border-white transition-all duration-500 ease-out relative overflow-hidden`}
           style={{ width: `${clampedValue}%` }}
         >
           {/* El truco mágico: Franjas animadas con puro CSS de Tailwind */}
@@ -5602,28 +5606,26 @@ export function AppToaster() {
 import { useEffect } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useProgressStore } from "@/src/store/progressStore";
-import { ProgressBar } from "@/src/system/atoms/ProgressBar";
 
 export function GlobalProgress() {
   const { isAnimating, progress, start, done } = useProgressStore();
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
-  // 1. Detener la barra al terminar la navegación (cuando la ruta ya cambió)
+  // 1. Cerrar barra al terminar la navegación de Next.js
   useEffect(() => {
     done();
   }, [pathname, searchParams, done]);
 
-  // 2. 🚀 EL ESPÍA GLOBAL: Interceptar cualquier click en un Link interno
+  // 2. Interceptor de enlaces nativos
   useEffect(() => {
     const handleAnchorClick = (e: MouseEvent) => {
       const anchor = (e.target as HTMLElement).closest("a");
       if (!anchor) return;
-      
+
       const href = anchor.getAttribute("href");
       const target = anchor.getAttribute("target");
-      
-      // Si es un link interno y va a una ruta diferente, disparamos la barra
+
       if (href && href.startsWith("/") && target !== "_blank" && href !== pathname) {
         start();
       }
@@ -5633,14 +5635,33 @@ export function GlobalProgress() {
     return () => document.removeEventListener("click", handleAnchorClick, true);
   }, [pathname, start]);
 
-  if (!isAnimating) return null;
+  // 🛡️ FIX ARQUITECTÓNICO: NUNCA DEVOLVEMOS NULL.
+  // Dejamos el elemento en el DOM para que el motor CSS pueda calcular las transiciones de salida (Fade out).
 
   return (
     <div className="fixed top-0 left-0 w-full z-99999 pointer-events-none">
-      <ProgressBar 
-        value={progress} 
-        className="h-1 bg-var(--accent-color) shadow-[0_0_15px_var(--accent-color)] transition-all duration-300 ease-out" 
-      />
+      <div
+        className="relative transition-all ease-out"
+        style={{
+          height: "3px", // El grosor elegante de la industria
+          width: `${progress}%`,
+          opacity: isAnimating ? 1 : 0,
+          // 🛡️ FALLBACK: Si var(--accent-color) no existe, usará un Azul Neón brillante (#0ea5e9)
+          background: "var(--accent-color, #0ea5e9)",
+          boxShadow: "0 0 10px var(--accent-color, #0ea5e9), 0 0 5px var(--accent-color, #0ea5e9)",
+          // Si está desapareciendo, que tarde 500ms en desvanecerse (más suave)
+          transitionDuration: isAnimating ? "300ms" : "500ms",
+        }}
+      >
+        {/* LA PUNTA DE LUZ (Puro CSS, sin imágenes ni SVGs) */}
+        <div
+          className="absolute top-0 right-0 h-full w-70px bg-white shadow-[0_0_15px_white] rounded-full"
+          style={{
+            filter: "blur(2px)",
+            opacity: isAnimating ? 0.8 : 0,
+          }}
+        />
+      </div>
     </div>
   );
 }
