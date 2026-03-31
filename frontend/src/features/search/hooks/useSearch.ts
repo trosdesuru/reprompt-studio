@@ -14,11 +14,11 @@ export function useSearch() {
       store.setQuery(input);
     }
 
-    useProgressStore.getState().startWork();
+    useProgressStore.getState().start();
     try {
       await store.executeSearch();
     } finally {
-      useProgressStore.getState().stopWork();
+      useProgressStore.getState().done();
     }
   };
 

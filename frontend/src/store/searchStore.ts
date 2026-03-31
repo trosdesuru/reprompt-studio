@@ -1,3 +1,4 @@
+import { useProgressStore } from "./progressStore";
 import { create } from "zustand";
 import { api } from "@/src/services/api";
 import { GalleryItem } from "@/src/types/gallery";
@@ -43,6 +44,7 @@ export const useSearchStore = create<SearchState>((set, get) => ({
     })),
 
   executeSearch: async () => {
+    useProgressStore.getState().start();
     const { query, activeCategories } = get();
     if (!query) return;
     
@@ -64,11 +66,13 @@ export const useSearchStore = create<SearchState>((set, get) => ({
       set({ error: cleanMessage });
     } finally {
       set({ isLoading: false });
+      useProgressStore.getState().done();
     }
   },
 
   // ✅ AQUÍ ESTÁ EL CÓDIGO REAL RESTAURADO
   loadMore: async () => {
+    useProgressStore.getState().start();
     const { query, nextCursor, hasMore, isLoadingMore, activeCategories, results } = get();
     
     if (process.env.NODE_ENV === "development") console.log("🚨 TELEMETRÍA [STORE]: Ejecutando loadMore. Estado actual:", { isLoadingMore, hasMore, nextCursor });
@@ -112,16 +116,20 @@ export const useSearchStore = create<SearchState>((set, get) => ({
       if (process.env.NODE_ENV === "development") console.error("🚨 TELEMETRÍA [STORE]: Error al cargar más:", err);
     } finally {
       set({ isLoadingMore: false });
+      useProgressStore.getState().done();
     }
   },
 
   // ✅ CÓDIGO RESTAURADO PARA LAS TENDENCIAS DE LA HOME
   fetchTrending: async () => {
+    useProgressStore.getState().start();
     try {
       const data = await api.obtenerTendencias(5);
       if (data.status === "success") set({ trending: data.data });
+      useProgressStore.getState().done();
     } catch (err) {
       console.error("Error cargando tendencias:", err);
+      useProgressStore.getState().done();
     }
   },
 }));
