@@ -1,28 +1,22 @@
-import { MediaCardData } from "@/src/types/gallery";
+import { MediaCardData, GalleryItem } from "@/src/types/gallery";
 
-/**
- * Adaptador: Mapea cualquier resultado de búsqueda/trending a nuestro contrato universal
- */
-export const mapSearchToMediaCard = (item: any): MediaCardData => {
+export const mapSearchToMediaCard = (item: GalleryItem): MediaCardData => {
   return {
-    id: item.gid || item.id || crypto.randomUUID(),
-    imageUrl: item.thumb || item.url || "",
+    id: item.gid || crypto.randomUUID(),
+    imageUrl: item.thumb || "",
     title: item.title || "Sin título",
     tags: item.tags || [],
-    source: item.source || "E-Hentai",
-    aspectRatio: "portrait", // Por defecto para E-Hentai
+    source: "E-Hentai",
+    aspectRatio: "portrait",
   };
 };
 
-/**
- * Adaptador: Mapea las páginas del visor a nuestro contrato universal
- */
 export const mapViewerToMediaCard = (page: any, index: number): MediaCardData => {
   return {
-    id: `page-${index}-${page.image_url}`,
+    id: `page-${index}-${page.image_url || crypto.randomUUID()}`,
     imageUrl: page.image_url || "",
     title: page.name || `Página ${index + 1}`,
     prompt: page.prompt || undefined,
-    aspectRatio: "auto", 
+    aspectRatio: "auto",
   };
 };

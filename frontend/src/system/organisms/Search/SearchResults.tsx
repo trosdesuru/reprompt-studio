@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { useInView } from "react-intersection-observer";
 import { GalleryItem } from "@/src/types/gallery";
-import { GalleryCard } from "./GalleryCard";
+import { UniversalMediaCard } from "../Media/UniversalMediaCard";
 
 interface Props {
   results: GalleryItem[];
@@ -38,7 +38,7 @@ export function SearchResults({
       {/* 1. La Cuadrícula de Resultados */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         {results.map((item, index) => (
-          <GalleryCard
+          <UniversalMediaCard
             key={item.id || item.url || `gallery-${index}`}
             item={item}
             onOpenVisor={onOpenVisor}

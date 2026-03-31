@@ -1,12 +1,19 @@
-import { useState, useEffect } from "react";
-import { IconX } from "@tabler/icons-react";
-import { useViewerNavigation } from "@/src/features/image-viewer/hooks/useViewerNavigation";
-import { ViewerGrid } from "./components/ViewerGrid";
-import { ViewerLightbox } from "./components/ViewerLightbox";
+"use client";
 
-interface Props {
+import { useEffect, useRef, useCallback } from "react";
+import { IconX, IconLoader2 } from "@tabler/icons-react";
+import { UniversalMediaCard } from "@/src/system/organisms/Media/UniversalMediaCard";
+import { mapViewerToMediaCard } from "@/src/utils/adapters/mediaAdapters";
+
+interface ViewerPage {
+  image_url: string;
+  name: string;
+  prompt?: string;
+}
+
+interface ImageViewerModalProps {
   title: string;
-  pages: any[];
+  pages: ViewerPage[];
   isLoading: boolean;
   isLoadingMore: boolean;
   hasMorePages: boolean;
@@ -14,91 +21,58 @@ interface Props {
   onClose: () => void;
 }
 
-export function ImageViewerModal({
-  title,
-  pages,
-  isLoading,
-  isLoadingMore,
-  hasMorePages,
-  onLoadMore,
-  onClose,
-}: Props) {
-  // 🟢 Programación Defensiva: Siempre iniciamos en la cuadrícula
-  const [viewMode, setViewMode] = useState<"grid" | "lightbox">("grid");
+export function ImageViewerModal({ title, pages, isLoading, isLoadingMore, hasMorePages, onLoadMore, onClose }: ImageViewerModalProps) {
+  const observerRef = useRef<IntersectionObserver | null>(null);
+  
+  const lastElementRef = useCallback((node: HTMLDivElement | null) => {
+    if (isLoading || isLoadingMore) return;
+    if (observerRef.current) observerRef.current.disconnect();
 
-  const { selectedIndex, setSelectedIndex, showNext, showPrev } = useViewerNavigation(pages);
-  const currentIndex = selectedIndex ?? 0;
+    observerRef.current = new IntersectionObserver((entries) => {
+      if (entries[0].isIntersecting && hasMorePages) onLoadMore();
+    });
 
-  // 🟢 Pre-fetch inteligente (Solo actúa si estamos viendo fotos individuales)
+    if (node) observerRef.current.observe(node);
+  }, [isLoading, isLoadingMore, hasMorePages, onLoadMore]);
+
   useEffect(() => {
-    if (viewMode === "lightbox" && hasMorePages && !isLoadingMore && onLoadMore) {
-      if (currentIndex >= pages.length - 3) onLoadMore();
-    }
-  }, [currentIndex, pages.length, hasMorePages, isLoadingMore, onLoadMore, viewMode]);
-
-  const handleBackdropClick = (e: React.MouseEvent) => {
-    if (e.target === e.currentTarget) onClose();
-  };
-
-  // Pantalla de carga inicial segura
-  if (isLoading && pages.length === 0) {
-    return (
-      <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur-sm flex items-center justify-center">
-        <div className="text-(--accent-color) animate-pulse font-mono flex flex-col items-center gap-4">
-          <div className="w-12 h-12 rounded-full border-4 border-current border-t-transparent animate-spin" />
-          <p>Decodificando galería...</p>
-        </div>
-      </div>
-    );
-  }
+    const handleEsc = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", handleEsc);
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", handleEsc);
+      document.body.style.overflow = "unset";
+    };
+  }, [onClose]);
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/95 backdrop-blur-md animate-fade-in">
-      {/* HEADER LIMPIO */}
-      <div className="absolute top-0 left-0 w-full p-4 flex justify-between items-center bg-linear-to-b from-black/80 to-transparent z-10 pointer-events-none">
-        <div className="flex-1 min-w-0 pr-4 pointer-events-auto">
-          <h2 className="text-white font-mono font-black truncate drop-shadow-md text-sm md:text-base">
-            {title}
-          </h2>
-          <p className="text-(--text-secondary) font-mono text-xs mt-1">
-            {pages.length} imágenes listadas {hasMorePages && "(Buscando más...)"}
-          </p>
-        </div>
-        <div className="flex items-center gap-2 md:gap-4 shrink-0 pointer-events-auto">
-          {/* 🟢 Botón único de Cerrar Galería */}
-          <button
-            onClick={onClose}
-            className="p-2 text-white bg-red-500/80 hover:bg-red-500 neo-border transition-colors"
-            title="Cerrar Galería"
-          >
-            <IconX size={20} />
-          </button>
-        </div>
+    <div className="fixed inset-0 z-100 flex flex-col bg-background/95 backdrop-blur-xl animate-in fade-in duration-200">
+      <div className="flex-none h-16 px-4 md:px-8 flex items-center justify-between border-b border-border/50 bg-background/50">
+        <h2 className="text-lg md:text-xl font-bold line-clamp-1">{title}</h2>
+        <button onClick={onClose} className="p-2 rounded-full hover:bg-muted text-muted-foreground hover:text-foreground transition-colors">
+          <IconX size={24} />
+        </button>
       </div>
 
-      {/* CONTENIDO PRINCIPAL */}
-      <div className="w-full h-full pt-20 pb-4 px-4 flex justify-center items-center" onClick={handleBackdropClick}>
-        {viewMode === "grid" ? (
-          <ViewerGrid
-            pages={pages}
-            currentIndex={currentIndex}
-            onSelect={(idx) => {
-              setSelectedIndex(idx);
-              setViewMode("lightbox");
-            }}
-            hasMorePages={hasMorePages}
-            isLoadingMore={isLoadingMore}
-            onLoadMore={onLoadMore}
-          />
+      <div className="flex-1 overflow-y-auto custom-scrollbar p-4 md:p-8">
+        {isLoading && pages.length === 0 ? (
+          <div className="w-full h-full flex flex-col items-center justify-center gap-4 text-muted-foreground">
+            <IconLoader2 size={40} className="animate-spin text-var(--accent-color)" />
+            <p className="font-mono text-sm tracking-widest uppercase">Decodificando galería...</p>
+          </div>
         ) : (
-          <ViewerLightbox
-            pages={pages}
-            selectedIndex={currentIndex}
-            onNext={showNext}
-            onPrev={showPrev}
-            // 🟢 CRÍTICO: El botón 'cerrar' de la imagen individual ahora te devuelve a la cuadrícula
-            onClose={() => setViewMode("grid")}
-          />
+          <div className="max-w-7xl mx-auto space-y-12">
+            {pages.map((page, index) => (
+              <div key={`${index}-${page.image_url}`} ref={index === pages.length - 1 ? lastElementRef : null} className="w-full flex justify-center">
+                <div className="w-full max-w-4xl">
+                  <UniversalMediaCard data={mapViewerToMediaCard(page, index)} variant="viewer" />
+                </div>
+              </div>
+            ))}
+            {isLoadingMore && (
+              <div className="py-8 flex justify-center"><IconLoader2 size={32} className="animate-spin text-muted-foreground" /></div>
+            )}
+          </div>
         )}
       </div>
     </div>

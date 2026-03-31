@@ -205,6 +205,8 @@ frontend/
             InspectorBadges.tsx
             InspectorPromptBox.tsx
             InspectorResources.tsx
+        Gallery/
+          GalleryCard.tsx
         Layout/
           Navbar/
             index.ts
@@ -3733,6 +3735,97 @@ export function InspectorPromptBox({ title, content, color }: Props) {
 }
 </file>
 
+<file path="frontend/src/system/organisms/Gallery/GalleryCard.tsx">
+"use client";
+
+import Image from "next/image";
+import { IconWand, IconDownload } from "@tabler/icons-react";
+import { cn } from "@/src/utils/lib/cn";
+import { AgnosticImageCard } from "@/src/types/gallery";
+
+interface GalleryCardProps {
+  data: AgnosticImageCard;
+  onClick?: () => void;
+  onDownload?: () => void;
+}
+
+export function GalleryCard({ data, onClick, onDownload }: GalleryCardProps) {
+  return (
+    <div
+      className="group relative w-full overflow-hidden rounded-xl bg-muted/20 cursor-pointer border border-border/10 shadow-sm hover:shadow-md transition-all duration-300"
+      onClick={onClick}
+    >
+      {/* 1. LA IMAGEN BASE */}
+      {/* Usamos un aspect-ratio por defecto, en un grid tipo Masonry esto puede ser dinámico */}
+      <div
+        className={cn(
+          "relative w-full overflow-hidden",
+          data.aspectRatio === "portrait"
+            ? "aspect-2/3"
+            : data.aspectRatio === "landscape"
+              ? "aspect-3/2"
+              : "aspect-square",
+        )}
+      >
+        <Image
+          src={data.imageUrl}
+          alt={data.title}
+          className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
+          loading="lazy"
+        />
+      </div>
+
+      {/* 2. EL OVERLAY MÁGICO (Estilo Civitai) */}
+      {/* Solo aparece al hacer hover (group-hover:opacity-100) */}
+      <div className="absolute inset-0 bg-linear-to-t from-black/90 via-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-4">
+        {/* Acciones Rápidas (Top Right) */}
+        <div className="absolute top-3 right-3 flex gap-2 translate-y-2.5 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300 delay-75">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onDownload?.();
+            }}
+            className="p-2 bg-black/50 hover:bg-black/80 backdrop-blur-md text-white rounded-lg transition-colors"
+            title="Descargar"
+          >
+            <IconDownload size={18} />
+          </button>
+        </div>
+
+        {/* Contenido (Bottom) */}
+        <div className="translate-y-10px opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300 delay-100 text-white">
+          <h3 className="text-sm font-bold line-clamp-1 mb-1 shadow-black/50 drop-shadow-md">
+            {data.title}
+          </h3>
+
+          {/* El Prompt (Si existe) */}
+          {data.prompt && (
+            <div className="flex items-start gap-1.5 mt-2 text-xs text-white/80 line-clamp-2 leading-tight">
+              <IconWand size={14} className="shrink-0 text-(--accent-color) mt-0.5" />
+              <p className="font-mono">{data.prompt}</p>
+            </div>
+          )}
+
+          {/* Tags */}
+          {data.tags && data.tags.length > 0 && (
+            <div className="flex flex-wrap gap-1 mt-3">
+              {data.tags.slice(0, 3).map((tag) => (
+                <span
+                  key={tag}
+                  className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 bg-white/20 backdrop-blur-sm rounded-sm"
+                >
+                  {tag}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+</file>
+
 <file path="frontend/src/system/organisms/Layout/Navbar/index.ts">
 export * from "./Navbar";
 </file>
@@ -6868,6 +6961,211 @@ export function useTheme() {
 }
 </file>
 
+<file path="backend/app/api/routes_auth.py">
+# backend/app/api/routes_auth.py
+import secrets
+import redis
+from fastapi import APIRouter, Depends, Response, Cookie, HTTPException
+from sqlmodel import Session, select
+
+from app.services.auth_service import AuthService
+from app.services.audit_service import AuditService
+from app.core.db import get_session
+from app.api.deps import get_current_user, get_current_admin, RateLimiter
+from app.models.user import User, InviteCode, AuditLog
+from app.schemas.user import UserRegister, UserLogin, PasswordChange
+
+# FIX: Inyección de dependencias
+redis_client = redis.Redis(host="redis", port=6379, db=0, decode_responses=True)
+router = APIRouter()
+
+
+@router.post("/register")
+def register_user(user_data: UserRegister, session: Session = Depends(get_session)):
+    new_user = AuthService.register_user(user_data, session)
+    return {
+        "status": "success",
+        "message": "Usuario registrado correctamente",
+        "user": {"username": new_user.username, "role": new_user.role},
+    }
+
+
+@router.post(
+    "/login", dependencies=[Depends(RateLimiter(max_requests=5, window_seconds=60))]
+)
+def login_user(
+    user_data: UserLogin, response: Response, session: Session = Depends(get_session)
+):
+    # DEFENSA ANTI-BOTNET: Límite por cuenta de usuario
+    user_key = f"brute_force_user:{user_data.username}"
+
+    attempts = redis_client.incr(user_key)
+    if attempts == 1:
+        redis_client.expire(user_key, 300)  # Bloqueo de 5 minutos
+
+    if attempts > 5:
+        raise HTTPException(
+            status_code=429,
+            detail=f"La cuenta '{user_data.username}' está bloqueada temporalmente por seguridad. Inténtalo en 5 minutos.",
+        )
+
+    # Autenticación normal
+    try:
+        access_token, refresh_token, username = AuthService.authenticate_user(
+            user_data, session, redis_client
+        )
+    except HTTPException as e:
+        raise e
+
+    # SI ENTRA CON ÉXITO: Reseteamos el contador
+    redis_client.delete(user_key)
+
+    # FIX CRÍTICO: Restaurada la entrega de cookies que se había borrado
+    response.set_cookie(
+        key="access_token",
+        value=access_token,
+        httponly=True,
+        max_age=60 * 15,
+        samesite="lax",
+        path="/",
+    )
+    response.set_cookie(
+        key="refresh_token",
+        value=refresh_token,
+        httponly=True,
+        max_age=60 * 60 * 24 * 7,
+        samesite="lax",
+        path="/api/auth/refresh",
+    )
+
+    AuditService.log_action(session, username, "LOGIN", "Inicio de sesión exitoso")
+    return {"status": "success", "message": f"Bienvenido, {username}"}
+
+
+@router.post("/logout")
+def logout_user(response: Response, refresh_token: str | None = Cookie(None)):
+    # 1. Destruimos la cookie del Access Token
+    response.delete_cookie("access_token", path="/")
+
+    # 2. FIX CRÍTICO: Destruimos la cookie del Refresh Token (Hay que especificar su path exacto)
+    response.delete_cookie("refresh_token", path="/api/auth/refresh")
+
+    # 3. CIBERSEGURIDAD: Destruimos la sesión en Redis para que el token quede inservible
+    if refresh_token:
+        try:
+            from jose import jwt
+            from app.core.security import SECRET_KEY, ALGORITHM
+
+            payload = jwt.decode(refresh_token, SECRET_KEY, algorithms=[ALGORITHM])
+            username = payload.get("sub")
+            family_id = payload.get("family")
+
+            if username and family_id:
+                redis_key = f"session:{username}:{family_id}"
+                redis_client.delete(redis_key)
+        except Exception:
+            # Si el token ya era inválido o caducó, simplemente lo ignoramos
+            pass
+
+    return {"status": "success", "message": "Sesión cerrada y destruida por completo"}
+
+
+@router.put("/change-password")
+def change_password(
+    data: PasswordChange,
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    AuthService.change_password(data, current_user, session)
+    return {"status": "success", "message": "Contraseña actualizada correctamente"}
+
+
+@router.get("/me")
+def get_current_user_profile(current_user: User = Depends(get_current_user)):
+    return {
+        "status": "success",
+        "user": {
+            "username": current_user.username,
+            "role": current_user.role,
+            "is_active": current_user.is_active,
+        },
+    }
+
+
+@router.post("/refresh")
+def refresh_access_token(
+    response: Response,
+    refresh_token: str | None = Cookie(None),
+    session: Session = Depends(get_session),
+):
+    try:
+        new_access, new_refresh = AuthService.rotate_tokens(
+            refresh_token, session, redis_client
+        )
+        response.set_cookie(
+            key="access_token",
+            value=new_access,
+            httponly=True,
+            max_age=60 * 15,
+            samesite="lax",
+            path="/",
+        )
+        response.set_cookie(
+            key="refresh_token",
+            value=new_refresh,
+            httponly=True,
+            max_age=60 * 60 * 24 * 7,
+            samesite="lax",
+            path="/api/auth/refresh",
+        )
+        return {"status": "success", "message": "Tokens rotados"}
+    except HTTPException as e:
+        if e.status_code == 403:
+            response.delete_cookie("access_token", path="/")
+            response.delete_cookie("refresh_token", path="/api/auth/refresh")
+        raise e
+
+
+# --- RUTAS ADMIN ---
+
+
+@router.get("/admin/logs")
+def get_audit_logs(
+    limit: int = 50,
+    current_admin: User = Depends(get_current_admin),
+    session: Session = Depends(get_session),
+):
+    statement = select(AuditLog).order_by(AuditLog.timestamp.desc()).limit(limit)
+    logs = session.exec(statement).all()
+    return {"status": "success", "logs": logs}
+
+
+@router.post("/invite-codes")
+def generate_invite_code(
+    role_requested: str = "voyager",
+    current_admin: User = Depends(get_current_admin),
+    session: Session = Depends(get_session),
+):
+    prefix = "VGR" if role_requested == "voyager" else "ART"
+    new_code_str = f"{prefix}-{secrets.token_hex(4).upper()}"
+    new_invite = InviteCode(code=new_code_str)
+    session.add(new_invite)
+    session.commit()
+    return {"status": "success", "message": "Código generado", "code": new_code_str}
+
+
+@router.get("/admin/sessions")
+def list_active_sessions(current_admin: User = Depends(get_current_admin)):
+    sessions = AuthService.get_active_sessions(current_admin.username, redis_client)
+    return {"status": "success", "sessions": sessions}
+
+
+@router.post("/admin/sessions/revoke-all")
+def revoke_all_sessions(current_admin: User = Depends(get_current_admin)):
+    AuthService.revoke_all_sessions(current_admin.username, redis_client)
+    return {"status": "success", "message": "Todas las sesiones han sido revocadas."}
+</file>
+
 <file path="backend/app/schemas/prompt.py">
 from pydantic import BaseModel
 from typing import Optional, Dict, Any
@@ -7200,244 +7498,6 @@ export function SearchResults({
 }
 </file>
 
-<file path="frontend/src/types/gallery.ts">
-// frontend/src/types/gallery.ts
-
-export interface GalleryItem {
-  id?: string;
-  url: string;
-  title: string;
-  title_raw?: string;
-  tags_extracted?: string[];
-  thumb: string;
-
-  views?: number;
-  downloads?: number;
-  tags?: string[];
-  category?: string;
-  added_at?: string;
-}
-
-export interface ViewerPageItem {
-  page_url: string;
-  thumb_url: string;
-  offset?: string;
-  width?: number;
-  height?: number;
-}
-
-export interface GalleryMetrics {
-  total_views: number;
-  total_downloads: number;
-  top_galleries: GalleryItem[];
-}
-</file>
-
-<file path="backend/app/api/routes_auth.py">
-# backend/app/api/routes_auth.py
-import secrets
-import redis
-from fastapi import APIRouter, Depends, Response, Cookie, HTTPException
-from sqlmodel import Session, select
-
-from app.services.auth_service import AuthService
-from app.services.audit_service import AuditService
-from app.core.db import get_session
-from app.api.deps import get_current_user, get_current_admin, RateLimiter
-from app.models.user import User, InviteCode, AuditLog
-from app.schemas.user import UserRegister, UserLogin, PasswordChange
-
-# FIX: Inyección de dependencias
-redis_client = redis.Redis(host="redis", port=6379, db=0, decode_responses=True)
-router = APIRouter()
-
-
-@router.post("/register")
-def register_user(user_data: UserRegister, session: Session = Depends(get_session)):
-    new_user = AuthService.register_user(user_data, session)
-    return {
-        "status": "success",
-        "message": "Usuario registrado correctamente",
-        "user": {"username": new_user.username, "role": new_user.role},
-    }
-
-
-@router.post(
-    "/login", dependencies=[Depends(RateLimiter(max_requests=5, window_seconds=60))]
-)
-def login_user(
-    user_data: UserLogin, response: Response, session: Session = Depends(get_session)
-):
-    # DEFENSA ANTI-BOTNET: Límite por cuenta de usuario
-    user_key = f"brute_force_user:{user_data.username}"
-
-    attempts = redis_client.incr(user_key)
-    if attempts == 1:
-        redis_client.expire(user_key, 300)  # Bloqueo de 5 minutos
-
-    if attempts > 5:
-        raise HTTPException(
-            status_code=429,
-            detail=f"La cuenta '{user_data.username}' está bloqueada temporalmente por seguridad. Inténtalo en 5 minutos.",
-        )
-
-    # Autenticación normal
-    try:
-        access_token, refresh_token, username = AuthService.authenticate_user(
-            user_data, session, redis_client
-        )
-    except HTTPException as e:
-        raise e
-
-    # SI ENTRA CON ÉXITO: Reseteamos el contador
-    redis_client.delete(user_key)
-
-    # FIX CRÍTICO: Restaurada la entrega de cookies que se había borrado
-    response.set_cookie(
-        key="access_token",
-        value=access_token,
-        httponly=True,
-        max_age=60 * 15,
-        samesite="lax",
-        path="/",
-    )
-    response.set_cookie(
-        key="refresh_token",
-        value=refresh_token,
-        httponly=True,
-        max_age=60 * 60 * 24 * 7,
-        samesite="lax",
-        path="/api/auth/refresh",
-    )
-
-    AuditService.log_action(session, username, "LOGIN", "Inicio de sesión exitoso")
-    return {"status": "success", "message": f"Bienvenido, {username}"}
-
-
-@router.post("/logout")
-def logout_user(response: Response, refresh_token: str | None = Cookie(None)):
-    # 1. Destruimos la cookie del Access Token
-    response.delete_cookie("access_token", path="/")
-
-    # 2. FIX CRÍTICO: Destruimos la cookie del Refresh Token (Hay que especificar su path exacto)
-    response.delete_cookie("refresh_token", path="/api/auth/refresh")
-
-    # 3. CIBERSEGURIDAD: Destruimos la sesión en Redis para que el token quede inservible
-    if refresh_token:
-        try:
-            from jose import jwt
-            from app.core.security import SECRET_KEY, ALGORITHM
-
-            payload = jwt.decode(refresh_token, SECRET_KEY, algorithms=[ALGORITHM])
-            username = payload.get("sub")
-            family_id = payload.get("family")
-
-            if username and family_id:
-                redis_key = f"session:{username}:{family_id}"
-                redis_client.delete(redis_key)
-        except Exception:
-            # Si el token ya era inválido o caducó, simplemente lo ignoramos
-            pass
-
-    return {"status": "success", "message": "Sesión cerrada y destruida por completo"}
-
-
-@router.put("/change-password")
-def change_password(
-    data: PasswordChange,
-    current_user: User = Depends(get_current_user),
-    session: Session = Depends(get_session),
-):
-    AuthService.change_password(data, current_user, session)
-    return {"status": "success", "message": "Contraseña actualizada correctamente"}
-
-
-@router.get("/me")
-def get_current_user_profile(current_user: User = Depends(get_current_user)):
-    return {
-        "status": "success",
-        "user": {
-            "username": current_user.username,
-            "role": current_user.role,
-            "is_active": current_user.is_active,
-        },
-    }
-
-
-@router.post("/refresh")
-def refresh_access_token(
-    response: Response,
-    refresh_token: str | None = Cookie(None),
-    session: Session = Depends(get_session),
-):
-    try:
-        new_access, new_refresh = AuthService.rotate_tokens(
-            refresh_token, session, redis_client
-        )
-        response.set_cookie(
-            key="access_token",
-            value=new_access,
-            httponly=True,
-            max_age=60 * 15,
-            samesite="lax",
-            path="/",
-        )
-        response.set_cookie(
-            key="refresh_token",
-            value=new_refresh,
-            httponly=True,
-            max_age=60 * 60 * 24 * 7,
-            samesite="lax",
-            path="/api/auth/refresh",
-        )
-        return {"status": "success", "message": "Tokens rotados"}
-    except HTTPException as e:
-        if e.status_code == 403:
-            response.delete_cookie("access_token", path="/")
-            response.delete_cookie("refresh_token", path="/api/auth/refresh")
-        raise e
-
-
-# --- RUTAS ADMIN ---
-
-
-@router.get("/admin/logs")
-def get_audit_logs(
-    limit: int = 50,
-    current_admin: User = Depends(get_current_admin),
-    session: Session = Depends(get_session),
-):
-    statement = select(AuditLog).order_by(AuditLog.timestamp.desc()).limit(limit)
-    logs = session.exec(statement).all()
-    return {"status": "success", "logs": logs}
-
-
-@router.post("/invite-codes")
-def generate_invite_code(
-    role_requested: str = "voyager",
-    current_admin: User = Depends(get_current_admin),
-    session: Session = Depends(get_session),
-):
-    prefix = "VGR" if role_requested == "voyager" else "ART"
-    new_code_str = f"{prefix}-{secrets.token_hex(4).upper()}"
-    new_invite = InviteCode(code=new_code_str)
-    session.add(new_invite)
-    session.commit()
-    return {"status": "success", "message": "Código generado", "code": new_code_str}
-
-
-@router.get("/admin/sessions")
-def list_active_sessions(current_admin: User = Depends(get_current_admin)):
-    sessions = AuthService.get_active_sessions(current_admin.username, redis_client)
-    return {"status": "success", "sessions": sessions}
-
-
-@router.post("/admin/sessions/revoke-all")
-def revoke_all_sessions(current_admin: User = Depends(get_current_admin)):
-    AuthService.revoke_all_sessions(current_admin.username, redis_client)
-    return {"status": "success", "message": "Todas las sesiones han sido revocadas."}
-</file>
-
 <file path="backend/app/api/routes_prompt.py">
 import logging
 from typing import List
@@ -7755,6 +7815,49 @@ export function ImageViewerModal({
       </div>
     </div>
   );
+}
+</file>
+
+<file path="frontend/src/types/gallery.ts">
+// frontend/src/types/gallery.ts
+
+export interface GalleryItem {
+  id?: string;
+  url: string;
+  title: string;
+  title_raw?: string;
+  tags_extracted?: string[];
+  thumb: string;
+
+  views?: number;
+  downloads?: number;
+  tags?: string[];
+  category?: string;
+  added_at?: string;
+}
+
+export interface AgnosticImageCard {
+  id: string | number;
+  imageUrl: string;
+  title: string;
+  prompt?: string;
+  tags?: string[];
+  source?: string;
+  aspectRatio?: "portrait" | "landscape" | "square";
+}
+
+export interface ViewerPageItem {
+  page_url: string;
+  thumb_url: string;
+  offset?: string;
+  width?: number;
+  height?: number;
+}
+
+export interface GalleryMetrics {
+  total_views: number;
+  total_downloads: number;
+  top_galleries: GalleryItem[];
 }
 </file>
 
