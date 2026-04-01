@@ -11,6 +11,7 @@ class PromptCreate(BaseModel):
     software: Optional[str] = "Desconocido"
     model: Optional[str] = None
     sampler: Optional[str] = None
+
     steps: Optional[str] = None
     cfg_scale: Optional[str] = None
     seed: Optional[str] = None
@@ -22,15 +23,13 @@ class PromptCreate(BaseModel):
 class PromptResponse(PromptCreate):
     id: int
     user_id: int
+    collection_id: Optional[int] = None
     created_at: datetime
-    steps: Optional[int] = None
-    cfg_scale: Optional[float] = None
 
     class Config:
         from_attributes = True
 
 
-# 🟢 NUEVO: Dependencia para Clean Code en Multipart/Form-Data
 def prompt_form_dependency(
     title: str = Form("Generación IA"),
     prompt: str = Form(...),
@@ -43,7 +42,7 @@ def prompt_form_dependency(
     seed: Optional[str] = Form(None),
     resolution: Optional[str] = Form(None),
 ) -> PromptCreate:
-    """Extrae los campos del form-data y los valida contra el esquema PromptCreate"""
+    """Extrae los campos del form-data y los valida contra el esquema"""
     return PromptCreate(
         title=title,
         prompt=prompt,
