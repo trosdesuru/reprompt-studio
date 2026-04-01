@@ -14,11 +14,22 @@ class InviteCode(SQLModel, table=True):
 
 
 class User(SQLModel, table=True):
-    """Usuarios de la plataforma con RBAC (Roles)"""
+    """Usuarios de la plataforma con soporte Híbrido (Local / OAuth)"""
 
     id: Optional[int] = Field(default=None, primary_key=True)
     username: str = Field(index=True, unique=True, nullable=False)
-    hashed_password: str = Field(nullable=False)
+
+    # 🟢 NUEVO: Soporte para Google Auth
+    email: Optional[str] = Field(default=None, index=True, unique=True)
+    auth_provider: str = Field(default="local")  # Puede ser "local" o "google"
+    provider_id: Optional[str] = Field(default=None, index=True)
+
+    # 🟢 MODIFICADO: Es opcional porque los usuarios de Google no tendrán contraseña
+    hashed_password: Optional[str] = Field(default=None)
+
+    # 🟢 NUEVO: Preparación para monetización
+    tier: str = Field(default="free")  # "free" o "pro"
+
     role: str = Field(default="voyager")  # voyager, artist, admin
     created_at: datetime = Field(default_factory=datetime.utcnow)
     is_active: bool = Field(default=True)

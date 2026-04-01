@@ -5,6 +5,8 @@ from app.core.db import engine
 from app.models.user import InviteCode, User, AuditLog
 from app.models.gallery import GalleryMetric
 from app.models.prompt import SavedPrompt
+from app.models.collection import Collection
+from app.models.prompt import ImagePrompt
 
 # Configuración del logger para que sea visible en Docker
 logger = logging.getLogger("init_db")

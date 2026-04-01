@@ -1,15 +1,24 @@
-from sqlmodel import SQLModel, Field, Column, JSON, String
-from sqlalchemy import Text  # 🟢 NUEVO: Importamos Text directamente de SQLAlchemy
+from sqlmodel import SQLModel, Field, Column, JSON
+from sqlalchemy import Text
 from typing import Optional, Dict, Any
 from datetime import datetime
 
 
-class SavedPrompt(SQLModel, table=True):
+class ImagePrompt(SQLModel, table=True):
+    """Almacenamiento individual de cada generación extraída"""
+
     id: Optional[int] = Field(default=None, primary_key=True)
-    user_id: int = Field(foreign_key="user.id")
+    user_id: int = Field(foreign_key="user.id", index=True)
+
+    collection_id: Optional[int] = Field(
+        default=None, foreign_key="collection.id", index=True
+    )
+
     title: str
-    prompt: str
-    negative_prompt: Optional[str] = Field(default=None)
+
+    prompt: str = Field(sa_column=Column(Text))
+    negative_prompt: Optional[str] = Field(default=None, sa_column=Column(Text))
+
     software: Optional[str] = Field(default="Desconocido")
     model: Optional[str] = Field(default=None)
     sampler: Optional[str] = Field(default=None)
