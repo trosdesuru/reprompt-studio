@@ -40,6 +40,8 @@ The content is organized as follows:
 </file_summary>
 
 <directory_structure>
+.tokens/
+  tokens.json
 backend/
   app/
     api/
@@ -145,6 +147,9 @@ frontend/
             stringUtils.ts
             types.ts
           promptParser.ts
+      home/
+        hooks/
+          useHomeInteraction.ts
       image-viewer/
         hooks/
           useViewerNavigation.ts
@@ -180,6 +185,8 @@ frontend/
         ProgressBar.tsx
         Skeleton.tsx
       molecules/
+        Feedback/
+          FeedState.tsx
         FilterBar.tsx
         FormField.tsx
         MediaOverlay.tsx
@@ -278,6 +285,7 @@ frontend/
 .dockerignore
 .gitignore
 docker-compose.yml
+Makefile
 sonar-project.properties
 </directory_structure>
 
@@ -731,6 +739,175 @@ class AuditService:
             print(f"⚠️ Error al actualizar métricas de galería: {e}")
 </file>
 
+<file path="backend/app/services/auth_service.py">
+# backend/app/services/auth_service.py
+from jose import jwt
+from fastapi import HTTPException
+from sqlmodel import Session, select
+from app.models.user import User, InviteCode
+from app.core.security import (
+    get_password_hash,
+    verify_password,
+    create_access_token,
+    create_refresh_token,
+    SECRET_KEY,
+    ALGORITHM,
+)
+
+
+class AuthService:
+
+    @staticmethod
+    def register_user(user_data, session: Session):
+        """Lógica de negocio pura para registrar un usuario."""
+        statement = (
+            select(InviteCode)
+            .where(InviteCode.code == user_data.invite_code)
+            .where(InviteCode.is_used == False)
+        )
+        invite = session.exec(statement).first()
+
+        if not invite:
+            raise HTTPException(
+                status_code=400, detail="Código de invitación inválido o ya usado"
+            )
+
+        user_exists = session.exec(
+            select(User).where(User.username == user_data.username)
+        ).first()
+        if user_exists:
+            raise HTTPException(
+                status_code=400, detail="El nombre de usuario ya está en uso"
+            )
+
+        assigned_role = "admin" if invite.code.startswith("TROYA-") else "voyager"
+
+        new_user = User(
+            username=user_data.username,
+            hashed_password=get_password_hash(user_data.password),
+            role=assigned_role,
+        )
+        session.add(new_user)
+        session.commit()
+        session.refresh(new_user)
+
+        invite.is_used = True
+        invite.used_by_id = new_user.id
+        session.add(invite)
+        session.commit()
+
+        return new_user
+
+    @staticmethod
+    def change_password(data, current_user: User, session: Session):
+        """Lógica para cambiar contraseñas."""
+        if not verify_password(data.old_password, current_user.hashed_password):
+            raise HTTPException(
+                status_code=400, detail="La contraseña actual es incorrecta"
+            )
+
+        current_user.hashed_password = get_password_hash(data.new_password)
+        session.add(current_user)
+        session.commit()
+
+    @staticmethod
+    def get_active_sessions(username: str, redis_client):
+        """Consulta Redis para obtener sesiones de un usuario."""
+        prefix = f"session:{username}:*"
+        keys = redis_client.keys(prefix)
+        sessions = []
+        for key in keys:
+            family_id = key.split(":")[-1]
+            sessions.append(
+                {"family_id": family_id, "last_active_jti": redis_client.get(key)}
+            )
+        return sessions
+
+    @staticmethod
+    def revoke_all_sessions(username: str, redis_client):
+        """Botón del pánico: borra todas las sesiones de Redis."""
+        prefix = f"session:{username}:*"
+        keys = redis_client.keys(prefix)
+        if keys:
+            redis_client.delete(*keys)
+
+    @staticmethod
+    def authenticate_user(user_data, session: Session, redis_client):
+        # ... (Mantén el código original de authenticate_user que ya tenías) ...
+        user = session.exec(
+            select(User).where(User.username == user_data.username)
+        ).first()
+        if not user or not verify_password(user_data.password, user.hashed_password):
+            raise HTTPException(
+                status_code=401, detail="Usuario o contraseña incorrectos"
+            )
+
+        access_token = create_access_token(
+            data={"sub": user.username, "role": user.role}
+        )
+        refresh_data = create_refresh_token(data={"sub": user.username})
+
+        redis_key = f"session:{user.username}:{refresh_data['family_id']}"
+        redis_client.setex(redis_key, 60 * 60 * 24 * 7, refresh_data["jti"])
+
+        return access_token, refresh_data["token"], user.username
+
+    @staticmethod
+    def rotate_tokens(refresh_token: str, session: Session, redis_client):
+        # ... (Mantén el código original de rotate_tokens que ya tenías) ...
+        if not refresh_token:
+            raise HTTPException(status_code=401, detail="No hay token de refresco")
+
+        try:
+            payload = jwt.decode(refresh_token, SECRET_KEY, algorithms=[ALGORITHM])
+            username, jti, family_id = (
+                payload.get("sub"),
+                payload.get("jti"),
+                payload.get("family"),
+            )
+
+            if not all([username, jti, family_id]) or payload.get("type") != "refresh":
+                raise HTTPException(
+                    status_code=401, detail="Estructura de token inválida"
+                )
+
+            redis_key = f"session:{username}:{family_id}"
+            active_jti = redis_client.get(redis_key)
+
+            if active_jti and active_jti != jti:
+                redis_client.delete(redis_key)
+                raise HTTPException(
+                    status_code=403, detail="ALERTA: Robo de sesión detectado."
+                )
+
+            if not active_jti:
+                raise HTTPException(
+                    status_code=401, detail="Sesión expirada o cerrada remotamente."
+                )
+
+            user = session.exec(select(User).where(User.username == username)).first()
+            if not user:
+                raise HTTPException(status_code=401, detail="Usuario no encontrado")
+
+            new_access_token = create_access_token(
+                data={"sub": username, "role": user.role}
+            )
+            new_refresh_data = create_refresh_token(
+                data={"sub": username}, family_id=family_id
+            )
+
+            redis_client.setex(redis_key, 60 * 60 * 24 * 7, new_refresh_data["jti"])
+
+            return new_access_token, new_refresh_data["token"]
+
+        except jwt.ExpiredSignatureError:
+            raise HTTPException(
+                status_code=401, detail="Token expirado. Inicia sesión."
+            )
+        except jwt.JWTError:
+            raise HTTPException(status_code=401, detail="Firma inválida.")
+</file>
+
 <file path="backend/app/services/downloader.py">
 # backend/app/services/downloader.py
 import logging
@@ -832,6 +1009,272 @@ def ejecutar_descarga_individual(url_img: str, download_dir: str, indice: int):
             logger.error(f"❌ Error al descargar imagen {indice}, HTTP {r.status_code}")
     except Exception as e:
         logger.error(f"❌ Error de red en descarga individual: {e}")
+</file>
+
+<file path="backend/app/services/scraper.py">
+# backend/app/services/scraper.py
+import logging
+import re
+import json
+import redis
+from urllib.parse import quote
+from bs4 import BeautifulSoup
+from app.core.config import http_session
+
+logger = logging.getLogger("scraper")
+
+# 🟢 CONFIGURACIÓN DE REDIS PARA CACHÉ
+# Usamos decode_responses=True para que devuelva strings en lugar de bytes
+try:
+    redis_client = redis.Redis(host="redis", port=6379, db=0, decode_responses=True)
+except Exception as e:
+    logger.error(f"⚠️ No se pudo conectar a Redis para Caché: {e}")
+    redis_client = None
+
+
+def limpiar_titulo(titulo_crudo: str) -> str:
+    """Limpia el ruido de los títulos de E-Hentai mediante Regex."""
+    titulo_limpio = re.sub(r"\[.*?\]|\(.*?\)|<.*?>|\{.*?\}", "", titulo_crudo)
+    titulo_limpio = re.sub(r"[-~|,_]+", " ", titulo_limpio)
+    titulo_limpio = re.sub(r"\s+", " ", titulo_limpio).strip()
+
+    if len(titulo_limpio) < 3:
+        return titulo_crudo.strip()
+    return titulo_limpio
+
+
+def calcular_f_cats(categories_json: dict):
+    mapping = {
+        "misc": 1,
+        "doujinshi": 2,
+        "manga": 4,
+        "artistcg": 8,
+        "gamecg": 16,
+        "imageset": 32,
+        "cosplay": 64,
+        "asianporn": 128,
+        "nonh": 256,
+        "western": 512,
+    }
+    f_cats = 0
+    if categories_json:
+        for cat, is_active in categories_json.items():
+            if not is_active:
+                f_cats += mapping.get(cat, 0)
+    return f_cats
+
+
+# ==========================================
+# 🚀 1. CACHÉ DE BÚSQUEDA (TTL: 15 Minutos)
+# ==========================================
+def buscar_galerias(query: str, next_id: str = None, categories: dict = None):
+    f_cats = calcular_f_cats(categories)
+
+    # Generamos una clave única basada en lo que el usuario ha pedido
+    cache_key = f"cache:search:q={query}:next={next_id}:cats={f_cats}"
+
+    # Intentamos recuperar de la Caché primero
+    if redis_client:
+        try:
+            cached_result = redis_client.get(cache_key)
+            if cached_result:
+                logger.info(
+                    f"⚡ [CACHE HIT] Resultados de búsqueda devueltos desde Redis (0.01s)"
+                )
+                return json.loads(cached_result)
+        except Exception:
+            pass
+
+    url = f"https://e-hentai.org/?f_search={quote(query)}&f_cats={f_cats}"
+    if next_id:
+        url += f"&next={next_id}"
+
+    logger.info(f"📡 [SCRAPING] Consultando a E-Hentai: {url}")
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0"
+    }
+    cookies = {"nw": "1"}
+
+    try:
+        r = http_session.get(url, headers=headers, cookies=cookies, timeout=10)
+        r.raise_for_status()
+        soup = BeautifulSoup(r.text, "lxml")
+
+        next_tag = soup.find("a", id="unext")
+        found_next_id = (
+            next_tag["href"].split("next=")[1]
+            if next_tag and "next=" in next_tag["href"]
+            else None
+        )
+
+        tarjetas = soup.select(".itg tr, .itg .gl1t")
+        resultados = []
+        for tarjeta in tarjetas:
+            enlace = tarjeta.select_one("a[href*='/g/']")
+            if enlace:
+                img_tag = tarjeta.select_one("img")
+                thumb = img_tag.get("data-src") or img_tag.get("src") or ""
+                titulo_crudo = enlace.text.strip()
+
+                resultados.append(
+                    {
+                        "url": enlace["href"],
+                        "thumb": thumb,
+                        "title": limpiar_titulo(titulo_crudo),
+                        "title_raw": titulo_crudo,
+                    }
+                )
+
+        final_result = {"data": resultados, "next_id": found_next_id}
+
+        # Guardamos en Caché durante 15 minutos (900 segundos)
+        if redis_client:
+            try:
+                redis_client.setex(cache_key, 900, json.dumps(final_result))
+            except Exception:
+                pass
+
+        return final_result
+
+    except Exception as e:
+        logger.error(f"💥 [ERROR SCRAPING]: {e}")
+        return {"data": [], "next_id": None}
+
+
+# ==========================================
+# 🚀 2. CACHÉ DE GALERÍA (TTL: 24 Horas)
+# ==========================================
+def obtener_enlaces_paginas(url: str, pagina: int = 0):
+    cache_key = f"cache:gallery:{url}:p={pagina}"
+
+    if redis_client:
+        try:
+            cached_result = redis_client.get(cache_key)
+            if cached_result:
+                logger.info(
+                    f"⚡ [CACHE HIT] Página {pagina} de galería devuelta desde Redis"
+                )
+                return json.loads(cached_result)
+        except Exception:
+            pass
+
+    paginas_lista = []
+    logger.info(f"📡 [SCRAPING] Extrayendo página {pagina} de {url}")
+
+    try:
+        cookies = {"nw": "1", "uconfig": "ts_l"}
+        r = http_session.get(f"{url}?p={pagina}", cookies=cookies, timeout=10)
+        r.raise_for_status()
+        soup = BeautifulSoup(r.text, "lxml")
+
+        enlaces = soup.select('a[href*="/s/"]')
+
+        for a in enlaces:
+            href = a.get("href")
+            if not href:
+                continue
+
+            thumb_url, offset, width, height = "", "", None, None
+
+            img = a.find("img")
+            if img:
+                thumb_url = img.get("data-src") or img.get("src", "")
+                if "t.gif" in thumb_url:
+                    thumb_url = ""
+
+            if not thumb_url:
+                parent = a.parent
+                div_style = a.find("div", style=True) or (
+                    parent
+                    if parent and parent.name == "div" and parent.get("style")
+                    else None
+                )
+                if div_style:
+                    style_text = div_style.get("style", "")
+                    match_url = re.search(r"url\((.*?)\)", style_text)
+                    if match_url:
+                        thumb_url = match_url.group(1).strip("'\"")
+
+                    match_offset = re.search(
+                        r"url\(.*?\)\s+([-0-9a-zA-Z]+)\s+([-0-9a-zA-Z]+)", style_text
+                    )
+                    if match_offset:
+                        offset = f"{match_offset.group(1)} {match_offset.group(2)}"
+
+                    match_w = re.search(r"width:\s*(\d+)px", style_text)
+                    match_h = re.search(r"height:\s*(\d+)px", style_text)
+                    if match_w:
+                        width = int(match_w.group(1))
+                    if match_h:
+                        height = int(match_h.group(1))
+
+            if not any(p["page_url"] == href for p in paginas_lista):
+                paginas_lista.append(
+                    {
+                        "page_url": href,
+                        "thumb_url": thumb_url,
+                        "offset": offset,
+                        "width": width,
+                        "height": height,
+                    }
+                )
+
+        has_next = any(">" in a.text for a in soup.select(".ptt a"))
+
+        final_result = {"enlaces": paginas_lista, "has_next": has_next}
+
+        # Guardamos en Caché durante 24 horas (86400 segundos). El contenido de una galería no cambia.
+        if redis_client:
+            try:
+                redis_client.setex(cache_key, 86400, json.dumps(final_result))
+            except Exception:
+                pass
+
+        return final_result
+
+    except Exception as e:
+        logger.error(f"💥 Error crítico en scraper: {str(e)}")
+        return {"enlaces": [], "has_next": False}
+
+
+# ==========================================
+# 🚀 3. CACHÉ DE RESOLUCIÓN FULL HD (TTL: 2 Horas)
+# ==========================================
+def extraer_imagen_real(url_visor: str):
+    cache_key = f"cache:image_res:{url_visor}"
+
+    if redis_client:
+        try:
+            cached_result = redis_client.get(cache_key)
+            if cached_result:
+                return cached_result  # Es un string directo
+        except Exception:
+            pass
+
+    logger.info(f"📡 [SCRAPING] Resolviendo imagen real: {url_visor}")
+    try:
+        cookies = {"nw": "1"}
+        r = http_session.get(url_visor, cookies=cookies, timeout=10)
+        r.raise_for_status()
+        soup = BeautifulSoup(r.text, "lxml")
+        img_tag = soup.find("img", id="img")
+
+        if not img_tag:
+            return None
+
+        real_url = img_tag.get("src")
+
+        # Guardamos la URL resuelta por 2 horas (Las claves de imagen de EHentai suelen expirar)
+        if redis_client and real_url:
+            try:
+                redis_client.setex(cache_key, 7200, real_url)
+            except Exception:
+                pass
+
+        return real_url
+    except Exception as e:
+        logger.error(f"Error extrayendo imagen {url_visor}: {e}")
+        return None
 </file>
 
 <file path="backend/app/utils/storage.py">
@@ -1557,6 +2000,37 @@ sonar.python.version=3.11
 sonar.javascript.node.maxspace=4096
 </file>
 
+<file path=".tokens/tokens.json">
+{
+  "global": {
+    "color": {
+      "neutral": {
+        "0": { "value": "#ffffff", "type": "color" },
+        "100": { "value": "#f4f5f5", "type": "color" },
+        "400": { "value": "#a1a1aa", "type": "color" },
+        "600": { "value": "#4b5563", "type": "color" },
+        "800": { "value": "#1d1f21", "type": "color" },
+        "900": { "value": "#0a0a0a", "type": "color" },
+        "950": { "value": "#171717", "type": "color" },
+        "1000": { "value": "#000000", "type": "color" }
+      },
+      "brand": {
+        "orange": { "value": "#d83c00", "type": "color" },
+        "blue": { "value": "#0ea5e9", "type": "color" }
+      }
+    },
+    "spacing": {
+      "2": { "value": "8px", "type": "spacing" },
+      "4": { "value": "16px", "type": "spacing" },
+      "8": { "value": "32px", "type": "spacing" }
+    },
+    "borderRadius": {
+      "base": { "value": "10px", "type": "borderRadius" }
+    }
+  }
+}
+</file>
+
 <file path="backend/app/api/deps.py">
 # backend/app/api/deps.py
 import os
@@ -1658,173 +2132,116 @@ def get_current_admin(current_user: User = Depends(get_current_user)):
     return current_user
 </file>
 
-<file path="backend/app/services/auth_service.py">
-# backend/app/services/auth_service.py
-from jose import jwt
-from fastapi import HTTPException
+<file path="backend/app/api/routes_search.py">
+# backend/app/api/routes_search.py
+import json
+from typing import Optional, Dict, Any
+from fastapi import APIRouter, Query, Depends, Body
 from sqlmodel import Session, select
-from app.models.user import User, InviteCode
-from app.core.security import (
-    get_password_hash,
-    verify_password,
-    create_access_token,
-    create_refresh_token,
-    SECRET_KEY,
-    ALGORITHM,
-)
+from app.services import scraper
+from app.core.db import get_session
+from app.models.gallery import GalleryMetric
+
+router = APIRouter()
 
 
-class AuthService:
+@router.get("/buscar")
+def buscar(
+    query: str = Query(""),
+    next_id: Optional[str] = None,
+    categories: Optional[str] = None,
+):
+    cats_dict = json.loads(categories) if categories else None
+    res = scraper.buscar_galerias(query, next_id, cats_dict)
+    return {
+        "status": "success",
+        "data": res.get("data", []),
+        "next_id": res.get("next_id"),
+    }
 
-    @staticmethod
-    def register_user(user_data, session: Session):
-        """Lógica de negocio pura para registrar un usuario."""
+
+@router.get("/tendencias")
+def obtener_tendencias(limit: int = 5, session: Session = Depends(get_session)):
+    try:
         statement = (
-            select(InviteCode)
-            .where(InviteCode.code == user_data.invite_code)
-            .where(InviteCode.is_used == False)
+            select(GalleryMetric)
+            .order_by(GalleryMetric.downloads.desc(), GalleryMetric.views.desc())
+            .limit(limit)
         )
-        invite = session.exec(statement).first()
+        results = session.exec(statement).all()
+        data = [
+            {
+                "url": r.url,
+                "title": r.title,
+                "thumb": r.thumb,
+                "downloads": r.downloads,
+                "views": r.views,
+            }
+            for r in results
+        ]
+        return {"status": "success", "data": data}
+    except Exception as e:
+        return {"status": "error", "message": str(e), "data": []}
 
-        if not invite:
-            raise HTTPException(
-                status_code=400, detail="Código de invitación inválido o ya usado"
+
+@router.get("/leer")
+def leer_galeria(url: str, p: int = 0):
+    try:
+        res = scraper.obtener_enlaces_paginas(url, p)
+        return {
+            "status": "success",
+            "data": res.get("enlaces", []),
+            "has_next": res.get("has_next", False),
+        }
+    except Exception as e:
+        return {"status": "error", "message": str(e), "data": []}
+
+
+# 🟢 FIX 1: Cambiamos el guion medio por guion bajo para que coincida con el Frontend
+@router.get("/resolver_imagen")
+def resolver_imagen(url: str):
+    try:
+        res = scraper.extraer_imagen_real(url)
+        return {"status": "success", "url_img": res}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+
+@router.post("/interact")
+def registrar_interaccion(
+    data: dict = Body(...), session: Session = Depends(get_session)
+):
+    try:
+        url = data.get("url")
+        title = data.get("title", "Sin título")
+        thumb = data.get("thumb")
+        i_type = data.get("type") or data.get("interaction_type") or "view"
+
+        if not url:
+            return {"status": "error", "message": "Falta la URL"}
+
+        statement = select(GalleryMetric).where(GalleryMetric.url == url)
+        metric = session.exec(statement).first()
+
+        if not metric:
+            metric = GalleryMetric(
+                url=url, title=title, thumb=thumb, views=0, downloads=0
             )
+            session.add(metric)
+        else:
+            # Por si acaso era una galería antigua sin thumb, lo actualizamos
+            if thumb and not metric.thumb:
+                metric.thumb = thumb
 
-        user_exists = session.exec(
-            select(User).where(User.username == user_data.username)
-        ).first()
-        if user_exists:
-            raise HTTPException(
-                status_code=400, detail="El nombre de usuario ya está en uso"
-            )
+        if i_type == "view":
+            metric.views += 1
+        elif i_type == "download":
+            metric.downloads += 1
 
-        assigned_role = "admin" if invite.code.startswith("TROYA-") else "voyager"
-
-        new_user = User(
-            username=user_data.username,
-            hashed_password=get_password_hash(user_data.password),
-            role=assigned_role,
-        )
-        session.add(new_user)
         session.commit()
-        session.refresh(new_user)
-
-        invite.is_used = True
-        invite.used_by_id = new_user.id
-        session.add(invite)
-        session.commit()
-
-        return new_user
-
-    @staticmethod
-    def change_password(data, current_user: User, session: Session):
-        """Lógica para cambiar contraseñas."""
-        if not verify_password(data.old_password, current_user.hashed_password):
-            raise HTTPException(
-                status_code=400, detail="La contraseña actual es incorrecta"
-            )
-
-        current_user.hashed_password = get_password_hash(data.new_password)
-        session.add(current_user)
-        session.commit()
-
-    @staticmethod
-    def get_active_sessions(username: str, redis_client):
-        """Consulta Redis para obtener sesiones de un usuario."""
-        prefix = f"session:{username}:*"
-        keys = redis_client.keys(prefix)
-        sessions = []
-        for key in keys:
-            family_id = key.split(":")[-1]
-            sessions.append(
-                {"family_id": family_id, "last_active_jti": redis_client.get(key)}
-            )
-        return sessions
-
-    @staticmethod
-    def revoke_all_sessions(username: str, redis_client):
-        """Botón del pánico: borra todas las sesiones de Redis."""
-        prefix = f"session:{username}:*"
-        keys = redis_client.keys(prefix)
-        if keys:
-            redis_client.delete(*keys)
-
-    @staticmethod
-    def authenticate_user(user_data, session: Session, redis_client):
-        # ... (Mantén el código original de authenticate_user que ya tenías) ...
-        user = session.exec(
-            select(User).where(User.username == user_data.username)
-        ).first()
-        if not user or not verify_password(user_data.password, user.hashed_password):
-            raise HTTPException(
-                status_code=401, detail="Usuario o contraseña incorrectos"
-            )
-
-        access_token = create_access_token(
-            data={"sub": user.username, "role": user.role}
-        )
-        refresh_data = create_refresh_token(data={"sub": user.username})
-
-        redis_key = f"session:{user.username}:{refresh_data['family_id']}"
-        redis_client.setex(redis_key, 60 * 60 * 24 * 7, refresh_data["jti"])
-
-        return access_token, refresh_data["token"], user.username
-
-    @staticmethod
-    def rotate_tokens(refresh_token: str, session: Session, redis_client):
-        # ... (Mantén el código original de rotate_tokens que ya tenías) ...
-        if not refresh_token:
-            raise HTTPException(status_code=401, detail="No hay token de refresco")
-
-        try:
-            payload = jwt.decode(refresh_token, SECRET_KEY, algorithms=[ALGORITHM])
-            username, jti, family_id = (
-                payload.get("sub"),
-                payload.get("jti"),
-                payload.get("family"),
-            )
-
-            if not all([username, jti, family_id]) or payload.get("type") != "refresh":
-                raise HTTPException(
-                    status_code=401, detail="Estructura de token inválida"
-                )
-
-            redis_key = f"session:{username}:{family_id}"
-            active_jti = redis_client.get(redis_key)
-
-            if active_jti and active_jti != jti:
-                redis_client.delete(redis_key)
-                raise HTTPException(
-                    status_code=403, detail="ALERTA: Robo de sesión detectado."
-                )
-
-            if not active_jti:
-                raise HTTPException(
-                    status_code=401, detail="Sesión expirada o cerrada remotamente."
-                )
-
-            user = session.exec(select(User).where(User.username == username)).first()
-            if not user:
-                raise HTTPException(status_code=401, detail="Usuario no encontrado")
-
-            new_access_token = create_access_token(
-                data={"sub": username, "role": user.role}
-            )
-            new_refresh_data = create_refresh_token(
-                data={"sub": username}, family_id=family_id
-            )
-
-            redis_client.setex(redis_key, 60 * 60 * 24 * 7, new_refresh_data["jti"])
-
-            return new_access_token, new_refresh_data["token"]
-
-        except jwt.ExpiredSignatureError:
-            raise HTTPException(
-                status_code=401, detail="Token expirado. Inicia sesión."
-            )
-        except jwt.JWTError:
-            raise HTTPException(status_code=401, detail="Firma inválida.")
+        return {"status": "success"}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
 </file>
 
 <file path="frontend/.vscode/mcp.json">
@@ -1838,6 +2255,115 @@ class AuthService:
       ]
     }
   }
+}
+</file>
+
+<file path="frontend/app/admin/page.tsx">
+// frontend/app/admin/page.tsx
+"use client";
+
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useAuthStore } from "@/src/store/authStore";
+import { useAdminDashboard } from "@/src/features/admin/hooks/useAdminDashboard";
+import { InviteManager } from "@/src/system/organisms/Admin/InviteManager";
+import { SecurityModule } from "@/src/system/organisms/Admin/SecurityModule";
+import { AuditTable } from "@/src/system/organisms/Admin/AuditTable";
+
+export default function AdminDashboard() {
+  const { user, isLoadingAuth } = useAuthStore();
+  const router = useRouter();
+
+  const {
+    logs,
+    isLoadingLogs,
+    inviteCode,
+    isLoadingInvite,
+    fetchLogs,
+    handleGenerateInvite,
+    handleRevokeAll,
+  } = useAdminDashboard();
+
+  // 🛡️ Protección de ruta: Solo admins pasan de aquí
+  useEffect(() => {
+    if (!isLoadingAuth && (!user || user.role !== "admin")) {
+      router.push("/");
+    }
+  }, [user, isLoadingAuth, router]);
+
+  // Cargar datos al entrar
+  useEffect(() => {
+    if (user?.role === "admin") {
+      fetchLogs();
+    }
+  }, [user, fetchLogs]);
+
+  // Pantalla de carga mientras verificamos identidad
+  if (isLoadingAuth || !user || user.role !== "admin") {
+    return (
+      <div className="min-h-screen flex items-center justify-center font-mono text-foreground bg-background">
+        <span className="animate-pulse">CARGANDO PROTOCOLOS DE MANDO...</span>
+      </div>
+    );
+  }
+
+  // 🎨 La Interfaz Declarativa (Orquestación)
+  return (
+    <main className="min-h-screen bg-background text-foreground p-4 md:p-8 font-sans pb-20">
+      <div className="max-w-7xl mx-auto">
+        <header className="mb-12 border-b-4 border-(--border-color) pb-6">
+          <h1 className="text-4xl md:text-6xl font-black font-mono uppercase italic">
+            Admin<span className="text-(--accent-color)">_</span>Terminal
+          </h1>
+          <p className="text-(--text-secondary) font-mono text-sm mt-2">
+            Acceso concedido a: {user.username} [ROOT_ACCESS]
+          </p>
+        </header>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12">
+          <InviteManager
+            onGenerate={handleGenerateInvite}
+            isLoading={isLoadingInvite}
+            inviteCode={inviteCode}
+          />
+
+          <SecurityModule onRevokeAll={handleRevokeAll} />
+
+          <section className="bg-(--bg-secondary) p-6 neo-border neo-shadow flex flex-col items-center justify-center text-center">
+            <span className="text-7xl font-black font-mono text-(--accent-color)">
+              {logs.length}
+            </span>
+            <span className="text-[10px] font-bold uppercase tracking-widest mt-2 opacity-60">
+              Eventos en Auditoría
+            </span>
+          </section>
+        </div>
+
+        <AuditTable logs={logs} isLoading={isLoadingLogs} onRefresh={fetchLogs} />
+      </div>
+    </main>
+  );
+}
+</file>
+
+<file path="frontend/app/join/page.tsx">
+"use client";
+
+import Link from "next/link";
+import RegisterForm from "@/src/system/organisms/Auth/RegisterForm";
+
+export default function JoinPage() {
+  return (
+    <main className="min-h-screen bg-background text-foreground flex flex-col items-center justify-center p-4">
+      <Link
+        href="/"
+        className="absolute top-8 left-8 text-sm font-bold font-mono hover:text-(--accent-color) uppercase"
+      >
+        ← Volver
+      </Link>
+      <RegisterForm />
+    </main>
+  );
 }
 </file>
 
@@ -3186,6 +3712,51 @@ export function parsePromptData(rawText: string): ExtractedPromptData {
 }
 </file>
 
+<file path="frontend/src/features/home/hooks/useHomeInteraction.ts">
+import { useState, useCallback } from "react";
+import { api } from "@/src/services/api";
+import { useNotificationStore } from "@/src/store/notificationStore";
+import { useViewerSync } from "@/src/features/image-viewer/hooks/useViewerSync";
+import { GalleryItem } from "@/src/types/gallery";
+
+export function useHomeInteraction() {
+  const { notify } = useNotificationStore();
+  const [activeUrl, setActiveUrl] = useState("");
+  const [activeTitle, setActiveTitle] = useState("");
+
+  const viewerSync = useViewerSync(activeUrl);
+
+  const handleOpenVisor = useCallback((item: GalleryItem) => {
+    setActiveUrl(item.url);
+    setActiveTitle(item.title);
+    viewerSync.openViewer(item.url);
+    
+    // Disparamos la métrica en background sin esperar (Fire and Forget)
+    api.registrarInteraccion(item, "view").catch((err) => 
+      console.error("Fallo al registrar vista:", err)
+    );
+  }, [viewerSync]);
+
+  const handleDownloadTotal = useCallback(async (item: GalleryItem) => {
+    try {
+      notify("Descarga", `⬇️ Preparando ${item.title}...`, "info");
+      await api.descargarTotal(item.url, item.title);
+      api.registrarInteraccion(item, "download").catch(console.error);
+      notify("Éxito", `✅ Descarga encolada: ${item.title}`, "success");
+    } catch (err) {
+      notify("Error", "❌ Falla crítica al encolar la descarga.", "error");
+    }
+  }, [notify]);
+
+  return {
+    activeTitle,
+    viewerSync,
+    handleOpenVisor,
+    handleDownloadTotal,
+  };
+}
+</file>
+
 <file path="frontend/src/features/studio/hooks/useStudio.ts">
 import { useState, useEffect, useCallback } from "react";
 import { api } from "@/src/services/api";
@@ -3293,6 +3864,67 @@ export const api = {
 };
 </file>
 
+<file path="frontend/src/store/authStore.ts">
+import { create } from "zustand";
+import { api } from "@/src/services/api";
+import { handleError } from "../utils/errors/ErrorHandler";
+
+interface User {
+  username: string;
+  role: string;
+}
+
+interface AuthState {
+  user: User | null;
+  isLoadingAuth: boolean;
+  login: (userData: User) => void;
+  logout: () => Promise<void>;
+  checkAuth: () => Promise<void>;
+}
+
+export const useAuthStore = create<AuthState>((set) => ({
+  user: null,
+  isLoadingAuth: true,
+
+  login: (userData) => set({ user: userData, isLoadingAuth: false }),
+
+  logout: async () => {
+    try {
+      await api.logout();
+    } catch (error) {
+      console.error("Error logout:", error);
+    } finally {
+      set({ user: null });
+      if (typeof window !== "undefined") {
+        window.location.href = "/login";
+      }
+    }
+  },
+
+  checkAuth: async () => {
+    set({ isLoadingAuth: true });
+    try {
+      const res = await api.obtenerPerfil();
+      console.log("🕵️‍♂️ QA [authStore] Respuesta Backend:", res);
+
+      const username = res?.username || res?.data?.username || res?.user?.username;
+      const role = res?.role || res?.data?.role || res?.user?.role || "user";
+
+      if (username) {
+        console.log(`✅ QA [authStore] Usuario detectado: ${username} (${role})`);
+        set({ user: { username, role }, isLoadingAuth: false });
+      } else {
+        console.warn("⚠️ QA [authStore] 200 OK pero JSON no tiene 'username':", res);
+        set({ user: null, isLoadingAuth: false });
+      }
+    } catch (error: unknown) {
+      handleError(error, "AuthStore");
+      set({ user: null, isLoadingAuth: false });
+    }
+  },
+}));
+</file>
+
 <file path="frontend/src/store/notificationStore.tsx">
 import { create } from "zustand";
 import toast from "react-hot-toast";
@@ -3379,50 +4011,6 @@ export const useNotificationStore = create<NotificationState>((set) => ({
     })),
 
   clearAll: () => set({ notifications: [], unreadCount: 0 }),
-}));
-</file>
-
-<file path="frontend/src/store/progressStore.ts">
-import { create } from 'zustand';
-
-interface ProgressState {
-  isWorking: boolean;
-  progress: number;
-  startWork: () => void;
-  stopWork: () => void;
-  setProgress: (val: number) => void;
-}
-
-export const useProgressStore = create<ProgressState>((set) => ({
-  isWorking: false,
-  progress: 0,
-  
-  // Inicia la barra simulando un progreso automático que frena al 90%
-  startWork: () => {
-    set({ isWorking: true, progress: 10 });
-    // Simulamos avance (esto lo hace parecer "vivo" aunque no sepamos cuánto falta real)
-    const interval = setInterval(() => {
-      set((state) => {
-        if (!state.isWorking) {
-          clearInterval(interval);
-          return state;
-        }
-        // Sube rápido al principio, luego se frena al 90% esperando el stopWork
-        const next = state.progress + (100 - state.progress) * 0.1;
-        return { progress: next > 90 ? 90 : next };
-      });
-    }, 300);
-  },
-
-  // Completa la barra al 100% y la oculta
-  stopWork: () => {
-    set({ progress: 100 });
-    setTimeout(() => {
-      set({ isWorking: false, progress: 0 });
-    }, 500); // Le damos medio segundo para que el usuario vea que llegó al 100%
-  },
-
-  setProgress: (val: number) => set({ progress: val }),
 }));
 </file>
 
@@ -3667,81 +4255,49 @@ function ProgressValue({ className, ...props }: ProgressPrimitive.Value.Props) {
 export { Progress, ProgressTrack, ProgressIndicator, ProgressLabel, ProgressValue };
 </file>
 
-<file path="frontend/src/system/atoms/ProgressBar.tsx">
-interface ProgressBarProps {
-  /** Valor del 0 al 100 */
-  value: number;
-  /** Texto opcional que aparece encima de la barra */
-  label?: string;
-  /** Mostrar el porcentaje numérico a la derecha */
-  showPercentage?: boolean;
-  /** Activa la animación de franjas diagonales tipo Mantine */
-  animated?: boolean;
-  /** Clases extra para el contenedor principal */
-  className?: string;
-  /** Altura de la barra (por defecto h-6) */
-  size?: "sm" | "md" | "lg";
-}
-
-export function ProgressBar({
-  value,
-  label,
-  showPercentage = true,
-  animated = false,
-  className = "",
-  size = "md",
-}: ProgressBarProps) {
-  // Asegurarnos de que el valor siempre esté entre 0 y 100
-  const clampedValue = Math.min(100, Math.max(0, value));
-
-  // Tamaños predefinidos
-  const sizeClasses = {
-    sm: "h-3",
-    md: "h-6",
-    lg: "h-10 text-lg",
-  };
-
-  return (
-    <div className={`flex flex-col gap-1.5 w-full ${className}`}>
-      {/* Cabecera: Etiqueta y Porcentaje */}
-      {(label || showPercentage) && (
-        <div className="flex justify-between items-end font-mono text-xs font-black uppercase text-(--text-secondary)">
-          {label ? <span>{label}</span> : <span />}
-          {showPercentage && <span>{Math.round(clampedValue)}%</span>}
-        </div>
-      )}
-
-      {/* Contenedor de la barra (Estilo Neo-Brutalista) */}
-      <div
-        className={`w-full bg-(--bg-secondary) neo-border relative overflow-hidden ${sizeClasses[size]}`}
-      >
-        {/* Relleno de la barra */}
-        <div
-          className={`h-full bg-(--accent-color) border-r-2 border-black transition-all duration-500 ease-out relative overflow-hidden`}
-          style={{ width: `${clampedValue}%` }}
-        >
-          {/* El truco mágico: Franjas animadas con puro CSS de Tailwind */}
-          {animated && (
-            <div
-              className="absolute inset-0 opacity-20"
-              style={{
-                backgroundImage:
-                  "linear-gradient(45deg, rgba(255,255,255,0.15) 25%, transparent 25%, transparent 50%, rgba(255,255,255,0.15) 50%, rgba(255,255,255,0.15) 75%, transparent 75%, transparent)",
-                backgroundSize: "1rem 1rem",
-                animation: "progress-stripes 1s linear infinite",
-              }}
-            />
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-</file>
-
 <file path="frontend/src/system/atoms/Skeleton.tsx">
 export function Skeleton({ className = "" }: { className?: string }) {
   return <div className={`animate-pulse bg-(--border-color)/20 rounded ${className}`} />;
+}
+</file>
+
+<file path="frontend/src/system/molecules/Feedback/FeedState.tsx">
+import { IconDatabaseOff, IconLoader2, IconAlertTriangle } from "@tabler/icons-react";
+
+interface FeedStateProps {
+  type: "loading" | "empty" | "error";
+  message?: string;
+  highlight?: string;
+}
+
+export function FeedState({ type, message, highlight }: FeedStateProps) {
+  if (type === "loading") {
+    return (
+      <div className="flex flex-col items-center justify-center py-24 text-muted-foreground animate-pulse">
+        <IconLoader2 size={48} className="animate-spin mb-4 text-var(--accent-color)" />
+        <p className="font-mono text-sm tracking-widest uppercase">Decodificando galerías...</p>
+      </div>
+    );
+  }
+
+  if (type === "error") {
+    return (
+      <div className="max-w-md mx-auto mt-8 p-4 bg-red-500/10 border border-red-500/20 text-red-500 rounded-lg flex items-start gap-3 shadow-sm animate-in fade-in slide-in-from-top-4">
+        <IconAlertTriangle size={24} className="shrink-0 mt-0.5" />
+        <div className="font-mono text-sm leading-relaxed">{message}</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col items-center justify-center py-24 text-muted-foreground bg-muted/10 neo-border border-dashed rounded-lg mt-8">
+      <IconDatabaseOff size={64} stroke={1} className="mb-4 opacity-50" />
+      <h3 className="text-xl font-bold text-foreground mb-2">Abismo vacío</h3>
+      <p className="text-sm max-w-md text-center">
+        No encontramos resultados para <span className="text-foreground font-bold">"{highlight}"</span>.
+      </p>
+    </div>
+  );
 }
 </file>
 
@@ -11185,6 +11741,211 @@ Check out our [Next.js deployment documentation](https:
 Eres Arquitecto FullStack y Diseñador UX/UI. El sistema de diseño es minimalismo extremo estilo Civitai: baja carga cognitiva, interfaz invisible y contenido como protagonista absoluto. Elimina cualquier rastro de neo-brutalismo. Reglas estéticas obligatorias con Tailwind CSS: fondos neutros sólidos, bordes sutiles de 1px (border-border), esquinas redondeadas (rounded-lg o rounded-xl), sombras suaves desenfocadas (shadow-sm a shadow-lg), tipografía sans-serif limpia y legible, uso estratégico del espacio negativo. Reglas técnicas obligatorias: TypeScript estricto, arquitectura atómica modular, cero dependencias externas innecesarias, optimización extrema de Core Web Vitals (cero CLS), programación defensiva y manejo estricto de nulos. Ejecuta las tareas con código limpio y escalable. No des explicaciones innecesarias, aplica soluciones directas y eficientes.
 </file>
 
+<file path="backend/app/api/routes_auth.py">
+# backend/app/api/routes_auth.py
+import secrets
+import redis
+from fastapi import APIRouter, Depends, Response, Cookie, HTTPException
+from sqlmodel import Session, select
+
+from app.services.auth_service import AuthService
+from app.services.audit_service import AuditService
+from app.core.db import get_session
+from app.api.deps import get_current_user, get_current_admin, RateLimiter
+from app.models.user import User, InviteCode, AuditLog
+from app.schemas.user import UserRegister, UserLogin, PasswordChange
+
+# FIX: Inyección de dependencias
+redis_client = redis.Redis(host="redis", port=6379, db=0, decode_responses=True)
+router = APIRouter()
+
+
+@router.post("/register")
+def register_user(user_data: UserRegister, session: Session = Depends(get_session)):
+    new_user = AuthService.register_user(user_data, session)
+    return {
+        "status": "success",
+        "message": "Usuario registrado correctamente",
+        "user": {"username": new_user.username, "role": new_user.role},
+    }
+
+
+@router.post(
+    "/login", dependencies=[Depends(RateLimiter(max_requests=5, window_seconds=60))]
+)
+def login_user(
+    user_data: UserLogin, response: Response, session: Session = Depends(get_session)
+):
+    # DEFENSA ANTI-BOTNET: Límite por cuenta de usuario
+    user_key = f"brute_force_user:{user_data.username}"
+
+    attempts = redis_client.incr(user_key)
+    if attempts == 1:
+        redis_client.expire(user_key, 300)  # Bloqueo de 5 minutos
+
+    if attempts > 5:
+        raise HTTPException(
+            status_code=429,
+            detail=f"La cuenta '{user_data.username}' está bloqueada temporalmente por seguridad. Inténtalo en 5 minutos.",
+        )
+
+    # Autenticación normal
+    try:
+        access_token, refresh_token, username = AuthService.authenticate_user(
+            user_data, session, redis_client
+        )
+    except HTTPException as e:
+        raise e
+
+    # SI ENTRA CON ÉXITO: Reseteamos el contador
+    redis_client.delete(user_key)
+
+    # FIX CRÍTICO: Restaurada la entrega de cookies que se había borrado
+    response.set_cookie(
+        key="access_token",
+        value=access_token,
+        httponly=True,
+        max_age=60 * 15,
+        samesite="lax",
+        path="/",
+    )
+    response.set_cookie(
+        key="refresh_token",
+        value=refresh_token,
+        httponly=True,
+        max_age=60 * 60 * 24 * 7,
+        samesite="lax",
+        path="/api/auth/refresh",
+    )
+
+    AuditService.log_action(session, username, "LOGIN", "Inicio de sesión exitoso")
+    return {"status": "success", "message": f"Bienvenido, {username}"}
+
+
+@router.post("/logout")
+def logout_user(response: Response, refresh_token: str | None = Cookie(None)):
+    # 1. Destruimos la cookie del Access Token
+    response.delete_cookie("access_token", path="/")
+
+    # 2. FIX CRÍTICO: Destruimos la cookie del Refresh Token (Hay que especificar su path exacto)
+    response.delete_cookie("refresh_token", path="/api/auth/refresh")
+
+    # 3. CIBERSEGURIDAD: Destruimos la sesión en Redis para que el token quede inservible
+    if refresh_token:
+        try:
+            from jose import jwt
+            from app.core.security import SECRET_KEY, ALGORITHM
+
+            payload = jwt.decode(refresh_token, SECRET_KEY, algorithms=[ALGORITHM])
+            username = payload.get("sub")
+            family_id = payload.get("family")
+
+            if username and family_id:
+                redis_key = f"session:{username}:{family_id}"
+                redis_client.delete(redis_key)
+        except Exception:
+            # Si el token ya era inválido o caducó, simplemente lo ignoramos
+            pass
+
+    return {"status": "success", "message": "Sesión cerrada y destruida por completo"}
+
+
+@router.put("/change-password")
+def change_password(
+    data: PasswordChange,
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    AuthService.change_password(data, current_user, session)
+    return {"status": "success", "message": "Contraseña actualizada correctamente"}
+
+
+@router.get("/me")
+def get_current_user_profile(current_user: User = Depends(get_current_user)):
+    return {
+        "status": "success",
+        "user": {
+            "username": current_user.username,
+            "role": current_user.role,
+            "is_active": current_user.is_active,
+        },
+    }
+
+
+@router.post("/refresh")
+def refresh_access_token(
+    response: Response,
+    refresh_token: str | None = Cookie(None),
+    session: Session = Depends(get_session),
+):
+    try:
+        new_access, new_refresh = AuthService.rotate_tokens(
+            refresh_token, session, redis_client
+        )
+        response.set_cookie(
+            key="access_token",
+            value=new_access,
+            httponly=True,
+            max_age=60 * 15,
+            samesite="lax",
+            path="/",
+        )
+        response.set_cookie(
+            key="refresh_token",
+            value=new_refresh,
+            httponly=True,
+            max_age=60 * 60 * 24 * 7,
+            samesite="lax",
+            path="/api/auth/refresh",
+        )
+        return {"status": "success", "message": "Tokens rotados"}
+    except HTTPException as e:
+        if e.status_code == 403:
+            response.delete_cookie("access_token", path="/")
+            response.delete_cookie("refresh_token", path="/api/auth/refresh")
+        raise e
+
+
+# --- RUTAS ADMIN ---
+
+
+@router.get("/admin/logs")
+def get_audit_logs(
+    limit: int = 50,
+    current_admin: User = Depends(get_current_admin),
+    session: Session = Depends(get_session),
+):
+    statement = select(AuditLog).order_by(AuditLog.timestamp.desc()).limit(limit)
+    logs = session.exec(statement).all()
+    return {"status": "success", "logs": logs}
+
+
+@router.post("/invite-codes")
+def generate_invite_code(
+    role_requested: str = "voyager",
+    current_admin: User = Depends(get_current_admin),
+    session: Session = Depends(get_session),
+):
+    prefix = "VGR" if role_requested == "voyager" else "ART"
+    new_code_str = f"{prefix}-{secrets.token_hex(4).upper()}"
+    new_invite = InviteCode(code=new_code_str)
+    session.add(new_invite)
+    session.commit()
+    return {"status": "success", "message": "Código generado", "code": new_code_str}
+
+
+@router.get("/admin/sessions")
+def list_active_sessions(current_admin: User = Depends(get_current_admin)):
+    sessions = AuthService.get_active_sessions(current_admin.username, redis_client)
+    return {"status": "success", "sessions": sessions}
+
+
+@router.post("/admin/sessions/revoke-all")
+def revoke_all_sessions(current_admin: User = Depends(get_current_admin)):
+    AuthService.revoke_all_sessions(current_admin.username, redis_client)
+    return {"status": "success", "message": "Todas las sesiones han sido revocadas."}
+</file>
+
 <file path="backend/app/models/prompt.py">
 from sqlmodel import SQLModel, Field, Column, JSON, String
 from sqlalchemy import Text  # 🟢 NUEVO: Importamos Text directamente de SQLAlchemy
@@ -11261,113 +12022,53 @@ if __name__ == "__main__":
     init_db()
 </file>
 
-<file path="frontend/app/admin/page.tsx">
-// frontend/app/admin/page.tsx
-"use client";
+<file path="backend/app/main.py">
+import logging
+from contextlib import asynccontextmanager
+from fastapi import FastAPI
+from app.init_db import init_db
+from fastapi.middleware.cors import CORSMiddleware
 
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { useAuthStore } from "@/src/store/authStore";
-import { useAdminDashboard } from "@/src/features/admin/hooks/useAdminDashboard";
-import { InviteManager } from "@/src/system/organisms/Admin/InviteManager";
-import { SecurityModule } from "@/src/system/organisms/Admin/SecurityModule";
-import { AuditTable } from "@/src/system/organisms/Admin/AuditTable";
+from app.api.routes_download import router as download_router
+from app.api.routes_search import router as search_router
+from app.api.routes_auth import router as auth_router
+from app.api.routes_prompt import router as prompt_router
 
-export default function AdminDashboard() {
-  const { user, isLoadingAuth } = useAuthStore();
-  const router = useRouter();
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    handlers=[logging.StreamHandler()],
+)
+logger = logging.getLogger("backend")
 
-  const {
-    logs,
-    isLoadingLogs,
-    inviteCode,
-    isLoadingInvite,
-    fetchLogs,
-    handleGenerateInvite,
-    handleRevokeAll,
-  } = useAdminDashboard();
 
-  // 🛡️ Protección de ruta: Solo admins pasan de aquí
-  useEffect(() => {
-    if (!isLoadingAuth && (!user || user.role !== "admin")) {
-      router.push("/");
-    }
-  }, [user, isLoadingAuth, router]);
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    logger.info("🚀 API Backend iniciada. Sistemas en línea.")
 
-  // Cargar datos al entrar
-  useEffect(() => {
-    if (user?.role === "admin") {
-      fetchLogs();
-    }
-  }, [user, fetchLogs]);
+    try:
+        init_db()
+    except Exception as e:
+        logger.error(f"❌ Error al inicializar la base de datos: {e}")
 
-  // Pantalla de carga mientras verificamos identidad
-  if (isLoadingAuth || !user || user.role !== "admin") {
-    return (
-      <div className="min-h-screen flex items-center justify-center font-mono text-foreground bg-background">
-        <span className="animate-pulse">CARGANDO PROTOCOLOS DE MANDO...</span>
-      </div>
-    );
-  }
+    yield
+    logger.info("🛑 Apagando API Backend limpiamente...")
 
-  // 🎨 La Interfaz Declarativa (Orquestación)
-  return (
-    <main className="min-h-screen bg-background text-foreground p-4 md:p-8 font-sans pb-20">
-      <div className="max-w-7xl mx-auto">
-        <header className="mb-12 border-b-4 border-(--border-color) pb-6">
-          <h1 className="text-4xl md:text-6xl font-black font-mono uppercase italic">
-            Admin<span className="text-(--accent-color)">_</span>Terminal
-          </h1>
-          <p className="text-(--text-secondary) font-mono text-sm mt-2">
-            Acceso concedido a: {user.username} [ROOT_ACCESS]
-          </p>
-        </header>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12">
-          <InviteManager
-            onGenerate={handleGenerateInvite}
-            isLoading={isLoadingInvite}
-            inviteCode={inviteCode}
-          />
+app = FastAPI(title="EH Explorer API", lifespan=lifespan)
 
-          <SecurityModule onRevokeAll={handleRevokeAll} />
+app.add_middleware(
+    CORSMiddleware,
+    allow_origin_regex=r"https?://.*",
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-          <section className="bg-(--bg-secondary) p-6 neo-border neo-shadow flex flex-col items-center justify-center text-center">
-            <span className="text-7xl font-black font-mono text-(--accent-color)">
-              {logs.length}
-            </span>
-            <span className="text-[10px] font-bold uppercase tracking-widest mt-2 opacity-60">
-              Eventos en Auditoría
-            </span>
-          </section>
-        </div>
-
-        <AuditTable logs={logs} isLoading={isLoadingLogs} onRefresh={fetchLogs} />
-      </div>
-    </main>
-  );
-}
-</file>
-
-<file path="frontend/app/join/page.tsx">
-"use client";
-
-import Link from "next/link";
-import RegisterForm from "@/src/system/organisms/Auth/RegisterForm";
-
-export default function JoinPage() {
-  return (
-    <main className="min-h-screen bg-background text-foreground flex flex-col items-center justify-center p-4">
-      <Link
-        href="/"
-        className="absolute top-8 left-8 text-sm font-bold font-mono hover:text-(--accent-color) uppercase"
-      >
-        ← Volver
-      </Link>
-      <RegisterForm />
-    </main>
-  );
-}
+app.include_router(search_router, prefix="/api")
+app.include_router(download_router, prefix="/api")
+app.include_router(auth_router, prefix="/api/auth", tags=["Autenticación"])
+app.include_router(prompt_router, prefix="/api/prompts", tags=["Reprompt Studio"])
 </file>
 
 <file path="frontend/src/features/extractor/hooks/usePromptExtractor.ts">
@@ -11582,6 +12283,78 @@ export const fetchSeguro = async <T = any>(
 
   return res.json();
 };
+</file>
+
+<file path="frontend/src/system/atoms/ProgressBar.tsx">
+interface ProgressBarProps {
+  /** Valor del 0 al 100 */
+  value: number;
+  /** Texto opcional que aparece encima de la barra */
+  label?: string;
+  /** Mostrar el porcentaje numérico a la derecha */
+  showPercentage?: boolean;
+  /** Activa la animación de franjas diagonales tipo Mantine */
+  animated?: boolean;
+  /** Clases extra para el contenedor principal */
+  className?: string;
+  /** Altura de la barra (por defecto h-6) */
+  size?: "sm" | "md" | "lg";
+}
+
+export function ProgressBar({
+  value,
+  label,
+  showPercentage = true,
+  animated = false,
+  className = "",
+  size = "md",
+}: ProgressBarProps) {
+  // Asegurarnos de que el valor siempre esté entre 0 y 100
+  const clampedValue = Math.min(100, Math.max(0, value));
+
+  // Tamaños predefinidos
+  const sizeClasses = {
+    sm: "h-3",
+    md: "h-6",
+    lg: "h-10 text-lg",
+  };
+
+  return (
+    <div className={`flex flex-col gap-1.5 w-full ${className}`}>
+      {/* Cabecera: Etiqueta y Porcentaje */}
+      {(label || showPercentage) && (
+        <div className="flex justify-between items-end font-mono text-xs font-black uppercase text-(--text-secondary)">
+          {label ? <span>{label}</span> : <span />}
+          {showPercentage && <span>{Math.round(clampedValue)}%</span>}
+        </div>
+      )}
+
+      {/* Contenedor de la barra (Estilo Neo-Brutalista) */}
+      <div
+        className={`w-full bg-(--bg-secondary) neo-border relative overflow-hidden ${sizeClasses[size]}`}
+      >
+        {/* Relleno de la barra */}
+        <div
+          className={`h-full bg-(--accent-color) border-r-2 border-white transition-all duration-500 ease-out relative overflow-hidden`}
+          style={{ width: `${clampedValue}%` }}
+        >
+          {/* El truco mágico: Franjas animadas con puro CSS de Tailwind */}
+          {animated && (
+            <div
+              className="absolute inset-0 opacity-20"
+              style={{
+                backgroundImage:
+                  "linear-gradient(45deg, rgba(255,255,255,0.15) 25%, transparent 25%, transparent 50%, rgba(255,255,255,0.15) 50%, rgba(255,255,255,0.15) 75%, transparent 75%, transparent)",
+                backgroundSize: "1rem 1rem",
+                animation: "progress-stripes 1s linear infinite",
+              }}
+            />
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
 </file>
 
 <file path="frontend/src/system/organisms/Admin/AuditTable.tsx">
@@ -12877,30 +13650,6 @@ export function UserDropdown() {
 }
 </file>
 
-<file path="frontend/src/system/organisms/Layout/GlobalProgress.tsx">
-"use client";
-
-import { useProgressStore } from "@/src/store/progressStore";
-
-export function GlobalProgress() {
-  const { isWorking, progress } = useProgressStore();
-
-  if (!isWorking && progress === 0) return null;
-
-  return (
-    <div className="fixed top-0 left-0 w-full z-100 pointer-events-none">
-      <div 
-        className="h-1 bg-var(--accent-color) transition-all duration-300 ease-out shadow-[0_0_10px_var(--accent-color)]"
-        style={{ width: `${progress}%` }}
-      >
-        {/* Efecto de brillo en la punta de la barra */}
-        <div className="absolute right-0 top-0 h-full w-20 bg-linear-to-r from-transparent to-white/50 opacity-50 blur-[2px]" />
-      </div>
-    </div>
-  );
-}
-</file>
-
 <file path="frontend/src/system/organisms/Media/UniversalMediaCard.tsx">
 "use client";
 
@@ -13154,211 +13903,6 @@ const nextConfig: NextConfig = {
 export default nextConfig;
 </file>
 
-<file path="backend/app/api/routes_auth.py">
-# backend/app/api/routes_auth.py
-import secrets
-import redis
-from fastapi import APIRouter, Depends, Response, Cookie, HTTPException
-from sqlmodel import Session, select
-
-from app.services.auth_service import AuthService
-from app.services.audit_service import AuditService
-from app.core.db import get_session
-from app.api.deps import get_current_user, get_current_admin, RateLimiter
-from app.models.user import User, InviteCode, AuditLog
-from app.schemas.user import UserRegister, UserLogin, PasswordChange
-
-# FIX: Inyección de dependencias
-redis_client = redis.Redis(host="redis", port=6379, db=0, decode_responses=True)
-router = APIRouter()
-
-
-@router.post("/register")
-def register_user(user_data: UserRegister, session: Session = Depends(get_session)):
-    new_user = AuthService.register_user(user_data, session)
-    return {
-        "status": "success",
-        "message": "Usuario registrado correctamente",
-        "user": {"username": new_user.username, "role": new_user.role},
-    }
-
-
-@router.post(
-    "/login", dependencies=[Depends(RateLimiter(max_requests=5, window_seconds=60))]
-)
-def login_user(
-    user_data: UserLogin, response: Response, session: Session = Depends(get_session)
-):
-    # DEFENSA ANTI-BOTNET: Límite por cuenta de usuario
-    user_key = f"brute_force_user:{user_data.username}"
-
-    attempts = redis_client.incr(user_key)
-    if attempts == 1:
-        redis_client.expire(user_key, 300)  # Bloqueo de 5 minutos
-
-    if attempts > 5:
-        raise HTTPException(
-            status_code=429,
-            detail=f"La cuenta '{user_data.username}' está bloqueada temporalmente por seguridad. Inténtalo en 5 minutos.",
-        )
-
-    # Autenticación normal
-    try:
-        access_token, refresh_token, username = AuthService.authenticate_user(
-            user_data, session, redis_client
-        )
-    except HTTPException as e:
-        raise e
-
-    # SI ENTRA CON ÉXITO: Reseteamos el contador
-    redis_client.delete(user_key)
-
-    # FIX CRÍTICO: Restaurada la entrega de cookies que se había borrado
-    response.set_cookie(
-        key="access_token",
-        value=access_token,
-        httponly=True,
-        max_age=60 * 15,
-        samesite="lax",
-        path="/",
-    )
-    response.set_cookie(
-        key="refresh_token",
-        value=refresh_token,
-        httponly=True,
-        max_age=60 * 60 * 24 * 7,
-        samesite="lax",
-        path="/api/auth/refresh",
-    )
-
-    AuditService.log_action(session, username, "LOGIN", "Inicio de sesión exitoso")
-    return {"status": "success", "message": f"Bienvenido, {username}"}
-
-
-@router.post("/logout")
-def logout_user(response: Response, refresh_token: str | None = Cookie(None)):
-    # 1. Destruimos la cookie del Access Token
-    response.delete_cookie("access_token", path="/")
-
-    # 2. FIX CRÍTICO: Destruimos la cookie del Refresh Token (Hay que especificar su path exacto)
-    response.delete_cookie("refresh_token", path="/api/auth/refresh")
-
-    # 3. CIBERSEGURIDAD: Destruimos la sesión en Redis para que el token quede inservible
-    if refresh_token:
-        try:
-            from jose import jwt
-            from app.core.security import SECRET_KEY, ALGORITHM
-
-            payload = jwt.decode(refresh_token, SECRET_KEY, algorithms=[ALGORITHM])
-            username = payload.get("sub")
-            family_id = payload.get("family")
-
-            if username and family_id:
-                redis_key = f"session:{username}:{family_id}"
-                redis_client.delete(redis_key)
-        except Exception:
-            # Si el token ya era inválido o caducó, simplemente lo ignoramos
-            pass
-
-    return {"status": "success", "message": "Sesión cerrada y destruida por completo"}
-
-
-@router.put("/change-password")
-def change_password(
-    data: PasswordChange,
-    current_user: User = Depends(get_current_user),
-    session: Session = Depends(get_session),
-):
-    AuthService.change_password(data, current_user, session)
-    return {"status": "success", "message": "Contraseña actualizada correctamente"}
-
-
-@router.get("/me")
-def get_current_user_profile(current_user: User = Depends(get_current_user)):
-    return {
-        "status": "success",
-        "user": {
-            "username": current_user.username,
-            "role": current_user.role,
-            "is_active": current_user.is_active,
-        },
-    }
-
-
-@router.post("/refresh")
-def refresh_access_token(
-    response: Response,
-    refresh_token: str | None = Cookie(None),
-    session: Session = Depends(get_session),
-):
-    try:
-        new_access, new_refresh = AuthService.rotate_tokens(
-            refresh_token, session, redis_client
-        )
-        response.set_cookie(
-            key="access_token",
-            value=new_access,
-            httponly=True,
-            max_age=60 * 15,
-            samesite="lax",
-            path="/",
-        )
-        response.set_cookie(
-            key="refresh_token",
-            value=new_refresh,
-            httponly=True,
-            max_age=60 * 60 * 24 * 7,
-            samesite="lax",
-            path="/api/auth/refresh",
-        )
-        return {"status": "success", "message": "Tokens rotados"}
-    except HTTPException as e:
-        if e.status_code == 403:
-            response.delete_cookie("access_token", path="/")
-            response.delete_cookie("refresh_token", path="/api/auth/refresh")
-        raise e
-
-
-# --- RUTAS ADMIN ---
-
-
-@router.get("/admin/logs")
-def get_audit_logs(
-    limit: int = 50,
-    current_admin: User = Depends(get_current_admin),
-    session: Session = Depends(get_session),
-):
-    statement = select(AuditLog).order_by(AuditLog.timestamp.desc()).limit(limit)
-    logs = session.exec(statement).all()
-    return {"status": "success", "logs": logs}
-
-
-@router.post("/invite-codes")
-def generate_invite_code(
-    role_requested: str = "voyager",
-    current_admin: User = Depends(get_current_admin),
-    session: Session = Depends(get_session),
-):
-    prefix = "VGR" if role_requested == "voyager" else "ART"
-    new_code_str = f"{prefix}-{secrets.token_hex(4).upper()}"
-    new_invite = InviteCode(code=new_code_str)
-    session.add(new_invite)
-    session.commit()
-    return {"status": "success", "message": "Código generado", "code": new_code_str}
-
-
-@router.get("/admin/sessions")
-def list_active_sessions(current_admin: User = Depends(get_current_admin)):
-    sessions = AuthService.get_active_sessions(current_admin.username, redis_client)
-    return {"status": "success", "sessions": sessions}
-
-
-@router.post("/admin/sessions/revoke-all")
-def revoke_all_sessions(current_admin: User = Depends(get_current_admin)):
-    AuthService.revoke_all_sessions(current_admin.username, redis_client)
-    return {"status": "success", "message": "Todas las sesiones han sido revocadas."}
-</file>
-
 <file path="frontend/app/login/page.tsx">
 "use client";
 
@@ -13537,67 +14081,6 @@ export function useViewerSync(activeUrl: string) {
     loadNextPage,
   };
 }
-</file>
-
-<file path="frontend/src/store/authStore.ts">
-import { create } from "zustand";
-import { api } from "@/src/services/api";
-import { handleError } from "../utils/errors/ErrorHandler";
-
-interface User {
-  username: string;
-  role: string;
-}
-
-interface AuthState {
-  user: User | null;
-  isLoadingAuth: boolean;
-  login: (userData: User) => void;
-  logout: () => Promise<void>;
-  checkAuth: () => Promise<void>;
-}
-
-export const useAuthStore = create<AuthState>((set) => ({
-  user: null,
-  isLoadingAuth: true,
-
-  login: (userData) => set({ user: userData, isLoadingAuth: false }),
-
-  logout: async () => {
-    try {
-      await api.logout();
-    } catch (error) {
-      console.error("Error logout:", error);
-    } finally {
-      set({ user: null });
-      if (typeof window !== "undefined") {
-        window.location.href = "/login";
-      }
-    }
-  },
-
-  checkAuth: async () => {
-    set({ isLoadingAuth: true });
-    try {
-      const res = await api.obtenerPerfil();
-      console.log("🕵️‍♂️ QA [authStore] Respuesta Backend:", res);
-
-      const username = res?.username || res?.data?.username || res?.user?.username;
-      const role = res?.role || res?.data?.role || res?.user?.role || "user";
-
-      if (username) {
-        console.log(`✅ QA [authStore] Usuario detectado: ${username} (${role})`);
-        set({ user: { username, role }, isLoadingAuth: false });
-      } else {
-        console.warn("⚠️ QA [authStore] 200 OK pero JSON no tiene 'username':", res);
-        set({ user: null, isLoadingAuth: false });
-      }
-    } catch (error: unknown) {
-      handleError(error, "AuthStore");
-      set({ user: null, isLoadingAuth: false });
-    }
-  },
-}));
 </file>
 
 <file path="frontend/src/system/atoms/MediaCover.tsx">
@@ -13996,118 +14479,6 @@ export function useTheme() {
 }
 </file>
 
-<file path="backend/app/api/routes_search.py">
-# backend/app/api/routes_search.py
-import json
-from typing import Optional, Dict, Any
-from fastapi import APIRouter, Query, Depends, Body
-from sqlmodel import Session, select
-from app.services import scraper
-from app.core.db import get_session
-from app.models.gallery import GalleryMetric
-
-router = APIRouter()
-
-
-@router.get("/buscar")
-def buscar(
-    query: str = Query(""),
-    next_id: Optional[str] = None,
-    categories: Optional[str] = None,
-):
-    cats_dict = json.loads(categories) if categories else None
-    res = scraper.buscar_galerias(query, next_id, cats_dict)
-    return {
-        "status": "success",
-        "data": res.get("data", []),
-        "next_id": res.get("next_id"),
-    }
-
-
-@router.get("/tendencias")
-def obtener_tendencias(limit: int = 5, session: Session = Depends(get_session)):
-    try:
-        statement = (
-            select(GalleryMetric)
-            .order_by(GalleryMetric.downloads.desc(), GalleryMetric.views.desc())
-            .limit(limit)
-        )
-        results = session.exec(statement).all()
-        data = [
-            {
-                "url": r.url,
-                "title": r.title,
-                "thumb": r.thumb,
-                "downloads": r.downloads,
-                "views": r.views,
-            }
-            for r in results
-        ]
-        return {"status": "success", "data": data}
-    except Exception as e:
-        return {"status": "error", "message": str(e), "data": []}
-
-
-@router.get("/leer")
-def leer_galeria(url: str, p: int = 0):
-    try:
-        res = scraper.obtener_enlaces_paginas(url, p)
-        return {
-            "status": "success",
-            "data": res.get("enlaces", []),
-            "has_next": res.get("has_next", False),
-        }
-    except Exception as e:
-        return {"status": "error", "message": str(e), "data": []}
-
-
-# 🟢 FIX 1: Cambiamos el guion medio por guion bajo para que coincida con el Frontend
-@router.get("/resolver_imagen")
-def resolver_imagen(url: str):
-    try:
-        res = scraper.extraer_imagen_real(url)
-        return {"status": "success", "url_img": res}
-    except Exception as e:
-        return {"status": "error", "message": str(e)}
-
-
-@router.post("/interact")
-def registrar_interaccion(
-    data: dict = Body(...), session: Session = Depends(get_session)
-):
-    try:
-        url = data.get("url")
-        title = data.get("title", "Sin título")
-        thumb = data.get("thumb")
-        i_type = data.get("type") or data.get("interaction_type") or "view"
-
-        if not url:
-            return {"status": "error", "message": "Falta la URL"}
-
-        statement = select(GalleryMetric).where(GalleryMetric.url == url)
-        metric = session.exec(statement).first()
-
-        if not metric:
-            metric = GalleryMetric(
-                url=url, title=title, thumb=thumb, views=0, downloads=0
-            )
-            session.add(metric)
-        else:
-            # Por si acaso era una galería antigua sin thumb, lo actualizamos
-            if thumb and not metric.thumb:
-                metric.thumb = thumb
-
-        if i_type == "view":
-            metric.views += 1
-        elif i_type == "download":
-            metric.downloads += 1
-
-        session.commit()
-        return {"status": "success"}
-    except Exception as e:
-        return {"status": "error", "message": str(e)}
-</file>
-
 <file path="backend/app/schemas/prompt.py">
 from pydantic import BaseModel
 from typing import Optional, Dict, Any
@@ -14138,55 +14509,6 @@ class PromptResponse(PromptCreate):
 
     class Config:
         from_attributes = True
-</file>
-
-<file path="backend/app/main.py">
-import logging
-from contextlib import asynccontextmanager
-from fastapi import FastAPI
-from app.init_db import init_db
-from fastapi.middleware.cors import CORSMiddleware
-
-from app.api.routes_download import router as download_router
-from app.api.routes_search import router as search_router
-from app.api.routes_auth import router as auth_router
-from app.api.routes_prompt import router as prompt_router
-
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-    handlers=[logging.StreamHandler()],
-)
-logger = logging.getLogger("backend")
-
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    logger.info("🚀 API Backend iniciada. Sistemas en línea.")
-
-    try:
-        init_db()
-    except Exception as e:
-        logger.error(f"❌ Error al inicializar la base de datos: {e}")
-
-    yield
-    logger.info("🛑 Apagando API Backend limpiamente...")
-
-
-app = FastAPI(title="EH Explorer API", lifespan=lifespan)
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origin_regex=r"https?://.*",
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-app.include_router(search_router, prefix="/api")
-app.include_router(download_router, prefix="/api")
-app.include_router(auth_router, prefix="/api/auth", tags=["Autenticación"])
-app.include_router(prompt_router, prefix="/api/prompts", tags=["Reprompt Studio"])
 </file>
 
 <file path="frontend/app/studio/page.tsx">
@@ -14272,259 +14594,6 @@ export default function StudioPage() {
 }
 </file>
 
-<file path="frontend/app/globals.css">
-@import "tailwindcss";
-@import "tw-animate-css";
-@import "shadcn/tailwind.css";
-
-@custom-variant dark (&:is(.dark *));
-
-:root {
-  --bg-primary: #f4f5f5;
-  --bg-secondary: #ffffff;
-  --text-primary: #1d1f21;
-  --text-secondary: #4b5563;
-  --border-color: #1d1f21;
-  --accent-color: #D83C00;
-  /* Un naranja técnico estilo PostHog */
-  --shadow-color: #1d1f21;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg-primary: #0a0a0a;
-    --bg-secondary: #171717;
-    --text-primary: #f4f5f5;
-    --text-secondary: #a1a1aa;
-    --border-color: #3f3f46;
-    --accent-color: #D83C00;
-    --shadow-color: #000000;
-  }
-}
-
-@keyframes progress-stripes {
-  from {
-    background-position: 1rem 0;
-  }
-
-  to {
-    background-position: 0 0;
-  }
-}
-
-.dark {
-  --bg-primary: #0a0a0a;
-  --bg-secondary: #171717;
-  --text-primary: #f4f5f5;
-  --text-secondary: #a1a1aa;
-  --border-color: #3f3f46;
-  --accent-color: #D83C00;
-  --shadow-color: #000000;
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
-}
-
-body {
-  background: var(--bg-primary);
-  color: var(--text-primary);
-  font-family: var(--font-sans), Arial, Helvetica, sans-serif;
-  scroll-behavior: smooth;
-}
-
-.neo-border {
-  border: 2px solid var(--border-color);
-  border-radius: 0.5rem;
-}
-
-.neo-shadow {
-  box-shadow: 4px 4px 0px 0px var(--shadow-color);
-  transition: all 0.2s ease-in-out;
-}
-
-.neo-shadow:hover {
-  transform: translate(2px, 2px);
-  box-shadow: 2px 2px 0px 0px var(--shadow-color);
-}
-
-.neo-shadow-accent {
-  box-shadow: 4px 4px 0px 0px var(--accent-color);
-}
-
-::-webkit-scrollbar {
-  width: 8px;
-}
-
-::-webkit-scrollbar-track {
-  background: var(--bg-primary);
-}
-
-::-webkit-scrollbar-thumb {
-  background: var(--border-color);
-  border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: var(--text-secondary);
-}
-
-@theme inline {
-  --font-heading: var(--font-mono);
-  --font-mono: var(--font-mono);
-  --color-sidebar-ring: var(--sidebar-ring);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar: var(--sidebar);
-  --color-chart-5: var(--chart-5);
-  --color-chart-4: var(--chart-4);
-  --color-chart-3: var(--chart-3);
-  --color-chart-2: var(--chart-2);
-  --color-chart-1: var(--chart-1);
-  --color-ring: var(--ring);
-  --color-input: var(--input);
-  --color-border: var(--border);
-  --color-destructive: var(--destructive);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-accent: var(--accent);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-muted: var(--muted);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-secondary: var(--secondary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-primary: var(--primary);
-  --color-popover-foreground: var(--popover-foreground);
-  --color-popover: var(--popover);
-  --color-card-foreground: var(--card-foreground);
-  --color-card: var(--card);
-  --color-foreground: var(--foreground);
-  --color-background: var(--background);
-  --radius-sm: calc(var(--radius) * 0.6);
-  --radius-md: calc(var(--radius) * 0.8);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) * 1.4);
-  --radius-2xl: calc(var(--radius) * 1.8);
-  --radius-3xl: calc(var(--radius) * 2.2);
-  --radius-4xl: calc(var(--radius) * 2.6);
-}
-
-@layer base {
-  * {
-    @apply border-border outline-ring/50;
-  }
-  body {
-    @apply bg-background text-foreground;
-  }
-  html {
-    @apply font-mono;
-  }
-}
-</file>
-
-<file path="frontend/src/features/search/hooks/useSearch.ts">
-"use client";
-
-import { useProgressStore } from "@/src/store/progressStore";
-import { useSearchStore } from "@/src/store/searchStore";
-
-export function useSearch() {
-  const store = useSearchStore();
-
-  const handleSearch = async (input?: string | React.FormEvent) => {
-    console.trace("🚨 DETECTIVE: Alguien disparó la búsqueda");
-    if (input && typeof input === "object" && "preventDefault" in input) {
-      input.preventDefault();
-    } else if (typeof input === "string") {
-      store.setQuery(input);
-    }
-
-    useProgressStore.getState().startWork();
-    try {
-      await store.executeSearch();
-    } finally {
-      useProgressStore.getState().stopWork();
-    }
-  };
-
-  return {
-    query: store.query,
-    setQuery: store.setQuery,
-    results: store.results,
-    isLoading: store.isLoading,
-    isLoadingMore: store.isLoadingMore,
-    hasMore: store.hasMore,
-    error: store.error,
-    activeCategories: store.activeCategories,
-    toggleCategory: store.toggleCategory,
-    handleSearch,
-    loadMore: store.loadMore,
-  };
-}
-</file>
-
 <file path="frontend/src/services/api/prompts.ts">
 import { API_URL, fetchSeguro } from "./client";
 
@@ -14539,6 +14608,52 @@ export const promptApi = {
   obtenerMisPrompts: () => fetchSeguro(`${API_URL}/prompts/`),
   eliminarPrompt: (id: number) => fetchSeguro(`${API_URL}/prompts/${id}`, { method: "DELETE" }),
 };
+</file>
+
+<file path="frontend/src/store/progressStore.ts">
+import { create } from "zustand";
+
+interface ProgressState {
+  isAnimating: boolean;
+  progress: number;
+  start: () => void;
+  setProgress: (value: number) => void;
+  done: () => void;
+}
+
+export const useProgressStore = create<ProgressState>((set) => {
+  let timer: NodeJS.Timeout;
+
+  return {
+    isAnimating: false,
+    progress: 0,
+    start: () => {
+      console.log("🚨 [STORE] 🟢 START llamado. Animating: true, Progress: 5");
+      set({ isAnimating: true, progress: 5 });
+      clearInterval(timer);
+      timer = setInterval(() => {
+        set((state) => {
+          const nextProgress = state.progress >= 90 ? state.progress : state.progress + (10 - state.progress / 10);
+          console.log(`🚨 [STORE] ⏱️ Tick del Timer -> Progress: ${nextProgress.toFixed(2)}`);
+          return { progress: nextProgress };
+        });
+      }, 300);
+    },
+    setProgress: (value) => {
+      console.log(`🚨 [STORE] 🔵 setProgress llamado -> Value: ${value}`);
+      set({ isAnimating: true, progress: value });
+    },
+    done: () => {
+      console.log("🚨 [STORE] 🔴 DONE llamado. Forzando Progress: 100");
+      clearInterval(timer);
+      set({ isAnimating: true, progress: 100 });
+      setTimeout(() => {
+        console.log("🚨 [STORE] 👻 Timeout 400ms terminado. Apagando barra (Animating: false, Progress: 0)");
+        set({ isAnimating: false, progress: 0 });
+      }, 400);
+    },
+  };
+});
 </file>
 
 <file path="frontend/src/system/organisms/Search/HeroSearch.tsx">
@@ -14559,6 +14674,96 @@ export function HeroSearch() {
     </div>
   );
 }
+</file>
+
+<file path="Makefile">
+# ==========================================
+# 🐳 DOCKER: ORQUESTACIÓN Y RESETEOS
+# ==========================================
+.PHONY: up build stop down restart reset nuke
+
+up:
+	@echo "🚀 Levantando contenedores (Build normal)..."
+	docker-compose up
+
+build:
+	@echo "🔨 Construyendo contenedores sin cache..."
+	docker-compose build --no-cache
+
+stop:
+	@echo "⏸️  Pausando contenedores (Sin borrarlos)..."
+	docker-compose stop
+
+down:
+	@echo "🛑 Deteniendo y eliminando contenedores de la red..."
+	docker-compose down
+
+restart:
+	@echo "⚡ RESETEO RÁPIDO: Reiniciando servicios sin reconstruir..."
+	docker-compose restart
+
+reset:
+	@echo "🔄 Reiniciando el frontend limpiamente..."
+	docker-compose stop frontend
+	docker-compose rm -f frontend
+	docker-compose build --no-cache frontend
+	docker-compose up -d frontend
+
+nuke:
+	@echo "💣 DESTRUCCIÓN TOTAL: Borrando contenedores, volúmenes, redes e imágenes huérfanas..."
+	docker-compose down -v --remove-orphans --rmi local
+	@echo "🏗️ Reconstruyendo desde cero absoluto..."
+	docker-compose build --no-cache
+	docker-compose up -d
+
+# ==========================================
+# 📦 REPOMIX: EXTRACCIÓN DE PROYECTO
+# ==========================================
+.PHONY: repofront repoback repoall
+
+repofront:
+	@echo "🧠 Extrayendo código del Frontend..."
+	npx repomix frontend -o repomix-frontend.xml
+
+repoback:
+	@echo "🧠 Extrayendo código del Backend..."
+	npx repomix backend -o repomix-backend.xml
+
+repoall:
+	@echo "🧠 Extrayendo TODO el proyecto..."
+	npx repomix . -o repomix-full.xml
+
+# ==========================================
+# ⚙️ MANTENIMIENTO E INSTALACIONES
+# ==========================================
+.PHONY: installfront
+
+installfront:
+	@echo "📦 Instalando dependencias del frontend limpiamente..."
+	cd frontend && rm -rf node_modules package-lock.json && npm install
+
+# ==========================================
+# 🐙 GIT: AUTOMATIZACIÓN DE CONTROL DE VERSIONES
+# ==========================================
+.PHONY: git
+
+git:
+	@echo "🔍 Analizando estado del repositorio..."
+	git status -s
+	@echo "📦 Añadiendo cambios al Stage..."
+	git add .
+	@echo "📝 Generando commit dinámico..."
+	@FILES=$$(git diff --cached --name-only | tr '\n' ', ' | sed 's/, $$//'); \
+	if [ -z "$$FILES" ]; then \
+		echo "⚠️ No hay cambios para commitear."; \
+	else \
+		BRANCH=$$(git rev-parse --abbrev-ref HEAD); \
+		echo "🚀 Commiteando en la rama: $$BRANCH"; \
+		git commit -m "auto-refactor: actualiza $$FILES"; \
+		echo "☁️ Subiendo a origin/$$BRANCH..."; \
+		git push origin $$BRANCH; \
+		echo "✅ ¡Sincronización completada con éxito!"; \
+	fi
 </file>
 
 <file path="backend/app/api/routes_prompt.py">
@@ -14698,6 +14903,47 @@ def delete_prompt(
         raise HTTPException(status_code=500, detail="Error al eliminar el prompt.")
 </file>
 
+<file path="frontend/src/features/search/hooks/useSearch.ts">
+"use client";
+
+import { useProgressStore } from "@/src/store/progressStore";
+import { useSearchStore } from "@/src/store/searchStore";
+
+export function useSearch() {
+  const store = useSearchStore();
+
+  const handleSearch = async (input?: string | React.FormEvent) => {
+    console.trace("🚨 DETECTIVE: Alguien disparó la búsqueda");
+    if (input && typeof input === "object" && "preventDefault" in input) {
+      input.preventDefault();
+    } else if (typeof input === "string") {
+      store.setQuery(input);
+    }
+
+    useProgressStore.getState().start();
+    try {
+      await store.executeSearch();
+    } finally {
+      useProgressStore.getState().done();
+    }
+  };
+
+  return {
+    query: store.query,
+    setQuery: store.setQuery,
+    results: store.results,
+    isLoading: store.isLoading,
+    isLoadingMore: store.isLoadingMore,
+    hasMore: store.hasMore,
+    error: store.error,
+    activeCategories: store.activeCategories,
+    toggleCategory: store.toggleCategory,
+    handleSearch,
+    loadMore: store.loadMore,
+  };
+}
+</file>
+
 <file path="frontend/src/system/organisms/Search/TrendingSection/TrendingSection.tsx">
 "use client";
 
@@ -14815,6 +15061,31 @@ export function ViewerGrid({ pages, currentIndex, onSelect, hasMorePages, isLoad
 }
 </file>
 
+<file path="frontend/src/types/gallery.ts">
+export type MediaVariant = "gallery" | "viewer" | "search";
+export type AspectRatio = "portrait" | "landscape" | "square" | "auto";
+
+export interface MediaCardData {
+  id: string | number;
+  imageUrl: string;
+  title: string;
+  prompt?: string;
+  tags?: string[];
+  source?: string;
+  aspectRatio?: AspectRatio;
+}
+
+export interface GalleryItem {
+  url: string;        // <-- CRÍTICO: Requerido por la API de interacciones
+  title: string;
+  thumb: string;
+  gid?: string;       // Opcional, por si el scraper antiguo lo usa
+  token?: string;     // Opcional
+  tags?: string[];
+  [key: string]: any;
+}
+</file>
+
 <file path="frontend/app/reprompt/page.tsx">
 "use client";
 
@@ -14871,134 +15142,215 @@ export default function RepromptPage() {
 }
 </file>
 
-<file path="frontend/src/store/searchStore.ts">
-import { create } from "zustand";
-import { api } from "@/src/services/api";
-import { GalleryItem } from "@/src/types/gallery";
-import { handleError } from "../utils/errors/ErrorHandler";
+<file path="frontend/app/globals.css">
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
 
-interface SearchState {
-  query: string;
-  results: GalleryItem[];
-  isLoading: boolean;
-  isLoadingMore: boolean;
-  error: string | null;
-  nextCursor: string | null;
-  hasMore: boolean;
-  activeCategories: Record<string, boolean>;
-  
-  setQuery: (q: string) => void;
-  toggleCategory: (id: string) => void;
-  executeSearch: () => Promise<void>;
-  loadMore: () => Promise<void>;
-  trending: GalleryItem[];
-  fetchTrending: () => Promise<void>;
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  --bg-primary: #ffffff;
+  --bg-secondary: #ffffff;
+  --text-primary: #1d1f21;
+  --text-secondary: #4b5563;
+  --border-color: #1d1f21;
+  --accent-color: #128a93;
+  --shadow-color: #1d1f21;
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.145 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
+  --primary: oklch(0.205 0 0);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.97 0 0);
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: oklch(0.556 0 0);
+  --accent: oklch(0.97 0 0);
+  --accent-foreground: oklch(0.205 0 0);
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: oklch(0.922 0 0);
+  --input: oklch(0.922 0 0);
+  --ring: oklch(0.708 0 0);
+  --chart-1: oklch(0.87 0 0);
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
+  --radius: 0.625rem;
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-primary: oklch(0.205 0 0);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.97 0 0);
+  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-border: oklch(0.922 0 0);
+  --sidebar-ring: oklch(0.708 0 0);
 }
 
-export const useSearchStore = create<SearchState>((set, get) => ({
-  query: "",
-  results: [],
-  trending: [],
-  isLoading: false,
-  isLoadingMore: false,
-  error: null,
-  nextCursor: null,
-  hasMore: false,
-  activeCategories: {
-    misc: false, doujinshi: true, manga: false, artistcg: false, gamecg: false,
-    western: false, nonh: false, imageset: false, cosplay: false, asianporn: false,
-  },
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg-primary: #0a0a0a;
+    --bg-secondary: #171717;
+    --text-primary: #f4f5f5;
+    --text-secondary: #a1a1aa;
+    --border-color: #3f3f46;
+    --accent-color: #0d9ca6;
+    --shadow-color: #000000;
+  }
+}
 
-  setQuery: (q) => set({ query: q }),
-  
-  toggleCategory: (id) =>
-    set((state) => ({
-      activeCategories: { ...state.activeCategories, [id]: !state.activeCategories[id] },
-    })),
+@keyframes progress-stripes {
+  from {
+    background-position: 1rem 0;
+  }
 
-  executeSearch: async () => {
-    const { query, activeCategories } = get();
-    if (!query) return;
-    
-    set({ isLoading: true, error: null, results: [], nextCursor: null, hasMore: true });
+  to {
+    background-position: 0 0;
+  }
+}
 
-    try {
-      const data = await api.buscar(query, null, activeCategories);
-      if (process.env.NODE_ENV === "development") console.log("🚨 TELEMETRÍA [API INITIAL SEARCH]:", data);
+.dark {
+  --bg-primary: #0a0a0a;
+  --bg-secondary: #171717;
+  --text-primary: #f4f5f5;
+  --text-secondary: #a1a1aa;
+  --border-color: #3f3f46;
+  --accent-color: #1bccd8;
+  --shadow-color: #000000;
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.205 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.205 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.922 0 0);
+  --primary-foreground: oklch(0.205 0 0);
+  --secondary: oklch(0.269 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.269 0 0);
+  --muted-foreground: oklch(0.708 0 0);
+  --accent: oklch(0.269 0 0);
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.556 0 0);
+  --chart-1: oklch(0.87 0 0);
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
+  --sidebar: oklch(0.205 0 0);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.488 0.243 264.376);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.269 0 0);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.556 0 0);
+}
 
-      if (data.status === "success") {
-        set({
-          results: data.data || [],
-          nextCursor: data.next_id || null,
-          hasMore: !!data.next_id,
-        });
-      }
-    } catch (err: unknown) {
-      const cleanMessage = handleError(err, "SearchStore");
-      set({ error: cleanMessage });
-    } finally {
-      set({ isLoading: false });
-    }
-  },
+body {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: var(--font-sans), Arial, Helvetica, sans-serif;
+  scroll-behavior: smooth;
+}
 
-  // ✅ AQUÍ ESTÁ EL CÓDIGO REAL RESTAURADO
-  loadMore: async () => {
-    const { query, nextCursor, hasMore, isLoadingMore, activeCategories, results } = get();
-    
-    if (process.env.NODE_ENV === "development") console.log("🚨 TELEMETRÍA [STORE]: Ejecutando loadMore. Estado actual:", { isLoadingMore, hasMore, nextCursor });
+.neo-border {
+  border: 2px solid var(--border-color);
+  border-radius: 0.5rem;
+}
 
-    // Bloqueamos si ya está cargando o no hay más páginas
-    if (isLoadingMore || !hasMore || !nextCursor) {
-      if (process.env.NODE_ENV === "development") console.warn("🚨 TELEMETRÍA [STORE]: Petición bloqueada (ya cargando o sin cursor).");
-      return;
-    }
-    
-    set({ isLoadingMore: true });
+.neo-shadow {
+  box-shadow: 4px 4px 0px 0px var(--shadow-color);
+  transition: all 0.2s ease-in-out;
+}
 
-    try {
-      console.log(`🚨 TELEMETRÍA [STORE]: Pidiendo página con cursor: ${nextCursor}`);
-      const data = await api.buscar(query, nextCursor, activeCategories);
-      
-      if (process.env.NODE_ENV === "development") console.log("🚨 TELEMETRÍA [API LOAD MORE]:", data);
+.neo-shadow:hover {
+  transform: translate(2px, 2px);
+  box-shadow: 2px 2px 0px 0px var(--shadow-color);
+}
 
-      if (data.status === "success" && data.data && data.data.length > 0) {
-        const combined = [...results, ...data.data];
-        
-        // Filtramos duplicados usando la URL como ID único
-        const unique = Array.from(new Map(combined.map((item) => [item.url, item])).values());
+.neo-shadow-accent {
+  box-shadow: 4px 4px 0px 0px var(--accent-color);
+}
 
-        // 🛡️ CIRCUIT BREAKER
-        if (unique.length === results.length) {
-          if (process.env.NODE_ENV === "development") console.warn("🚨 CIRCUIT BREAKER: El Backend mandó los mismos resultados. Cortando el bucle.");
-          set({ hasMore: false });
-        } else {
-          set({
-            results: unique,
-            nextCursor: data.next_id || null,
-            hasMore: !!data.next_id, // Si no hay next_id, desactivamos el Infinite Scroll
-          });
-        }
-      } else {
-        if (process.env.NODE_ENV === "development") console.warn("🚨 TELEMETRÍA [STORE]: La API devolvió un array vacío. Fin de los resultados.");
-        set({ hasMore: false });
-      }
-    } catch (err) {
-      if (process.env.NODE_ENV === "development") console.error("🚨 TELEMETRÍA [STORE]: Error al cargar más:", err);
-    } finally {
-      set({ isLoadingMore: false });
-    }
-  },
+::-webkit-scrollbar {
+  width: 8px;
+}
 
-  // ✅ CÓDIGO RESTAURADO PARA LAS TENDENCIAS DE LA HOME
-  fetchTrending: async () => {
-    try {
-      const data = await api.obtenerTendencias(5);
-      if (data.status === "success") set({ trending: data.data });
-    } catch (err) {
-      console.error("Error cargando tendencias:", err);
-    }
-  },
-}));
+::-webkit-scrollbar-track {
+  background: var(--bg-primary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-secondary);
+}
+
+@theme inline {
+  --font-heading: var(--font-mono);
+  --font-mono: var(--font-mono);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --color-foreground: var(--foreground);
+  --color-background: var(--background);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  html {
+    @apply font-mono;
+  }
+}
 </file>
 
 <file path="frontend/src/system/molecules/SearchCategorySelector.tsx">
@@ -15189,31 +15541,6 @@ export function ImageViewerModal({ title, pages, isLoading, isLoadingMore, hasMo
 }
 </file>
 
-<file path="frontend/src/types/gallery.ts">
-export type MediaVariant = "gallery" | "viewer" | "search";
-export type AspectRatio = "portrait" | "landscape" | "square" | "auto";
-
-export interface MediaCardData {
-  id: string | number;
-  imageUrl: string;
-  title: string;
-  prompt?: string;
-  tags?: string[];
-  source?: string;
-  aspectRatio?: AspectRatio;
-}
-
-export interface GalleryItem {
-  url: string;        // <-- CRÍTICO: Requerido por la API de interacciones
-  title: string;
-  thumb: string;
-  gid?: string;       // Opcional, por si el scraper antiguo lo usa
-  token?: string;     // Opcional
-  tags?: string[];
-  [key: string]: any;
-}
-</file>
-
 <file path="frontend/src/utils/adapters/mediaAdapters.ts">
 import { MediaCardData, GalleryItem } from "@/src/types/gallery";
 
@@ -15233,6 +15560,183 @@ export const mapSearchToMediaCard = (item: GalleryItem): MediaCardData => {
 };
 
 export const mapViewerToMediaCard = (page: any, index: number): MediaCardData => { /* ... */ return { id: `p-${index}`, imageUrl: page?.image_url || "", title: page?.name || "", aspectRatio: "auto" }; };
+</file>
+
+<file path="frontend/app/layout.tsx">
+import type { Metadata } from "next";
+import { Prompt, JetBrains_Mono } from "next/font/google";
+import "./globals.css";
+import { AuthProvider } from "@/src/features/auth/AuthProvider";
+import { Navbar } from "@/src/system/organisms/Layout/Navbar/Navbar";
+import { AppToaster } from "@/src/system/organisms/Layout/AppToaster";
+import { GlobalProgress } from "@/src/system/organisms/Layout/GlobalProgress";
+import { cn } from "@/lib/utils";
+
+const prompt = Prompt({
+  weight: ["400", "700", "900"],
+  subsets: ["latin"],
+  variable: "--font-prompt",
+});
+
+const jetbrainsMono = JetBrains_Mono({ subsets: ["latin"], variable: "--font-mono" });
+
+export const metadata: Metadata = {
+  title: "reprompt",
+  description: "Wallet para guardar tus imágenes y prompts",
+};
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <html lang="es" className={cn(prompt.variable, "font-mono", jetbrainsMono.variable)}>
+      <body className="antialiased selection:bg-(--accent-color) selection:text-white">
+        <AuthProvider>
+          <GlobalProgress />
+          <Navbar />
+          {children}
+          <AppToaster />
+        </AuthProvider>
+      </body>
+    </html>
+  );
+}
+</file>
+
+<file path="frontend/src/store/searchStore.ts">
+import { useProgressStore } from "./progressStore";
+import { create } from "zustand";
+import { api } from "@/src/services/api";
+import { GalleryItem } from "@/src/types/gallery";
+import { handleError } from "../utils/errors/ErrorHandler";
+
+interface SearchState {
+  query: string;
+  results: GalleryItem[];
+  isLoading: boolean;
+  isLoadingMore: boolean;
+  error: string | null;
+  nextCursor: string | null;
+  hasMore: boolean;
+  activeCategories: Record<string, boolean>;
+  
+  setQuery: (q: string) => void;
+  toggleCategory: (id: string) => void;
+  executeSearch: () => Promise<void>;
+  loadMore: () => Promise<void>;
+  trending: GalleryItem[];
+  fetchTrending: () => Promise<void>;
+}
+
+export const useSearchStore = create<SearchState>((set, get) => ({
+  query: "",
+  results: [],
+  trending: [],
+  isLoading: false,
+  isLoadingMore: false,
+  error: null,
+  nextCursor: null,
+  hasMore: false,
+  activeCategories: {
+    misc: false, doujinshi: true, manga: false, artistcg: false, gamecg: false,
+    western: false, nonh: false, imageset: false, cosplay: false, asianporn: false,
+  },
+
+  setQuery: (q) => set({ query: q }),
+  
+  toggleCategory: (id) =>
+    set((state) => ({
+      activeCategories: { ...state.activeCategories, [id]: !state.activeCategories[id] },
+    })),
+
+  executeSearch: async () => {
+    useProgressStore.getState().start();
+    const { query, activeCategories } = get();
+    if (!query) return;
+    
+    set({ isLoading: true, error: null, results: [], nextCursor: null, hasMore: true });
+
+    try {
+      const data = await api.buscar(query, null, activeCategories);
+      if (process.env.NODE_ENV === "development") console.log("🚨 TELEMETRÍA [API INITIAL SEARCH]:", data);
+
+      if (data.status === "success") {
+        set({
+          results: data.data || [],
+          nextCursor: data.next_id || null,
+          hasMore: !!data.next_id,
+        });
+      }
+    } catch (err: unknown) {
+      const cleanMessage = handleError(err, "SearchStore");
+      set({ error: cleanMessage });
+    } finally {
+      set({ isLoading: false });
+      useProgressStore.getState().done();
+    }
+  },
+
+  // ✅ AQUÍ ESTÁ EL CÓDIGO REAL RESTAURADO
+  loadMore: async () => {
+    useProgressStore.getState().start();
+    const { query, nextCursor, hasMore, isLoadingMore, activeCategories, results } = get();
+    
+    if (process.env.NODE_ENV === "development") console.log("🚨 TELEMETRÍA [STORE]: Ejecutando loadMore. Estado actual:", { isLoadingMore, hasMore, nextCursor });
+
+    // Bloqueamos si ya está cargando o no hay más páginas
+    if (isLoadingMore || !hasMore || !nextCursor) {
+      if (process.env.NODE_ENV === "development") console.warn("🚨 TELEMETRÍA [STORE]: Petición bloqueada (ya cargando o sin cursor).");
+      return;
+    }
+    
+    set({ isLoadingMore: true });
+
+    try {
+      console.log(`🚨 TELEMETRÍA [STORE]: Pidiendo página con cursor: ${nextCursor}`);
+      const data = await api.buscar(query, nextCursor, activeCategories);
+      
+      if (process.env.NODE_ENV === "development") console.log("🚨 TELEMETRÍA [API LOAD MORE]:", data);
+
+      if (data.status === "success" && data.data && data.data.length > 0) {
+        const combined = [...results, ...data.data];
+        
+        // Filtramos duplicados usando la URL como ID único
+        const unique = Array.from(new Map(combined.map((item) => [item.url, item])).values());
+
+        // 🛡️ CIRCUIT BREAKER
+        if (unique.length === results.length) {
+          if (process.env.NODE_ENV === "development") console.warn("🚨 CIRCUIT BREAKER: El Backend mandó los mismos resultados. Cortando el bucle.");
+          set({ hasMore: false });
+        } else {
+          set({
+            results: unique,
+            nextCursor: data.next_id || null,
+            hasMore: !!data.next_id, // Si no hay next_id, desactivamos el Infinite Scroll
+          });
+        }
+      } else {
+        if (process.env.NODE_ENV === "development") console.warn("🚨 TELEMETRÍA [STORE]: La API devolvió un array vacío. Fin de los resultados.");
+        set({ hasMore: false });
+      }
+    } catch (err) {
+      if (process.env.NODE_ENV === "development") console.error("🚨 TELEMETRÍA [STORE]: Error al cargar más:", err);
+    } finally {
+      set({ isLoadingMore: false });
+      useProgressStore.getState().done();
+    }
+  },
+
+  // ✅ CÓDIGO RESTAURADO PARA LAS TENDENCIAS DE LA HOME
+  fetchTrending: async () => {
+    useProgressStore.getState().start();
+    try {
+      const data = await api.obtenerTendencias(5);
+      if (data.status === "success") set({ trending: data.data });
+      useProgressStore.getState().done();
+    } catch (err) {
+      console.error("Error cargando tendencias:", err);
+      useProgressStore.getState().done();
+    }
+  },
+}));
 </file>
 
 <file path="frontend/src/system/organisms/Layout/Navbar/NavbarSearch.tsx">
@@ -15297,270 +15801,153 @@ export function NavbarSearch() {
 }
 </file>
 
-<file path="backend/app/services/scraper.py">
-# backend/app/services/scraper.py
-import logging
-import re
-import json
-import redis
-from urllib.parse import quote
-from bs4 import BeautifulSoup
-from app.core.config import http_session
+<file path="frontend/src/system/organisms/Layout/GlobalProgress.tsx">
+"use client";
 
-logger = logging.getLogger("scraper")
+import { useEffect } from "react";
+import { usePathname, useSearchParams } from "next/navigation";
+import { useProgressStore } from "@/src/store/progressStore";
 
-# 🟢 CONFIGURACIÓN DE REDIS PARA CACHÉ
-# Usamos decode_responses=True para que devuelva strings en lugar de bytes
-try:
-    redis_client = redis.Redis(host="redis", port=6379, db=0, decode_responses=True)
-except Exception as e:
-    logger.error(f"⚠️ No se pudo conectar a Redis para Caché: {e}")
-    redis_client = None
+export function GlobalProgress() {
+  const { isAnimating, progress, start, done } = useProgressStore();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
 
+  // 1. Cerrar barra al terminar la navegación de Next.js
+  useEffect(() => {
+    done();
+  }, [pathname, searchParams, done]);
 
-def limpiar_titulo(titulo_crudo: str) -> str:
-    """Limpia el ruido de los títulos de E-Hentai mediante Regex."""
-    titulo_limpio = re.sub(r"\[.*?\]|\(.*?\)|<.*?>|\{.*?\}", "", titulo_crudo)
-    titulo_limpio = re.sub(r"[-~|,_]+", " ", titulo_limpio)
-    titulo_limpio = re.sub(r"\s+", " ", titulo_limpio).strip()
+  // 2. Interceptor de enlaces nativos
+  useEffect(() => {
+    const handleAnchorClick = (e: MouseEvent) => {
+      const anchor = (e.target as HTMLElement).closest("a");
+      if (!anchor) return;
 
-    if len(titulo_limpio) < 3:
-        return titulo_crudo.strip()
-    return titulo_limpio
+      const href = anchor.getAttribute("href");
+      const target = anchor.getAttribute("target");
 
+      if (href && href.startsWith("/") && target !== "_blank" && href !== pathname) {
+        start();
+      }
+    };
 
-def calcular_f_cats(categories_json: dict):
-    mapping = {
-        "misc": 1,
-        "doujinshi": 2,
-        "manga": 4,
-        "artistcg": 8,
-        "gamecg": 16,
-        "imageset": 32,
-        "cosplay": 64,
-        "asianporn": 128,
-        "nonh": 256,
-        "western": 512,
-    }
-    f_cats = 0
-    if categories_json:
-        for cat, is_active in categories_json.items():
-            if not is_active:
-                f_cats += mapping.get(cat, 0)
-    return f_cats
+    document.addEventListener("click", handleAnchorClick, true);
+    return () => document.removeEventListener("click", handleAnchorClick, true);
+  }, [pathname, start]);
 
+  // 🛡️ FIX ARQUITECTÓNICO: NUNCA DEVOLVEMOS NULL.
+  // Dejamos el elemento en el DOM para que el motor CSS pueda calcular las transiciones de salida (Fade out).
 
-# ==========================================
-# 🚀 1. CACHÉ DE BÚSQUEDA (TTL: 15 Minutos)
-# ==========================================
-def buscar_galerias(query: str, next_id: str = None, categories: dict = None):
-    f_cats = calcular_f_cats(categories)
+  return (
+    <div className="fixed top-0 left-0 w-full z-99999 pointer-events-none">
+      <div
+        className="relative transition-all ease-out"
+        style={{
+          height: "3px", // El grosor elegante de la industria
+          width: `${progress}%`,
+          opacity: isAnimating ? 1 : 0,
+          // 🛡️ FALLBACK: Si var(--accent-color) no existe, usará un Azul Neón brillante (#0ea5e9)
+          background: "var(--accent-color, #0ea5e9)",
+          boxShadow: "0 0 10px var(--accent-color, #0ea5e9), 0 0 5px var(--accent-color, #0ea5e9)",
+          // Si está desapareciendo, que tarde 500ms en desvanecerse (más suave)
+          transitionDuration: isAnimating ? "300ms" : "500ms",
+        }}
+      >
+        {/* LA PUNTA DE LUZ (Puro CSS, sin imágenes ni SVGs) */}
+        <div
+          className="absolute top-0 right-0 h-full w-70px bg-white shadow-[0_0_15px_white] rounded-full"
+          style={{
+            filter: "blur(2px)",
+            opacity: isAnimating ? 0.8 : 0,
+          }}
+        />
+      </div>
+    </div>
+  );
+}
+</file>
 
-    # Generamos una clave única basada en lo que el usuario ha pedido
-    cache_key = f"cache:search:q={query}:next={next_id}:cats={f_cats}"
+<file path="frontend/app/page.tsx">
+"use client";
 
-    # Intentamos recuperar de la Caché primero
-    if redis_client:
-        try:
-            cached_result = redis_client.get(cache_key)
-            if cached_result:
-                logger.info(
-                    f"⚡ [CACHE HIT] Resultados de búsqueda devueltos desde Redis (0.01s)"
-                )
-                return json.loads(cached_result)
-        except Exception:
-            pass
+import { useEffect } from "react";
+import dynamic from "next/dynamic";
+import { useSearchStore } from "@/src/store/searchStore";
+import { useSearch } from "@/src/features/search/hooks/useSearch";
+import { useHomeInteraction } from "@/src/features/home/hooks/useHomeInteraction";
 
-    url = f"https://e-hentai.org/?f_search={quote(query)}&f_cats={f_cats}"
-    if next_id:
-        url += f"&next={next_id}"
+// 🧱 Componentes Síncronos (Vitales para el primer renderizado y SEO)
+import { HeroSearch } from "@/src/system/organisms/Search/HeroSearch";
+import { TrendingSection } from "@/src/system/organisms/Search/TrendingSection/TrendingSection";
+import { SearchResults } from "@/src/system/organisms/Search/SearchResults/SearchResults";
+import { FeedState } from "@/src/system/molecules/Feedback/FeedState";
 
-    logger.info(f"📡 [SCRAPING] Consultando a E-Hentai: {url}")
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0"
-    }
-    cookies = {"nw": "1"}
+const ImageViewerModal = dynamic(
+  () =>
+    import("@/src/system/organisms/Viewer/ImageViewerModal/ImageViewerModal").then(
+      (mod) => mod.ImageViewerModal,
+    ),
+  { ssr: false },
+);
 
-    try:
-        r = http_session.get(url, headers=headers, cookies=cookies, timeout=10)
-        r.raise_for_status()
-        soup = BeautifulSoup(r.text, "lxml")
+export default function Home() {
+  const { query, results, isLoading, isLoadingMore, hasMore, error, loadMore } = useSearch();
+  const { trending, fetchTrending } = useSearchStore();
 
-        next_tag = soup.find("a", id="unext")
-        found_next_id = (
-            next_tag["href"].split("next=")[1]
-            if next_tag and "next=" in next_tag["href"]
-            else None
-        )
+  const interactions = useHomeInteraction();
 
-        tarjetas = soup.select(".itg tr, .itg .gl1t")
-        resultados = []
-        for tarjeta in tarjetas:
-            enlace = tarjeta.select_one("a[href*='/g/']")
-            if enlace:
-                img_tag = tarjeta.select_one("img")
-                thumb = img_tag.get("data-src") or img_tag.get("src") or ""
-                titulo_crudo = enlace.text.strip()
+  useEffect(() => {
+    fetchTrending();
+  }, [fetchTrending]);
 
-                resultados.append(
-                    {
-                        "url": enlace["href"],
-                        "thumb": thumb,
-                        "title": limpiar_titulo(titulo_crudo),
-                        "title_raw": titulo_crudo,
-                    }
-                )
+  if (process.env.NODE_ENV === "development") {
+    console.log("🚨 TELEMETRÍA [HOME]:", { isLoading, count: results?.length, hasMore, query });
+  }
 
-        final_result = {"data": resultados, "next_id": found_next_id}
+  return (
+    <main className="min-h-screen bg-background text-foreground font-sans">
+      <HeroSearch />
 
-        # Guardamos en Caché durante 15 minutos (900 segundos)
-        if redis_client:
-            try:
-                redis_client.setex(cache_key, 900, json.dumps(final_result))
-            except Exception:
-                pass
+      {error && <FeedState type="error" message={error} />}
 
-        return final_result
+      <div className="max-w-90rem mx-auto px-4 pb-12">
+        {!query ? (
+          <TrendingSection
+            trending={trending}
+            onOpenVisor={interactions.handleOpenVisor}
+            onDownloadTotal={interactions.handleDownloadTotal}
+          />
+        ) : isLoading && results.length === 0 ? (
+          <FeedState type="loading" />
+        ) : !isLoading && results.length === 0 ? (
+          <FeedState type="empty" highlight={query} />
+        ) : (
+          <SearchResults
+            results={results}
+            onOpenVisor={interactions.handleOpenVisor}
+            onDownloadTotal={interactions.handleDownloadTotal}
+            hasMore={hasMore}
+            isLoadingMore={isLoadingMore}
+            onLoadMore={loadMore}
+          />
+        )}
 
-    except Exception as e:
-        logger.error(f"💥 [ERROR SCRAPING]: {e}")
-        return {"data": [], "next_id": None}
-
-
-# ==========================================
-# 🚀 2. CACHÉ DE GALERÍA (TTL: 24 Horas)
-# ==========================================
-def obtener_enlaces_paginas(url: str, pagina: int = 0):
-    cache_key = f"cache:gallery:{url}:p={pagina}"
-
-    if redis_client:
-        try:
-            cached_result = redis_client.get(cache_key)
-            if cached_result:
-                logger.info(
-                    f"⚡ [CACHE HIT] Página {pagina} de galería devuelta desde Redis"
-                )
-                return json.loads(cached_result)
-        except Exception:
-            pass
-
-    paginas_lista = []
-    logger.info(f"📡 [SCRAPING] Extrayendo página {pagina} de {url}")
-
-    try:
-        cookies = {"nw": "1", "uconfig": "ts_l"}
-        r = http_session.get(f"{url}?p={pagina}", cookies=cookies, timeout=10)
-        r.raise_for_status()
-        soup = BeautifulSoup(r.text, "lxml")
-
-        enlaces = soup.select('a[href*="/s/"]')
-
-        for a in enlaces:
-            href = a.get("href")
-            if not href:
-                continue
-
-            thumb_url, offset, width, height = "", "", None, None
-
-            img = a.find("img")
-            if img:
-                thumb_url = img.get("data-src") or img.get("src", "")
-                if "t.gif" in thumb_url:
-                    thumb_url = ""
-
-            if not thumb_url:
-                parent = a.parent
-                div_style = a.find("div", style=True) or (
-                    parent
-                    if parent and parent.name == "div" and parent.get("style")
-                    else None
-                )
-                if div_style:
-                    style_text = div_style.get("style", "")
-                    match_url = re.search(r"url\((.*?)\)", style_text)
-                    if match_url:
-                        thumb_url = match_url.group(1).strip("'\"")
-
-                    match_offset = re.search(
-                        r"url\(.*?\)\s+([-0-9a-zA-Z]+)\s+([-0-9a-zA-Z]+)", style_text
-                    )
-                    if match_offset:
-                        offset = f"{match_offset.group(1)} {match_offset.group(2)}"
-
-                    match_w = re.search(r"width:\s*(\d+)px", style_text)
-                    match_h = re.search(r"height:\s*(\d+)px", style_text)
-                    if match_w:
-                        width = int(match_w.group(1))
-                    if match_h:
-                        height = int(match_h.group(1))
-
-            if not any(p["page_url"] == href for p in paginas_lista):
-                paginas_lista.append(
-                    {
-                        "page_url": href,
-                        "thumb_url": thumb_url,
-                        "offset": offset,
-                        "width": width,
-                        "height": height,
-                    }
-                )
-
-        has_next = any(">" in a.text for a in soup.select(".ptt a"))
-
-        final_result = {"enlaces": paginas_lista, "has_next": has_next}
-
-        # Guardamos en Caché durante 24 horas (86400 segundos). El contenido de una galería no cambia.
-        if redis_client:
-            try:
-                redis_client.setex(cache_key, 86400, json.dumps(final_result))
-            except Exception:
-                pass
-
-        return final_result
-
-    except Exception as e:
-        logger.error(f"💥 Error crítico en scraper: {str(e)}")
-        return {"enlaces": [], "has_next": False}
-
-
-# ==========================================
-# 🚀 3. CACHÉ DE RESOLUCIÓN FULL HD (TTL: 2 Horas)
-# ==========================================
-def extraer_imagen_real(url_visor: str):
-    cache_key = f"cache:image_res:{url_visor}"
-
-    if redis_client:
-        try:
-            cached_result = redis_client.get(cache_key)
-            if cached_result:
-                return cached_result  # Es un string directo
-        except Exception:
-            pass
-
-    logger.info(f"📡 [SCRAPING] Resolviendo imagen real: {url_visor}")
-    try:
-        cookies = {"nw": "1"}
-        r = http_session.get(url_visor, cookies=cookies, timeout=10)
-        r.raise_for_status()
-        soup = BeautifulSoup(r.text, "lxml")
-        img_tag = soup.find("img", id="img")
-
-        if not img_tag:
-            return None
-
-        real_url = img_tag.get("src")
-
-        # Guardamos la URL resuelta por 2 horas (Las claves de imagen de EHentai suelen expirar)
-        if redis_client and real_url:
-            try:
-                redis_client.setex(cache_key, 7200, real_url)
-            except Exception:
-                pass
-
-        return real_url
-    except Exception as e:
-        logger.error(f"Error extrayendo imagen {url_visor}: {e}")
-        return None
+        {interactions.viewerSync.isViewerOpen && (
+          <ImageViewerModal
+            title={interactions.activeTitle}
+            pages={interactions.viewerSync.viewerPages}
+            isLoading={interactions.viewerSync.isViewerLoading}
+            isLoadingMore={interactions.viewerSync.isLoadingMore}
+            hasMorePages={interactions.viewerSync.hasMorePages}
+            onLoadMore={interactions.viewerSync.loadNextPage}
+            onClose={interactions.viewerSync.closeViewer}
+          />
+        )}
+      </div>
+    </main>
+  );
+}
 </file>
 
 <file path="frontend/package.json">
@@ -15624,45 +16011,6 @@ def extraer_imagen_real(url_visor: str):
 }
 </file>
 
-<file path="frontend/app/layout.tsx">
-import type { Metadata } from "next";
-import { Prompt, JetBrains_Mono } from "next/font/google";
-import "./globals.css";
-import { AuthProvider } from "@/src/features/auth/AuthProvider";
-import { Navbar } from "@/src/system/organisms/Layout/Navbar/Navbar";
-import { AppToaster } from "@/src/system/organisms/Layout/AppToaster";
-import { GlobalProgress } from "@/src/system/organisms/Layout/GlobalProgress";
-import { cn } from "@/lib/utils";
-
-const prompt = Prompt({
-  weight: ["400", "700", "900"],
-  subsets: ["latin"],
-  variable: "--font-prompt",
-});
-
-const jetbrainsMono = JetBrains_Mono({ subsets: ["latin"], variable: "--font-mono" });
-
-export const metadata: Metadata = {
-  title: "reprompt",
-  description: "Wallet para guardar tus imágenes y prompts",
-};
-
-export default function RootLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <html lang="es" className={cn(prompt.variable, "font-mono", jetbrainsMono.variable)}>
-      <body className="antialiased selection:bg-(--accent-color) selection:text-white">
-        <AuthProvider>
-          <GlobalProgress />
-          <Navbar />
-          {children}
-          <AppToaster />
-        </AuthProvider>
-      </body>
-    </html>
-  );
-}
-</file>
-
 <file path="frontend/src/system/organisms/Layout/Navbar/Navbar.tsx">
 "use client";
 
@@ -15709,125 +16057,6 @@ export function Navbar() {
         <NavbarMobile />
       </div>
     </nav>
-  );
-}
-</file>
-
-<file path="frontend/app/page.tsx">
-"use client";
-
-import { useState, useEffect } from "react";
-import { api } from "@/src/services/api";
-import { useNotificationStore } from "@/src/store/notificationStore";
-import { useSearchStore } from "@/src/store/searchStore";
-import { GalleryItem } from "@/src/types/gallery";
-import { useSearch } from "@/src/features/search/hooks/useSearch";
-import { useViewerSync } from "@/src/features/image-viewer/hooks/useViewerSync";
-import { TrendingSection } from "@/src/system/organisms/Search/TrendingSection/TrendingSection";
-import { ImageViewerModal } from "@/src/system/organisms/Viewer/ImageViewerModal/ImageViewerModal";
-import { HeroSearch } from "@/src/system/organisms/Search/HeroSearch";
-import { SearchResults } from "@/src/system/organisms/Search/SearchResults/SearchResults";
-
-export default function Home() {
-  const { notify } = useNotificationStore();
-
-  const {
-    query,
-    results,
-    isLoading,
-    isLoadingMore: isLoadingMoreResults,
-    hasMore,
-    error,
-    loadMore,
-  } = useSearch();
-  const { trending, fetchTrending } = useSearchStore();
-
-  const [activeUrl, setActiveUrl] = useState("");
-  const [activeTitle, setActiveTitle] = useState("");
-
-  const {
-    viewerPages,
-    isViewerLoading,
-    isLoadingMore: isLoadingMorePages,
-    isViewerOpen,
-    openViewer,
-    closeViewer,
-    hasMorePages,
-    loadNextPage,
-  } = useViewerSync(activeUrl);
-
-  const handleOpenVisor = (item: GalleryItem) => {
-    setActiveUrl(item.url);
-    setActiveTitle(item.title);
-    openViewer(item.url);
-    api.registrarInteraccion(item, "view").catch(console.error);
-  };
-
-  const handleDownloadTotal = async (item: GalleryItem) => {
-    try {
-      await api.descargarTotal(item.url, item.title);
-      api.registrarInteraccion(item, "download").catch(console.error);
-      notify("Descarga", `⬇️ Descarga iniciada: ${item.title}`, "success");
-    } catch (err) {
-      notify("Error", "❌ Error al encolar la descarga.", "error");
-    }
-  };
-
-  useEffect(() => {
-    fetchTrending();
-  }, []);
-
-  // 🚨 SENSOR DE RENDERIZADO PRINCIPAL
-  if (process.env.NODE_ENV === "development")
-    console.log("🚨 TELEMETRÍA [HOME]:", {
-      estadoCarga: isLoading,
-      cantidadResultados: results?.length,
-      tieneMas: hasMore,
-      busquedaActual: query,
-    });
-
-  return (
-    <main className="min-h-screen bg-background text-foreground font-sans">
-      <HeroSearch />
-      {error && (
-        <div className="text-center text-red-500 mb-8 font-mono p-4 bg-red-500/10 neo-border neo-shadow max-w-md mx-auto">
-          {error}
-        </div>
-      )}
-      <div className="max-w-90rem mx-auto px-4">
-        {query === "" && (
-          <TrendingSection
-            trending={trending}
-            onOpenVisor={handleOpenVisor}
-            onDownloadTotal={handleDownloadTotal}
-          />
-        )}
-
-        {/* 🛡️ NOTA MENTAL: Observa si esta condición se cumple realmente */}
-        {!isLoading && results.length > 0 && (
-          <SearchResults
-            results={results}
-            onOpenVisor={handleOpenVisor}
-            onDownloadTotal={handleDownloadTotal}
-            hasMore={hasMore}
-            isLoadingMore={isLoadingMoreResults}
-            onLoadMore={loadMore}
-          />
-        )}
-
-        {isViewerOpen && (
-          <ImageViewerModal
-            title={activeTitle}
-            pages={viewerPages}
-            isLoading={isViewerLoading}
-            isLoadingMore={isLoadingMorePages}
-            hasMorePages={hasMorePages}
-            onLoadMore={loadNextPage}
-            onClose={closeViewer}
-          />
-        )}
-      </div>
-    </main>
   );
 }
 </file>
