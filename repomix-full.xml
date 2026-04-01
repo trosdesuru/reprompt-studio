@@ -86,6 +86,7 @@ backend/
   Dockerfile
   pyproject.toml
   requirements.txt
+  reset_db.py
   worker.py
 frontend/
   .vscode/
@@ -1662,105 +1663,6 @@ def extraer_imagen_real(url_visor: str):
         return None
 </file>
 
-<file path="backend/app/utils/storage.py">
-# backend/app/utils/storage.py
-import json
-import logging
-import os
-import boto3
-from botocore.exceptions import ClientError
-
-logger = logging.getLogger("storage")
-
-# 🟢 CONFIGURACIÓN R2 / S3 LECTURA DEL .ENV
-R2_ENDPOINT_URL = os.getenv("R2_ENDPOINT_URL")
-R2_ACCESS_KEY = os.getenv("R2_ACCESS_KEY")
-R2_SECRET_KEY = os.getenv("R2_SECRET_KEY")
-R2_BUCKET_NAME = os.getenv("R2_BUCKET_NAME")
-R2_PUBLIC_URL = os.getenv("R2_PUBLIC_URL")
-
-# Inicializamos el cliente S3 de forma segura (solo si hay credenciales)
-s3_client = None
-if all([R2_ENDPOINT_URL, R2_ACCESS_KEY, R2_SECRET_KEY]):
-    s3_client = boto3.client(
-        "s3",
-        endpoint_url=R2_ENDPOINT_URL,
-        aws_access_key_id=R2_ACCESS_KEY,
-        aws_secret_access_key=R2_SECRET_KEY,
-        region_name="auto",  # Cloudflare R2 requiere "auto" o "us-east-1"
-    )
-
-
-def subir_imagen_a_r2(
-    file_bytes: bytes, file_name: str, content_type: str = "image/webp"
-) -> str:
-    """
-    Sube un archivo binario a Cloudflare R2 y devuelve la URL pública final.
-    """
-    if not s3_client or not R2_BUCKET_NAME:
-        logger.error("⚠️ Credenciales de R2 no configuradas. Abortando subida.")
-        raise ValueError("Servicio de almacenamiento en la nube no configurado.")
-
-    try:
-        logger.info(f"☁️ Subiendo {file_name} a R2...")
-        s3_client.put_object(
-            Bucket=R2_BUCKET_NAME,
-            Key=file_name,
-            Body=file_bytes,
-            ContentType=content_type,
-        )
-
-        # Construir y devolver la URL pública exacta para guardarla en PostgreSQL
-        url_publica = f"{R2_PUBLIC_URL.rstrip('/')}/{file_name}"
-        logger.info(f"✅ Subida exitosa: {url_publica}")
-        return url_publica
-
-    except ClientError as e:
-        logger.error(f"❌ Error de conexión con R2 (Boto3): {e}")
-        raise e
-    except Exception as e:
-        logger.error(f"❌ Error inesperado subiendo a R2: {e}")
-        raise e
-
-
-# ========================================================
-# ⬇️ FUNCIONES LEGACY (Mantenidas para compatibilidad local)
-# ========================================================
-
-
-def preparar_directorio(ruta_base: str, nombre_carpeta: str) -> str:
-    """Crea el directorio de forma segura si no existe."""
-    ruta_completa = os.path.join(ruta_base, nombre_carpeta)
-    os.makedirs(ruta_completa, exist_ok=True)
-    return ruta_completa
-
-
-def guardar_archivo(ruta_directorio: str, nombre_archivo: str, iter_content) -> str:
-    """Guarda un flujo de bytes (stream) en el disco duro local."""
-    ruta_archivo = os.path.join(ruta_directorio, nombre_archivo)
-    try:
-        with open(ruta_archivo, "wb") as f:
-            for chunk in iter_content:
-                f.write(chunk)
-        return ruta_archivo
-    except Exception as e:
-        logger.error(f"❌ Error al escribir en disco ({ruta_archivo}): {e}")
-        raise e
-
-
-def guardar_json(ruta_directorio: str, nombre_archivo: str, datos: list | dict) -> str:
-    """Guarda un diccionario o lista de Python como archivo .json local"""
-    os.makedirs(ruta_directorio, exist_ok=True)
-    ruta_archivo = os.path.join(ruta_directorio, nombre_archivo)
-    try:
-        with open(ruta_archivo, "w", encoding="utf-8") as f:
-            json.dump(datos, f, indent=4, ensure_ascii=False)
-        return ruta_archivo
-    except Exception as e:
-        logger.error(f"❌ Error al guardar JSON ({ruta_archivo}): {e}")
-        raise e
-</file>
-
 <file path="backend/app/__init__.py">
 
 </file>
@@ -1923,27 +1825,6 @@ line-length = 88
 python_version = "3.11"
 strict = true
 ignore_missing_imports = true
-</file>
-
-<file path="backend/requirements.txt">
-fastapi
-uvicorn
-requests
-beautifulsoup4
-lxml
-selenium
-pydantic
-redis
-rq
-sqlmodel
-psycopg2-binary
-alembic
-passlib[bcrypt]
-python-jose[cryptography]
-python-dotenv
-PyJWT==2.8.0
-redis==5.0.1
-boto3==1.34.62
 </file>
 
 <file path="backend/worker.py">
@@ -2504,6 +2385,126 @@ class AuditLog(SQLModel, table=True):
     action: str
     details: str | None = None
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+</file>
+
+<file path="backend/app/utils/storage.py">
+# backend/app/utils/storage.py
+import json
+import logging
+import os
+import boto3
+from botocore.exceptions import ClientError
+
+logger = logging.getLogger("storage")
+
+# 🟢 CONFIGURACIÓN R2 / S3 LECTURA DEL .ENV
+R2_ENDPOINT_URL = os.getenv("R2_ENDPOINT_URL")
+R2_ACCESS_KEY = os.getenv("R2_ACCESS_KEY")
+R2_SECRET_KEY = os.getenv("R2_SECRET_KEY")
+R2_BUCKET_NAME = os.getenv("R2_BUCKET_NAME")
+R2_PUBLIC_URL = os.getenv("R2_PUBLIC_URL")
+
+# Inicializamos el cliente S3 de forma segura (solo si hay credenciales)
+s3_client = None
+if all([R2_ENDPOINT_URL, R2_ACCESS_KEY, R2_SECRET_KEY]):
+    s3_client = boto3.client(
+        "s3",
+        endpoint_url=R2_ENDPOINT_URL,
+        aws_access_key_id=R2_ACCESS_KEY,
+        aws_secret_access_key=R2_SECRET_KEY,
+        region_name="auto",  # Cloudflare R2 requiere "auto" o "us-east-1"
+    )
+
+
+def subir_imagen_a_r2(
+    file_bytes: bytes, file_name: str, content_type: str = "image/webp"
+) -> str:
+    """
+    Sube un archivo binario a Cloudflare R2 y devuelve la URL pública final.
+    """
+    if not s3_client or not R2_BUCKET_NAME:
+        logger.error("⚠️ Credenciales de R2 no configuradas. Abortando subida.")
+        raise ValueError("Servicio de almacenamiento en la nube no configurado.")
+
+    try:
+        logger.info(f"☁️ Subiendo {file_name} a R2...")
+        s3_client.put_object(
+            Bucket=R2_BUCKET_NAME,
+            Key=file_name,
+            Body=file_bytes,
+            ContentType=content_type,
+        )
+
+        # Construir y devolver la URL pública exacta para guardarla en PostgreSQL
+        url_publica = f"{R2_PUBLIC_URL.rstrip('/')}/{file_name}"
+        logger.info(f"✅ Subida exitosa: {url_publica}")
+        return url_publica
+
+    except ClientError as e:
+        logger.error(f"❌ Error de conexión con R2 (Boto3): {e}")
+        raise e
+    except Exception as e:
+        logger.error(f"❌ Error inesperado subiendo a R2: {e}")
+        raise e
+
+
+# ========================================================
+# ⬇️ FUNCIONES LEGACY (Mantenidas para compatibilidad local)
+# ========================================================
+
+
+def preparar_directorio(ruta_base: str, nombre_carpeta: str) -> str:
+    """Crea el directorio de forma segura si no existe."""
+    ruta_completa = os.path.join(ruta_base, nombre_carpeta)
+    os.makedirs(ruta_completa, exist_ok=True)
+    return ruta_completa
+
+
+def guardar_archivo(ruta_directorio: str, nombre_archivo: str, iter_content) -> str:
+    """Guarda un flujo de bytes (stream) en el disco duro local."""
+    ruta_archivo = os.path.join(ruta_directorio, nombre_archivo)
+    try:
+        with open(ruta_archivo, "wb") as f:
+            for chunk in iter_content:
+                f.write(chunk)
+        return ruta_archivo
+    except Exception as e:
+        logger.error(f"❌ Error al escribir en disco ({ruta_archivo}): {e}")
+        raise e
+
+
+def guardar_json(ruta_directorio: str, nombre_archivo: str, datos: list | dict) -> str:
+    """Guarda un diccionario o lista de Python como archivo .json local"""
+    os.makedirs(ruta_directorio, exist_ok=True)
+    ruta_archivo = os.path.join(ruta_directorio, nombre_archivo)
+    try:
+        with open(ruta_archivo, "w", encoding="utf-8") as f:
+            json.dump(datos, f, indent=4, ensure_ascii=False)
+        return ruta_archivo
+    except Exception as e:
+        logger.error(f"❌ Error al guardar JSON ({ruta_archivo}): {e}")
+        raise e
+</file>
+
+<file path="backend/requirements.txt">
+fastapi
+uvicorn
+requests
+beautifulsoup4
+lxml
+selenium
+pydantic
+redis
+rq
+sqlmodel
+psycopg2-binary
+alembic
+passlib[bcrypt]
+python-jose[cryptography]
+python-dotenv
+PyJWT==2.8.0
+redis==5.0.1
+boto3==1.34.62
 </file>
 
 <file path="frontend/.vscode/mcp.json">
@@ -14135,6 +14136,33 @@ app.include_router(auth_router, prefix="/api/auth", tags=["Autenticación"])
 app.include_router(prompt_router, prefix="/api/prompts", tags=["Reprompt Studio"])
 </file>
 
+<file path="backend/reset_db.py">
+# backend/reset_db.py
+from sqlmodel import SQLModel, Session, text
+from app.core.db import engine
+from app.models.user import User, InviteCode, AuditLog
+from app.models.collection import Collection
+from app.models.prompt import ImagePrompt
+from app.models.gallery import GalleryMetric
+
+
+def reset_database():
+    print("🚨 [1/3] Conectando a Neon y forzando el borrado (CASCADE) de todo...")
+    with Session(engine) as session:
+        session.exec(text("DROP SCHEMA public CASCADE;"))
+        session.exec(text("CREATE SCHEMA public;"))
+        session.commit()
+
+    print("✨ [2/3] Creando tablas con el nuevo esquema...")
+    SQLModel.metadata.create_all(engine)
+
+    print("✅ [3/3] ¡Base de datos limpia y lista para la nueva arquitectura!")
+
+
+if __name__ == "__main__":
+    reset_database()
+</file>
+
 <file path="frontend/src/features/extractor/hooks/usePromptExtractor.ts">
 import { useState, useCallback } from "react";
 import { parsePromptData, ExtractedPromptData } from "../utils/promptParser";
@@ -16003,53 +16031,6 @@ class ImagePrompt(SQLModel, table=True):
     created_at: datetime = Field(default_factory=datetime.utcnow)
 </file>
 
-<file path="backend/app/init_db.py">
-import secrets
-import logging
-from sqlmodel import SQLModel, Session, select
-from app.core.db import engine
-from app.models.user import InviteCode, User, AuditLog
-from app.models.gallery import GalleryMetric
-from app.models.prompt import ImagePrompt
-from app.models.collection import Collection
-from app.models.prompt import ImagePrompt
-
-logger = logging.getLogger("init_db")
-
-
-def init_db():
-    logger.info("⏳ Conectando a Neon.tech y sincronizando tablas...")
-    try:
-        SQLModel.metadata.create_all(engine)
-        logger.info("✅ Sincronización de tablas completada.")
-    except Exception as e:
-        logger.error(f"❌ Error crítico sincronizando tablas: {e}")
-        raise e
-
-    with Session(engine) as session:
-        existing_code = session.exec(select(InviteCode)).first()
-
-        if not existing_code:
-            master_code = f"TROYA-{secrets.token_hex(4).upper()}"
-            new_invite = InviteCode(code=master_code)
-
-            session.add(new_invite)
-            session.commit()
-
-            logger.info("✨ Base de Datos inicializada por primera vez.")
-            logger.warning("=" * 40)
-            logger.warning(f"🔑 TU CÓDIGO MAESTRO ES: {master_code}")
-            logger.warning("⚠️ Cópialo ahora. Úsalo para crear tu cuenta Admin.")
-            logger.warning("=" * 40)
-        else:
-            logger.info("✅ Las tablas ya existían y la base de datos está lista.")
-
-
-if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO)
-    init_db()
-</file>
-
 <file path="frontend/app/login/page.tsx">
 "use client";
 
@@ -16658,6 +16639,53 @@ class PromptResponse(PromptCreate):
         from_attributes = True
 </file>
 
+<file path="backend/app/init_db.py">
+import secrets
+import logging
+from sqlmodel import SQLModel, Session, select
+from app.core.db import engine
+from app.models.user import InviteCode, User, AuditLog
+from app.models.gallery import GalleryMetric
+from app.models.prompt import ImagePrompt
+from app.models.collection import Collection
+from app.models.prompt import ImagePrompt
+
+logger = logging.getLogger("init_db")
+
+
+def init_db():
+    logger.info("⏳ Conectando a Neon.tech y sincronizando tablas...")
+    try:
+        SQLModel.metadata.create_all(engine)
+        logger.info("✅ Sincronización de tablas completada.")
+    except Exception as e:
+        logger.error(f"❌ Error crítico sincronizando tablas: {e}")
+        raise e
+
+    with Session(engine) as session:
+        existing_code = session.exec(select(InviteCode)).first()
+
+        if not existing_code:
+            master_code = f"TROYA-{secrets.token_hex(4).upper()}"
+            new_invite = InviteCode(code=master_code)
+
+            session.add(new_invite)
+            session.commit()
+
+            logger.info("✨ Base de Datos inicializada por primera vez.")
+            logger.warning("=" * 40)
+            logger.warning(f"🔑 TU CÓDIGO MAESTRO ES: {master_code}")
+            logger.warning("⚠️ Cópialo ahora. Úsalo para crear tu cuenta Admin.")
+            logger.warning("=" * 40)
+        else:
+            logger.info("✅ Las tablas ya existían y la base de datos está lista.")
+
+
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
+    init_db()
+</file>
+
 <file path="frontend/app/studio/page.tsx">
 "use client";
 
@@ -16913,112 +16941,60 @@ git:
 	fi
 </file>
 
-<file path="backend/app/api/routes_prompt.py">
-import logging
-from typing import List
-from fastapi import APIRouter, Depends, HTTPException
-from sqlmodel import Session, select
-from app.core.db import get_session
-from app.api.deps import get_current_user
-from app.models.user import User
-from app.models.prompt import ImagePrompt
-from app.schemas.prompt import PromptCreate, PromptResponse
+<file path="frontend/app/reprompt/page.tsx">
+"use client";
 
-logger = logging.getLogger("api_prompts")
-router = APIRouter()
+import { usePromptExtractor } from "@/src/features/extractor/hooks/usePromptExtractor";
+import { ExtractorDropzone } from "@/src/system/organisms/Extractor/Dropzone";
+import { BatchInspector } from "@/src/system/organisms/Extractor/Inspector/BatchInspector";
 
+export default function RepromptPage() {
+  const {
+    processFiles,
+    isExtracting,
+    error,
+    batch,
+    skippedFiles,
+    updateItemStatus,
+    removeItem,
+    clearBatch,
+    clearSkipped,
+  } = usePromptExtractor();
 
-@router.post("/save")
-def save_prompt(
-    prompt_in: PromptCreate,
-    current_user: User = Depends(get_current_user),
-    session: Session = Depends(get_session),
-):
-    try:
-        new_prompt = ImagePrompt(
-            user_id=current_user.id,
-            title=prompt_in.title,
-            prompt=prompt_in.prompt,
-            negative_prompt=prompt_in.negative_prompt,
-            software=prompt_in.software,
-            model=prompt_in.model,
-            sampler=prompt_in.sampler,
-            steps=prompt_in.steps,
-            cfg_scale=prompt_in.cfg_scale,
-            seed=prompt_in.seed,
-            resolution=prompt_in.resolution,
-            image_url=prompt_in.image_url,
-            extra_data=prompt_in.extra_data,
-        )
+  return (
+    <main className="min-h-screen bg-background p-4 md:p-8">
+      <div className="max-w-7xl mx-auto space-y-12">
+        <section className="text-center space-y-6 pt-10 pb-6">
+          <h1 className="text-5xl md:text-7xl font-black uppercase font-mono tracking-tighter text-foreground">
+            Estudio <span className="text-(--accent-color)">REPROMPT</span>
+          </h1>
+          <p className="text-xl md:text-2xl text-(--text-secondary) font-mono max-w-3xl mx-auto leading-relaxed">
+            Arrastra múltiples imágenes o archivos ZIP para extraer metadatos en lote.
+          </p>
+        </section>
 
-        session.add(new_prompt)
-        session.commit()
-        session.refresh(new_prompt)
-
-        return {
-            "status": "success",
-            "message": "Prompt guardado en el Búnker",
-            "id": new_prompt.id,
-        }
-
-    except Exception as e:
-        session.rollback()
-        logger.error(f"Error guardando prompt: {e}")
-        raise HTTPException(
-            status_code=500, detail="Error interno al guardar en la base de datos."
-        )
-
-
-@router.get("/", response_model=List[PromptResponse])
-def get_my_prompts(
-    skip: int = 0,
-    limit: int = 50,
-    current_user: User = Depends(get_current_user),
-    session: Session = Depends(get_session),
-):
-    try:
-        statement = (
-            select(ImagePrompt)
-            .where(ImagePrompt.user_id == current_user.id)
-            .order_by(ImagePrompt.created_at.desc())
-            .offset(skip)
-            .limit(limit)
-        )
-
-        prompts = session.exec(statement).all()
-        return prompts
-
-    except Exception as e:
-        logger.error(f"Error obteniendo prompts para usuario {current_user.id}: {e}")
-        raise HTTPException(
-            status_code=500, detail="Error interno al recuperar los datos."
-        )
-
-
-@router.delete("/{prompt_id}")
-def delete_prompt(
-    prompt_id: int,
-    current_user: User = Depends(get_current_user),
-    session: Session = Depends(get_session),
-):
-    try:
-        # <-- ACTUALIZADO
-        prompt = session.get(ImagePrompt, prompt_id)
-        if not prompt or prompt.user_id != current_user.id:
-            raise HTTPException(
-                status_code=404, detail="Prompt no encontrado o acceso denegado."
-            )
-
-        session.delete(prompt)
-        session.commit()
-        return {"status": "success", "message": "Prompt eliminado del búnker."}
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error borrando prompt {prompt_id}: {e}")
-        session.rollback()
-        raise HTTPException(status_code=500, detail="Error al eliminar el prompt.")
+        <section className="w-full max-w-7xl mx-auto">
+          {batch.length === 0 ? (
+            <ExtractorDropzone
+              onFileDrop={processFiles}
+              isExtracting={isExtracting}
+              error={error}
+            />
+          ) : (
+            <BatchInspector
+              batch={batch}
+              skippedFiles={skippedFiles}
+              onUpdateStatus={updateItemStatus}
+              onRemoveItem={removeItem}
+              onClearAll={clearBatch}
+              onClearSkipped={clearSkipped}
+            />
+          )}
+        </section>
+      </div>
+    </main>
+  );
+}
 </file>
 
 <file path="frontend/src/features/search/hooks/useSearch.ts">
@@ -17204,60 +17180,112 @@ export interface GalleryItem {
 }
 </file>
 
-<file path="frontend/app/reprompt/page.tsx">
-"use client";
+<file path="backend/app/api/routes_prompt.py">
+import logging
+from typing import List
+from fastapi import APIRouter, Depends, HTTPException
+from sqlmodel import Session, select
+from app.core.db import get_session
+from app.api.deps import get_current_user
+from app.models.user import User
+from app.models.prompt import ImagePrompt
+from app.schemas.prompt import PromptCreate, PromptResponse
 
-import { usePromptExtractor } from "@/src/features/extractor/hooks/usePromptExtractor";
-import { ExtractorDropzone } from "@/src/system/organisms/Extractor/Dropzone";
-import { BatchInspector } from "@/src/system/organisms/Extractor/Inspector/BatchInspector";
+logger = logging.getLogger("api_prompts")
+router = APIRouter()
 
-export default function RepromptPage() {
-  const {
-    processFiles,
-    isExtracting,
-    error,
-    batch,
-    skippedFiles,
-    updateItemStatus,
-    removeItem,
-    clearBatch,
-    clearSkipped,
-  } = usePromptExtractor();
 
-  return (
-    <main className="min-h-screen bg-background p-4 md:p-8">
-      <div className="max-w-7xl mx-auto space-y-12">
-        <section className="text-center space-y-6 pt-10 pb-6">
-          <h1 className="text-5xl md:text-7xl font-black uppercase font-mono tracking-tighter text-foreground">
-            Estudio <span className="text-(--accent-color)">REPROMPT</span>
-          </h1>
-          <p className="text-xl md:text-2xl text-(--text-secondary) font-mono max-w-3xl mx-auto leading-relaxed">
-            Arrastra múltiples imágenes o archivos ZIP para extraer metadatos en lote.
-          </p>
-        </section>
+@router.post("/save")
+def save_prompt(
+    prompt_in: PromptCreate,
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    try:
+        new_prompt = ImagePrompt(
+            user_id=current_user.id,
+            title=prompt_in.title,
+            prompt=prompt_in.prompt,
+            negative_prompt=prompt_in.negative_prompt,
+            software=prompt_in.software,
+            model=prompt_in.model,
+            sampler=prompt_in.sampler,
+            steps=prompt_in.steps,
+            cfg_scale=prompt_in.cfg_scale,
+            seed=prompt_in.seed,
+            resolution=prompt_in.resolution,
+            image_url=prompt_in.image_url,
+            extra_data=prompt_in.extra_data,
+        )
 
-        <section className="w-full max-w-7xl mx-auto">
-          {batch.length === 0 ? (
-            <ExtractorDropzone
-              onFileDrop={processFiles}
-              isExtracting={isExtracting}
-              error={error}
-            />
-          ) : (
-            <BatchInspector
-              batch={batch}
-              skippedFiles={skippedFiles}
-              onUpdateStatus={updateItemStatus}
-              onRemoveItem={removeItem}
-              onClearAll={clearBatch}
-              onClearSkipped={clearSkipped}
-            />
-          )}
-        </section>
-      </div>
-    </main>
-  );
-}
+        session.add(new_prompt)
+        session.commit()
+        session.refresh(new_prompt)
+
+        return {
+            "status": "success",
+            "message": "Prompt guardado en el Búnker",
+            "id": new_prompt.id,
+        }
+
+    except Exception as e:
+        session.rollback()
+        logger.error(f"Error guardando prompt: {e}")
+        raise HTTPException(
+            status_code=500, detail="Error interno al guardar en la base de datos."
+        )
+
+
+@router.get("/", response_model=List[PromptResponse])
+def get_my_prompts(
+    skip: int = 0,
+    limit: int = 50,
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    try:
+        statement = (
+            select(ImagePrompt)
+            .where(ImagePrompt.user_id == current_user.id)
+            .order_by(ImagePrompt.created_at.desc())
+            .offset(skip)
+            .limit(limit)
+        )
+
+        prompts = session.exec(statement).all()
+        return prompts
+
+    except Exception as e:
+        logger.error(f"Error obteniendo prompts para usuario {current_user.id}: {e}")
+        raise HTTPException(
+            status_code=500, detail="Error interno al recuperar los datos."
+        )
+
+
+@router.delete("/{prompt_id}")
+def delete_prompt(
+    prompt_id: int,
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    try:
+        # <-- ACTUALIZADO
+        prompt = session.get(ImagePrompt, prompt_id)
+        if not prompt or prompt.user_id != current_user.id:
+            raise HTTPException(
+                status_code=404, detail="Prompt no encontrado o acceso denegado."
+            )
+
+        session.delete(prompt)
+        session.commit()
+        return {"status": "success", "message": "Prompt eliminado del búnker."}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error borrando prompt {prompt_id}: {e}")
+        session.rollback()
+        raise HTTPException(status_code=500, detail="Error al eliminar el prompt.")
 </file>
 
 <file path="frontend/app/globals.css">
@@ -17857,6 +17885,88 @@ export const useSearchStore = create<SearchState>((set, get) => ({
 }));
 </file>
 
+<file path="frontend/app/page.tsx">
+"use client";
+
+import { useEffect } from "react";
+import dynamic from "next/dynamic";
+import { useSearchStore } from "@/src/store/searchStore";
+import { useSearch } from "@/src/features/search/hooks/useSearch";
+import { useHomeInteraction } from "@/src/features/home/hooks/useHomeInteraction";
+
+// 🧱 Componentes Síncronos (Vitales para el primer renderizado y SEO)
+import { HeroSearch } from "@/src/system/organisms/Search/HeroSearch";
+import { TrendingSection } from "@/src/system/organisms/Search/TrendingSection/TrendingSection";
+import { SearchResults } from "@/src/system/organisms/Search/SearchResults/SearchResults";
+import { FeedState } from "@/src/system/molecules/Feedback/FeedState";
+
+const ImageViewerModal = dynamic(
+  () =>
+    import("@/src/system/organisms/Viewer/ImageViewerModal/ImageViewerModal").then(
+      (mod) => mod.ImageViewerModal,
+    ),
+  { ssr: false },
+);
+
+export default function Home() {
+  const { query, results, isLoading, isLoadingMore, hasMore, error, loadMore } = useSearch();
+  const { trending, fetchTrending } = useSearchStore();
+
+  const interactions = useHomeInteraction();
+
+  useEffect(() => {
+    fetchTrending();
+  }, [fetchTrending]);
+
+  if (process.env.NODE_ENV === "development") {
+    console.log("🚨 TELEMETRÍA [HOME]:", { isLoading, count: results?.length, hasMore, query });
+  }
+
+  return (
+    <main className="min-h-screen bg-background text-foreground font-sans">
+      <HeroSearch />
+
+      {error && <FeedState type="error" message={error} />}
+
+      <div className="max-w-90rem mx-auto px-4 pb-12">
+        {!query ? (
+          <TrendingSection
+            trending={trending}
+            onOpenVisor={interactions.handleOpenVisor}
+            onDownloadTotal={interactions.handleDownloadTotal}
+          />
+        ) : isLoading && results.length === 0 ? (
+          <FeedState type="loading" />
+        ) : !isLoading && results.length === 0 ? (
+          <FeedState type="empty" highlight={query} />
+        ) : (
+          <SearchResults
+            results={results}
+            onOpenVisor={interactions.handleOpenVisor}
+            onDownloadTotal={interactions.handleDownloadTotal}
+            hasMore={hasMore}
+            isLoadingMore={isLoadingMore}
+            onLoadMore={loadMore}
+          />
+        )}
+
+        {interactions.viewerSync.isViewerOpen && (
+          <ImageViewerModal
+            title={interactions.activeTitle}
+            pages={interactions.viewerSync.viewerPages}
+            isLoading={interactions.viewerSync.isViewerLoading}
+            isLoadingMore={interactions.viewerSync.isLoadingMore}
+            hasMorePages={interactions.viewerSync.hasMorePages}
+            onLoadMore={interactions.viewerSync.loadNextPage}
+            onClose={interactions.viewerSync.closeViewer}
+          />
+        )}
+      </div>
+    </main>
+  );
+}
+</file>
+
 <file path="frontend/src/system/organisms/Layout/Navbar/NavbarSearch.tsx">
 "use client";
 import React, { useCallback, useEffect, useRef } from "react";
@@ -17982,88 +18092,6 @@ export function GlobalProgress() {
         />
       </div>
     </div>
-  );
-}
-</file>
-
-<file path="frontend/app/page.tsx">
-"use client";
-
-import { useEffect } from "react";
-import dynamic from "next/dynamic";
-import { useSearchStore } from "@/src/store/searchStore";
-import { useSearch } from "@/src/features/search/hooks/useSearch";
-import { useHomeInteraction } from "@/src/features/home/hooks/useHomeInteraction";
-
-// 🧱 Componentes Síncronos (Vitales para el primer renderizado y SEO)
-import { HeroSearch } from "@/src/system/organisms/Search/HeroSearch";
-import { TrendingSection } from "@/src/system/organisms/Search/TrendingSection/TrendingSection";
-import { SearchResults } from "@/src/system/organisms/Search/SearchResults/SearchResults";
-import { FeedState } from "@/src/system/molecules/Feedback/FeedState";
-
-const ImageViewerModal = dynamic(
-  () =>
-    import("@/src/system/organisms/Viewer/ImageViewerModal/ImageViewerModal").then(
-      (mod) => mod.ImageViewerModal,
-    ),
-  { ssr: false },
-);
-
-export default function Home() {
-  const { query, results, isLoading, isLoadingMore, hasMore, error, loadMore } = useSearch();
-  const { trending, fetchTrending } = useSearchStore();
-
-  const interactions = useHomeInteraction();
-
-  useEffect(() => {
-    fetchTrending();
-  }, [fetchTrending]);
-
-  if (process.env.NODE_ENV === "development") {
-    console.log("🚨 TELEMETRÍA [HOME]:", { isLoading, count: results?.length, hasMore, query });
-  }
-
-  return (
-    <main className="min-h-screen bg-background text-foreground font-sans">
-      <HeroSearch />
-
-      {error && <FeedState type="error" message={error} />}
-
-      <div className="max-w-90rem mx-auto px-4 pb-12">
-        {!query ? (
-          <TrendingSection
-            trending={trending}
-            onOpenVisor={interactions.handleOpenVisor}
-            onDownloadTotal={interactions.handleDownloadTotal}
-          />
-        ) : isLoading && results.length === 0 ? (
-          <FeedState type="loading" />
-        ) : !isLoading && results.length === 0 ? (
-          <FeedState type="empty" highlight={query} />
-        ) : (
-          <SearchResults
-            results={results}
-            onOpenVisor={interactions.handleOpenVisor}
-            onDownloadTotal={interactions.handleDownloadTotal}
-            hasMore={hasMore}
-            isLoadingMore={isLoadingMore}
-            onLoadMore={loadMore}
-          />
-        )}
-
-        {interactions.viewerSync.isViewerOpen && (
-          <ImageViewerModal
-            title={interactions.activeTitle}
-            pages={interactions.viewerSync.viewerPages}
-            isLoading={interactions.viewerSync.isViewerLoading}
-            isLoadingMore={interactions.viewerSync.isLoadingMore}
-            hasMorePages={interactions.viewerSync.hasMorePages}
-            onLoadMore={interactions.viewerSync.loadNextPage}
-            onClose={interactions.viewerSync.closeViewer}
-          />
-        )}
-      </div>
-    </main>
   );
 }
 </file>
