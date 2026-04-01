@@ -2486,27 +2486,6 @@ def guardar_json(ruta_directorio: str, nombre_archivo: str, datos: list | dict) 
         raise e
 </file>
 
-<file path="backend/requirements.txt">
-fastapi
-uvicorn
-requests
-beautifulsoup4
-lxml
-selenium
-pydantic
-redis
-rq
-sqlmodel
-psycopg2-binary
-alembic
-passlib[bcrypt]
-python-jose[cryptography]
-python-dotenv
-PyJWT==2.8.0
-redis==5.0.1
-boto3==1.34.62
-</file>
-
 <file path="frontend/.vscode/mcp.json">
 {
   "servers": {
@@ -14134,6 +14113,28 @@ app.include_router(search_router, prefix="/api")
 app.include_router(download_router, prefix="/api")
 app.include_router(auth_router, prefix="/api/auth", tags=["Autenticación"])
 app.include_router(prompt_router, prefix="/api/prompts", tags=["Reprompt Studio"])
+</file>
+
+<file path="backend/requirements.txt">
+fastapi
+uvicorn
+requests
+beautifulsoup4
+lxml
+selenium
+pydantic
+redis
+rq
+sqlmodel
+psycopg2-binary
+alembic
+passlib[bcrypt]
+python-jose[cryptography]
+python-dotenv
+PyJWT==2.8.0
+redis==5.0.1
+boto3==1.34.62
+python-multipart==0.0.9
 </file>
 
 <file path="backend/reset_db.py">

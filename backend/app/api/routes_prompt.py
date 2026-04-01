@@ -1,38 +1,51 @@
 import logging
+import uuid
 from typing import List
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from sqlmodel import Session, select
+
 from app.core.db import get_session
 from app.api.deps import get_current_user
 from app.models.user import User
 from app.models.prompt import ImagePrompt
-from app.schemas.prompt import PromptCreate, PromptResponse
+
+from app.schemas.prompt import PromptCreate, PromptResponse, prompt_form_dependency
+from app.utils.storage import subir_imagen_a_r2
 
 logger = logging.getLogger("api_prompts")
 router = APIRouter()
 
 
-@router.post("/save")
-def save_prompt(
-    prompt_in: PromptCreate,
+@router.post("/upload")
+async def upload_and_save_prompt(
+    file: UploadFile = File(...),
+    prompt_data: PromptCreate = Depends(prompt_form_dependency),  # <-- CLEAN CODE AQUÍ
     current_user: User = Depends(get_current_user),
     session: Session = Depends(get_session),
 ):
+    """
+    Recibe la imagen y sus metadatos. Sube la imagen a R2 y guarda la info en PostgreSQL.
+    """
     try:
+        # 1. Validar la imagen
+        if not file.content_type.startswith("image/"):
+            raise HTTPException(
+                status_code=400, detail="El archivo debe ser una imagen."
+            )
+
+        file_bytes = await file.read()
+
+        ext = file.filename.split(".")[-1] if "." in file.filename else "jpg"
+        unique_filename = f"{current_user.username}/{uuid.uuid4().hex}.{ext}"
+        
+        secure_url = subir_imagen_a_r2(file_bytes, unique_filename, file.content_type)
+
         new_prompt = ImagePrompt(
             user_id=current_user.id,
-            title=prompt_in.title,
-            prompt=prompt_in.prompt,
-            negative_prompt=prompt_in.negative_prompt,
-            software=prompt_in.software,
-            model=prompt_in.model,
-            sampler=prompt_in.sampler,
-            steps=prompt_in.steps,
-            cfg_scale=prompt_in.cfg_scale,
-            seed=prompt_in.seed,
-            resolution=prompt_in.resolution,
-            image_url=prompt_in.image_url,
-            extra_data=prompt_in.extra_data,
+            image_url=secure_url,
+            **prompt_data.model_dump(
+                exclude={"image_url", "extra_data"}
+            ),  # Excluimos los que inyectamos o no usamos directamente
         )
 
         session.add(new_prompt)
@@ -41,15 +54,17 @@ def save_prompt(
 
         return {
             "status": "success",
-            "message": "Prompt guardado en el Búnker",
-            "id": new_prompt.id,
+            "message": "Imagen subida a la nube y prompt guardado con éxito.",
+            "data": {"id": new_prompt.id, "image_url": secure_url},
         }
 
+    except HTTPException:
+        raise
     except Exception as e:
+        logger.error(f"Error en upload_and_save_prompt: {e}")
         session.rollback()
-        logger.error(f"Error guardando prompt: {e}")
         raise HTTPException(
-            status_code=500, detail="Error interno al guardar en la base de datos."
+            status_code=500, detail="Error interno al procesar la imagen."
         )
 
 
