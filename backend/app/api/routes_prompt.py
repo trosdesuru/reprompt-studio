@@ -5,7 +5,7 @@ from sqlmodel import Session, select
 from app.core.db import get_session
 from app.api.deps import get_current_user
 from app.models.user import User
-from app.models.prompt import SavedPrompt
+from app.models.prompt import ImagePrompt
 from app.schemas.prompt import PromptCreate, PromptResponse
 
 logger = logging.getLogger("api_prompts")
@@ -18,37 +18,8 @@ def save_prompt(
     current_user: User = Depends(get_current_user),
     session: Session = Depends(get_session),
 ):
-    # 🟢 BALIZAS DE DEBUG
-    logger.info(
-        f"🛠️ [DEBUG BACKEND] 1. Petición recibida de usuario ID: {current_user.id}"
-    )
-    logger.info(f"🛠️ [DEBUG BACKEND] 2. Título del prompt: {prompt_in.title}")
-
-    img_len = len(prompt_in.image_url) if prompt_in.image_url else 0
-    if img_len > 0:
-        logger.info(
-            f"🛠️ [DEBUG BACKEND] 3. ¡IMAGEN RECIBIDA! Longitud de cadena: {img_len}"
-        )
-    else:
-        logger.warning(
-            f"⚠️ [DEBUG BACKEND] 3. El payload llegó sin imagen (image_url está vacío o nulo)"
-        )
-
     try:
-        steps_val = (
-            int(prompt_in.steps)
-            if prompt_in.steps and prompt_in.steps.isdigit()
-            else None
-        )
-
-        cfg_val = None
-        if prompt_in.cfg_scale:
-            try:
-                cfg_val = float(prompt_in.cfg_scale)
-            except ValueError:
-                pass
-
-        new_prompt = SavedPrompt(
+        new_prompt = ImagePrompt(
             user_id=current_user.id,
             title=prompt_in.title,
             prompt=prompt_in.prompt,
@@ -91,9 +62,9 @@ def get_my_prompts(
 ):
     try:
         statement = (
-            select(SavedPrompt)
-            .where(SavedPrompt.user_id == current_user.id)
-            .order_by(SavedPrompt.created_at.desc())
+            select(ImagePrompt)
+            .where(ImagePrompt.user_id == current_user.id)
+            .order_by(ImagePrompt.created_at.desc())
             .offset(skip)
             .limit(limit)
         )
@@ -115,8 +86,8 @@ def delete_prompt(
     session: Session = Depends(get_session),
 ):
     try:
-        # Buscamos el prompt y verificamos que sea del usuario actual
-        prompt = session.get(SavedPrompt, prompt_id)
+        # <-- ACTUALIZADO
+        prompt = session.get(ImagePrompt, prompt_id)
         if not prompt or prompt.user_id != current_user.id:
             raise HTTPException(
                 status_code=404, detail="Prompt no encontrado o acceso denegado."

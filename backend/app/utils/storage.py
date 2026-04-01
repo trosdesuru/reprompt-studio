@@ -2,8 +2,65 @@
 import json
 import logging
 import os
+import boto3
+from botocore.exceptions import ClientError
 
 logger = logging.getLogger("storage")
+
+# 🟢 CONFIGURACIÓN R2 / S3 LECTURA DEL .ENV
+R2_ENDPOINT_URL = os.getenv("R2_ENDPOINT_URL")
+R2_ACCESS_KEY = os.getenv("R2_ACCESS_KEY")
+R2_SECRET_KEY = os.getenv("R2_SECRET_KEY")
+R2_BUCKET_NAME = os.getenv("R2_BUCKET_NAME")
+R2_PUBLIC_URL = os.getenv("R2_PUBLIC_URL")
+
+# Inicializamos el cliente S3 de forma segura (solo si hay credenciales)
+s3_client = None
+if all([R2_ENDPOINT_URL, R2_ACCESS_KEY, R2_SECRET_KEY]):
+    s3_client = boto3.client(
+        "s3",
+        endpoint_url=R2_ENDPOINT_URL,
+        aws_access_key_id=R2_ACCESS_KEY,
+        aws_secret_access_key=R2_SECRET_KEY,
+        region_name="auto",  # Cloudflare R2 requiere "auto" o "us-east-1"
+    )
+
+
+def subir_imagen_a_r2(
+    file_bytes: bytes, file_name: str, content_type: str = "image/webp"
+) -> str:
+    """
+    Sube un archivo binario a Cloudflare R2 y devuelve la URL pública final.
+    """
+    if not s3_client or not R2_BUCKET_NAME:
+        logger.error("⚠️ Credenciales de R2 no configuradas. Abortando subida.")
+        raise ValueError("Servicio de almacenamiento en la nube no configurado.")
+
+    try:
+        logger.info(f"☁️ Subiendo {file_name} a R2...")
+        s3_client.put_object(
+            Bucket=R2_BUCKET_NAME,
+            Key=file_name,
+            Body=file_bytes,
+            ContentType=content_type,
+        )
+
+        # Construir y devolver la URL pública exacta para guardarla en PostgreSQL
+        url_publica = f"{R2_PUBLIC_URL.rstrip('/')}/{file_name}"
+        logger.info(f"✅ Subida exitosa: {url_publica}")
+        return url_publica
+
+    except ClientError as e:
+        logger.error(f"❌ Error de conexión con R2 (Boto3): {e}")
+        raise e
+    except Exception as e:
+        logger.error(f"❌ Error inesperado subiendo a R2: {e}")
+        raise e
+
+
+# ========================================================
+# ⬇️ FUNCIONES LEGACY (Mantenidas para compatibilidad local)
+# ========================================================
 
 
 def preparar_directorio(ruta_base: str, nombre_carpeta: str) -> str:
@@ -14,7 +71,7 @@ def preparar_directorio(ruta_base: str, nombre_carpeta: str) -> str:
 
 
 def guardar_archivo(ruta_directorio: str, nombre_archivo: str, iter_content) -> str:
-    """Guarda un flujo de bytes (stream) en el disco duro."""
+    """Guarda un flujo de bytes (stream) en el disco duro local."""
     ruta_archivo = os.path.join(ruta_directorio, nombre_archivo)
     try:
         with open(ruta_archivo, "wb") as f:
@@ -27,7 +84,7 @@ def guardar_archivo(ruta_directorio: str, nombre_archivo: str, iter_content) -> 
 
 
 def guardar_json(ruta_directorio: str, nombre_archivo: str, datos: list | dict) -> str:
-    """Guarda un diccionario o lista de Python como archivo .json"""
+    """Guarda un diccionario o lista de Python como archivo .json local"""
     os.makedirs(ruta_directorio, exist_ok=True)
     ruta_archivo = os.path.join(ruta_directorio, nombre_archivo)
     try:
