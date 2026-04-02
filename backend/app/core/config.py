@@ -1,6 +1,5 @@
 import requests
 
-# Sesión global persistente para máxima velocidad
 http_session = requests.Session()
 http_session.headers.update(
     {

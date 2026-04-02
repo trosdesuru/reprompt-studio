@@ -9,13 +9,22 @@ from app.models.user import User
 from app.models.prompt import ImagePrompt
 from app.schemas.prompt import PromptCreate
 from app.api.deps import get_current_user, RateLimiter
+from app.core.config import settings
 
-from app.utils.storage import generar_presigned_url, eliminar_de_r2
+from app.utils.storage import eliminar_de_r2
+import boto3
+
+s3_client = boto3.client(
+    "s3",
+    endpoint_url=settings.R2_ENDPOINT_URL,
+    aws_access_key_id=settings.R2_ACCESS_KEY,
+    aws_secret_access_key=settings.R2_SECRET_KEY,
+    region_name="auto",
+)
 
 router = APIRouter()
 
 
-# Schema para pedir el ticket
 class PresignedUrlRequest(BaseModel):
     file_name: str
     content_type: str
@@ -33,16 +42,34 @@ class PresignedUrlRequest(BaseModel):
 def get_upload_url(
     data: PresignedUrlRequest, current_user: User = Depends(get_current_user)
 ):
-    """Devuelve un ticket temporal para subir un archivo directo a R2"""
-    ext = data.file_name.split(".")[-1] if "." in data.file_name else "png"
-    # Saneamiento de nombre: Evita colisiones y bloquea ejecutables maliciosos lógicamente
-    safe_key = f"prompts/{current_user.username}/{uuid.uuid4().hex}.{ext}"
+    file_extension = data.filename.split(".")[-1].lower()
+    if file_extension not in ["png", "jpg", "jpeg", "webp"]:
+        raise HTTPException(status_code=400, detail="Extensión no permitida.")
+
+    # 2. REGLA DE CUARENTENA: Destruimos el nombre original y forzamos la ruta /temp
+    safe_filename = f"{uuid.uuid4().hex}.{file_extension}"
+    s3_key = f"temp/{current_user.id}/{safe_filename}"
 
     try:
-        urls = generar_presigned_url(safe_key, data.content_type)
-        return {"status": "success", "data": urls}
+        presigned_url = s3_client.generate_presigned_url(
+            "put_object",
+            Params={
+                "Bucket": settings.R2_BUCKET__NAME,
+                "Key": s3_key,
+                "ContentType": f"image/{'jpeg' if file_extension == 'jpg' else file_extension}",
+            },
+            ExpiresIn=300,
+        )
+
+        return {
+            "status": "success",
+            "upload_url": presigned_url,
+            "key": s3_key,
+        }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(
+            status_code=500, detail="Error generando acceso seguro al servidor."
+        )
 
 
 @router.post(
