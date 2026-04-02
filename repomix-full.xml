@@ -1523,80 +1523,6 @@ export const fetchSeguro = async <T = any>(
 };
 </file>
 
-<file path="frontend/src/services/api/downloads.ts">
-import { API_URL, fetchSeguro } from "./client";
-
-export const downloadApi = {
-  downloadAll: (url: string, title: string) =>
-    fetchSeguro(`${API_URL}/descargar`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ url, title }),
-    }),
-  downloadImage: (url_img: string, title: string, index: number) =>
-    fetchSeguro(`${API_URL}/descargar_imagen`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ url_img, title, index }),
-    }),
-};
-</file>
-
-<file path="frontend/src/services/api/prompts.ts">
-import { API_URL, fetchSeguro } from "./client";
-
-export const promptApi = {
-  savePrompt: (data: any) =>
-    fetchSeguro(`${API_URL}/prompts/save`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
-    }),
-
-  getMyPrompt: () => fetchSeguro(`${API_URL}/prompts/`),
-  deletePrompt: (id: number) => fetchSeguro(`${API_URL}/prompts/${id}`, { method: "DELETE" }),
-};
-</file>
-
-<file path="frontend/src/services/api/search.ts">
-import { API_URL, fetchSeguro } from "./client";
-
-export const searchApi = {
-  buscar: (
-    query: string,
-    next_id: string | null = null,
-    categories: Record<string, boolean> | null = null,
-  ) => {
-    let endpoint = `${API_URL}/buscar?query=${encodeURIComponent(query)}`;
-    if (next_id) endpoint += `&next_id=${next_id}`;
-    if (categories) endpoint += `&categories=${encodeURIComponent(JSON.stringify(categories))}`;
-    return fetchSeguro(endpoint);
-  },
-  leer: (url: string, p: number = 0) =>
-    fetchSeguro(`${API_URL}/leer?url=${encodeURIComponent(url)}&p=${p}`),
-
-  resolverImagen: (url: string) =>
-    fetchSeguro(`${API_URL}/resolver_imagen?url=${encodeURIComponent(url)}`),
-
-  getTrends: (limit: number = 5) => fetchSeguro(`${API_URL}/tendencias?limit=${limit}`),
-
-  registerInteraction: (
-    item: { url: string; title: string; thumb: string },
-    type: "view" | "download",
-  ) =>
-    fetchSeguro(`${API_URL}/interact`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        url: item.url,
-        title: item.title,
-        thumb: item.thumb,
-        interaction_type: type,
-      }),
-    }),
-};
-</file>
-
 <file path="frontend/src/services/api.ts">
 import { authApi } from "./api/auth";
 import { searchApi } from "./api/search";
@@ -1609,6 +1535,273 @@ export const api = {
   ...downloadApi,
   ...promptApi,
 };
+</file>
+
+<file path="frontend/src/store/notificationStore.tsx">
+import { create } from "zustand";
+import toast from "react-hot-toast";
+import { IconAlertTriangle, IconInfoCircle } from "@tabler/icons-react";
+
+export type NotificationType = "success" | "error" | "info" | "warning";
+
+export interface AppNotification {
+  id: string;
+  title: string;
+  message: string;
+  type: NotificationType;
+  read: boolean;
+  timestamp: Date;
+}
+
+interface NotificationState {
+  notifications: AppNotification[];
+  unreadCount: number;
+  notify: (title: string, message: string, type?: NotificationType) => void;
+  markAsRead: (id: string) => void;
+  markAllAsRead: () => void;
+  clearAll: () => void;
+}
+
+export const useNotificationStore = create<NotificationState>((set) => ({
+  notifications: [],
+  unreadCount: 0,
+
+  notify: (title, message, type = "info") => {
+    const id = crypto.randomUUID();
+    const newNotif: AppNotification = {
+      id,
+      title,
+      message,
+      type,
+      read: false,
+      timestamp: new Date(),
+    };
+
+    set((state) => ({
+      notifications: [newNotif, ...state.notifications].slice(0, 50),
+      unreadCount: state.unreadCount + 1,
+    }));
+
+    const toastMessage = `${title}: ${message}`;
+
+    switch (type) {
+      case "success":
+        toast.success(toastMessage, { id });
+        break;
+      case "error":
+        toast.error(toastMessage, { id });
+        break;
+      case "warning":
+        toast(toastMessage, {
+          id,
+          icon: <IconAlertTriangle size={20} className="text-yellow-500" />, // 🟢 Icono Tabler inyectado
+        });
+        break;
+      case "info":
+      default:
+        toast(toastMessage, {
+          id,
+          icon: <IconInfoCircle size={20} className="text-blue-500" />, // 🟢 Icono Tabler inyectado
+        });
+        break;
+    }
+  },
+
+  markAsRead: (id) =>
+    set((state) => {
+      const notifs = state.notifications.map((n) => (n.id === id ? { ...n, read: true } : n));
+      return {
+        notifications: notifs,
+        unreadCount: notifs.filter((n) => !n.read).length,
+      };
+    }),
+
+  markAllAsRead: () =>
+    set((state) => ({
+      notifications: state.notifications.map((n) => ({ ...n, read: true })),
+      unreadCount: 0,
+    })),
+
+  clearAll: () => set({ notifications: [], unreadCount: 0 }),
+}));
+</file>
+
+<file path="frontend/src/system/atoms/Badge.tsx">
+interface BadgeProps {
+  text: string;
+  color?: string;
+  className?: string;
+}
+
+export function Badge({ text, color = "bg-blue-500", className = "" }: BadgeProps) {
+  return (
+    <span
+      className={`${color} ${className} text-white font-mono text-[9px] font-bold px-1.5 py-0.5 border border-black shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] truncate max-w-30`}
+    >
+      {text}
+    </span>
+  );
+}
+</file>
+
+<file path="frontend/src/system/atoms/Button.tsx">
+// frontend/src/components/ui/Button.tsx
+import { ButtonHTMLAttributes, forwardRef } from "react";
+
+interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
+  variant?: "primary" | "secondary" | "danger" | "ghost";
+  size?: "sm" | "md" | "lg";
+  isLoading?: boolean;
+}
+
+export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
+  (
+    { className = "", variant = "primary", size = "md", isLoading, children, disabled, ...props },
+    ref,
+  ) => {
+    // Mapeo de variantes de color (Neo-brutalismo)
+    const variants = {
+      primary: "bg-[var(--accent-color)] text-white hover:brightness-110",
+      secondary:
+        "bg-[var(--bg-secondary)] text-[var(--text-primary)] hover:bg-gray-100 dark:hover:bg-gray-800",
+      danger: "bg-red-600 text-white hover:bg-red-500",
+      ghost:
+        "bg-transparent border-transparent shadow-none hover:bg-gray-200 dark:hover:bg-gray-800 text-[var(--text-secondary)]",
+    };
+
+    // Mapeo de tamaños
+    const sizes = {
+      sm: "px-4 py-2 text-sm",
+      md: "px-6 py-3 text-base",
+      lg: "px-10 py-4 text-lg font-bold",
+    };
+
+    // Si es "ghost", le quitamos el borde duro y la sombra brutalista
+    const brutalistClasses = variant === "ghost" ? "" : "neo-border neo-shadow";
+
+    return (
+      <button
+        ref={ref}
+        disabled={disabled || isLoading}
+        className={`
+          inline-flex items-center justify-center font-bold uppercase tracking-wide transition-all duration-200
+          disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none
+          ${variants[variant]} 
+          ${sizes[size]} 
+          ${brutalistClasses}
+          ${className}
+        `}
+        {...props}
+      >
+        {isLoading && (
+          <svg
+            className="animate-spin -ml-1 mr-3 h-5 w-5 text-current"
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+          >
+            <circle
+              className="opacity-25"
+              cx="12"
+              cy="12"
+              r="10"
+              stroke="currentColor"
+              strokeWidth="4"
+            ></circle>
+            <path
+              className="opacity-75"
+              fill="currentColor"
+              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+            ></path>
+          </svg>
+        )}
+        {children}
+      </button>
+    );
+  },
+);
+
+Button.displayName = "Button";
+</file>
+
+<file path="frontend/src/system/atoms/Overlay.tsx">
+export function Overlay({ isOpen, onClick }: { isOpen: boolean; onClick: () => void }) {
+  if (!isOpen) return null;
+  return (
+    <div
+      className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 animate-fade-in"
+      onClick={onClick}
+    />
+  );
+}
+</file>
+
+<file path="frontend/src/system/atoms/Skeleton.tsx">
+export function Skeleton({ className = "" }: { className?: string }) {
+  return <div className={`animate-pulse bg-(--border-color)/20 rounded ${className}`} />;
+}
+</file>
+
+<file path="frontend/src/system/molecules/FormField.tsx">
+interface Props extends React.InputHTMLAttributes<HTMLInputElement> {
+  label: string;
+  error?: string;
+}
+
+export function FormField({ label, error, ...props }: Props) {
+  return (
+    <div className="flex flex-col gap-1.5 w-full">
+      <label className="text-xs font-black uppercase font-mono">{label}</label>
+      <input
+        {...props}
+        className="neo-border p-2 bg-background font-mono text-sm focus:outline-none focus:ring-2 focus:ring-(--accent-color)"
+      />
+      {error && <span className="text-red-500 text-[10px] font-mono">{error}</span>}
+    </div>
+  );
+}
+</file>
+
+<file path="frontend/src/system/molecules/NotificationsItem.tsx">
+import { AppNotification } from "@/src/store/notificationStore";
+import { IconCheck, IconAlertTriangle, IconInfoCircle } from "@tabler/icons-react";
+
+export function NotificationItem({
+  n,
+  onRead,
+}: {
+  n: AppNotification;
+  onRead: (id: string) => void;
+}) {
+  const icons = {
+    success: <IconCheck size={16} className="text-green-500" />,
+    error: <IconAlertTriangle size={16} className="text-red-500" />,
+    warning: <IconAlertTriangle size={16} className="text-yellow-500" />,
+    info: <IconInfoCircle size={16} className="text-blue-500" />,
+  };
+
+  return (
+    <div
+      onClick={() => onRead(n.id)}
+      className={`p-4 border-b border-(--border-color)/50 cursor-pointer transition-colors flex gap-3 ${n.read ? "bg-background opacity-60" : "bg-(--accent-color)/5"}`}
+    >
+      <div className="mt-0.5">{icons[n.type]}</div>
+      <div className="flex flex-col gap-1 w-full">
+        <div className="flex justify-between items-start gap-2">
+          <span
+            className={`text-xs font-bold font-mono uppercase truncate ${!n.read ? "text-foreground" : "text-(--text-secondary)"}`}
+          >
+            {n.title}
+          </span>
+          <span className="text-[9px] text-(--text-secondary) whitespace-nowrap">
+            {new Date(n.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+          </span>
+        </div>
+        <p className="text-xs text-(--text-secondary) leading-snug line-clamp-2">{n.message}</p>
+      </div>
+    </div>
+  );
+}
 </file>
 
 <file path="frontend/src/utils/errors/AppErrors.ts">
@@ -4272,6 +4465,32 @@ export function useRedirectIfAuthenticated(redirectTo: string = "/") {
 }
 </file>
 
+<file path="frontend/src/features/auth/AuthProvider.tsx">
+"use client";
+
+import { useEffect } from "react";
+import { useAuthStore } from "@/src/store/authStore";
+
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const { checkAuth } = useAuthStore();
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const isAuthPage =
+        window.location.pathname.includes("/login") || window.location.pathname.includes("/join");
+
+      if (!isAuthPage) {
+        checkAuth();
+      } else {
+        useAuthStore.setState({ isLoadingAuth: false });
+      }
+    }
+  }, [checkAuth]);
+
+  return <>{children}</>;
+}
+</file>
+
 <file path="frontend/src/features/auth/GoogleAuthButton.tsx">
 "use client";
 
@@ -4784,106 +5003,6 @@ export function parsePromptData(rawText: string): ExtractedPromptData {
 }
 </file>
 
-<file path="frontend/src/features/home/hooks/useHomeInteraction.ts">
-import { useState, useCallback } from "react";
-import { api } from "@/src/services/api";
-import { useNotificationStore } from "@/src/store/notificationStore";
-import { useViewerSync } from "@/src/features/image-viewer/hooks/useViewerSync";
-import { GalleryItem } from "@/src/types/gallery";
-
-export function useHomeInteraction() {
-  const { notify } = useNotificationStore();
-  const [activeUrl, setActiveUrl] = useState("");
-  const [activeTitle, setActiveTitle] = useState("");
-
-  const viewerSync = useViewerSync(activeUrl);
-
-  const handleOpenVisor = useCallback((item: GalleryItem) => {
-    setActiveUrl(item.url);
-    setActiveTitle(item.title);
-    viewerSync.openViewer(item.url);
-    
-    // Disparamos la métrica en background sin esperar (Fire and Forget)
-    api.registerInteraction(item, "view").catch((err) => 
-      console.error("Fallo al registrar vista:", err)
-    );
-  }, [viewerSync]);
-
-  const handleDownloadTotal = useCallback(async (item: GalleryItem) => {
-    try {
-      notify("Descarga", `⬇️ Preparando ${item.title}...`, "info");
-      await api.downloadAll(item.url, item.title);
-      api.registerInteraction(item, "download").catch(console.error);
-      notify("Éxito", `✅ Descarga encolada: ${item.title}`, "success");
-    } catch (err) {
-      notify("Error", "❌ Falla crítica al encolar la descarga.", "error");
-    }
-  }, [notify]);
-
-  return {
-    activeTitle,
-    viewerSync,
-    handleOpenVisor,
-    handleDownloadTotal,
-  };
-}
-</file>
-
-<file path="frontend/src/features/studio/hooks/useStudio.ts">
-import { useState, useEffect, useCallback } from "react";
-import { api } from "@/src/services/api";
-import { handleError } from "@/src/utils/errors/ErrorHandler";
-
-export interface SavedPrompt {
-  id: number;
-  title: string;
-  prompt: string;
-  negative_prompt?: string;
-  software?: string;
-  model?: string;
-  sampler?: string;
-  created_at: string;
-  image_url?: string; // 🟢 Aquí está la propiedad que pedía PromptCard
-  extra_data: { loras?: any[]; triggerWords?: string[] };
-}
-
-export function useStudio() {
-  const [prompts, setPrompts] = useState<SavedPrompt[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetchPrompts = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const data = await api.getMyPrompt();
-      setPrompts(data);
-    } catch (err: unknown) {
-      const msg = handleError(err, "useStudio");
-      setError(msg);
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  const deletePrompt = async (id: number) => {
-    try {
-      await api.deletePrompt(id);
-      setPrompts((prev) => prev.filter((p) => p.id !== id));
-    } catch (err: unknown) {
-      handleError(err, "BorrarPrompt");
-      alert("No se pudo eliminar el prompt.");
-    }
-  };
-
-  useEffect(() => {
-    fetchPrompts();
-  }, [fetchPrompts]);
-
-  return { prompts, isLoading, error, refetch: fetchPrompts, deletePrompt };
-}
-</file>
-
 <file path="frontend/src/services/api/auth.ts">
 import { UserLogin, UserRegister } from "@/src/types/auth.types";
 import { API_URL, fetchSeguro } from "./client";
@@ -4919,6 +5038,80 @@ export const authApi = {
   revocarTodasLasSesiones: () =>
     fetchSeguro(`${API_URL}/auth/admin/sessions/revoke-all`, { method: "POST" }),
   refrescarToken: () => fetchSeguro(`${API_URL}/auth/refresh`, { method: "POST" }),
+};
+</file>
+
+<file path="frontend/src/services/api/downloads.ts">
+import { API_URL, fetchSeguro } from "./client";
+
+export const downloadApi = {
+  downloadAll: (url: string, title: string) =>
+    fetchSeguro(`${API_URL}/descargar`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ url, title }),
+    }),
+  downloadImage: (url_img: string, title: string, index: number) =>
+    fetchSeguro(`${API_URL}/descargar_imagen`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ url_img, title, index }),
+    }),
+};
+</file>
+
+<file path="frontend/src/services/api/prompts.ts">
+import { API_URL, fetchSeguro } from "./client";
+
+export const promptApi = {
+  savePrompt: (data: any) =>
+    fetchSeguro(`${API_URL}/prompts/save`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    }),
+
+  getMyPrompt: () => fetchSeguro(`${API_URL}/prompts/`),
+  deletePrompt: (id: number) => fetchSeguro(`${API_URL}/prompts/${id}`, { method: "DELETE" }),
+};
+</file>
+
+<file path="frontend/src/services/api/search.ts">
+import { API_URL, fetchSeguro } from "./client";
+
+export const searchApi = {
+  buscar: (
+    query: string,
+    next_id: string | null = null,
+    categories: Record<string, boolean> | null = null,
+  ) => {
+    let endpoint = `${API_URL}/buscar?query=${encodeURIComponent(query)}`;
+    if (next_id) endpoint += `&next_id=${next_id}`;
+    if (categories) endpoint += `&categories=${encodeURIComponent(JSON.stringify(categories))}`;
+    return fetchSeguro(endpoint);
+  },
+  leer: (url: string, p: number = 0) =>
+    fetchSeguro(`${API_URL}/leer?url=${encodeURIComponent(url)}&p=${p}`),
+
+  resolverImagen: (url: string) =>
+    fetchSeguro(`${API_URL}/resolver_imagen?url=${encodeURIComponent(url)}`),
+
+  getTrends: (limit: number = 5) => fetchSeguro(`${API_URL}/tendencias?limit=${limit}`),
+
+  registerInteraction: (
+    item: { url: string; title: string; thumb: string },
+    type: "view" | "download",
+  ) =>
+    fetchSeguro(`${API_URL}/interact`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        url: item.url,
+        title: item.title,
+        thumb: item.thumb,
+        interaction_type: type,
+      }),
+    }),
 };
 </file>
 
@@ -4987,193 +5180,6 @@ export const useAuthStore = create<AuthState>((set) => ({
 }));
 </file>
 
-<file path="frontend/src/store/notificationStore.tsx">
-import { create } from "zustand";
-import toast from "react-hot-toast";
-import { IconAlertTriangle, IconInfoCircle } from "@tabler/icons-react";
-
-export type NotificationType = "success" | "error" | "info" | "warning";
-
-export interface AppNotification {
-  id: string;
-  title: string;
-  message: string;
-  type: NotificationType;
-  read: boolean;
-  timestamp: Date;
-}
-
-interface NotificationState {
-  notifications: AppNotification[];
-  unreadCount: number;
-  notify: (title: string, message: string, type?: NotificationType) => void;
-  markAsRead: (id: string) => void;
-  markAllAsRead: () => void;
-  clearAll: () => void;
-}
-
-export const useNotificationStore = create<NotificationState>((set) => ({
-  notifications: [],
-  unreadCount: 0,
-
-  notify: (title, message, type = "info") => {
-    const id = crypto.randomUUID();
-    const newNotif: AppNotification = {
-      id,
-      title,
-      message,
-      type,
-      read: false,
-      timestamp: new Date(),
-    };
-
-    set((state) => ({
-      notifications: [newNotif, ...state.notifications].slice(0, 50),
-      unreadCount: state.unreadCount + 1,
-    }));
-
-    const toastMessage = `${title}: ${message}`;
-
-    switch (type) {
-      case "success":
-        toast.success(toastMessage, { id });
-        break;
-      case "error":
-        toast.error(toastMessage, { id });
-        break;
-      case "warning":
-        toast(toastMessage, {
-          id,
-          icon: <IconAlertTriangle size={20} className="text-yellow-500" />, // 🟢 Icono Tabler inyectado
-        });
-        break;
-      case "info":
-      default:
-        toast(toastMessage, {
-          id,
-          icon: <IconInfoCircle size={20} className="text-blue-500" />, // 🟢 Icono Tabler inyectado
-        });
-        break;
-    }
-  },
-
-  markAsRead: (id) =>
-    set((state) => {
-      const notifs = state.notifications.map((n) => (n.id === id ? { ...n, read: true } : n));
-      return {
-        notifications: notifs,
-        unreadCount: notifs.filter((n) => !n.read).length,
-      };
-    }),
-
-  markAllAsRead: () =>
-    set((state) => ({
-      notifications: state.notifications.map((n) => ({ ...n, read: true })),
-      unreadCount: 0,
-    })),
-
-  clearAll: () => set({ notifications: [], unreadCount: 0 }),
-}));
-</file>
-
-<file path="frontend/src/system/atoms/Badge.tsx">
-interface BadgeProps {
-  text: string;
-  color?: string;
-  className?: string;
-}
-
-export function Badge({ text, color = "bg-blue-500", className = "" }: BadgeProps) {
-  return (
-    <span
-      className={`${color} ${className} text-white font-mono text-[9px] font-bold px-1.5 py-0.5 border border-black shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] truncate max-w-30`}
-    >
-      {text}
-    </span>
-  );
-}
-</file>
-
-<file path="frontend/src/system/atoms/Button.tsx">
-// frontend/src/components/ui/Button.tsx
-import { ButtonHTMLAttributes, forwardRef } from "react";
-
-interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: "primary" | "secondary" | "danger" | "ghost";
-  size?: "sm" | "md" | "lg";
-  isLoading?: boolean;
-}
-
-export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
-  (
-    { className = "", variant = "primary", size = "md", isLoading, children, disabled, ...props },
-    ref,
-  ) => {
-    // Mapeo de variantes de color (Neo-brutalismo)
-    const variants = {
-      primary: "bg-[var(--accent-color)] text-white hover:brightness-110",
-      secondary:
-        "bg-[var(--bg-secondary)] text-[var(--text-primary)] hover:bg-gray-100 dark:hover:bg-gray-800",
-      danger: "bg-red-600 text-white hover:bg-red-500",
-      ghost:
-        "bg-transparent border-transparent shadow-none hover:bg-gray-200 dark:hover:bg-gray-800 text-[var(--text-secondary)]",
-    };
-
-    // Mapeo de tamaños
-    const sizes = {
-      sm: "px-4 py-2 text-sm",
-      md: "px-6 py-3 text-base",
-      lg: "px-10 py-4 text-lg font-bold",
-    };
-
-    // Si es "ghost", le quitamos el borde duro y la sombra brutalista
-    const brutalistClasses = variant === "ghost" ? "" : "neo-border neo-shadow";
-
-    return (
-      <button
-        ref={ref}
-        disabled={disabled || isLoading}
-        className={`
-          inline-flex items-center justify-center font-bold uppercase tracking-wide transition-all duration-200
-          disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none
-          ${variants[variant]} 
-          ${sizes[size]} 
-          ${brutalistClasses}
-          ${className}
-        `}
-        {...props}
-      >
-        {isLoading && (
-          <svg
-            className="animate-spin -ml-1 mr-3 h-5 w-5 text-current"
-            xmlns="http://www.w3.org/2000/svg"
-            fill="none"
-            viewBox="0 0 24 24"
-          >
-            <circle
-              className="opacity-25"
-              cx="12"
-              cy="12"
-              r="10"
-              stroke="currentColor"
-              strokeWidth="4"
-            ></circle>
-            <path
-              className="opacity-75"
-              fill="currentColor"
-              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-            ></path>
-          </svg>
-        )}
-        {children}
-      </button>
-    );
-  },
-);
-
-Button.displayName = "Button";
-</file>
-
 <file path="frontend/src/system/atoms/FilterChip.tsx">
 import { cn } from "@/src/utils/lib/cn";
 
@@ -5233,18 +5239,6 @@ export function Heading({ level = "h2", children, className, ...props }: Heading
     <Component className={cn(baseStyles, sizeStyles[level], className)} {...props}>
       {children}
     </Component>
-  );
-}
-</file>
-
-<file path="frontend/src/system/atoms/Overlay.tsx">
-export function Overlay({ isOpen, onClick }: { isOpen: boolean; onClick: () => void }) {
-  if (!isOpen) return null;
-  return (
-    <div
-      className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 animate-fade-in"
-      onClick={onClick}
-    />
   );
 }
 </file>
@@ -5315,12 +5309,6 @@ function ProgressValue({ className, ...props }: ProgressPrimitive.Value.Props) {
 }
 
 export { Progress, ProgressTrack, ProgressIndicator, ProgressLabel, ProgressValue };
-</file>
-
-<file path="frontend/src/system/atoms/Skeleton.tsx">
-export function Skeleton({ className = "" }: { className?: string }) {
-  return <div className={`animate-pulse bg-(--border-color)/20 rounded ${className}`} />;
-}
 </file>
 
 <file path="frontend/src/system/molecules/Feedback/FeedState.tsx">
@@ -5394,26 +5382,6 @@ export function FilterBar({ activeCategories, onToggle }: FilterBarProps) {
 }
 </file>
 
-<file path="frontend/src/system/molecules/FormField.tsx">
-interface Props extends React.InputHTMLAttributes<HTMLInputElement> {
-  label: string;
-  error?: string;
-}
-
-export function FormField({ label, error, ...props }: Props) {
-  return (
-    <div className="flex flex-col gap-1.5 w-full">
-      <label className="text-xs font-black uppercase font-mono">{label}</label>
-      <input
-        {...props}
-        className="neo-border p-2 bg-background font-mono text-sm focus:outline-none focus:ring-2 focus:ring-(--accent-color)"
-      />
-      {error && <span className="text-red-500 text-[10px] font-mono">{error}</span>}
-    </div>
-  );
-}
-</file>
-
 <file path="frontend/src/system/molecules/MediaOverlay.tsx">
 "use client";
 
@@ -5471,48 +5439,6 @@ export function MediaOverlay({ title, prompt, tags, variant = "gallery", onDownl
             ))}
           </div>
         )}
-      </div>
-    </div>
-  );
-}
-</file>
-
-<file path="frontend/src/system/molecules/NotificationsItem.tsx">
-import { AppNotification } from "@/src/store/notificationStore";
-import { IconCheck, IconAlertTriangle, IconInfoCircle } from "@tabler/icons-react";
-
-export function NotificationItem({
-  n,
-  onRead,
-}: {
-  n: AppNotification;
-  onRead: (id: string) => void;
-}) {
-  const icons = {
-    success: <IconCheck size={16} className="text-green-500" />,
-    error: <IconAlertTriangle size={16} className="text-red-500" />,
-    warning: <IconAlertTriangle size={16} className="text-yellow-500" />,
-    info: <IconInfoCircle size={16} className="text-blue-500" />,
-  };
-
-  return (
-    <div
-      onClick={() => onRead(n.id)}
-      className={`p-4 border-b border-(--border-color)/50 cursor-pointer transition-colors flex gap-3 ${n.read ? "bg-background opacity-60" : "bg-(--accent-color)/5"}`}
-    >
-      <div className="mt-0.5">{icons[n.type]}</div>
-      <div className="flex flex-col gap-1 w-full">
-        <div className="flex justify-between items-start gap-2">
-          <span
-            className={`text-xs font-bold font-mono uppercase truncate ${!n.read ? "text-foreground" : "text-(--text-secondary)"}`}
-          >
-            {n.title}
-          </span>
-          <span className="text-[9px] text-(--text-secondary) whitespace-nowrap">
-            {new Date(n.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-          </span>
-        </div>
-        <p className="text-xs text-(--text-secondary) leading-snug line-clamp-2">{n.message}</p>
       </div>
     </div>
   );
@@ -6070,10 +5996,6 @@ export function cn(...inputs: ClassValue[]) {
 }
 </file>
 
-<file path=".clinerules">
-Eres Arquitecto FullStack y Diseñador UX/UI. El sistema de diseño es minimalismo extremo estilo Civitai: baja carga cognitiva, interfaz invisible y contenido como protagonista absoluto. Elimina cualquier rastro de neo-brutalismo. Reglas estéticas obligatorias con Tailwind CSS: fondos neutros sólidos, bordes sutiles de 1px (border-border), esquinas redondeadas (rounded-lg o rounded-xl), sombras suaves desenfocadas (shadow-sm a shadow-lg), tipografía sans-serif limpia y legible, uso estratégico del espacio negativo. Reglas técnicas obligatorias: TypeScript estricto, arquitectura atómica modular, cero dependencias externas innecesarias, optimización extrema de Core Web Vitals (cero CLS), programación defensiva y manejo estricto de nulos. Ejecuta las tareas con código limpio y escalable. No des explicaciones innecesarias, aplica soluciones directas y eficientes.
-</file>
-
 <file path=".gitignore">
 # trosdesuru-scraper-galerias/.gitignore
 
@@ -6309,29 +6231,48 @@ export default function RepromptPage() {
 }
 </file>
 
-<file path="frontend/src/features/auth/AuthProvider.tsx">
-"use client";
+<file path="frontend/src/features/home/hooks/useHomeInteraction.ts">
+import { useState, useCallback } from "react";
+import { api } from "@/src/services/api";
+import { useNotificationStore } from "@/src/store/notificationStore";
+import { useViewerSync } from "@/src/features/image-viewer/hooks/useViewerSync";
+import { GalleryItem } from "@/src/types/gallery";
 
-import { useEffect } from "react";
-import { useAuthStore } from "@/src/store/authStore";
+export function useHomeInteraction() {
+  const { notify } = useNotificationStore();
+  const [activeUrl, setActiveUrl] = useState("");
+  const [activeTitle, setActiveTitle] = useState("");
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const { checkAuth } = useAuthStore();
+  const viewerSync = useViewerSync(activeUrl);
 
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const isAuthPage =
-        window.location.pathname.includes("/login") || window.location.pathname.includes("/join");
+  const handleOpenVisor = useCallback((item: GalleryItem) => {
+    setActiveUrl(item.url);
+    setActiveTitle(item.title);
+    viewerSync.openViewer(item.url);
+    
+    // Disparamos la métrica en background sin esperar (Fire and Forget)
+    api.registerInteraction(item, "view").catch((err) => 
+      console.error("Fallo al registrar vista:", err)
+    );
+  }, [viewerSync]);
 
-      if (!isAuthPage) {
-        checkAuth();
-      } else {
-        useAuthStore.setState({ isLoadingAuth: false });
-      }
+  const handleDownloadTotal = useCallback(async (item: GalleryItem) => {
+    try {
+      notify("Descarga", `⬇️ Preparando ${item.title}...`, "info");
+      await api.downloadAll(item.url, item.title);
+      api.registerInteraction(item, "download").catch(console.error);
+      notify("Éxito", `✅ Descarga encolada: ${item.title}`, "success");
+    } catch (err) {
+      notify("Error", "❌ Falla crítica al encolar la descarga.", "error");
     }
-  }, [checkAuth]);
+  }, [notify]);
 
-  return <>{children}</>;
+  return {
+    activeTitle,
+    viewerSync,
+    handleOpenVisor,
+    handleDownloadTotal,
+  };
 }
 </file>
 
@@ -6709,167 +6650,6 @@ export default function RegisterForm() {
         {isLoading ? "Verificando..." : "Reclamar Acceso"}
       </Button>
     </form>
-  );
-}
-</file>
-
-<file path="frontend/src/system/organisms/Extractor/Inspector/index.tsx">
-import { useState } from "react";
-import { ExtractedPromptData } from "@/src/features/extractor/utils/parsers/types";
-import { InspectorBadges } from "./InspectorBadges";
-import { InspectorResources } from "./InspectorResources";
-import { InspectorPromptBox } from "./InspectorPromptBox";
-import { Button } from "@/src/system/atoms/Button";
-import { IconTrash, IconDeviceFloppy } from "@tabler/icons-react";
-import { api } from "@/src/services/api";
-import { handleError } from "@/src/utils/errors/ErrorHandler";
-
-interface Props {
-  data: ExtractedPromptData;
-  previewUrl: string | null;
-  onReset: () => void;
-}
-
-export function ExtractorInspector({ data, previewUrl, onReset }: Props) {
-  const [isSaving, setIsSaving] = useState(false);
-  const [saveStatus, setSaveStatus] = useState<"idle" | "success" | "error">("idle");
-
-  const handleSave = async () => {
-    setIsSaving(true);
-    setSaveStatus("idle");
-
-    console.log("🛠️ [DEBUG FRONTEND] 1. Botón Guardar pulsado");
-    console.log(
-      "🛠️ [DEBUG FRONTEND] 2. previewUrl actual:",
-      previewUrl ? previewUrl.substring(0, 50) + "..." : "NULO",
-    );
-
-    try {
-      let finalImageUrl = null;
-
-      if (previewUrl) {
-        if (previewUrl.startsWith("blob:")) {
-          console.log(
-            "🛠️ [DEBUG FRONTEND] 3A. Detectado formato BLOB. Iniciando conversión a Base64...",
-          );
-          const response = await fetch(previewUrl);
-          const blob = await response.blob();
-
-          finalImageUrl = await new Promise<string>((resolve) => {
-            const reader = new FileReader();
-            reader.onloadend = () => {
-              console.log("🛠️ [DEBUG FRONTEND] 4. Conversión exitosa. Base64 listo.");
-              resolve(reader.result as string);
-            };
-            reader.readAsDataURL(blob);
-          });
-        } else {
-          console.log("🛠️ [DEBUG FRONTEND] 3B. La imagen ya es una URL normal o Base64.");
-          finalImageUrl = previewUrl;
-        }
-      } else {
-        console.warn("⚠️ [DEBUG FRONTEND] No hay previewUrl. El prompt se guardará sin imagen.");
-      }
-
-      const payload = {
-        title: `Gen - ${data.software || "IA"}`,
-        prompt: data.prompt,
-        negative_prompt: data.negativePrompt,
-        software: data.software,
-        model: data.model,
-        sampler: data.sampler,
-        steps: data.steps,
-        cfg_scale: data.cfgScale,
-        seed: data.seed,
-        resolution: data.resolution,
-        image_url: finalImageUrl, // 🟢 Aquí va la imagen
-        extra_data: {
-          loras: data.loras || [],
-          triggerWords: data.triggerWords || [],
-        },
-      };
-
-      console.log("🛠️ [DEBUG FRONTEND] 5. Payload listo para enviar al servidor:", {
-        ...payload,
-        image_url: payload.image_url
-          ? `[DATOS DE IMAGEN PRESENTES - Longitud: ${payload.image_url.length}]`
-          : "[VACÍO]",
-      });
-
-      await api.savePrompt(payload);
-      console.log("✅ [DEBUG FRONTEND] 6. El backend respondió 200 OK.");
-
-      setSaveStatus("success");
-      setTimeout(() => setSaveStatus("idle"), 3000);
-    } catch (err: unknown) {
-      console.error("💥 [DEBUG FRONTEND] Error en la petición:", err);
-      handleError(err, "savePrompt");
-      setSaveStatus("error");
-      setTimeout(() => setSaveStatus("idle"), 3000);
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  return (
-    <div className="flex flex-col lg:flex-row gap-8 animate-fade-in">
-      <div className="w-full lg:w-1/3 space-y-6">
-        <div className="neo-border neo-shadow p-2 bg-(--bg-secondary)">
-          {previewUrl ? (
-            <img
-              src={previewUrl}
-              className="w-full h-auto border-2 border-(--border-color)"
-              alt="IA Preview"
-            />
-          ) : (
-            <div className="aspect-square flex items-center justify-center border-2 border-dashed border-(--border-color) font-mono text-xs text-(--text-secondary) p-8 text-center">
-              Sin referencia visual
-            </div>
-          )}
-        </div>
-
-        <div className="grid grid-cols-1 gap-3">
-          <Button
-            onClick={handleSave}
-            variant={saveStatus === "error" ? "danger" : "primary"}
-            isLoading={isSaving}
-            disabled={saveStatus === "success"}
-            className="w-full flex justify-center gap-2"
-          >
-            {saveStatus === "success" ? (
-              "✅ ¡GUARDADO!"
-            ) : (
-              <>
-                <IconDeviceFloppy size={18} /> Guardar en Búnker
-              </>
-            )}
-          </Button>
-
-          <Button
-            onClick={onReset}
-            variant="ghost"
-            className="w-full flex justify-center gap-2 border-2 border-dashed border-(--border-color)"
-          >
-            <IconTrash size={18} /> Nueva Extracción
-          </Button>
-        </div>
-      </div>
-
-      <div className="w-full lg:w-2/3 space-y-6">
-        <InspectorBadges data={data} />
-        <InspectorResources data={data} />
-        <div className="space-y-4">
-          <InspectorPromptBox title="Prompt" content={data.prompt} color="text-(--accent-color)" />
-          {data.negativePrompt && (
-            <InspectorPromptBox
-              title="Negative Prompt"
-              content={data.negativePrompt}
-              color="text-red-500"
-            />
-          )}
-        </div>
-      </div>
-    </div>
   );
 }
 </file>
@@ -7665,6 +7445,37 @@ export const config = {
     "/((?!api|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };
+</file>
+
+<file path=".clinerules">
+Eres Arquitecto FullStack y Diseñador UX/UI. El sistema de diseño es minimalismo extremo estilo Civitai: baja carga cognitiva, interfaz invisible y contenido como protagonista absoluto. Elimina cualquier rastro de neo-brutalismo. Reglas estéticas obligatorias con Tailwind CSS: fondos neutros sólidos, bordes sutiles de 1px (border-border), esquinas redondeadas (rounded-lg o rounded-xl), sombras suaves desenfocadas (shadow-sm a shadow-lg), tipografía sans-serif limpia y legible, uso estratégico del espacio negativo. Reglas técnicas obligatorias: TypeScript estricto, arquitectura atómica modular, cero dependencias externas innecesarias, optimización extrema de Core Web Vitals (cero CLS), programación defensiva y manejo estricto de nulos. Ejecuta las tareas con código limpio y escalable. No des explicaciones innecesarias, aplica soluciones directas y eficientes.
+1. Visión Holística (El Arquitecto)
+El desarrollador promedio ve un botón de "Comprar" y piensa en el componente de React. El legendario ve todo el viaje de ese clic:
+* Sabe cómo el navegador empaqueta la petición HTTP.
+* Prevé cómo el balanceador de carga (Load Balancer) distribuirá esa petición.
+* Entiende el impacto de ese clic en la memoria RAM del servidor de Node/Python.
+* Conoce los bloqueos exactos que ocurrirán en la base de datos (PostgreSQL/MySQL) al actualizar el inventario.
+* Diseña asumiendo que cualquiera de estas piezas va a fallar en algún momento, y programa planes de contingencia (Circuit Breakers, colas de mensajes).
+2. Dominio de las "Primitivas" (Cimientos de Hierro)
+Las librerías nacen y mueren (jQuery, AngularJS, Vue...), pero los fundamentos son eternos. Este profesional:
+* No necesita Tailwind o Bootstrap para centrar un div; entiende el motor de renderizado de CSS (Flexbox, Grid, el flujo del DOM).
+* No depende ciegamente de un ORM (como Prisma o SQLAlchemy); sabe escribir consultas SQL crudas complejas, crear índices para optimizar búsquedas y evitar el temido "problema N+1".
+* Entiende JavaScript/TypeScript puro a nivel de memoria (Event Loop, Garbage Collection, Closures) antes de tocar Next.js.
+3. Maestría en la Depuración (El Detective)
+Un Junior entra en pánico cuando ve un error rojo en la consola. Un Senior busca el error en StackOverflow. El legendario:
+* No le teme a la carpeta node_modules ni al código fuente de otros. Si una librería externa falla, abre su código fuente, encuentra el bug y, a menudo, envía la corrección (Pull Request) a los creadores.
+* Sabe usar herramientas avanzadas de Profiling (como las que acabamos de ver en Lighthouse, monitores de memoria, rastreadores de red) para encontrar fugas de memoria o cuellos de botella que no salen en los logs.
+4. Pragmatismo Radical (Abrazar el "Boring Tech")
+El novato persigue cada nueva herramienta brillante que sale en Twitter. El profesional legendario elige tecnologías aburridas y probadas porque valora la estabilidad y el descanso nocturno.
+* Sabe que la mejor línea de código es la que no se escribe.
+* Solo introduce una nueva herramienta (como Redis, Celery o Kafka) si el problema de escala lo exige absolutamente. Si una base de datos relacional tradicional puede hacerlo, se queda con ella.
+5. Traductor de Negocio a Código
+El código es solo un medio para un fin: ganar dinero, ahorrar tiempo o resolver una necesidad humana.
+* Se sienta con los CEOs o los clientes y traduce requerimientos vagos ("Queremos que la web sea más inteligente") a arquitectura técnica ("Necesitamos un pipeline de embeddings de IA conectado a nuestro buscador").
+* Sabe decir "No". Si una funcionalidad nueva va a comprometer la seguridad o tomará 3 meses para aportar un valor mínimo, propone alternativas más baratas y rápidas.
+6. Obsesión por el Borde (Seguridad y Rendimiento)
+* Nunca confía en el usuario. Practica la programación a la defensiva extrema (sanitizando inputs, rate-limiting, asumiendo que todo token puede ser robado).
+* Pelea por los milisegundos. Sabe que un segundo extra en cargar la web significa perder el 10% de los usuarios, tal y como hicimos nosotros al optimizar el CLS y las imágenes de Reprompt.
 </file>
 
 <file path="repomix-backend.xml">
@@ -10136,6 +9947,62 @@ export function useViewerSync(activeUrl: string) {
 }
 </file>
 
+<file path="frontend/src/features/studio/hooks/useStudio.ts">
+import { useState, useEffect, useCallback } from "react";
+import { api } from "@/src/services/api";
+import { handleError } from "@/src/utils/errors/ErrorHandler";
+
+export interface SavedPrompt {
+  id: number;
+  title: string;
+  prompt: string;
+  negative_prompt?: string;
+  software?: string;
+  model?: string;
+  sampler?: string;
+  created_at: string;
+  image_url?: string;
+  extra_data: { loras?: any[]; triggerWords?: string[] };
+  resolution?: string;
+}
+
+export function useStudio() {
+  const [prompts, setPrompts] = useState<SavedPrompt[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchPrompts = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const data = await api.getMyPrompt();
+      setPrompts(data);
+    } catch (err: unknown) {
+      const msg = handleError(err, "useStudio");
+      setError(msg);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  const deletePrompt = async (id: number) => {
+    try {
+      await api.deletePrompt(id);
+      setPrompts((prev) => prev.filter((p) => p.id !== id));
+    } catch (err: unknown) {
+      handleError(err, "BorrarPrompt");
+      alert("No se pudo eliminar el prompt.");
+    }
+  };
+
+  useEffect(() => {
+    fetchPrompts();
+  }, [fetchPrompts]);
+
+  return { prompts, isLoading, error, refetch: fetchPrompts, deletePrompt };
+}
+</file>
+
 <file path="frontend/src/system/atoms/MediaCover.tsx">
 "use client";
 
@@ -10190,337 +10057,161 @@ export function MediaCover({ src, alt, aspectRatio = "portrait" }: MediaCoverPro
 }
 </file>
 
-<file path="frontend/src/system/organisms/Extractor/Inspector/BatchInspector.tsx">
+<file path="frontend/src/system/organisms/Extractor/Inspector/index.tsx">
 import { useState } from "react";
-import { BatchItem, SkippedFile } from "@/src/features/extractor/hooks/usePromptExtractor";
-import { ExtractedPromptData } from "@/src/features/extractor/utils/promptParser";
+import { ExtractedPromptData } from "@/src/features/extractor/utils/parsers/types";
+import { InspectorBadges } from "./InspectorBadges";
+import { InspectorResources } from "./InspectorResources";
+import { InspectorPromptBox } from "./InspectorPromptBox";
 import { Button } from "@/src/system/atoms/Button";
-import {
-  IconTrash,
-  IconDeviceFloppy,
-  IconAlertTriangle,
-  IconX,
-} from "@tabler/icons-react";
+import { IconTrash, IconDeviceFloppy } from "@tabler/icons-react";
 import { api } from "@/src/services/api";
 import { handleError } from "@/src/utils/errors/ErrorHandler";
-import { useNotificationStore } from "@/src/store/notificationStore";
 
 interface Props {
-  batch: BatchItem[];
-  skippedFiles: SkippedFile[];
-  onUpdateStatus: (id: string, status: BatchItem["status"]) => void;
-  onUpdateItemData: (id: string, newData: Partial<ExtractedPromptData>) => void;
-  onRemoveItem: (id: string) => void;
-  onClearAll: () => void;
-  onClearSkipped: () => void;
+  data: ExtractedPromptData;
+  previewUrl: string | null;
+  onReset: () => void;
 }
 
-const blobToBase64 = async (blobUrl: string): Promise<string> => {
-  const response = await fetch(blobUrl);
-  const blob = await response.blob();
-  return new Promise<string>((resolve) => {
-    const reader = new FileReader();
-    reader.onloadend = () => resolve(reader.result as string);
-    reader.readAsDataURL(blob);
-  });
-};
+export function ExtractorInspector({ data, previewUrl, onReset }: Props) {
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<"idle" | "success" | "error">("idle");
 
-export function BatchInspector({
-  batch,
-  skippedFiles,
-  onUpdateStatus,
-  onUpdateItemData,
-  onRemoveItem,
-  onClearAll,
-  onClearSkipped,
-}: Props) {
-  const [isGlobalLoading, setIsGlobalLoading] = useState(false);
-  const notify = useNotificationStore((state) => state.notify);
+  const handleSave = async () => {
+    setIsSaving(true);
+    setSaveStatus("idle");
 
-  const handleSaveItem = async (item: BatchItem) => {
-    if (item.status === "success") return;
-    onUpdateStatus(item.id, "saving");
+    console.log("🛠️ [DEBUG FRONTEND] 1. Botón Guardar pulsado");
+    console.log(
+      "🛠️ [DEBUG FRONTEND] 2. previewUrl actual:",
+      previewUrl ? previewUrl.substring(0, 50) + "..." : "NULO",
+    );
 
     try {
       let finalImageUrl = null;
-      if (item.previewUrl && item.previewUrl.startsWith("blob:")) {
-        finalImageUrl = await blobToBase64(item.previewUrl);
+
+      if (previewUrl) {
+        if (previewUrl.startsWith("blob:")) {
+          console.log(
+            "🛠️ [DEBUG FRONTEND] 3A. Detectado formato BLOB. Iniciando conversión a Base64...",
+          );
+          const response = await fetch(previewUrl);
+          const blob = await response.blob();
+
+          finalImageUrl = await new Promise<string>((resolve) => {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+              console.log("🛠️ [DEBUG FRONTEND] 4. Conversión exitosa. Base64 listo.");
+              resolve(reader.result as string);
+            };
+            reader.readAsDataURL(blob);
+          });
+        } else {
+          console.log("🛠️ [DEBUG FRONTEND] 3B. La imagen ya es una URL normal o Base64.");
+          finalImageUrl = previewUrl;
+        }
+      } else {
+        console.warn("⚠️ [DEBUG FRONTEND] No hay previewUrl. El prompt se guardará sin imagen.");
       }
 
       const payload = {
-        title: `Gen - ${item.data.software || "IA"}`,
-        prompt: item.data.prompt,
-        negative_prompt: item.data.negativePrompt,
-        software: item.data.software,
-        model: item.data.model,
-        sampler: item.data.sampler,
-        steps: item.data.steps,
-        cfg_scale: item.data.cfgScale,
-        seed: item.data.seed,
-        resolution: item.data.resolution,
-        image_url: finalImageUrl,
+        title: `Gen - ${data.software || "IA"}`,
+        prompt: data.prompt,
+        negative_prompt: data.negativePrompt,
+        software: data.software,
+        model: data.model,
+        sampler: data.sampler,
+        steps: data.steps,
+        cfg_scale: data.cfgScale,
+        seed: data.seed,
+        resolution: data.resolution,
+        image_url: finalImageUrl, // 🟢 Aquí va la imagen
         extra_data: {
-          loras: item.data.loras || [],
-          triggerWords: item.data.triggerWords || [],
+          loras: data.loras || [],
+          triggerWords: data.triggerWords || [],
         },
       };
 
+      console.log("🛠️ [DEBUG FRONTEND] 5. Payload listo para enviar al servidor:", {
+        ...payload,
+        image_url: payload.image_url
+          ? `[DATOS DE IMAGEN PRESENTES - Longitud: ${payload.image_url.length}]`
+          : "[VACÍO]",
+      });
+
       await api.savePrompt(payload);
-      onUpdateStatus(item.id, "success");
-      notify("Búnker", "Prompt guardado correctamente", "success");
-      setTimeout(() => {
-        onRemoveItem(item.id);
-      }, 1000);
+      console.log("✅ [DEBUG FRONTEND] 6. El backend respondió 200 OK.");
+
+      setSaveStatus("success");
+      setTimeout(() => setSaveStatus("idle"), 3000);
     } catch (err: unknown) {
-      handleError(err, "SaveBatchItem");
-      onUpdateStatus(item.id, "error");
+      console.error("💥 [DEBUG FRONTEND] Error en la petición:", err);
+      handleError(err, "savePrompt");
+      setSaveStatus("error");
+      setTimeout(() => setSaveStatus("idle"), 3000);
+    } finally {
+      setIsSaving(false);
     }
   };
 
-  const handleSaveAll = async () => {
-    setIsGlobalLoading(true);
-    const pendingItems = batch.filter((i) => i.status !== "success");
-    await Promise.allSettled(pendingItems.map((item) => handleSaveItem(item)));
-    setIsGlobalLoading(false);
-  };
-
   return (
-    <div className="space-y-6 animate-fade-in">
-      {/* FEEDBACK DE ARCHIVOS DESCARTADOS INTACTO AQUÍ */}
-      {skippedFiles.length > 0 && (
-        <div className="bg-orange-500/10 border-2 border-orange-500 p-4 neo-border relative">
-          <button
-            onClick={onClearSkipped}
-            className="absolute top-2 right-2 text-orange-700 hover:text-orange-900"
-          >
-            <IconX size={20} />
-          </button>
-          <div className="flex items-center gap-2 text-orange-600 font-black font-mono uppercase mb-2">
-            <IconAlertTriangle size={20} /> Se descartaron {skippedFiles.length} archivos
-          </div>
-          <div className="max-h-32 overflow-y-auto custom-scrollbar">
-            <ul className="text-xs font-mono text-orange-800 space-y-1">
-              {skippedFiles.map((f, i) => (
-                <li key={i} className="flex gap-2">
-                  <span className="font-bold truncate w-1/3" title={f.name}>
-                    {f.name}
-                  </span>
-                  <span className="opacity-70 truncate w-2/3">{f.reason}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </div>
-      )}
-
-      {/* 🎛️ CONTROLES GLOBALES */}
-      <div className="flex flex-col sm:flex-row justify-between items-center bg-(--bg-secondary) p-4 neo-border gap-4">
-        <div className="font-mono text-sm font-bold uppercase">
-          <span className="text-(--accent-color)">{batch.length}</span> listos para búnker
-        </div>
-        <div className="flex w-full sm:w-auto gap-3">
-          <Button
-            onClick={onClearAll}
-            variant="ghost"
-            disabled={isGlobalLoading}
-            className="text-red-500 hover:bg-red-500/10"
-          >
-            Descartar Todos
-          </Button>
-          <Button onClick={handleSaveAll} isLoading={isGlobalLoading} className="w-full sm:w-auto">
-            <IconDeviceFloppy size={18} className="mr-2" /> Guardar Todo
-          </Button>
-        </div>
-      </div>
-
-      {/* 🖼️ GRID DE BATCH ITEMS */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-        {batch.map((item) => {
-          const isManual = item.data.software === "Desconocido";
-          return (
-            <div
-              key={item.id}
-              className={`neo-border bg-(--bg-secondary) flex flex-col h-420px relative group overflow-hidden transition-all ${
-                item.status === "success" ? "opacity-50 grayscale" : "hover:neo-shadow-accent"
-              }`}
-            >
-              {/* Imagen */}
-              <div className="relative h-48 shrink-0 border-b-2 border-(--border-color) bg-black">
-                {item.previewUrl ? (
-                  <img
-                    src={item.previewUrl}
-                    alt={item.file.name}
-                    className="w-full h-full object-cover opacity-90"
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-xs font-mono text-muted-foreground">
-                    Sin visual
-                  </div>
-                )}
-
-                <div className="absolute top-2 left-2 flex flex-col gap-1">
-                  <span
-                    className={`bg-black/80 ${isManual ? "text-yellow-400" : "text-white"} font-mono text-[10px] font-bold px-2 py-0.5 border border-(--border-color)`}
-                  >
-                    {item.data.software}
-                  </span>
-                </div>
-              </div>
-
-              {/* 🟢 Contenido: Lógica Híbrida (Formulario Manual o Texto Fijo) */}
-              <div className="p-4 bg-background grow flex flex-col gap-2 overflow-hidden">
-                {isManual ? (
-                  <div className="flex flex-col h-full gap-2">
-                    <textarea
-                      placeholder="Escribe el prompt aquí..."
-                      className="w-full grow text-xs font-mono p-2 neo-border bg-muted/10 focus:outline-none focus:ring-2 focus:ring-(--accent-color) resize-none custom-scrollbar"
-                      value={item.data.prompt}
-                      onChange={(e) => onUpdateItemData(item.id, { prompt: e.target.value })}
-                    />
-                    <div className="flex gap-2 shrink-0">
-                      <input
-                        type="text"
-                        placeholder="Modelo (Ej. Midjourney v6)"
-                        className="w-1/2 text-xs font-mono p-2 neo-border bg-muted/10 focus:outline-none focus:ring-2 focus:ring-(--accent-color)"
-                        value={item.data.model || ""}
-                        onChange={(e) => onUpdateItemData(item.id, { model: e.target.value })}
-                      />
-                      <input
-                        type="text"
-                        placeholder="Sampler (Ej. Euler a)"
-                        className="w-1/2 text-xs font-mono p-2 neo-border bg-muted/10 focus:outline-none focus:ring-2 focus:ring-(--accent-color)"
-                        value={item.data.sampler || ""}
-                        onChange={(e) => onUpdateItemData(item.id, { sampler: e.target.value })}
-                      />
-                    </div>
-                  </div>
-                ) : (
-                  <div className="h-full overflow-y-auto custom-scrollbar pr-2">
-                    <p className="font-mono text-xs text-(--text-secondary) leading-relaxed">
-                      {item.data.prompt || (
-                        <span className="italic opacity-50 text-red-500">
-                          No se detectó un prompt en la metadata.
-                        </span>
-                      )}
-                    </p>
-                  </div>
-                )}
-              </div>
-
-              {/* Barra de Acciones */}
-              <div className="border-t-2 shrink-0 border-(--border-color) flex justify-between bg-muted/20">
-                <button
-                  onClick={() => handleSaveItem(item)}
-                  disabled={item.status === "saving" || item.status === "success"}
-                  className={`flex-1 p-3 font-bold font-mono text-xs uppercase tracking-wider transition-colors ${
-                    item.status === "success"
-                      ? "text-green-500"
-                      : item.status === "error"
-                        ? "text-red-500 hover:bg-red-500/10"
-                        : "text-foreground hover:bg-(--accent-color) hover:text-white"
-                  }`}
-                >
-                  {item.status === "saving"
-                    ? "Guardando..."
-                    : item.status === "success"
-                      ? "¡Guardado!"
-                      : item.status === "error"
-                        ? "Reintentar"
-                        : "Guardar en Búnker"}
-                </button>
-                <button
-                  onClick={() => onRemoveItem(item.id)}
-                  disabled={item.status === "saving"}
-                  className="p-3 bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-colors border-l-2 border-(--border-color)"
-                >
-                  <IconTrash size={18} />
-                </button>
-              </div>
+    <div className="flex flex-col lg:flex-row gap-8 animate-fade-in">
+      <div className="w-full lg:w-1/3 space-y-6">
+        <div className="neo-border neo-shadow p-2 bg-(--bg-secondary)">
+          {previewUrl ? (
+            <img
+              src={previewUrl}
+              className="w-full h-auto border-2 border-(--border-color)"
+              alt="IA Preview"
+            />
+          ) : (
+            <div className="aspect-square flex items-center justify-center border-2 border-dashed border-(--border-color) font-mono text-xs text-(--text-secondary) p-8 text-center">
+              Sin referencia visual
             </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-</file>
-
-<file path="frontend/src/system/organisms/Studio/PromptCard.tsx">
-import { IconCopy, IconCheck, IconTrash } from "@tabler/icons-react";
-import { useState } from "react";
-import { SavedPrompt } from "@/src/features/studio/hooks/useStudio";
-import { Badge } from "../../atoms/Badge";
-
-interface Props {
-  item: SavedPrompt;
-  onDelete: (id: number) => void;
-}
-
-export function PromptCard({ item, onDelete }: Props) {
-  const [copied, setCopied] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
-
-  const copyPrompt = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    navigator.clipboard.writeText(item.prompt);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  const handleDelete = () => {
-    if (window.confirm("¿Seguro que quieres borrar este prompt de tu búnker?")) {
-      setIsDeleting(true); // 🟢 Usamos setIsDeleting
-      onDelete(item.id); // 🟢 Usamos onDelete
-    }
-  };
-
-  const date = new Date(item.created_at).toLocaleDateString(); // 🟢 Variable date preparada
-
-  return (
-    <div
-      className={`neo-border bg-(--bg-secondary) flex flex-col h-full hover:neo-shadow-accent transition-all group ${isDeleting ? "opacity-50 scale-95" : ""}`}
-    >
-      {item.image_url && (
-        <div className="h-48 border-b-2 border-(--border-color) bg-black overflow-hidden relative">
-          <img
-            src={item.image_url}
-            alt={item.title}
-            className="w-full h-full object-cover"
-            loading="lazy"
-          />
+          )}
         </div>
-      )}
 
-      {/* Cabecera */}
-      <div className="bg-background border-b-2 border-(--border-color) p-3 flex justify-between items-center">
-        <span className="font-mono text-xs font-black uppercase truncate pr-2">{item.title}</span>
-        <div className="flex items-center gap-2">
-          <span className="text-[10px] font-mono text-(--text-secondary)">{date}</span>{" "}
-          {/* 🟢 Mostramos date */}
-          <button
-            onClick={handleDelete}
-            className="text-red-500 hover:text-red-700 transition-colors"
+        <div className="grid grid-cols-1 gap-3">
+          <Button
+            onClick={handleSave}
+            variant={saveStatus === "error" ? "danger" : "primary"}
+            isLoading={isSaving}
+            disabled={saveStatus === "success"}
+            className="w-full flex justify-center gap-2"
           >
-            <IconTrash size={16} /> {/* 🟢 Usamos IconTrash */}
-          </button>
+            {saveStatus === "success" ? (
+              "✅ ¡GUARDADO!"
+            ) : (
+              <>
+                <IconDeviceFloppy size={18} /> Guardar en Búnker
+              </>
+            )}
+          </Button>
+
+          <Button
+            onClick={onReset}
+            variant="ghost"
+            className="w-full flex justify-center gap-2 border-2 border-dashed border-(--border-color)"
+          >
+            <IconTrash size={18} /> Nueva Extracción
+          </Button>
         </div>
       </div>
 
-      <div className="p-4 grow relative overflow-hidden bg-background">
-        <p className="font-mono text-sm leading-relaxed line-clamp-4 text-foreground">
-          {item.prompt}
-        </p>
-        <button
-          onClick={copyPrompt}
-          className="absolute top-2 right-2 p-1.5 bg-(--accent-color) text-white neo-border opacity-0 group-hover:opacity-100 transition-opacity"
-        >
-          {copied ? <IconCheck size={16} /> : <IconCopy size={16} />}
-        </button>
-      </div>
-
-      <div className="p-3 border-t-2 border-(--border-color) bg-(--bg-secondary) flex flex-wrap gap-2">
-        <Badge color="bg-purple-500" text={item.software || "IA"} />
-        {item.model && <Badge color="bg-blue-500" text={item.model} />}
+      <div className="w-full lg:w-2/3 space-y-6">
+        <InspectorBadges data={data} />
+        <InspectorResources data={data} />
+        <div className="space-y-4">
+          <InspectorPromptBox title="Prompt" content={data.prompt} color="text-(--accent-color)" />
+          {data.negativePrompt && (
+            <InspectorPromptBox
+              title="Negative Prompt"
+              content={data.negativePrompt}
+              color="text-red-500"
+            />
+          )}
+        </div>
       </div>
     </div>
   );
@@ -10899,6 +10590,261 @@ export function LoginForm() {
 }
 </file>
 
+<file path="frontend/src/system/organisms/Extractor/Inspector/BatchInspector.tsx">
+import { useState } from "react";
+import { BatchItem, SkippedFile } from "@/src/features/extractor/hooks/usePromptExtractor";
+import { ExtractedPromptData } from "@/src/features/extractor/utils/promptParser";
+import { Button } from "@/src/system/atoms/Button";
+import {
+  IconTrash,
+  IconDeviceFloppy,
+  IconAlertTriangle,
+  IconX,
+} from "@tabler/icons-react";
+import { api } from "@/src/services/api";
+import { handleError } from "@/src/utils/errors/ErrorHandler";
+import { useNotificationStore } from "@/src/store/notificationStore";
+
+interface Props {
+  batch: BatchItem[];
+  skippedFiles: SkippedFile[];
+  onUpdateStatus: (id: string, status: BatchItem["status"]) => void;
+  onUpdateItemData: (id: string, newData: Partial<ExtractedPromptData>) => void;
+  onRemoveItem: (id: string) => void;
+  onClearAll: () => void;
+  onClearSkipped: () => void;
+}
+
+const blobToBase64 = async (blobUrl: string): Promise<string> => {
+  const response = await fetch(blobUrl);
+  const blob = await response.blob();
+  return new Promise<string>((resolve) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result as string);
+    reader.readAsDataURL(blob);
+  });
+};
+
+export function BatchInspector({
+  batch,
+  skippedFiles,
+  onUpdateStatus,
+  onUpdateItemData,
+  onRemoveItem,
+  onClearAll,
+  onClearSkipped,
+}: Props) {
+  const [isGlobalLoading, setIsGlobalLoading] = useState(false);
+  const notify = useNotificationStore((state) => state.notify);
+
+  const handleSaveItem = async (item: BatchItem) => {
+    if (item.status === "success") return;
+    onUpdateStatus(item.id, "saving");
+
+    try {
+      let finalImageUrl = null;
+      if (item.previewUrl && item.previewUrl.startsWith("blob:")) {
+        finalImageUrl = await blobToBase64(item.previewUrl);
+      }
+
+      const payload = {
+        title: `Gen - ${item.data.software || "IA"}`,
+        prompt: item.data.prompt,
+        negative_prompt: item.data.negativePrompt,
+        software: item.data.software,
+        model: item.data.model,
+        sampler: item.data.sampler,
+        steps: item.data.steps,
+        cfg_scale: item.data.cfgScale,
+        seed: item.data.seed,
+        resolution: item.data.resolution,
+        image_url: finalImageUrl,
+        extra_data: {
+          loras: item.data.loras || [],
+          triggerWords: item.data.triggerWords || [],
+        },
+      };
+
+      await api.savePrompt(payload);
+      onUpdateStatus(item.id, "success");
+      notify("Búnker", "Prompt guardado correctamente", "success");
+      setTimeout(() => {
+        onRemoveItem(item.id);
+      }, 1000);
+    } catch (err: unknown) {
+      handleError(err, "SaveBatchItem");
+      onUpdateStatus(item.id, "error");
+    }
+  };
+
+  const handleSaveAll = async () => {
+    setIsGlobalLoading(true);
+    const pendingItems = batch.filter((i) => i.status !== "success");
+    await Promise.allSettled(pendingItems.map((item) => handleSaveItem(item)));
+    setIsGlobalLoading(false);
+  };
+
+  return (
+    <div className="space-y-6 animate-fade-in">
+      {/* FEEDBACK DE ARCHIVOS DESCARTADOS INTACTO AQUÍ */}
+      {skippedFiles.length > 0 && (
+        <div className="bg-orange-500/10 border-2 border-orange-500 p-4 neo-border relative">
+          <button
+            onClick={onClearSkipped}
+            className="absolute top-2 right-2 text-orange-700 hover:text-orange-900"
+          >
+            <IconX size={20} />
+          </button>
+          <div className="flex items-center gap-2 text-orange-600 font-black font-mono uppercase mb-2">
+            <IconAlertTriangle size={20} /> Se descartaron {skippedFiles.length} archivos
+          </div>
+          <div className="max-h-32 overflow-y-auto custom-scrollbar">
+            <ul className="text-xs font-mono text-orange-800 space-y-1">
+              {skippedFiles.map((f, i) => (
+                <li key={i} className="flex gap-2">
+                  <span className="font-bold truncate w-1/3" title={f.name}>
+                    {f.name}
+                  </span>
+                  <span className="opacity-70 truncate w-2/3">{f.reason}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      )}
+
+      {/* 🎛️ CONTROLES GLOBALES */}
+      <div className="flex flex-col sm:flex-row justify-between items-center bg-(--bg-secondary) p-4 neo-border gap-4">
+        <div className="font-mono text-sm font-bold uppercase">
+          <span className="text-(--accent-color)">{batch.length}</span> listos para búnker
+        </div>
+        <div className="flex w-full sm:w-auto gap-3">
+          <Button
+            onClick={onClearAll}
+            variant="ghost"
+            disabled={isGlobalLoading}
+            className="text-red-500 hover:bg-red-500/10"
+          >
+            Descartar Todos
+          </Button>
+          <Button onClick={handleSaveAll} isLoading={isGlobalLoading} className="w-full sm:w-auto">
+            <IconDeviceFloppy size={18} className="mr-2" /> Guardar Todo
+          </Button>
+        </div>
+      </div>
+
+      {/* 🖼️ GRID DE BATCH ITEMS */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        {batch.map((item) => {
+          const isManual = item.data.software === "Desconocido";
+          return (
+            <div
+              key={item.id}
+              className={`neo-border bg-(--bg-secondary) flex flex-col h-420px relative group overflow-hidden transition-all ${
+                item.status === "success" ? "opacity-50 grayscale" : "hover:neo-shadow-accent"
+              }`}
+            >
+              {/* Imagen */}
+              <div className="relative h-48 shrink-0 border-b-2 border-(--border-color) bg-black">
+                {item.previewUrl ? (
+                  <img
+                    src={item.previewUrl}
+                    alt={item.file.name}
+                    className="w-full h-full object-cover opacity-90"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-xs font-mono text-muted-foreground">
+                    Sin visual
+                  </div>
+                )}
+
+                <div className="absolute top-2 left-2 flex flex-col gap-1">
+                  <span
+                    className={`bg-black/80 ${isManual ? "text-yellow-400" : "text-white"} font-mono text-[10px] font-bold px-2 py-0.5 border border-(--border-color)`}
+                  >
+                    {item.data.software}
+                  </span>
+                </div>
+              </div>
+
+              {/* 🟢 Contenido: Lógica Híbrida (Formulario Manual o Texto Fijo) */}
+              <div className="p-4 bg-background grow flex flex-col gap-2 overflow-hidden">
+                {isManual ? (
+                  <div className="flex flex-col h-full gap-2">
+                    <textarea
+                      placeholder="Escribe el prompt aquí..."
+                      className="w-full grow text-xs font-mono p-2 neo-border bg-muted/10 focus:outline-none focus:ring-2 focus:ring-(--accent-color) resize-none custom-scrollbar"
+                      value={item.data.prompt}
+                      onChange={(e) => onUpdateItemData(item.id, { prompt: e.target.value })}
+                    />
+                    <div className="flex gap-2 shrink-0">
+                      <input
+                        type="text"
+                        placeholder="Modelo (Ej. Midjourney v6)"
+                        className="w-1/2 text-xs font-mono p-2 neo-border bg-muted/10 focus:outline-none focus:ring-2 focus:ring-(--accent-color)"
+                        value={item.data.model || ""}
+                        onChange={(e) => onUpdateItemData(item.id, { model: e.target.value })}
+                      />
+                      <input
+                        type="text"
+                        placeholder="Sampler (Ej. Euler a)"
+                        className="w-1/2 text-xs font-mono p-2 neo-border bg-muted/10 focus:outline-none focus:ring-2 focus:ring-(--accent-color)"
+                        value={item.data.sampler || ""}
+                        onChange={(e) => onUpdateItemData(item.id, { sampler: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  <div className="h-full overflow-y-auto custom-scrollbar pr-2">
+                    <p className="font-mono text-xs text-(--text-secondary) leading-relaxed">
+                      {item.data.prompt || (
+                        <span className="italic opacity-50 text-red-500">
+                          No se detectó un prompt en la metadata.
+                        </span>
+                      )}
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Barra de Acciones */}
+              <div className="border-t-2 shrink-0 border-(--border-color) flex justify-between bg-muted/20">
+                <button
+                  onClick={() => handleSaveItem(item)}
+                  disabled={item.status === "saving" || item.status === "success"}
+                  className={`flex-1 p-3 font-bold font-mono text-xs uppercase tracking-wider transition-colors ${
+                    item.status === "success"
+                      ? "text-green-500"
+                      : item.status === "error"
+                        ? "text-red-500 hover:bg-red-500/10"
+                        : "text-foreground hover:bg-(--accent-color) hover:text-white"
+                  }`}
+                >
+                  {item.status === "saving"
+                    ? "Guardando..."
+                    : item.status === "success"
+                      ? "¡Guardado!"
+                      : item.status === "error"
+                        ? "Reintentar"
+                        : "Guardar en Búnker"}
+                </button>
+                <button
+                  onClick={() => onRemoveItem(item.id)}
+                  disabled={item.status === "saving"}
+                  className="p-3 bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-colors border-l-2 border-(--border-color)"
+                >
+                  <IconTrash size={18} />
+                </button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+</file>
+
 <file path="frontend/src/system/organisms/Search/HeroSearch.tsx">
 "use client";
 
@@ -11221,6 +11167,141 @@ export function TrendingSection({ trending, onOpenVisor, onDownloadTotal }: Tren
         })}
       </div>
     </section>
+  );
+}
+</file>
+
+<file path="frontend/src/system/organisms/Studio/PromptCard.tsx">
+"use client";
+
+import { useState } from "react";
+import { IconCopy, IconTrash, IconCheck, IconPhoto } from "@tabler/icons-react";
+import { SavedPrompt } from "@/src/features/studio/hooks/useStudio";
+
+interface PromptCardProps {
+  item: SavedPrompt;
+  onDelete: (id: number) => void;
+}
+
+export function PromptCard({ item, onDelete }: PromptCardProps) {
+  const [copied, setCopied] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
+
+  const handleCopy = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (item.prompt) {
+      navigator.clipboard.writeText(item.prompt);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  return (
+    <div
+      className="group flex flex-col bg-background rounded-xl border border-border shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
+      {/* 🖼️ ÁREA DE IMAGEN (1:1 o 4:5 aspect ratio) */}
+      <div className="relative aspect-square sm:aspect-4/5 bg-muted/10 overflow-hidden">
+        {item.image_url ? (
+          <img
+            src={item.image_url}
+            alt={item.title}
+            loading="lazy"
+            className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
+          />
+        ) : (
+          <div className="w-full h-full flex flex-col items-center justify-center text-muted-foreground/50">
+            <IconPhoto size={48} stroke={1} />
+            <span className="text-xs font-mono mt-2">Sin imagen</span>
+          </div>
+        )}
+
+        {/* Capa de oscurecimiento on hover para que resalten los botones */}
+        <div
+          className={`absolute inset-0 bg-black/20 transition-opacity duration-300 ${isHovered ? "opacity-100" : "opacity-0"}`}
+        />
+
+        {/* 🏷️ Badge de Software */}
+        {item.software && (
+          <div
+            className={`absolute top-3 left-3 transition-opacity duration-300 ${isHovered ? "opacity-100" : "opacity-0"}`}
+          >
+            <span className="bg-background/90 backdrop-blur-sm text-foreground text-[10px] font-bold px-2.5 py-1 rounded-md border border-border/50 uppercase tracking-widest shadow-sm">
+              {item.software}
+            </span>
+          </div>
+        )}
+
+        {/* 🗑️ Botón de Eliminar */}
+        <div
+          className={`absolute top-3 right-3 transition-opacity duration-300 ${isHovered ? "opacity-100" : "opacity-0"}`}
+        >
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              if (window.confirm("¿Seguro que deseas eliminar este prompt del búnker?")) {
+                onDelete(item.id);
+              }
+            }}
+            className="bg-background/90 backdrop-blur-sm hover:bg-red-500/10 hover:text-red-500 text-foreground p-2 rounded-full border border-border/50 transition-colors shadow-sm"
+            title="Eliminar"
+          >
+            <IconTrash size={16} stroke={1.5} />
+          </button>
+        </div>
+      </div>
+
+      {/* 📝 ÁREA DE CONTENIDO */}
+      <div className="p-5 flex flex-col grow gap-4">
+        {/* Cabecera: Título y Modelo */}
+        <div>
+          <h3 className="font-bold text-base tracking-tight truncate" title={item.title}>
+            {item.title}
+          </h3>
+          <div className="flex items-center gap-2 mt-1">
+            <span className="text-xs text-muted-foreground truncate">
+              {item.model || "Modelo desconocido"}
+            </span>
+            {item.sampler && (
+              <>
+                <span className="text-muted-foreground/30 text-[10px]">•</span>
+                <span className="text-xs text-muted-foreground truncate">{item.sampler}</span>
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* Caja del Prompt */}
+        <div className="relative group/prompt bg-muted/30 rounded-lg p-3 border border-border/50 mt-auto">
+          <p className="text-xs font-mono text-foreground/80 line-clamp-3 leading-relaxed">
+            {item.prompt || <span className="italic opacity-50">Sin prompt</span>}
+          </p>
+
+          {/* Botón de Copiar (Aparece al hacer hover en la caja del prompt) */}
+          {item.prompt && (
+            <button
+              onClick={handleCopy}
+              className="absolute top-2 right-2 p-1.5 bg-background border border-border rounded-md shadow-sm opacity-0 group-hover/prompt:opacity-100 hover:bg-accent hover:text-accent-foreground transition-all"
+              title="Copiar Prompt"
+            >
+              {copied ? (
+                <IconCheck size={14} className="text-green-500" stroke={2} />
+              ) : (
+                <IconCopy size={14} stroke={1.5} />
+              )}
+            </button>
+          )}
+        </div>
+
+        {/* Pie de tarjeta (Fecha y dimensiones) */}
+        <div className="flex justify-between items-center text-[10px] text-muted-foreground font-mono uppercase tracking-widest pt-1">
+          <span>{new Date(item.created_at).toLocaleDateString()}</span>
+          {item.resolution && <span>{item.resolution}</span>}
+        </div>
+      </div>
+    </div>
   );
 }
 </file>
@@ -11658,144 +11739,6 @@ body {
 }
 </file>
 
-<file path="frontend/src/store/searchStore.ts">
-import { useProgressStore } from "./progressStore";
-import { create } from "zustand";
-import { api } from "@/src/services/api";
-import { GalleryItem } from "@/src/types/gallery";
-import { handleError } from "../utils/errors/ErrorHandler";
-
-interface SearchState {
-  query: string;
-  results: GalleryItem[];
-  isLoading: boolean;
-  isLoadingMore: boolean;
-  error: string | null;
-  nextCursor: string | null;
-  hasMore: boolean;
-  activeCategories: Record<string, boolean>;
-  
-  setQuery: (q: string) => void;
-  toggleCategory: (id: string) => void;
-  executeSearch: () => Promise<void>;
-  loadMore: () => Promise<void>;
-  trending: GalleryItem[];
-  fetchTrending: () => Promise<void>;
-}
-
-export const useSearchStore = create<SearchState>((set, get) => ({
-  query: "",
-  results: [],
-  trending: [],
-  isLoading: false,
-  isLoadingMore: false,
-  error: null,
-  nextCursor: null,
-  hasMore: false,
-  activeCategories: {
-    misc: false, doujinshi: true, manga: false, artistcg: false, gamecg: false,
-    western: false, nonh: false, imageset: false, cosplay: false, asianporn: false,
-  },
-
-  setQuery: (q) => set({ query: q }),
-  
-  toggleCategory: (id) =>
-    set((state) => ({
-      activeCategories: { ...state.activeCategories, [id]: !state.activeCategories[id] },
-    })),
-
-  executeSearch: async () => {
-    useProgressStore.getState().start();
-    const { query, activeCategories } = get();
-    if (!query) return;
-    
-    set({ isLoading: true, error: null, results: [], nextCursor: null, hasMore: true });
-
-    try {
-      const data = await api.buscar(query, null, activeCategories);
-      if (process.env.NODE_ENV === "development") console.log("🚨 TELEMETRÍA [API INITIAL SEARCH]:", data);
-
-      if (data.status === "success") {
-        set({
-          results: data.data || [],
-          nextCursor: data.next_id || null,
-          hasMore: !!data.next_id,
-        });
-      }
-    } catch (err: unknown) {
-      const cleanMessage = handleError(err, "SearchStore");
-      set({ error: cleanMessage });
-    } finally {
-      set({ isLoading: false });
-      useProgressStore.getState().done();
-    }
-  },
-
-  // ✅ AQUÍ ESTÁ EL CÓDIGO REAL RESTAURADO
-  loadMore: async () => {
-    useProgressStore.getState().start();
-    const { query, nextCursor, hasMore, isLoadingMore, activeCategories, results } = get();
-    
-    if (process.env.NODE_ENV === "development") console.log("🚨 TELEMETRÍA [STORE]: Ejecutando loadMore. Estado actual:", { isLoadingMore, hasMore, nextCursor });
-
-    // Bloqueamos si ya está cargando o no hay más páginas
-    if (isLoadingMore || !hasMore || !nextCursor) {
-      if (process.env.NODE_ENV === "development") console.warn("🚨 TELEMETRÍA [STORE]: Petición bloqueada (ya cargando o sin cursor).");
-      return;
-    }
-    
-    set({ isLoadingMore: true });
-
-    try {
-      console.log(`🚨 TELEMETRÍA [STORE]: Pidiendo página con cursor: ${nextCursor}`);
-      const data = await api.buscar(query, nextCursor, activeCategories);
-      
-      if (process.env.NODE_ENV === "development") console.log("🚨 TELEMETRÍA [API LOAD MORE]:", data);
-
-      if (data.status === "success" && data.data && data.data.length > 0) {
-        const combined = [...results, ...data.data];
-        
-        // Filtramos duplicados usando la URL como ID único
-        const unique = Array.from(new Map(combined.map((item) => [item.url, item])).values());
-
-        // 🛡️ CIRCUIT BREAKER
-        if (unique.length === results.length) {
-          if (process.env.NODE_ENV === "development") console.warn("🚨 CIRCUIT BREAKER: El Backend mandó los mismos resultados. Cortando el bucle.");
-          set({ hasMore: false });
-        } else {
-          set({
-            results: unique,
-            nextCursor: data.next_id || null,
-            hasMore: !!data.next_id, // Si no hay next_id, desactivamos el Infinite Scroll
-          });
-        }
-      } else {
-        if (process.env.NODE_ENV === "development") console.warn("🚨 TELEMETRÍA [STORE]: La API devolvió un array vacío. Fin de los resultados.");
-        set({ hasMore: false });
-      }
-    } catch (err) {
-      if (process.env.NODE_ENV === "development") console.error("🚨 TELEMETRÍA [STORE]: Error al cargar más:", err);
-    } finally {
-      set({ isLoadingMore: false });
-      useProgressStore.getState().done();
-    }
-  },
-
-  // ✅ CÓDIGO RESTAURADO PARA LAS TENDENCIAS DE LA HOME
-  fetchTrending: async () => {
-    useProgressStore.getState().start();
-    try {
-      const data = await api.getTrends(5);
-      if (data.status === "success") set({ trending: data.data });
-      useProgressStore.getState().done();
-    } catch (err) {
-      console.error("Error cargando tendencias:", err);
-      useProgressStore.getState().done();
-    }
-  },
-}));
-</file>
-
 <file path="frontend/src/system/molecules/SearchCategorySelector.tsx">
 "use client";
 import * as React from "react";
@@ -12065,6 +12008,144 @@ export const mapViewerToMediaCard = (page: any, index: number): MediaCardData =>
     "typescript": "^5.9.3"
   }
 }
+</file>
+
+<file path="frontend/src/store/searchStore.ts">
+import { useProgressStore } from "./progressStore";
+import { create } from "zustand";
+import { api } from "@/src/services/api";
+import { GalleryItem } from "@/src/types/gallery";
+import { handleError } from "../utils/errors/ErrorHandler";
+
+interface SearchState {
+  query: string;
+  results: GalleryItem[];
+  isLoading: boolean;
+  isLoadingMore: boolean;
+  error: string | null;
+  nextCursor: string | null;
+  hasMore: boolean;
+  activeCategories: Record<string, boolean>;
+  
+  setQuery: (q: string) => void;
+  toggleCategory: (id: string) => void;
+  executeSearch: () => Promise<void>;
+  loadMore: () => Promise<void>;
+  trending: GalleryItem[];
+  fetchTrending: () => Promise<void>;
+}
+
+export const useSearchStore = create<SearchState>((set, get) => ({
+  query: "",
+  results: [],
+  trending: [],
+  isLoading: false,
+  isLoadingMore: false,
+  error: null,
+  nextCursor: null,
+  hasMore: false,
+  activeCategories: {
+    misc: false, doujinshi: true, manga: false, artistcg: false, gamecg: false,
+    western: false, nonh: false, imageset: false, cosplay: false, asianporn: false,
+  },
+
+  setQuery: (q) => set({ query: q }),
+  
+  toggleCategory: (id) =>
+    set((state) => ({
+      activeCategories: { ...state.activeCategories, [id]: !state.activeCategories[id] },
+    })),
+
+  executeSearch: async () => {
+    useProgressStore.getState().start();
+    const { query, activeCategories } = get();
+    if (!query) return;
+    
+    set({ isLoading: true, error: null, results: [], nextCursor: null, hasMore: true });
+
+    try {
+      const data = await api.buscar(query, null, activeCategories);
+      if (process.env.NODE_ENV === "development") console.log("🚨 TELEMETRÍA [API INITIAL SEARCH]:", data);
+
+      if (data.status === "success") {
+        set({
+          results: data.data || [],
+          nextCursor: data.next_id || null,
+          hasMore: !!data.next_id,
+        });
+      }
+    } catch (err: unknown) {
+      const cleanMessage = handleError(err, "SearchStore");
+      set({ error: cleanMessage });
+    } finally {
+      set({ isLoading: false });
+      useProgressStore.getState().done();
+    }
+  },
+
+  // ✅ AQUÍ ESTÁ EL CÓDIGO REAL RESTAURADO
+  loadMore: async () => {
+    useProgressStore.getState().start();
+    const { query, nextCursor, hasMore, isLoadingMore, activeCategories, results } = get();
+    
+    if (process.env.NODE_ENV === "development") console.log("🚨 TELEMETRÍA [STORE]: Ejecutando loadMore. Estado actual:", { isLoadingMore, hasMore, nextCursor });
+
+    // Bloqueamos si ya está cargando o no hay más páginas
+    if (isLoadingMore || !hasMore || !nextCursor) {
+      if (process.env.NODE_ENV === "development") console.warn("🚨 TELEMETRÍA [STORE]: Petición bloqueada (ya cargando o sin cursor).");
+      return;
+    }
+    
+    set({ isLoadingMore: true });
+
+    try {
+      console.log(`🚨 TELEMETRÍA [STORE]: Pidiendo página con cursor: ${nextCursor}`);
+      const data = await api.buscar(query, nextCursor, activeCategories);
+      
+      if (process.env.NODE_ENV === "development") console.log("🚨 TELEMETRÍA [API LOAD MORE]:", data);
+
+      if (data.status === "success" && data.data && data.data.length > 0) {
+        const combined = [...results, ...data.data];
+        
+        // Filtramos duplicados usando la URL como ID único
+        const unique = Array.from(new Map(combined.map((item) => [item.url, item])).values());
+
+        // 🛡️ CIRCUIT BREAKER
+        if (unique.length === results.length) {
+          if (process.env.NODE_ENV === "development") console.warn("🚨 CIRCUIT BREAKER: El Backend mandó los mismos resultados. Cortando el bucle.");
+          set({ hasMore: false });
+        } else {
+          set({
+            results: unique,
+            nextCursor: data.next_id || null,
+            hasMore: !!data.next_id, // Si no hay next_id, desactivamos el Infinite Scroll
+          });
+        }
+      } else {
+        if (process.env.NODE_ENV === "development") console.warn("🚨 TELEMETRÍA [STORE]: La API devolvió un array vacío. Fin de los resultados.");
+        set({ hasMore: false });
+      }
+    } catch (err) {
+      if (process.env.NODE_ENV === "development") console.error("🚨 TELEMETRÍA [STORE]: Error al cargar más:", err);
+    } finally {
+      set({ isLoadingMore: false });
+      useProgressStore.getState().done();
+    }
+  },
+
+  // ✅ CÓDIGO RESTAURADO PARA LAS TENDENCIAS DE LA HOME
+  fetchTrending: async () => {
+    useProgressStore.getState().start();
+    try {
+      const data = await api.getTrends(5);
+      if (data.status === "success") set({ trending: data.data });
+      useProgressStore.getState().done();
+    } catch (err) {
+      console.error("Error cargando tendencias:", err);
+      useProgressStore.getState().done();
+    }
+  },
+}));
 </file>
 
 <file path="frontend/src/system/organisms/Layout/Navbar/NavbarSearch.tsx">
