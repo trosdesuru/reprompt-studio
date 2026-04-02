@@ -47,6 +47,13 @@ app/
         page.tsx
       login/
         page.tsx
+    [username]/
+      [collection_slug]/
+        page.tsx
+      p/
+        [prompt_id]/
+          page.tsx
+      page.tsx
     join/
       page.tsx
     reprompt/
@@ -196,6 +203,7 @@ src/
           TrendingSection.tsx
         HeroSearch.tsx
       Studio/
+        CreateCollectionModal.tsx
         PromptCard.tsx
       Viewer/
         ImageViewerModal/
@@ -377,6 +385,419 @@ export default function LoginPage() {
 }
 </file>
 
+<file path="app/[lang]/[username]/[collection_slug]/page.tsx">
+"use client";
+
+import { use, useEffect, useState } from "react";
+import { api } from "@/src/services/api";
+import { PromptCard } from "@/src/system/organisms/Studio/PromptCard";
+import { SavedPrompt } from "@/src/features/studio/hooks/useStudio";
+import Link from "next/link";
+import { IconArrowLeft, IconPhotoOff } from "@tabler/icons-react";
+
+interface CollectionData {
+  user: { username: string };
+  collection: { name: string; description: string };
+  prompts: SavedPrompt[];
+}
+
+export default function PublicCollectionPage({
+  params,
+}: {
+  params: Promise<{ lang: string; username: string; collection_slug: string }>;
+}) {
+  const { lang, username, collection_slug } = use(params);
+  const [data, setData] = useState<CollectionData | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    api
+      .getPublicCollection(username, collection_slug)
+      .then((res) => setData(res))
+      .catch(() => setData(null))
+      .finally(() => setLoading(false));
+  }, [username, collection_slug]);
+
+  if (loading)
+    return (
+      <div className="min-h-screen flex items-center justify-center font-mono animate-pulse">
+        Cargando colección...
+      </div>
+    );
+  if (!data)
+    return (
+      <div className="min-h-screen flex items-center justify-center font-mono text-red-500">
+        Colección no encontrada o privada.
+      </div>
+    );
+
+  return (
+    <main className="min-h-screen bg-background p-4 md:p-8">
+      <div className="max-w-7xl mx-auto space-y-8">
+        <Link
+          href={`/${lang}/${username}`}
+          className="inline-flex items-center gap-2 text-xs font-mono text-muted-foreground hover:text-foreground transition-colors uppercase tracking-widest"
+        >
+          <IconArrowLeft size={16} /> Volver a @{data.user.username}
+        </Link>
+
+        <header className="flex flex-col gap-2 border-b border-border pb-8">
+          <h1 className="text-4xl font-black tracking-tighter text-(--accent-color)">
+            {data.collection.name}
+          </h1>
+          <p className="text-muted-foreground text-sm max-w-2xl">
+            {data.collection.description || "Colección sin descripción."}
+          </p>
+        </header>
+
+        {data.prompts.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-20 text-muted-foreground/50 bg-muted/5 rounded-xl border border-dashed border-border/50">
+            <IconPhotoOff size={48} stroke={1} className="mb-4" />
+            <p className="font-mono text-xs uppercase tracking-widest">Esta colección está vacía</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+            {data.prompts.map((prompt) => (
+              <PromptCard key={prompt.id} item={prompt} />
+            ))}
+          </div>
+        )}
+      </div>
+    </main>
+  );
+}
+</file>
+
+<file path="app/[lang]/[username]/p/[prompt_id]/page.tsx">
+"use client";
+
+import { IconArrowLeft, IconCopy, IconCheck, IconWand, IconUser } from "@tabler/icons-react";
+import { use, useEffect, useState } from "react";
+import { api } from "@/src/services/api";
+
+import dynamic from "next/dynamic";
+import Link from "next/link";
+
+const ImageViewerModal = dynamic(
+  () =>
+    import("@/src/system/organisms/Viewer/ImageViewerModal/ImageViewerModal").then(
+      (mod) => mod.ImageViewerModal,
+    ),
+  { ssr: false },
+);
+
+export default function PromptDetailPage({
+  params,
+}: {
+  params: Promise<{ lang: string; username: string; prompt_id: string }>;
+}) {
+  const { lang, username, prompt_id } = use(params);
+  const [data, setData] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [copied, setCopied] = useState(false);
+  const [isViewerOpen, setIsViewerOpen] = useState(false);
+
+  useEffect(() => {
+    api
+      .getPublicPromptDetail(prompt_id)
+      .then((res) => setData(res))
+      .catch((err) => console.error(err))
+      .finally(() => setIsLoading(false));
+  }, [prompt_id]);
+
+  const handleCopy = () => {
+    if (data?.prompt?.prompt) {
+      navigator.clipboard.writeText(data.prompt.prompt);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  if (isLoading)
+    return (
+      <div className="min-h-screen flex items-center justify-center font-mono animate-pulse">
+        Cargando datos IA...
+      </div>
+    );
+  if (!data)
+    return (
+      <div className="min-h-screen flex items-center justify-center font-mono text-red-500">
+        Imagen no encontrada.
+      </div>
+    );
+
+  const { prompt, user, collection, related_collection, related_user } = data;
+
+  return (
+    <main className="min-h-screen bg-background p-4 md:p-8">
+      <div className="max-w-7xl mx-auto">
+        <Link
+          href={`/${lang}`}
+          className="inline-flex items-center gap-2 text-xs font-mono text-muted-foreground hover:text-foreground transition-colors uppercase tracking-widest mb-6"
+        >
+          <IconArrowLeft size={16} /> Volver al Feed
+        </Link>
+
+        <div className="flex flex-col lg:flex-row gap-8">
+          <div className="flex-1 space-y-12">
+            <div
+              onClick={() => setIsViewerOpen(true)}
+              className="bg-muted/10 neo-border rounded-xl overflow-hidden cursor-zoom-in relative group"
+            >
+              <img
+                src={prompt.image_url}
+                alt={prompt.title}
+                className="w-full h-auto object-contain max-h-[70vh]"
+              />
+              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
+                <span className="bg-black/70 text-white font-mono text-xs uppercase tracking-widest px-4 py-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity backdrop-blur-sm">
+                  Ampliar
+                </span>
+              </div>
+            </div>
+
+            {related_user?.length > 0 && (
+              <section className="space-y-4 pt-8 border-t border-border">
+                <h3 className="text-sm font-mono font-bold uppercase tracking-widest flex items-center gap-2">
+                  <IconUser size={18} /> Más de @{user.username}
+                </h3>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                  {related_user.map((rp: any) => (
+                    <Link
+                      key={rp.id}
+                      href={`/${lang}/${user.username}/p/${rp.id}`}
+                      className="bg-muted/10 neo-border rounded-lg overflow-hidden aspect-4/5 hover:neo-shadow-accent transition-all"
+                    >
+                      <img
+                        src={rp.image_url}
+                        alt={rp.title}
+                        className="w-full h-full object-cover"
+                      />
+                    </Link>
+                  ))}
+                </div>
+              </section>
+            )}
+          </div>
+
+          <div className="w-full lg:w-400px flex flex-col gap-6">
+            <div className="flex items-center gap-3 p-4 bg-muted/10 neo-border rounded-xl">
+              <div className="w-10 h-10 bg-(--accent-color) rounded-full flex items-center justify-center text-white font-bold font-mono">
+                {user.username.charAt(0).toUpperCase()}
+              </div>
+              <div>
+                <Link href={`/${lang}/${user.username}`} className="font-bold hover:underline">
+                  @{user.username}
+                </Link>
+                <p className="text-xs text-muted-foreground font-mono uppercase">{user.role}</p>
+              </div>
+            </div>
+
+            <div className="bg-background neo-border rounded-xl overflow-hidden flex flex-col">
+              <div className="bg-muted/30 p-3 border-b border-border flex justify-between items-center">
+                <span className="text-xs font-mono font-bold uppercase tracking-widest text-(--accent-color) flex items-center gap-2">
+                  <IconWand size={16} /> Prompt
+                </span>
+                <button
+                  onClick={handleCopy}
+                  className="text-muted-foreground hover:text-foreground transition-colors p-1"
+                  title="Copiar Prompt"
+                >
+                  {copied ? (
+                    <IconCheck size={18} className="text-green-500" />
+                  ) : (
+                    <IconCopy size={18} />
+                  )}
+                </button>
+              </div>
+              <div className="p-4 bg-muted/5 max-h-300px overflow-y-auto custom-scrollbar">
+                <p className="text-sm font-mono leading-relaxed">{prompt.prompt}</p>
+              </div>
+            </div>
+
+            <div className="bg-background neo-border rounded-xl p-4 flex flex-col gap-3">
+              {prompt.model && (
+                <div className="flex justify-between text-xs font-mono">
+                  <span className="text-muted-foreground">Modelo</span>
+                  <span className="font-bold">{prompt.model}</span>
+                </div>
+              )}
+              {prompt.sampler && (
+                <div className="flex justify-between text-xs font-mono">
+                  <span className="text-muted-foreground">Sampler</span>
+                  <span className="font-bold">{prompt.sampler}</span>
+                </div>
+              )}
+              {prompt.resolution && (
+                <div className="flex justify-between text-xs font-mono">
+                  <span className="text-muted-foreground">Resolución</span>
+                  <span className="font-bold">{prompt.resolution}</span>
+                </div>
+              )}
+              {prompt.software && (
+                <div className="flex justify-between text-xs font-mono">
+                  <span className="text-muted-foreground">Software</span>
+                  <span className="font-bold">{prompt.software}</span>
+                </div>
+              )}
+            </div>
+
+            {collection && related_collection?.length > 0 && (
+              <section className="space-y-4 mt-4">
+                <div className="flex justify-between items-center">
+                  <h3 className="text-sm font-mono font-bold uppercase tracking-widest">
+                    De la colección:{" "}
+                    <Link
+                      href={`/${lang}/${user.username}/${collection.slug}`}
+                      className="text-(--accent-color) hover:underline"
+                    >
+                      {collection.name}
+                    </Link>
+                  </h3>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  {related_collection.map((rc: any) => (
+                    <Link
+                      key={rc.id}
+                      href={`/${lang}/${user.username}/p/${rc.id}`}
+                      className="bg-muted/10 neo-border rounded-lg overflow-hidden aspect-square hover:neo-shadow-accent transition-all"
+                    >
+                      <img
+                        src={rc.image_url}
+                        alt={rc.title}
+                        className="w-full h-full object-cover"
+                      />
+                    </Link>
+                  ))}
+                </div>
+              </section>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {isViewerOpen && (
+        <ImageViewerModal
+          title={prompt.title}
+          pages={[{ image_url: prompt.image_url, name: prompt.title, prompt: prompt.prompt }]}
+          isLoading={false}
+          isLoadingMore={false}
+          hasMorePages={false}
+          onLoadMore={() => {}}
+          onClose={() => setIsViewerOpen(false)}
+        />
+      )}
+    </main>
+  );
+}
+</file>
+
+<file path="app/[lang]/[username]/page.tsx">
+"use client";
+
+import { use, useEffect, useState } from "react";
+import { api } from "@/src/services/api";
+import { PromptCard } from "@/src/system/organisms/Studio/PromptCard";
+import { SavedPrompt } from "@/src/features/studio/hooks/useStudio";
+import Link from "next/link";
+import { IconPhotoOff, IconFolder } from "@tabler/icons-react";
+
+interface ProfileData {
+  user: { username: string; role: string };
+  collections: any[];
+  recent_prompts: SavedPrompt[];
+}
+
+export default function PublicProfilePage({
+  params,
+}: {
+  params: Promise<{ lang: string; username: string }>;
+}) {
+  const { lang, username } = use(params);
+  const [data, setData] = useState<ProfileData | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    api
+      .getPublicProfile(username)
+      .then((res) => setData(res))
+      .catch(() => setData(null))
+      .finally(() => setLoading(false));
+  }, [username]);
+
+  if (loading)
+    return (
+      <div className="min-h-screen flex items-center justify-center font-mono animate-pulse">
+        Cargando señales...
+      </div>
+    );
+  if (!data)
+    return (
+      <div className="min-h-screen flex items-center justify-center font-mono text-red-500">
+        Este usuario no existe o se ha perdido en el vacío.
+      </div>
+    );
+
+  return (
+    <main className="min-h-screen bg-background p-4 md:p-8">
+      <div className="max-w-7xl mx-auto space-y-12">
+        {/* Cabecera del Perfil */}
+        <header className="flex flex-col gap-2 border-b border-border pb-8">
+          <h1 className="text-4xl font-black tracking-tighter">@{data.user.username}</h1>
+          <p className="text-muted-foreground font-mono text-sm uppercase tracking-widest">
+            {data.user.role}
+          </p>
+        </header>
+
+        {/* Colecciones Públicas */}
+        {data.collections.length > 0 && (
+          <section className="space-y-4">
+            <h2 className="text-sm font-mono font-bold uppercase tracking-widest flex items-center gap-2">
+              <IconFolder size={18} className="text-(--accent-color)" /> Colecciones
+            </h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+              {data.collections.map((col) => (
+                <Link
+                  key={col.id}
+                  href={`/${lang}/${username}/${col.slug}`}
+                  className="group p-4 bg-muted/10 neo-border hover:bg-muted/30 transition-colors"
+                >
+                  <h3 className="font-bold text-lg group-hover:text-(--accent-color) transition-colors">
+                    {col.name}
+                  </h3>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {col.description || "Sin descripción"}
+                  </p>
+                </Link>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* Últimas Generaciones */}
+        <section className="space-y-4">
+          <h2 className="text-sm font-mono font-bold uppercase tracking-widest">
+            Últimas Generaciones
+          </h2>
+          {data.recent_prompts.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-20 text-muted-foreground/50 bg-muted/5 rounded-xl border border-dashed border-border/50">
+              <IconPhotoOff size={48} stroke={1} className="mb-4" />
+              <p className="font-mono text-xs uppercase tracking-widest">No hay prompts públicos</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+              {data.recent_prompts.map((prompt) => (
+                <PromptCard key={prompt.id} item={prompt} />
+              ))}
+            </div>
+          )}
+        </section>
+      </div>
+    </main>
+  );
+}
+</file>
+
 <file path="app/[lang]/join/page.tsx">
 "use client";
 
@@ -462,84 +883,128 @@ export default function RepromptPage({ params }: { params: Promise<{ lang: strin
 <file path="app/[lang]/studio/page.tsx">
 "use client";
 
-import { use } from "react";
+import { use, useState } from "react";
 import { useStudio } from "@/src/features/studio/hooks/useStudio";
 import { PromptCard } from "@/src/system/organisms/Studio/PromptCard";
-import { IconWand, IconDatabase } from "@tabler/icons-react";
+import { CreateCollectionModal } from "@/src/system/organisms/Studio/CreateCollectionModal";
+import { IconWand, IconDatabase, IconPlus, IconLock } from "@tabler/icons-react";
+import { useAuthStore } from "@/src/store/authStore";
 import Link from "next/link";
 
 export default function StudioPage({ params }: { params: Promise<{ lang: string }> }) {
   const { lang } = use(params);
+  const user = useAuthStore((state: any) => state.user);
+  const { prompts, collections, isLoading, error, deletePrompt, assignToCollection, refetch } =
+    useStudio();
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const { prompts, isLoading, error, deletePrompt } = useStudio();
+  if (isLoading)
+    return (
+      <div className="min-h-screen flex items-center justify-center font-mono">
+        Cargando Búnker...
+      </div>
+    );
+  if (error)
+    return (
+      <div className="min-h-screen flex items-center justify-center text-red-500">{error}</div>
+    );
 
   return (
-    <main className="min-h-screen bg-background p-4 sm:p-8 animate-fade-in">
-      <div className="max-w-7xl mx-auto space-y-8">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-end border-b-4 border-(--border-color) pb-6 gap-4">
+    <main className="min-h-screen bg-background p-4 md:p-8">
+      <div className="max-w-7xl mx-auto space-y-12">
+        {/* Cabecera y Controles */}
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-border pb-8">
           <div>
-            <div className="flex items-center gap-2 mb-2">
-              <IconDatabase className="text-(--accent-color)" size={24} />
-              <span className="font-mono text-xs font-bold uppercase tracking-widest text-(--text-secondary)">
-                Base de Datos Local
-              </span>
-            </div>
-            <h1 className="text-4xl md:text-5xl font-black uppercase tracking-tighter leading-none">
-              MI <span className="text-(--accent-color)">ESTUDIO</span>
+            <h1 className="text-3xl font-black tracking-tighter flex items-center gap-3">
+              <IconDatabase className="text-(--accent-color)" size={32} /> Mi Búnker
             </h1>
+            <p className="text-muted-foreground mt-1">Gestiona tus prompts y galerías.</p>
           </div>
-
-          <Link
-            href="/reprompt"
-            className="flex items-center gap-2 bg-(--accent-color) text-white px-6 py-3 neo-border neo-shadow text-sm font-bold uppercase hover:-translate-y-1 transition-all active:translate-y-0"
-          >
-            <IconWand size={18} /> Extraer Nuevo
-          </Link>
+          <div className="flex gap-3">
+            <Link
+              href={`/${lang}/reprompt`}
+              className="bg-background border border-border hover:bg-muted/30 text-foreground px-4 py-2 rounded-md font-mono text-sm font-bold uppercase tracking-widest transition-colors flex items-center gap-2"
+            >
+              <IconWand size={18} /> Extraer Más
+            </Link>
+            <button
+              onClick={() => setIsModalOpen(true)}
+              className="bg-(--accent-color) text-white px-4 py-2 rounded-md font-mono text-sm font-bold uppercase tracking-widest hover:bg-opacity-90 transition-colors flex items-center gap-2"
+            >
+              <IconPlus size={18} /> Nueva Colección
+            </button>
+          </div>
         </div>
 
-        {isLoading && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {[1, 2, 3, 4, 5, 6].map((i) => (
-              <div
-                key={i}
-                className="h-64 bg-(--bg-secondary) neo-border animate-pulse opacity-50"
-              />
-            ))}
-          </div>
+        {/* 📁 Sección de Colecciones */}
+        {collections.length > 0 && (
+          <section className="space-y-4">
+            <h2 className="text-sm font-mono font-bold uppercase tracking-widest text-muted-foreground">
+              Tus Colecciones
+            </h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+              {collections.map((col) => (
+                <div
+                  key={col.id}
+                  className="p-4 bg-background border border-border rounded-xl hover:shadow-md transition-shadow relative"
+                >
+                  {col.is_private && (
+                    <IconLock
+                      size={14}
+                      className="absolute top-4 right-4 text-muted-foreground/50"
+                    />
+                  )}
+                  <h3 className="font-bold text-lg">{col.name}</h3>
+                  <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                    {col.description || "Sin descripción"}
+                  </p>
+                  <div className="mt-4 pt-4 border-t border-border/50 flex justify-between items-center text-xs font-mono">
+                    <span className="text-muted-foreground">
+                      {prompts.filter((p) => p.collection_id === col.id).length} items
+                    </span>
+                    <Link
+                      href={`/${lang}/${user?.username}/${col.slug}`}
+                      className="text-(--accent-color) hover:underline"
+                    >
+                      Ver Pública &rarr;
+                    </Link>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
         )}
 
-        {error && (
-          <div className="bg-red-50 border-2 border-red-500 p-6 neo-border text-red-700 font-mono text-sm">
-            <p className="font-black uppercase mb-2">🚨 Error de Sincronización</p>
-            {error}
-          </div>
-        )}
-
-        {!isLoading && !error && prompts.length === 0 && (
-          <div className="text-center p-20 bg-(--bg-secondary) border-4 border-dashed border-(--border-color)">
-            <p className="font-mono text-xl text-(--text-secondary) font-bold">
-              Tu búnker está vacío.
-            </p>
-            <p className="text-sm text-(--text-secondary) mt-2 mb-8">
-              Sube imágenes en Reprompt Studio para empezar a guardar conocimiento.
-            </p>
-            <Link
-              href="/reprompt"
-              className="text-(--accent-color) font-black underline underline-offset-8 decoration-4 hover:text-foreground transition-colors uppercase"
-            >
-              Ir al Extractor ahora →
-            </Link>
-          </div>
-        )}
-
-        {!isLoading && prompts.length > 0 && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 pb-20">
-            {prompts.map((prompt) => (
-              <PromptCard key={prompt.id} item={prompt} onDelete={deletePrompt} />
-            ))}
-          </div>
-        )}
+        {/* 🖼️ Grid Principal de Prompts */}
+        <section className="space-y-4">
+          <h2 className="text-sm font-mono font-bold uppercase tracking-widest text-muted-foreground">
+            Todos tus Prompts
+          </h2>
+          {prompts.length === 0 ? (
+            <div className="text-center py-20 bg-muted/10 border border-dashed border-border rounded-xl">
+              <p className="text-muted-foreground font-mono">Aún no hay prompts guardados.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+              {prompts.map((prompt) => (
+                <PromptCard
+                  key={prompt.id}
+                  item={prompt}
+                  collections={collections}
+                  onDelete={deletePrompt}
+                  onAssign={assignToCollection}
+                />
+              ))}
+            </div>
+          )}
+        </section>
       </div>
+
+      <CreateCollectionModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onSuccess={refetch}
+      />
     </main>
   );
 }
@@ -2905,6 +3370,7 @@ export function useSearch() {
 import { useState, useEffect, useCallback } from "react";
 import { api } from "@/src/services/api";
 import { handleError } from "@/src/utils/errors/ErrorHandler";
+import { toast } from "react-hot-toast/headless";
 
 export interface SavedPrompt {
   id: number;
@@ -2918,10 +3384,21 @@ export interface SavedPrompt {
   image_url?: string;
   extra_data: { loras?: any[]; triggerWords?: string[] };
   resolution?: string;
+  collection_id: number | null;
+}
+
+export interface Collection {
+  id: number;
+  name: string;
+  slug: string;
+  description: string | null;
+  is_private: boolean;
+  created_at: string;
 }
 
 export function useStudio() {
   const [prompts, setPrompts] = useState<SavedPrompt[]>([]);
+  const [collections, setCollections] = useState<Collection[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -2929,15 +3406,33 @@ export function useStudio() {
     setIsLoading(true);
     setError(null);
     try {
-      const data = await api.getMyPrompt();
-      setPrompts(data);
+      const [promptsRes, collectionsRes] = await Promise.all([
+        api.getMyPrompt(),
+        api.getMyCollections(),
+      ]);
+      setPrompts(promptsRes);
+      setCollections(collectionsRes.collections || []);
+
     } catch (err: unknown) {
       const msg = handleError(err, "useStudio");
       setError(msg);
+      
     } finally {
       setIsLoading(false);
     }
   }, []);
+
+  const assignToCollection = async (promptId: number, collectionId: number | null) => {
+    try {
+      await api.assignPromptToCollection(promptId, collectionId);
+      setPrompts((prev) =>
+        prev.map((p) => (p.id === promptId ? { ...p, collection_id: collectionId } : p)),
+      );
+      toast.success("Imagen movida correctamente");
+    } catch (error) {
+      toast.error("Error al mover la imagen");
+    }
+  };
 
   const deletePrompt = async (id: number) => {
     try {
@@ -2953,7 +3448,15 @@ export function useStudio() {
     fetchPrompts();
   }, [fetchPrompts]);
 
-  return { prompts, isLoading, error, refetch: fetchPrompts, deletePrompt };
+  return {
+    prompts,
+    collections,
+    isLoading,
+    error,
+    refetch: fetchPrompts,
+    assignToCollection,
+    deletePrompt,
+  };
 }
 </file>
 
@@ -3150,12 +3653,61 @@ import { authApi } from "./api/auth";
 import { searchApi } from "./api/search";
 import { downloadApi } from "./api/downloads";
 import { promptApi } from "./api/prompts";
+import { API_URL } from "./api/client";
 
 export const api = {
   ...authApi,
   ...searchApi,
   ...downloadApi,
   ...promptApi,
+
+  getPublicProfile: async (username: string) => {
+    const res = await fetch(`${API_URL}/public/profile/${username}`);
+    if (!res.ok) throw new Error("Perfil no encontrado");
+    return res.json();
+  },
+  getPublicCollection: async (username: string, slug: string) => {
+    const res = await fetch(`${API_URL}/public/profile/${username}/${slug}`);
+    if (!res.ok) throw new Error("Colección no encontrada");
+    return res.json();
+  },
+
+  createCollection: async (data: { name: string; description?: string; is_private: boolean }) => {
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+    const res = await fetch(`${API_URL}/api/collections`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error("Error creando colección");
+    return res.json();
+  },
+
+  getMyCollections: async () => {
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+    const res = await fetch(`${API_URL}/api/collections/`, { credentials: "include" });
+    if (!res.ok) throw new Error("Error obteniendo colecciones");
+    return res.json();
+  },
+
+  assignPromptToCollection: async (promptId: number, collectionId: number | null) => {
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+    const res = await fetch(`${API_URL}/api/collections/assign/${promptId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ collection_id: collectionId }),
+    });
+    if (!res.ok) throw new Error("Error asignando imagen");
+    return res.json();
+  },
+
+  getPublicPromptDetail: async (promptId: string) => {
+    const res = await fetch(`/api/public/prompt/${promptId}`);
+    if (!res.ok) throw new Error("Imagen no encontrada o privada");
+    return res.json();
+  },
 };
 </file>
 
@@ -6274,19 +6826,141 @@ export function HeroSearch() {
 }
 </file>
 
+<file path="src/system/organisms/Studio/CreateCollectionModal.tsx">
+"use client";
+
+import { useState } from "react";
+import { api } from "@/src/services/api";
+import toast from "react-hot-toast";
+import { IconX, IconLock, IconWorld } from "@tabler/icons-react";
+
+interface Props {
+  isOpen: boolean;
+  onClose: () => void;
+  onSuccess: () => void;
+}
+
+export function CreateCollectionModal({ isOpen, onClose, onSuccess }: Props) {
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const [isPrivate, setIsPrivate] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+
+  if (!isOpen) return null;
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim()) return toast.error("El nombre es obligatorio");
+
+    setIsLoading(true);
+    try {
+      await api.createCollection({ name, description, is_private: isPrivate });
+      toast.success("Colección creada");
+      setName("");
+      setDescription("");
+      setIsPrivate(false);
+      onSuccess(); // Refresca los datos en la página padre
+      onClose();
+    } catch (error) {
+      toast.error("Error al crear la colección");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-4 animate-fade-in">
+      <div className="bg-background w-full max-w-md rounded-xl border border-border shadow-2xl overflow-hidden relative">
+        <button
+          onClick={onClose}
+          className="absolute top-4 right-4 text-muted-foreground hover:text-foreground"
+        >
+          <IconX size={20} />
+        </button>
+
+        <div className="p-6">
+          <h2 className="text-xl font-bold tracking-tight mb-6 text-(--accent-color)">
+            Nueva Colección
+          </h2>
+
+          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-mono uppercase tracking-widest text-muted-foreground">
+                Nombre
+              </label>
+              <input
+                type="text"
+                autoFocus
+                placeholder="Ej. Cyberpunk Portraits"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="w-full bg-muted/10 border border-border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-(--accent-color)"
+                disabled={isLoading}
+              />
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-mono uppercase tracking-widest text-muted-foreground">
+                Descripción (Opcional)
+              </label>
+              <textarea
+                placeholder="Un breve resumen de esta galería..."
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                className="w-full bg-muted/10 border border-border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-(--accent-color) resize-none h-20"
+                disabled={isLoading}
+              />
+            </div>
+
+            <div
+              className="flex items-center gap-3 p-3 bg-muted/20 border border-border rounded-md mt-2 cursor-pointer"
+              onClick={() => setIsPrivate(!isPrivate)}
+            >
+              <div
+                className={`p-2 rounded-full ${isPrivate ? "bg-red-500/10 text-red-500" : "bg-green-500/10 text-green-500"}`}
+              >
+                {isPrivate ? <IconLock size={18} /> : <IconWorld size={18} />}
+              </div>
+              <div className="flex flex-col flex-1 select-none">
+                <span className="text-sm font-bold">
+                  {isPrivate ? "Colección Privada" : "Colección Pública"}
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  {isPrivate ? "Solo tú podrás verla." : "Visible en tu perfil para todo el mundo."}
+                </span>
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="w-full mt-4 bg-(--accent-color) text-white font-mono font-bold uppercase tracking-widest py-3 rounded-md hover:bg-opacity-90 transition-all disabled:opacity-50"
+            >
+              {isLoading ? "Creando..." : "Crear Colección"}
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  );
+}
+</file>
+
 <file path="src/system/organisms/Studio/PromptCard.tsx">
 "use client";
 
 import { useState } from "react";
-import { IconCopy, IconTrash, IconCheck, IconPhoto } from "@tabler/icons-react";
-import { SavedPrompt } from "@/src/features/studio/hooks/useStudio";
+import { IconCopy, IconTrash, IconCheck, IconPhoto, IconFolderPlus } from "@tabler/icons-react";
+import { Collection, SavedPrompt } from "@/src/features/studio/hooks/useStudio";
 
 interface PromptCardProps {
   item: SavedPrompt;
-  onDelete: (id: number) => void;
+  collections?: Collection[];
+  onDelete?: (id: number) => void;
+  onAssign?: (promptId: number, collectionId: number | null) => void;
 }
 
-export function PromptCard({ item, onDelete }: PromptCardProps) {
+export function PromptCard({ item, collections = [], onAssign, onDelete }: PromptCardProps) {
   const [copied, setCopied] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
 
@@ -6305,7 +6979,6 @@ export function PromptCard({ item, onDelete }: PromptCardProps) {
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      {/* 🖼️ ÁREA DE IMAGEN (1:1 o 4:5 aspect ratio) */}
       <div className="relative aspect-square sm:aspect-4/5 bg-muted/10 overflow-hidden">
         {item.image_url ? (
           <img
@@ -6326,6 +6999,31 @@ export function PromptCard({ item, onDelete }: PromptCardProps) {
           className={`absolute inset-0 bg-black/20 transition-opacity duration-300 ${isHovered ? "opacity-100" : "opacity-0"}`}
         />
 
+        {onAssign && collections.length > 0 && (
+          <div
+            className={`absolute top-3 left-3 transition-opacity duration-300 ${isHovered ? "opacity-100" : "opacity-0"}`}
+          >
+            <div className="relative flex items-center bg-background/90 backdrop-blur-sm border border-border/50 rounded-md overflow-hidden shadow-sm">
+              <div className="pl-2 text-muted-foreground">
+                <IconFolderPlus size={14} />
+              </div>
+              <select
+                className="bg-transparent text-[10px] font-bold uppercase tracking-widest text-foreground py-1.5 pl-1 pr-4 focus:outline-none cursor-pointer appearance-none"
+                value={item.collection_id || ""}
+                onChange={(e) => onAssign(item.id, e.target.value ? Number(e.target.value) : null)}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <option value="">Suelto</option>
+                {collections.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+        )}
+
         {/* 🏷️ Badge de Software */}
         {item.software && (
           <div
@@ -6337,23 +7035,24 @@ export function PromptCard({ item, onDelete }: PromptCardProps) {
           </div>
         )}
 
-        {/* 🗑️ Botón de Eliminar */}
-        <div
-          className={`absolute top-3 right-3 transition-opacity duration-300 ${isHovered ? "opacity-100" : "opacity-0"}`}
-        >
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              if (window.confirm("¿Seguro que deseas eliminar este prompt del búnker?")) {
-                onDelete(item.id);
-              }
-            }}
-            className="bg-background/90 backdrop-blur-sm hover:bg-red-500/10 hover:text-red-500 text-foreground p-2 rounded-full border border-border/50 transition-colors shadow-sm"
-            title="Eliminar"
+        {onDelete && (
+          <div
+            className={`absolute top-3 right-3 transition-opacity duration-300 ${isHovered ? "opacity-100" : "opacity-0"}`}
           >
-            <IconTrash size={16} stroke={1.5} />
-          </button>
-        </div>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                if (window.confirm("¿Seguro que deseas eliminar este prompt del búnker?")) {
+                  onDelete(item.id);
+                }
+              }}
+              className="bg-background/90 backdrop-blur-sm hover:bg-red-500/10 hover:text-red-500 text-foreground p-2 rounded-full border border-border/50 transition-colors shadow-sm"
+              title="Eliminar"
+            >
+              <IconTrash size={16} stroke={1.5} />
+            </button>
+          </div>
+        )}
       </div>
 
       {/* 📝 ÁREA DE CONTENIDO */}

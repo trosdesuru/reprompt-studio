@@ -75,3 +75,64 @@ def get_public_collection(
         "collection": collection,
         "prompts": prompts,
     }
+
+
+# Añadir al final de backend/app/api/routes_public.py
+
+
+@router.get("/prompt/{prompt_id}")
+def get_public_prompt_detail(prompt_id: int, session: Session = Depends(get_session)):
+    """Devuelve el detalle de un prompt, su metadata, y las imágenes relacionadas (Colección y Usuario)"""
+
+    # 1. Buscar la imagen
+    prompt = session.exec(
+        select(ImagePrompt).where(ImagePrompt.id == prompt_id)
+    ).first()
+    if not prompt:
+        raise HTTPException(status_code=404, detail="Imagen no encontrada")
+
+    # 2. Buscar al dueño
+    user = session.exec(select(User).where(User.id == prompt.user_id)).first()
+
+    # 3. Validar privacidad y buscar relacionadas de la Colección
+    collection = None
+    related_collection = []
+
+    if prompt.collection_id:
+        collection = session.exec(
+            select(Collection).where(Collection.id == prompt.collection_id)
+        ).first()
+        if collection and collection.is_private:
+            raise HTTPException(
+                status_code=403, detail="Esta imagen pertenece a una colección privada"
+            )
+
+        # Otras imágenes de esta misma colección
+        related_collection = session.exec(
+            select(ImagePrompt)
+            .where(ImagePrompt.collection_id == prompt.collection_id)
+            .where(ImagePrompt.id != prompt.id)
+            .order_by(ImagePrompt.created_at.desc())
+            .limit(6)
+        ).all()
+
+    # 4. Otras imágenes públicas del mismo Usuario
+    statement = (
+        select(ImagePrompt)
+        .outerjoin(Collection, ImagePrompt.collection_id == Collection.id)
+        .where(ImagePrompt.user_id == user.id)
+        .where(ImagePrompt.id != prompt.id)
+        .where(or_(ImagePrompt.collection_id == None, Collection.is_private == False))
+        .order_by(ImagePrompt.created_at.desc())
+        .limit(12)
+    )
+    related_user = session.exec(statement).all()
+
+    return {
+        "status": "success",
+        "prompt": prompt,
+        "user": {"username": user.username, "role": user.role},
+        "collection": collection,
+        "related_collection": related_collection,
+        "related_user": related_user,
+    }

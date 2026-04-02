@@ -51,4 +51,10 @@ export const api = {
     if (!res.ok) throw new Error("Error asignando imagen");
     return res.json();
   },
+
+  getPublicPromptDetail: async (promptId: string) => {
+    const res = await fetch(`/api/public/prompt/${promptId}`);
+    if (!res.ok) throw new Error("Imagen no encontrada o privada");
+    return res.json();
+  },
 };
