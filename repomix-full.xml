@@ -93,11 +93,12 @@ frontend/
     mcp.json
   app/
     [lang]/
-      admin/
-        page.tsx
+      (auth)/
+        admin/
+          page.tsx
+        login/
+          page.tsx
       join/
-        page.tsx
-      login/
         page.tsx
       reprompt/
         page.tsx
@@ -138,6 +139,7 @@ frontend/
         hooks/
           useRedirectIfAuthenticated.ts
         AuthProvider.tsx
+        GoogleAuthButton.tsx
       extractor/
         hooks/
           usePromptExtractor.ts
@@ -1540,6 +1542,22 @@ export const downloadApi = {
 };
 </file>
 
+<file path="frontend/src/services/api/prompts.ts">
+import { API_URL, fetchSeguro } from "./client";
+
+export const promptApi = {
+  guardarPrompt: (data: any) =>
+    fetchSeguro(`${API_URL}/prompts/save`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    }),
+
+  obtenerMisPrompts: () => fetchSeguro(`${API_URL}/prompts/`),
+  eliminarPrompt: (id: number) => fetchSeguro(`${API_URL}/prompts/${id}`, { method: "DELETE" }),
+};
+</file>
+
 <file path="frontend/src/services/api/search.ts">
 import { API_URL, fetchSeguro } from "./client";
 
@@ -2295,6 +2313,42 @@ class Collection(SQLModel, table=True):
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 </file>
 
+<file path="backend/app/models/prompt.py">
+from sqlmodel import SQLModel, Field, Column, JSON
+from sqlalchemy import Text
+from typing import Optional, Dict, Any
+from datetime import datetime
+
+
+class ImagePrompt(SQLModel, table=True):
+    """Almacenamiento individual de cada generación extraída"""
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: int = Field(foreign_key="user.id", index=True)
+
+    collection_id: Optional[int] = Field(
+        default=None, foreign_key="collection.id", index=True
+    )
+
+    title: str
+
+    prompt: str = Field(sa_column=Column(Text))
+    negative_prompt: Optional[str] = Field(default=None, sa_column=Column(Text))
+
+    software: Optional[str] = Field(default="Desconocido")
+    model: Optional[str] = Field(default=None)
+    sampler: Optional[str] = Field(default=None)
+    steps: Optional[str] = Field(default=None)
+    cfg_scale: Optional[str] = Field(default=None)
+    seed: Optional[str] = Field(default=None)
+    resolution: Optional[str] = Field(default=None)
+
+    image_url: Optional[str] = Field(default=None, sa_column=Column(Text))
+
+    extra_data: Dict[str, Any] = Field(default_factory=dict, sa_column=Column(JSON))
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+</file>
+
 <file path="backend/app/models/user.py">
 from typing import Optional
 from sqlmodel import Field, SQLModel
@@ -2841,7 +2895,7 @@ CMD ["python", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "
 }
 </file>
 
-<file path="frontend/app/[lang]/admin/page.tsx">
+<file path="frontend/app/[lang]/(auth)/admin/page.tsx">
 // frontend/app/admin/page.tsx
 "use client";
 
@@ -2929,28 +2983,7 @@ export default function AdminDashboard() {
 }
 </file>
 
-<file path="frontend/app/[lang]/join/page.tsx">
-"use client";
-
-import Link from "next/link";
-import RegisterForm from "@/src/system/organisms/Auth/RegisterForm";
-
-export default function JoinPage() {
-  return (
-    <main className="min-h-screen bg-background text-foreground flex flex-col items-center justify-center p-4">
-      <Link
-        href="/"
-        className="absolute top-8 left-8 text-sm font-bold font-mono hover:text-(--accent-color) uppercase"
-      >
-        ← Volver
-      </Link>
-      <RegisterForm />
-    </main>
-  );
-}
-</file>
-
-<file path="frontend/app/[lang]/login/page.tsx">
+<file path="frontend/app/[lang]/(auth)/login/page.tsx">
 "use client";
 
 import Link from "next/link";
@@ -2990,6 +3023,27 @@ export default function LoginPage() {
           REGISTRARSE AQUÍ
         </Link>
       </p>
+    </main>
+  );
+}
+</file>
+
+<file path="frontend/app/[lang]/join/page.tsx">
+"use client";
+
+import Link from "next/link";
+import RegisterForm from "@/src/system/organisms/Auth/RegisterForm";
+
+export default function JoinPage() {
+  return (
+    <main className="min-h-screen bg-background text-foreground flex flex-col items-center justify-center p-4">
+      <Link
+        href="/"
+        className="absolute top-8 left-8 text-sm font-bold font-mono hover:text-(--accent-color) uppercase"
+      >
+        ← Volver
+      </Link>
+      <RegisterForm />
     </main>
   );
 }
@@ -4274,6 +4328,158 @@ export function useRedirectIfAuthenticated(redirectTo: string = "/") {
 }
 </file>
 
+<file path="frontend/src/features/auth/GoogleAuthButton.tsx">
+"use client";
+
+import { useState } from "react";
+import { GoogleLogin } from "@react-oauth/google";
+import { useAuthStore } from "@/src/store/authStore";
+import toast from "react-hot-toast";
+
+export function GoogleAuthButton() {
+  const checkAuth = useAuthStore((state) => state.checkAuth);
+
+  // Estados para el Flujo Híbrido
+  const [step, setStep] = useState<"google" | "invite">("google");
+  const [tempToken, setTempToken] = useState("");
+  const [inviteCode, setInviteCode] = useState("");
+  const [username, setUsername] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+
+  // 1. Manejador del éxito de Google
+  // 1. Manejador del éxito de Google
+  const handleGoogleSuccess = async (credentialResponse: any) => {
+    try {
+      setIsLoading(true);
+
+      // 🛡️ Apuntamos al backend real
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
+      const res = await fetch(`${API_URL}/api/auth/google`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include", // 🛡️ OBLIGATORIO para guardar las cookies de FastAPI
+        body: JSON.stringify({ token: credentialResponse.credential }),
+      });
+
+      const data = await res.json();
+
+      if (res.status === 202 && data.status === "needs_invite") {
+        setTempToken(credentialResponse.credential);
+        setUsername(data.suggested_username || "");
+        setStep("invite");
+        toast("¡Casi listo! Necesitamos tu código de invitación.", { icon: "🎟️" });
+      } else if (res.ok) {
+        toast.success(data.message || "Bienvenido de nuevo");
+        await checkAuth();
+        window.location.href = "/es/studio";
+      } else {
+        toast.error(data.detail || "Error en la autenticación");
+      }
+    } catch (error) {
+      toast.error("Error de conexión con el servidor");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // 2. Manejador del envío del Código de Invitación
+  const handleJoinSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!inviteCode || !username) return toast.error("Rellena todos los campos");
+
+    try {
+      setIsLoading(true);
+
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
+      const res = await fetch(`${API_URL}/api/auth/google/join`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          token: tempToken,
+          invite_code: inviteCode,
+          username: username,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        toast.success(data.message);
+        await checkAuth();
+        window.location.href = "/es/studio";
+      } else {
+        toast.error(data.detail || "Código inválido o usuario en uso");
+      }
+    } catch (error) {
+      toast.error("Error validando la invitación");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // RENDERIZADO: Paso 1 (Botón de Google)
+  if (step === "google") {
+    return (
+      <div className="flex justify-center w-full">
+        <GoogleLogin
+          onSuccess={handleGoogleSuccess}
+          onError={() => toast.error("El login con Google ha fallado")}
+          useOneTap={false}
+          theme="filled_black"
+          shape="rectangular"
+          text="continue_with"
+        />
+      </div>
+    );
+  }
+
+  // RENDERIZADO: Paso 2 (Formulario de Invitación)
+  return (
+    <form
+      onSubmit={handleJoinSubmit}
+      className="flex flex-col gap-4 w-full p-4 border border-border rounded-lg bg-muted/20"
+    >
+      <div className="text-sm font-medium text-center">Último paso para unirte</div>
+
+      <div className="flex flex-col gap-1">
+        <label className="text-xs text-muted-foreground">Tu alias (Público)</label>
+        <input
+          type="text"
+          value={username}
+          onChange={(e) => setUsername(e.target.value)}
+          className="px-3 py-2 text-sm bg-background border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+          placeholder="ej. cyperpunk_artist"
+          disabled={isLoading}
+        />
+      </div>
+
+      <div className="flex flex-col gap-1">
+        <label className="text-xs text-muted-foreground">Código de invitación</label>
+        <input
+          type="text"
+          value={inviteCode}
+          onChange={(e) => setInviteCode(e.target.value)}
+          className="px-3 py-2 text-sm bg-background border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-primary uppercase"
+          placeholder="ej. TROYA-123"
+          disabled={isLoading}
+        />
+      </div>
+
+      <button
+        type="submit"
+        disabled={isLoading}
+        className="w-full bg-primary text-primary-foreground py-2 rounded-md text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
+      >
+        {isLoading ? "Verificando..." : "Completar Registro"}
+      </button>
+    </form>
+  );
+}
+</file>
+
 <file path="frontend/src/features/extractor/utils/fileExtractors/index.ts">
 import { extractPngMetadata } from "./pngExtractor";
 import { extractJpegMetadata } from "./jpegExtractor";
@@ -4769,22 +4975,6 @@ export const authApi = {
   revocarTodasLasSesiones: () =>
     fetchSeguro(`${API_URL}/auth/admin/sessions/revoke-all`, { method: "POST" }),
   refrescarToken: () => fetchSeguro(`${API_URL}/auth/refresh`, { method: "POST" }),
-};
-</file>
-
-<file path="frontend/src/services/api/prompts.ts">
-import { API_URL, fetchSeguro } from "./client";
-
-export const promptApi = {
-  guardarPrompt: (data: any) =>
-    fetchSeguro(`${API_URL}/prompts/save`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
-    }),
-
-  obtenerMisPrompts: () => fetchSeguro(`${API_URL}/prompts/`),
-  eliminarPrompt: (id: number) => fetchSeguro(`${API_URL}/prompts/${id}`, { method: "DELETE" }),
 };
 </file>
 
@@ -5983,40 +6173,127 @@ venv/
 skills-lock.json
 </file>
 
-<file path="backend/app/models/prompt.py">
-from sqlmodel import SQLModel, Field, Column, JSON
-from sqlalchemy import Text
-from typing import Optional, Dict, Any
-from datetime import datetime
+<file path="backend/app/api/routes_prompt.py">
+import logging
+import uuid
+from typing import List
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from sqlmodel import Session, select
+
+from app.core.db import get_session
+from app.api.deps import get_current_user
+from app.models.user import User
+from app.models.prompt import ImagePrompt
+
+from app.schemas.prompt import PromptCreate, PromptResponse, prompt_form_dependency
+from app.utils.storage import subir_imagen_a_r2
+
+logger = logging.getLogger("api_prompts")
+router = APIRouter()
 
 
-class ImagePrompt(SQLModel, table=True):
-    """Almacenamiento individual de cada generación extraída"""
+@router.post("/upload")
+async def upload_and_save_prompt(
+    file: UploadFile = File(...),
+    prompt_data: PromptCreate = Depends(prompt_form_dependency),  # <-- CLEAN CODE AQUÍ
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    """
+    Recibe la imagen y sus metadatos. Sube la imagen a R2 y guarda la info en PostgreSQL.
+    """
+    try:
+        # 1. Validar la imagen
+        if not file.content_type.startswith("image/"):
+            raise HTTPException(
+                status_code=400, detail="El archivo debe ser una imagen."
+            )
 
-    id: Optional[int] = Field(default=None, primary_key=True)
-    user_id: int = Field(foreign_key="user.id", index=True)
+        file_bytes = await file.read()
 
-    collection_id: Optional[int] = Field(
-        default=None, foreign_key="collection.id", index=True
-    )
+        ext = file.filename.split(".")[-1] if "." in file.filename else "jpg"
+        unique_filename = f"{current_user.username}/{uuid.uuid4().hex}.{ext}"
+        
+        secure_url = subir_imagen_a_r2(file_bytes, unique_filename, file.content_type)
 
-    title: str
+        new_prompt = ImagePrompt(
+            user_id=current_user.id,
+            image_url=secure_url,
+            **prompt_data.model_dump(
+                exclude={"image_url", "extra_data"}
+            ),  # Excluimos los que inyectamos o no usamos directamente
+        )
 
-    prompt: str = Field(sa_column=Column(Text))
-    negative_prompt: Optional[str] = Field(default=None, sa_column=Column(Text))
+        session.add(new_prompt)
+        session.commit()
+        session.refresh(new_prompt)
 
-    software: Optional[str] = Field(default="Desconocido")
-    model: Optional[str] = Field(default=None)
-    sampler: Optional[str] = Field(default=None)
-    steps: Optional[str] = Field(default=None)
-    cfg_scale: Optional[str] = Field(default=None)
-    seed: Optional[str] = Field(default=None)
-    resolution: Optional[str] = Field(default=None)
+        return {
+            "status": "success",
+            "message": "Imagen subida a la nube y prompt guardado con éxito.",
+            "data": {"id": new_prompt.id, "image_url": secure_url},
+        }
 
-    image_url: Optional[str] = Field(default=None, sa_column=Column(Text))
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error en upload_and_save_prompt: {e}")
+        session.rollback()
+        raise HTTPException(
+            status_code=500, detail="Error interno al procesar la imagen."
+        )
 
-    extra_data: Dict[str, Any] = Field(default_factory=dict, sa_column=Column(JSON))
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+@router.get("/", response_model=List[PromptResponse])
+def get_my_prompts(
+    skip: int = 0,
+    limit: int = 50,
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    try:
+        statement = (
+            select(ImagePrompt)
+            .where(ImagePrompt.user_id == current_user.id)
+            .order_by(ImagePrompt.created_at.desc())
+            .offset(skip)
+            .limit(limit)
+        )
+
+        prompts = session.exec(statement).all()
+        return prompts
+
+    except Exception as e:
+        logger.error(f"Error obteniendo prompts para usuario {current_user.id}: {e}")
+        raise HTTPException(
+            status_code=500, detail="Error interno al recuperar los datos."
+        )
+
+
+@router.delete("/{prompt_id}")
+def delete_prompt(
+    prompt_id: int,
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    try:
+        # <-- ACTUALIZADO
+        prompt = session.get(ImagePrompt, prompt_id)
+        if not prompt or prompt.user_id != current_user.id:
+            raise HTTPException(
+                status_code=404, detail="Prompt no encontrado o acceso denegado."
+            )
+
+        session.delete(prompt)
+        session.commit()
+        return {"status": "success", "message": "Prompt eliminado del búnker."}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error borrando prompt {prompt_id}: {e}")
+        session.rollback()
+        raise HTTPException(status_code=500, detail="Error al eliminar el prompt.")
 </file>
 
 <file path="backend/app/schemas/prompt.py">
@@ -6600,106 +6877,6 @@ export function ChangePasswordModal({ onClose }: ChangePasswordModalProps) {
           Guardar Cambios
         </Button>
       </form>
-    </div>
-  );
-}
-</file>
-
-<file path="frontend/src/system/organisms/Auth/LoginForm.tsx">
-"use client";
-
-import { useState } from "react";
-import { api } from "@/src/services/api";
-import { useAuthStore } from "@/src/store/authStore";
-import { useRouter } from "next/navigation";
-import { handleError } from "@/src/utils/errors/ErrorHandler";
-import { useNotificationStore } from "@/src/store/notificationStore";
-// 🟢 Importamos el Sistema de Diseño
-import { FormField } from "@/src/system/molecules/FormField";
-import { Button } from "@/src/system/atoms/Button";
-
-export function LoginForm() {
-  const { checkAuth } = useAuthStore();
-  const router = useRouter();
-  const notify = useNotificationStore((state) => state.notify);
-
-  const [isLoading, setIsLoading] = useState(false);
-  // 🟢 Centralizamos el estado en un objeto para evitar los errores de "Cannot find name"
-  const [formData, setFormData] = useState({
-    username: "",
-    password: "",
-  });
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-
-    try {
-      await api.login(formData);
-      await checkAuth();
-      notify("Sistemas en línea", `Bienvenido de nuevo, ${formData.username}`, "success");
-      router.push("/");
-    } catch (err: unknown) {
-      const msg = handleError(err, "LoginForm");
-      notify("Error de Acceso", msg, "error");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  return (
-    <div className="w-full max-w-md mx-auto p-8 bg-(--bg-secondary) neo-border neo-shadow">
-      <div className="mb-8 text-center">
-        <h2 className="text-2xl font-black uppercase font-mono tracking-tighter">
-          Acceso al <span className="text-(--accent-color)">Búnker</span>
-        </h2>
-        <p className="text-xs font-mono text-(--text-secondary) mt-2 uppercase">
-          Identifícate para gestionar tus prompts
-        </p>
-      </div>
-
-      <form onSubmit={handleSubmit} className="space-y-6">
-        {/* 🟢 Usamos la molécula FormField con el mapeo correcto del estado */}
-        <FormField
-          label="Usuario"
-          name="username"
-          type="text"
-          value={formData.username}
-          onChange={handleChange}
-          placeholder="Tu alias..."
-          required
-        />
-
-        <FormField
-          label="Contraseña"
-          name="password"
-          type="password"
-          value={formData.password}
-          onChange={handleChange}
-          placeholder="••••••••"
-          required
-        />
-
-        <Button
-          type="submit"
-          isLoading={isLoading}
-          className="w-full justify-center h-12 text-sm font-black uppercase tracking-widest"
-        >
-          Iniciar Secuencia de Entrada
-        </Button>
-      </form>
-
-      <div className="mt-6 text-center">
-        <p className="text-[10px] font-mono text-(--text-secondary) uppercase opacity-50">
-          Terminal ID:{" "}
-          {typeof window !== "undefined" ? window.crypto.randomUUID().split("-")[0] : "..."}
-        </p>
-      </div>
     </div>
   );
 }
@@ -10102,129 +10279,6 @@ if __name__ == '__main__':
 </files>
 </file>
 
-<file path="backend/app/api/routes_prompt.py">
-import logging
-import uuid
-from typing import List
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
-from sqlmodel import Session, select
-
-from app.core.db import get_session
-from app.api.deps import get_current_user
-from app.models.user import User
-from app.models.prompt import ImagePrompt
-
-from app.schemas.prompt import PromptCreate, PromptResponse, prompt_form_dependency
-from app.utils.storage import subir_imagen_a_r2
-
-logger = logging.getLogger("api_prompts")
-router = APIRouter()
-
-
-@router.post("/upload")
-async def upload_and_save_prompt(
-    file: UploadFile = File(...),
-    prompt_data: PromptCreate = Depends(prompt_form_dependency),  # <-- CLEAN CODE AQUÍ
-    current_user: User = Depends(get_current_user),
-    session: Session = Depends(get_session),
-):
-    """
-    Recibe la imagen y sus metadatos. Sube la imagen a R2 y guarda la info en PostgreSQL.
-    """
-    try:
-        # 1. Validar la imagen
-        if not file.content_type.startswith("image/"):
-            raise HTTPException(
-                status_code=400, detail="El archivo debe ser una imagen."
-            )
-
-        file_bytes = await file.read()
-
-        ext = file.filename.split(".")[-1] if "." in file.filename else "jpg"
-        unique_filename = f"{current_user.username}/{uuid.uuid4().hex}.{ext}"
-        
-        secure_url = subir_imagen_a_r2(file_bytes, unique_filename, file.content_type)
-
-        new_prompt = ImagePrompt(
-            user_id=current_user.id,
-            image_url=secure_url,
-            **prompt_data.model_dump(
-                exclude={"image_url", "extra_data"}
-            ),  # Excluimos los que inyectamos o no usamos directamente
-        )
-
-        session.add(new_prompt)
-        session.commit()
-        session.refresh(new_prompt)
-
-        return {
-            "status": "success",
-            "message": "Imagen subida a la nube y prompt guardado con éxito.",
-            "data": {"id": new_prompt.id, "image_url": secure_url},
-        }
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error en upload_and_save_prompt: {e}")
-        session.rollback()
-        raise HTTPException(
-            status_code=500, detail="Error interno al procesar la imagen."
-        )
-
-
-@router.get("/", response_model=List[PromptResponse])
-def get_my_prompts(
-    skip: int = 0,
-    limit: int = 50,
-    current_user: User = Depends(get_current_user),
-    session: Session = Depends(get_session),
-):
-    try:
-        statement = (
-            select(ImagePrompt)
-            .where(ImagePrompt.user_id == current_user.id)
-            .order_by(ImagePrompt.created_at.desc())
-            .offset(skip)
-            .limit(limit)
-        )
-
-        prompts = session.exec(statement).all()
-        return prompts
-
-    except Exception as e:
-        logger.error(f"Error obteniendo prompts para usuario {current_user.id}: {e}")
-        raise HTTPException(
-            status_code=500, detail="Error interno al recuperar los datos."
-        )
-
-
-@router.delete("/{prompt_id}")
-def delete_prompt(
-    prompt_id: int,
-    current_user: User = Depends(get_current_user),
-    session: Session = Depends(get_session),
-):
-    try:
-        # <-- ACTUALIZADO
-        prompt = session.get(ImagePrompt, prompt_id)
-        if not prompt or prompt.user_id != current_user.id:
-            raise HTTPException(
-                status_code=404, detail="Prompt no encontrado o acceso denegado."
-            )
-
-        session.delete(prompt)
-        session.commit()
-        return {"status": "success", "message": "Prompt eliminado del búnker."}
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error borrando prompt {prompt_id}: {e}")
-        session.rollback()
-        raise HTTPException(status_code=500, detail="Error al eliminar el prompt.")
-</file>
-
 <file path="backend/requirements.txt">
 fastapi
 uvicorn
@@ -10432,6 +10486,111 @@ export function MediaCover({ src, alt, aspectRatio = "portrait" }: MediaCoverPro
         quality={75}
         decoding="async"
       />
+    </div>
+  );
+}
+</file>
+
+<file path="frontend/src/system/organisms/Auth/LoginForm.tsx">
+"use client";
+
+import { useState } from "react";
+import { api } from "@/src/services/api";
+import { useAuthStore } from "@/src/store/authStore";
+import { useRouter } from "next/navigation";
+import { handleError } from "@/src/utils/errors/ErrorHandler";
+import { useNotificationStore } from "@/src/store/notificationStore";
+// 🟢 Importamos el Sistema de Diseño
+import { FormField } from "@/src/system/molecules/FormField";
+import { Button } from "@/src/system/atoms/Button";
+import { GoogleAuthButton } from "@/src/features/auth/GoogleAuthButton";
+
+export function LoginForm() {
+  const { checkAuth } = useAuthStore();
+  const router = useRouter();
+  const notify = useNotificationStore((state) => state.notify);
+
+  const [isLoading, setIsLoading] = useState(false);
+  // 🟢 Centralizamos el estado en un objeto para evitar los errores de "Cannot find name"
+  const [formData, setFormData] = useState({
+    username: "",
+    password: "",
+  });
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+
+    try {
+      await api.login(formData);
+      await checkAuth();
+      notify("Sistemas en línea", `Bienvenido de nuevo, ${formData.username}`, "success");
+      router.push("/");
+    } catch (err: unknown) {
+      const msg = handleError(err, "LoginForm");
+      notify("Error de Acceso", msg, "error");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <div className="w-full max-w-md mx-auto p-8 bg-(--bg-secondary) neo-border neo-shadow">
+      <div className="mb-8 text-center">
+        <h2 className="text-2xl font-black uppercase font-mono tracking-tighter">
+          Acceso al <span className="text-(--accent-color)">Búnker</span>
+        </h2>
+        <p className="text-xs font-mono text-(--text-secondary) mt-2 uppercase">
+          Identifícate para gestionar tus prompts
+        </p>
+      </div>
+
+      <div className="mt-6">
+        <GoogleAuthButton />
+      </div>
+      
+      <div className="relative flex items-center py-4">
+        <div className="grow border-t border-border"></div>
+        <span className="shrink-0 px-4 text-xs font-mono text-muted-foreground uppercase tracking-widest">
+          o
+        </span>
+        <div className="grow border-t border-border"></div>
+      </div>
+
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <FormField
+          label="Usuario"
+          name="username"
+          type="text"
+          value={formData.username}
+          onChange={handleChange}
+          placeholder="Tu alias..."
+          required
+        />
+
+        <FormField
+          label="Contraseña"
+          name="password"
+          type="password"
+          value={formData.password}
+          onChange={handleChange}
+          placeholder="••••••••"
+          required
+        />
+
+        <Button
+          type="submit"
+          isLoading={isLoading}
+          className="w-full justify-center h-12 text-sm font-black uppercase tracking-widest"
+        >
+          Iniciar Secuencia de Entrada
+        </Button>
+      </form>
     </div>
   );
 }
@@ -10740,64 +10899,6 @@ export function useTheme() {
 }
 </file>
 
-<file path="frontend/app/[lang]/layout.tsx">
-import type { Metadata } from "next";
-import { Prompt, JetBrains_Mono } from "next/font/google";
-import "../globals.css";
-import { AuthProvider } from "@/src/features/auth/AuthProvider";
-import { Navbar } from "@/src/system/organisms/Layout/Navbar/Navbar";
-import { AppToaster } from "@/src/system/organisms/Layout/AppToaster";
-import { GlobalProgress } from "@/src/system/organisms/Layout/GlobalProgress";
-import { cn } from "@/lib/utils";
-
-import { getDictionary, Locale } from "@/src/dictionaries/getDictionary";
-import { I18nProvider } from "@/src/dictionaries/I18nProvider";
-
-import { GoogleOAuthProvider } from "@react-oauth/google";
-
-const prompt = Prompt({
-  weight: ["400", "700", "900"],
-  subsets: ["latin"],
-  variable: "--font-prompt",
-});
-
-const jetbrainsMono = JetBrains_Mono({ subsets: ["latin"], variable: "--font-mono" });
-
-export const metadata: Metadata = {
-  title: "reprompt",
-  description: "Wallet para guardar tus imágenes y prompts",
-};
-
-export default async function RootLayout({
-  children,
-  params,
-}: {
-  children: React.ReactNode;
-  params: { lang: string };
-}) {
-  const dictionary = await getDictionary(params.lang as Locale);
-
-  const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "";
-
-  return (
-    <html lang={params.lang} className={cn(prompt.variable, "font-mono", jetbrainsMono.variable)}>
-      <body className="antialiased selection:bg-(--accent-color) selection:text-white">
-        <GoogleOAuthProvider clientId={googleClientId}>
-          <I18nProvider dictionary={dictionary}>
-            <AuthProvider>
-              <GlobalProgress />
-              <Navbar />
-              {children}
-              <AppToaster />
-            </AuthProvider>
-          </I18nProvider>
-        </GoogleOAuthProvider>
-      </body>
-    </html>
-  );
-}
-</file>
-
 <file path="frontend/src/store/progressStore.ts">
 import { create } from "zustand";
 
@@ -10860,6 +10961,65 @@ export function HeroSearch() {
         directo a la fuente.
       </Heading>
     </div>
+  );
+}
+</file>
+
+<file path="frontend/app/[lang]/layout.tsx">
+import type { Metadata } from "next";
+import { Prompt, JetBrains_Mono } from "next/font/google";
+import "../globals.css";
+import { AuthProvider } from "@/src/features/auth/AuthProvider";
+import { Navbar } from "@/src/system/organisms/Layout/Navbar/Navbar";
+import { AppToaster } from "@/src/system/organisms/Layout/AppToaster";
+import { GlobalProgress } from "@/src/system/organisms/Layout/GlobalProgress";
+import { cn } from "@/lib/utils";
+
+import { getDictionary, Locale } from "@/src/dictionaries/getDictionary";
+import { I18nProvider } from "@/src/dictionaries/I18nProvider";
+
+import { GoogleOAuthProvider } from "@react-oauth/google";
+
+const prompt = Prompt({
+  weight: ["400", "700", "900"],
+  subsets: ["latin"],
+  variable: "--font-prompt",
+});
+
+const jetbrainsMono = JetBrains_Mono({ subsets: ["latin"], variable: "--font-mono" });
+
+export const metadata: Metadata = {
+  title: "reprompt",
+  description: "Wallet para guardar tus imágenes y prompts",
+};
+
+export default async function RootLayout({
+  children,
+  params,
+}: {
+  children: React.ReactNode;
+  params: Promise<{ lang: string }>;
+}) {
+  const { lang } = await params;
+  const dictionary = await getDictionary(lang as Locale);
+
+  const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "";
+
+  return (
+    <html lang={lang} className={cn(prompt.variable, "font-mono", jetbrainsMono.variable)}>
+      <body className="antialiased selection:bg-(--accent-color) selection:text-white">
+        <GoogleOAuthProvider clientId={googleClientId}>
+          <I18nProvider dictionary={dictionary}>
+            <AuthProvider>
+              <GlobalProgress />
+              <Navbar />
+              {children}
+              <AppToaster />
+            </AuthProvider>
+          </I18nProvider>
+        </GoogleOAuthProvider>
+      </body>
+    </html>
   );
 }
 </file>
@@ -11964,11 +12124,12 @@ The content is organized as follows:
 <directory_structure>
 app/
   [lang]/
-    admin/
-      page.tsx
+    (auth)/
+      admin/
+        page.tsx
+      login/
+        page.tsx
     join/
-      page.tsx
-    login/
       page.tsx
     reprompt/
       page.tsx
@@ -12009,6 +12170,7 @@ src/
       hooks/
         useRedirectIfAuthenticated.ts
       AuthProvider.tsx
+      GoogleAuthButton.tsx
     extractor/
       hooks/
         usePromptExtractor.ts
@@ -12153,10 +12315,10 @@ Dockerfile
 eslint.config.mjs
 jest.config.js
 jest.setup.js
-middleware.ts
 next.config.ts
 package.json
 postcss.config.mjs
+proxy.ts
 README.md
 tsconfig.json
 </directory_structure>
@@ -12164,7 +12326,7 @@ tsconfig.json
 <files>
 This section contains the contents of the repository's files.
 
-<file path="app/[lang]/admin/page.tsx">
+<file path="app/[lang]/(auth)/admin/page.tsx">
 // frontend/app/admin/page.tsx
 "use client";
 
@@ -12252,28 +12414,7 @@ export default function AdminDashboard() {
 }
 </file>
 
-<file path="app/[lang]/join/page.tsx">
-"use client";
-
-import Link from "next/link";
-import RegisterForm from "@/src/system/organisms/Auth/RegisterForm";
-
-export default function JoinPage() {
-  return (
-    <main className="min-h-screen bg-background text-foreground flex flex-col items-center justify-center p-4">
-      <Link
-        href="/"
-        className="absolute top-8 left-8 text-sm font-bold font-mono hover:text-(--accent-color) uppercase"
-      >
-        ← Volver
-      </Link>
-      <RegisterForm />
-    </main>
-  );
-}
-</file>
-
-<file path="app/[lang]/login/page.tsx">
+<file path="app/[lang]/(auth)/login/page.tsx">
 "use client";
 
 import Link from "next/link";
@@ -12313,6 +12454,27 @@ export default function LoginPage() {
           REGISTRARSE AQUÍ
         </Link>
       </p>
+    </main>
+  );
+}
+</file>
+
+<file path="app/[lang]/join/page.tsx">
+"use client";
+
+import Link from "next/link";
+import RegisterForm from "@/src/system/organisms/Auth/RegisterForm";
+
+export default function JoinPage() {
+  return (
+    <main className="min-h-screen bg-background text-foreground flex flex-col items-center justify-center p-4">
+      <Link
+        href="/"
+        className="absolute top-8 left-8 text-sm font-bold font-mono hover:text-(--accent-color) uppercase"
+      >
+        ← Volver
+      </Link>
+      <RegisterForm />
     </main>
   );
 }
@@ -12460,7 +12622,7 @@ export default function StudioPage() {
 <file path="app/[lang]/layout.tsx">
 import type { Metadata } from "next";
 import { Prompt, JetBrains_Mono } from "next/font/google";
-import "../../globals.css";
+import "../globals.css";
 import { AuthProvider } from "@/src/features/auth/AuthProvider";
 import { Navbar } from "@/src/system/organisms/Layout/Navbar/Navbar";
 import { AppToaster } from "@/src/system/organisms/Layout/AppToaster";
@@ -12469,6 +12631,8 @@ import { cn } from "@/lib/utils";
 
 import { getDictionary, Locale } from "@/src/dictionaries/getDictionary";
 import { I18nProvider } from "@/src/dictionaries/I18nProvider";
+
+import { GoogleOAuthProvider } from "@react-oauth/google";
 
 const prompt = Prompt({
   weight: ["400", "700", "900"],
@@ -12488,21 +12652,26 @@ export default async function RootLayout({
   params,
 }: {
   children: React.ReactNode;
-  params: { lang: string };
+  params: Promise<{ lang: string }>;
 }) {
-  const dictionary = await getDictionary(params.lang as Locale);
+  const { lang } = await params;
+  const dictionary = await getDictionary(lang as Locale);
+
+  const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "";
 
   return (
-    <html lang={params.lang} className={cn(prompt.variable, "font-mono", jetbrainsMono.variable)}>
+    <html lang={lang} className={cn(prompt.variable, "font-mono", jetbrainsMono.variable)}>
       <body className="antialiased selection:bg-(--accent-color) selection:text-white">
-        <I18nProvider dictionary={dictionary}>
-          <AuthProvider>
-            <GlobalProgress />
-            <Navbar />
-            {children}
-            <AppToaster />
-          </AuthProvider>
-        </I18nProvider>
+        <GoogleOAuthProvider clientId={googleClientId}>
+          <I18nProvider dictionary={dictionary}>
+            <AuthProvider>
+              <GlobalProgress />
+              <Navbar />
+              {children}
+              <AppToaster />
+            </AuthProvider>
+          </I18nProvider>
+        </GoogleOAuthProvider>
       </body>
     </html>
   );
@@ -13904,6 +14073,158 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [checkAuth]);
 
   return <>{children}</>;
+}
+</file>
+
+<file path="src/features/auth/GoogleAuthButton.tsx">
+"use client";
+
+import { useState } from "react";
+import { GoogleLogin } from "@react-oauth/google";
+import { useAuthStore } from "@/src/store/authStore";
+import toast from "react-hot-toast";
+
+export function GoogleAuthButton() {
+  const checkAuth = useAuthStore((state) => state.checkAuth);
+
+  // Estados para el Flujo Híbrido
+  const [step, setStep] = useState<"google" | "invite">("google");
+  const [tempToken, setTempToken] = useState("");
+  const [inviteCode, setInviteCode] = useState("");
+  const [username, setUsername] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+
+  // 1. Manejador del éxito de Google
+  // 1. Manejador del éxito de Google
+  const handleGoogleSuccess = async (credentialResponse: any) => {
+    try {
+      setIsLoading(true);
+
+      // 🛡️ Apuntamos al backend real
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
+      const res = await fetch(`${API_URL}/api/auth/google`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include", // 🛡️ OBLIGATORIO para guardar las cookies de FastAPI
+        body: JSON.stringify({ token: credentialResponse.credential }),
+      });
+
+      const data = await res.json();
+
+      if (res.status === 202 && data.status === "needs_invite") {
+        setTempToken(credentialResponse.credential);
+        setUsername(data.suggested_username || "");
+        setStep("invite");
+        toast("¡Casi listo! Necesitamos tu código de invitación.", { icon: "🎟️" });
+      } else if (res.ok) {
+        toast.success(data.message || "Bienvenido de nuevo");
+        await checkAuth();
+        window.location.href = "/es/studio";
+      } else {
+        toast.error(data.detail || "Error en la autenticación");
+      }
+    } catch (error) {
+      toast.error("Error de conexión con el servidor");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // 2. Manejador del envío del Código de Invitación
+  const handleJoinSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!inviteCode || !username) return toast.error("Rellena todos los campos");
+
+    try {
+      setIsLoading(true);
+
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
+      const res = await fetch(`${API_URL}/api/auth/google/join`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          token: tempToken,
+          invite_code: inviteCode,
+          username: username,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        toast.success(data.message);
+        await checkAuth();
+        window.location.href = "/es/studio";
+      } else {
+        toast.error(data.detail || "Código inválido o usuario en uso");
+      }
+    } catch (error) {
+      toast.error("Error validando la invitación");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // RENDERIZADO: Paso 1 (Botón de Google)
+  if (step === "google") {
+    return (
+      <div className="flex justify-center w-full">
+        <GoogleLogin
+          onSuccess={handleGoogleSuccess}
+          onError={() => toast.error("El login con Google ha fallado")}
+          useOneTap={false}
+          theme="filled_black"
+          shape="rectangular"
+          text="continue_with"
+        />
+      </div>
+    );
+  }
+
+  // RENDERIZADO: Paso 2 (Formulario de Invitación)
+  return (
+    <form
+      onSubmit={handleJoinSubmit}
+      className="flex flex-col gap-4 w-full p-4 border border-border rounded-lg bg-muted/20"
+    >
+      <div className="text-sm font-medium text-center">Último paso para unirte</div>
+
+      <div className="flex flex-col gap-1">
+        <label className="text-xs text-muted-foreground">Tu alias (Público)</label>
+        <input
+          type="text"
+          value={username}
+          onChange={(e) => setUsername(e.target.value)}
+          className="px-3 py-2 text-sm bg-background border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+          placeholder="ej. cyperpunk_artist"
+          disabled={isLoading}
+        />
+      </div>
+
+      <div className="flex flex-col gap-1">
+        <label className="text-xs text-muted-foreground">Código de invitación</label>
+        <input
+          type="text"
+          value={inviteCode}
+          onChange={(e) => setInviteCode(e.target.value)}
+          className="px-3 py-2 text-sm bg-background border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-primary uppercase"
+          placeholder="ej. TROYA-123"
+          disabled={isLoading}
+        />
+      </div>
+
+      <button
+        type="submit"
+        disabled={isLoading}
+        className="w-full bg-primary text-primary-foreground py-2 rounded-md text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
+      >
+        {isLoading ? "Verificando..." : "Completar Registro"}
+      </button>
+    </form>
+  );
 }
 </file>
 
@@ -16187,6 +16508,7 @@ import { useNotificationStore } from "@/src/store/notificationStore";
 // 🟢 Importamos el Sistema de Diseño
 import { FormField } from "@/src/system/molecules/FormField";
 import { Button } from "@/src/system/atoms/Button";
+import { GoogleAuthButton } from "@/src/features/auth/GoogleAuthButton";
 
 export function LoginForm() {
   const { checkAuth } = useAuthStore();
@@ -16234,7 +16556,10 @@ export function LoginForm() {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        {/* 🟢 Usamos la molécula FormField con el mapeo correcto del estado */}
+        <div className="mt-6">
+          <GoogleAuthButton />
+        </div>
+
         <FormField
           label="Usuario"
           name="username"
@@ -16988,7 +17313,6 @@ export function Navbar() {
   return (
     <nav className="sticky top-0 z-50 w-full bg-background/80 backdrop-blur-md border-b border-border shadow-sm">
       <div className="max-w-1600px mx-auto px-4 md:px-8 h-16 flex items-center justify-between gap-4 lg:gap-8">
-
         <Link href="/" className="shrink-0 flex items-center" aria-label="Ir al inicio">
           <Image
             src="/logo-brand-black.svg"
@@ -17009,15 +17333,12 @@ export function Navbar() {
           />
         </Link>
 
-        {/* Buscador (Centro) */}
         <div className="hidden md:flex flex-1 justify-center">
           <NavbarSearch />
         </div>
 
-        {/* Acciones de Usuario y Tema (Derecha) */}
         <NavbarActions />
 
-        {/* Menú Móvil */}
         <NavbarMobile />
       </div>
     </nav>
@@ -18824,7 +19145,51 @@ module.exports = createJestConfig(customJestConfig)
 import '@testing-library/jest-dom'
 </file>
 
-<file path="middleware.ts">
+<file path="next.config.ts">
+import type { NextConfig } from "next";
+
+const nextConfig: NextConfig = {
+  images: {
+    // 🛡️ SEGURIDAD EN EL BORDE: Patrones permitidos
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: '**.e-hentai.org',
+      },
+      {
+        protocol: 'https',
+        hostname: 'ehgt.org',
+      },
+      {
+        protocol: 'https',
+        hostname: '**.ehgt.org',
+      },
+      {
+        protocol: 'https',
+        hostname: '**.hatenablog.com',
+      }
+    ],
+    // Habilitar formatos modernos reduce el peso un 30% adicional
+    formats: ['image/avif', 'image/webp'],
+    // Límite de vida de la caché de imágenes optimizadas (7 días)
+    minimumCacheTTL: 604800,
+  },
+};
+
+export default nextConfig;
+</file>
+
+<file path="postcss.config.mjs">
+const config = {
+  plugins: {
+    "@tailwindcss/postcss": {},
+  },
+};
+
+export default config;
+</file>
+
+<file path="proxy.ts">
 // frontend/src/middleware.ts
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
@@ -18833,7 +19198,7 @@ import type { NextRequest } from "next/server";
 const locales = ["es", "en"];
 const defaultLocale = "es";
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // 🌍 2. ¿La URL actual tiene ya un idioma en la ruta? (ej. /es/algo o /en/algo)
@@ -18882,50 +19247,6 @@ export const config = {
     "/((?!api|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };
-</file>
-
-<file path="next.config.ts">
-import type { NextConfig } from "next";
-
-const nextConfig: NextConfig = {
-  images: {
-    // 🛡️ SEGURIDAD EN EL BORDE: Patrones permitidos
-    remotePatterns: [
-      {
-        protocol: 'https',
-        hostname: '**.e-hentai.org',
-      },
-      {
-        protocol: 'https',
-        hostname: 'ehgt.org',
-      },
-      {
-        protocol: 'https',
-        hostname: '**.ehgt.org',
-      },
-      {
-        protocol: 'https',
-        hostname: '**.hatenablog.com',
-      }
-    ],
-    // Habilitar formatos modernos reduce el peso un 30% adicional
-    formats: ['image/avif', 'image/webp'],
-    // Límite de vida de la caché de imágenes optimizadas (7 días)
-    minimumCacheTTL: 604800,
-  },
-};
-
-export default nextConfig;
-</file>
-
-<file path="postcss.config.mjs">
-const config = {
-  plugins: {
-    "@tailwindcss/postcss": {},
-  },
-};
-
-export default config;
 </file>
 
 <file path="README.md">
@@ -19069,6 +19390,7 @@ next-env.d.ts
   "dependencies": {
     "@base-ui/react": "^1.3.0",
     "@phosphor-icons/react": "^2.1.10",
+    "@react-oauth/google": "^0.13.4",
     "@tabler/icons-react": "^3.41.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",

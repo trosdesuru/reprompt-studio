@@ -56,11 +56,19 @@ export function LoginForm() {
         </p>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
-        <div className="mt-6">
-          <GoogleAuthButton />
-        </div>
+      <div className="mt-6">
+        <GoogleAuthButton />
+      </div>
+      
+      <div className="relative flex items-center py-4">
+        <div className="grow border-t border-border"></div>
+        <span className="shrink-0 px-4 text-xs font-mono text-muted-foreground uppercase tracking-widest">
+          o
+        </span>
+        <div className="grow border-t border-border"></div>
+      </div>
 
+      <form onSubmit={handleSubmit} className="space-y-6">
         <FormField
           label="Usuario"
           name="username"
@@ -89,13 +97,6 @@ export function LoginForm() {
           Iniciar Secuencia de Entrada
         </Button>
       </form>
-
-      <div className="mt-6 text-center">
-        <p className="text-[10px] font-mono text-(--text-secondary) uppercase opacity-50">
-          Terminal ID:{" "}
-          {typeof window !== "undefined" ? window.crypto.randomUUID().split("-")[0] : "..."}
-        </p>
-      </div>
     </div>
   );
 }
