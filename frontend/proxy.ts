@@ -6,7 +6,7 @@ import type { NextRequest } from "next/server";
 const locales = ["es", "en"];
 const defaultLocale = "es";
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // 🌍 2. ¿La URL actual tiene ya un idioma en la ruta? (ej. /es/algo o /en/algo)

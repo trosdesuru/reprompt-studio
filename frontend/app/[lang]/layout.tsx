@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Prompt, JetBrains_Mono } from "next/font/google";
-import "../globals.css"
+import "../globals.css";
 import { AuthProvider } from "@/src/features/auth/AuthProvider";
 import { Navbar } from "@/src/system/organisms/Layout/Navbar/Navbar";
 import { AppToaster } from "@/src/system/organisms/Layout/AppToaster";
@@ -9,6 +9,8 @@ import { cn } from "@/lib/utils";
 
 import { getDictionary, Locale } from "@/src/dictionaries/getDictionary";
 import { I18nProvider } from "@/src/dictionaries/I18nProvider";
+
+import { GoogleOAuthProvider } from "@react-oauth/google";
 
 const prompt = Prompt({
   weight: ["400", "700", "900"],
@@ -32,17 +34,21 @@ export default async function RootLayout({
 }) {
   const dictionary = await getDictionary(params.lang as Locale);
 
+  const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "";
+
   return (
     <html lang={params.lang} className={cn(prompt.variable, "font-mono", jetbrainsMono.variable)}>
       <body className="antialiased selection:bg-(--accent-color) selection:text-white">
-        <I18nProvider dictionary={dictionary}>
-          <AuthProvider>
-            <GlobalProgress />
-            <Navbar />
-            {children}
-            <AppToaster />
-          </AuthProvider>
-        </I18nProvider>
+        <GoogleOAuthProvider clientId={googleClientId}>
+          <I18nProvider dictionary={dictionary}>
+            <AuthProvider>
+              <GlobalProgress />
+              <Navbar />
+              {children}
+              <AppToaster />
+            </AuthProvider>
+          </I18nProvider>
+        </GoogleOAuthProvider>
       </body>
     </html>
   );
