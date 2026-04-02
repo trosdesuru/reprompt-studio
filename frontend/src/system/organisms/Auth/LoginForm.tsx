@@ -9,6 +9,7 @@ import { useNotificationStore } from "@/src/store/notificationStore";
 // 🟢 Importamos el Sistema de Diseño
 import { FormField } from "@/src/system/molecules/FormField";
 import { Button } from "@/src/system/atoms/Button";
+import { GoogleAuthButton } from "@/src/features/auth/GoogleAuthButton";
 
 export function LoginForm() {
   const { checkAuth } = useAuthStore();
@@ -56,7 +57,10 @@ export function LoginForm() {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        {/* 🟢 Usamos la molécula FormField con el mapeo correcto del estado */}
+        <div className="mt-6">
+          <GoogleAuthButton />
+        </div>
+
         <FormField
           label="Usuario"
           name="username"
