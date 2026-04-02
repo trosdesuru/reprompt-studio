@@ -1,4 +1,5 @@
 import logging
+import base64
 import uuid
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
@@ -23,6 +24,27 @@ def guardar_prompt(
     session: Session = Depends(get_session),
 ):
     try:
+        url_final = data.image_url
+
+        # 🟢 2. INTERCEPCIÓN Y SUBIDA A R2
+        # Comprobamos si nos llega la imagen incrustada en Base64 desde el frontend
+        if data.image_url and data.image_url.startswith("data:image"):
+            # Separar la cabecera (data:image/jpeg;base64) de los datos puros
+            header, encoded_data = data.image_url.split(",", 1)
+            content_type = header.split(";")[0].split(":")[
+                1
+            ]  # ej. image/png o image/jpeg
+            ext = content_type.split("/")[1]
+
+            # Decodificar a bytes binarios
+            file_bytes = base64.b64decode(encoded_data)
+
+            # Generar un nombre único para evitar colisiones (ej. prompts/tu_usuario/8f3a...png)
+            file_name = f"prompts/{current_user.username}/{uuid.uuid4().hex}.{ext}"
+
+            # Subir a Cloudflare R2 usando tu función (devuelve la URL pública)
+            url_final = subir_imagen_a_r2(file_bytes, file_name, content_type)
+
         nuevo_prompt = ImagePrompt(
             user_id=current_user.id,
             title=data.title,
@@ -35,15 +57,16 @@ def guardar_prompt(
             cfg_scale=data.cfg_scale,
             seed=data.seed,
             resolution=data.resolution,
-            image_url=data.image_url,
+            image_url=url_final,
             extra_data=data.extra_data,
         )
         session.add(nuevo_prompt)
         session.commit()
         session.refresh(nuevo_prompt)
+
         return {
             "status": "success",
-            "message": "Prompt guardado correctamente",
+            "message": "Metadata guardada y archivo subido a R2",
             "data": nuevo_prompt,
         }
     except Exception as e:
@@ -56,7 +79,6 @@ def obtener_mis_prompts(
     current_user: User = Depends(get_current_user),
     session: Session = Depends(get_session),
 ):
-    # Buscamos solo los prompts del usuario logueado y los ordenamos de más nuevo a más viejo
     statement = (
         select(ImagePrompt)
         .where(ImagePrompt.user_id == current_user.id)
@@ -67,7 +89,7 @@ def obtener_mis_prompts(
 
 
 # ==========================================
-# 🟢 2. RUTAS DINÁMICAS (Siempre abajo)
+# RUTAS DINÁMICAS
 # ==========================================
 
 
@@ -77,7 +99,6 @@ def eliminar_prompt(
     current_user: User = Depends(get_current_user),
     session: Session = Depends(get_session),
 ):
-    # Buscamos el prompt asegurándonos de que le pertenece al usuario
     statement = (
         select(ImagePrompt)
         .where(ImagePrompt.id == prompt_id)
@@ -90,6 +111,8 @@ def eliminar_prompt(
             status_code=404,
             detail="Prompt no encontrado o no tienes permiso para borrarlo",
         )
+
+    # NOTA: Opcionalmente, aquí podríamos llamar a s3_client.delete_object(...) para borrar también de R2
 
     session.delete(prompt)
     session.commit()
