@@ -5,10 +5,8 @@ import { NavbarSearch } from "./NavbarSearch";
 import { NavbarActions } from "./NavbarActions";
 import { NavbarMobile } from "./NavbarMobile";
 import Image from "next/image";
-import { useTranslation } from "@/src/dictionaries/I18nProvider";
 
 export function Navbar() {
-  const { t } = useTranslation();
 
   return (
     <nav className="sticky top-0 z-50 w-full bg-background/80 backdrop-blur-md border-b border-border shadow-sm">
@@ -33,30 +31,12 @@ export function Navbar() {
           />
         </Link>
 
-        <div className="hidden md:flex items-center gap-6">
-          {/* Reemplazamos "Estudio" por t('nav.studio') */}
-          <Link href="/studio" className="text-sm font-medium hover:text-primary transition-colors">
-            {t("nav.studio")}
-          </Link>
-
-          {/* Reemplazamos "Galería" por t('nav.gallery') */}
-          <Link
-            href="/gallery"
-            className="text-sm font-medium hover:text-primary transition-colors"
-          >
-            {t("nav.gallery")}
-          </Link>
-        </div>
-
-        {/* Buscador (Centro) */}
         <div className="hidden md:flex flex-1 justify-center">
           <NavbarSearch />
         </div>
 
-        {/* Acciones de Usuario y Tema (Derecha) */}
         <NavbarActions />
 
-        {/* Menú Móvil */}
         <NavbarMobile />
       </div>
     </nav>
