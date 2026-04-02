@@ -30,14 +30,15 @@ export default async function RootLayout({
   params,
 }: {
   children: React.ReactNode;
-  params: { lang: string };
+  params: Promise<{ lang: string }>;
 }) {
-  const dictionary = await getDictionary(params.lang as Locale);
+  const { lang } = await params;
+  const dictionary = await getDictionary(lang as Locale);
 
   const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "";
 
   return (
-    <html lang={params.lang} className={cn(prompt.variable, "font-mono", jetbrainsMono.variable)}>
+    <html lang={lang} className={cn(prompt.variable, "font-mono", jetbrainsMono.variable)}>
       <body className="antialiased selection:bg-(--accent-color) selection:text-white">
         <GoogleOAuthProvider clientId={googleClientId}>
           <I18nProvider dictionary={dictionary}>

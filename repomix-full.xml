@@ -282,10 +282,10 @@ frontend/
   eslint.config.mjs
   jest.config.js
   jest.setup.js
-  middleware.ts
   next.config.ts
   package.json
   postcss.config.mjs
+  proxy.ts
   README.md
   tsconfig.json
 .clinerules
@@ -404,211 +404,6 @@ def get_current_admin(current_user: User = Depends(get_current_user)):
             detail="No tienes suficientes privilegios (Requiere rol Admin)",
         )
     return current_user
-</file>
-
-<file path="backend/app/api/routes_auth.py">
-# backend/app/api/routes_auth.py
-import secrets
-import redis
-from fastapi import APIRouter, Depends, Response, Cookie, HTTPException
-from sqlmodel import Session, select
-
-from app.services.auth_service import AuthService
-from app.services.audit_service import AuditService
-from app.core.db import get_session
-from app.api.deps import get_current_user, get_current_admin, RateLimiter
-from app.models.user import User, InviteCode, AuditLog
-from app.schemas.user import UserRegister, UserLogin, PasswordChange
-
-# FIX: Inyección de dependencias
-redis_client = redis.Redis(host="redis", port=6379, db=0, decode_responses=True)
-router = APIRouter()
-
-
-@router.post("/register")
-def register_user(user_data: UserRegister, session: Session = Depends(get_session)):
-    new_user = AuthService.register_user(user_data, session)
-    return {
-        "status": "success",
-        "message": "Usuario registrado correctamente",
-        "user": {"username": new_user.username, "role": new_user.role},
-    }
-
-
-@router.post(
-    "/login", dependencies=[Depends(RateLimiter(max_requests=5, window_seconds=60))]
-)
-def login_user(
-    user_data: UserLogin, response: Response, session: Session = Depends(get_session)
-):
-    # DEFENSA ANTI-BOTNET: Límite por cuenta de usuario
-    user_key = f"brute_force_user:{user_data.username}"
-
-    attempts = redis_client.incr(user_key)
-    if attempts == 1:
-        redis_client.expire(user_key, 300)  # Bloqueo de 5 minutos
-
-    if attempts > 5:
-        raise HTTPException(
-            status_code=429,
-            detail=f"La cuenta '{user_data.username}' está bloqueada temporalmente por seguridad. Inténtalo en 5 minutos.",
-        )
-
-    # Autenticación normal
-    try:
-        access_token, refresh_token, username = AuthService.authenticate_user(
-            user_data, session, redis_client
-        )
-    except HTTPException as e:
-        raise e
-
-    # SI ENTRA CON ÉXITO: Reseteamos el contador
-    redis_client.delete(user_key)
-
-    # FIX CRÍTICO: Restaurada la entrega de cookies que se había borrado
-    response.set_cookie(
-        key="access_token",
-        value=access_token,
-        httponly=True,
-        max_age=60 * 15,
-        samesite="lax",
-        path="/",
-    )
-    response.set_cookie(
-        key="refresh_token",
-        value=refresh_token,
-        httponly=True,
-        max_age=60 * 60 * 24 * 7,
-        samesite="lax",
-        path="/api/auth/refresh",
-    )
-
-    AuditService.log_action(session, username, "LOGIN", "Inicio de sesión exitoso")
-    return {"status": "success", "message": f"Bienvenido, {username}"}
-
-
-@router.post("/logout")
-def logout_user(response: Response, refresh_token: str | None = Cookie(None)):
-    # 1. Destruimos la cookie del Access Token
-    response.delete_cookie("access_token", path="/")
-
-    # 2. FIX CRÍTICO: Destruimos la cookie del Refresh Token (Hay que especificar su path exacto)
-    response.delete_cookie("refresh_token", path="/api/auth/refresh")
-
-    # 3. CIBERSEGURIDAD: Destruimos la sesión en Redis para que el token quede inservible
-    if refresh_token:
-        try:
-            from jose import jwt
-            from app.core.security import SECRET_KEY, ALGORITHM
-
-            payload = jwt.decode(refresh_token, SECRET_KEY, algorithms=[ALGORITHM])
-            username = payload.get("sub")
-            family_id = payload.get("family")
-
-            if username and family_id:
-                redis_key = f"session:{username}:{family_id}"
-                redis_client.delete(redis_key)
-        except Exception:
-            # Si el token ya era inválido o caducó, simplemente lo ignoramos
-            pass
-
-    return {"status": "success", "message": "Sesión cerrada y destruida por completo"}
-
-
-@router.put("/change-password")
-def change_password(
-    data: PasswordChange,
-    current_user: User = Depends(get_current_user),
-    session: Session = Depends(get_session),
-):
-    AuthService.change_password(data, current_user, session)
-    return {"status": "success", "message": "Contraseña actualizada correctamente"}
-
-
-@router.get("/me")
-def get_current_user_profile(current_user: User = Depends(get_current_user)):
-    return {
-        "status": "success",
-        "user": {
-            "username": current_user.username,
-            "role": current_user.role,
-            "is_active": current_user.is_active,
-        },
-    }
-
-
-@router.post("/refresh")
-def refresh_access_token(
-    response: Response,
-    refresh_token: str | None = Cookie(None),
-    session: Session = Depends(get_session),
-):
-    try:
-        new_access, new_refresh = AuthService.rotate_tokens(
-            refresh_token, session, redis_client
-        )
-        response.set_cookie(
-            key="access_token",
-            value=new_access,
-            httponly=True,
-            max_age=60 * 15,
-            samesite="lax",
-            path="/",
-        )
-        response.set_cookie(
-            key="refresh_token",
-            value=new_refresh,
-            httponly=True,
-            max_age=60 * 60 * 24 * 7,
-            samesite="lax",
-            path="/api/auth/refresh",
-        )
-        return {"status": "success", "message": "Tokens rotados"}
-    except HTTPException as e:
-        if e.status_code == 403:
-            response.delete_cookie("access_token", path="/")
-            response.delete_cookie("refresh_token", path="/api/auth/refresh")
-        raise e
-
-
-# --- RUTAS ADMIN ---
-
-
-@router.get("/admin/logs")
-def get_audit_logs(
-    limit: int = 50,
-    current_admin: User = Depends(get_current_admin),
-    session: Session = Depends(get_session),
-):
-    statement = select(AuditLog).order_by(AuditLog.timestamp.desc()).limit(limit)
-    logs = session.exec(statement).all()
-    return {"status": "success", "logs": logs}
-
-
-@router.post("/invite-codes")
-def generate_invite_code(
-    role_requested: str = "voyager",
-    current_admin: User = Depends(get_current_admin),
-    session: Session = Depends(get_session),
-):
-    prefix = "VGR" if role_requested == "voyager" else "ART"
-    new_code_str = f"{prefix}-{secrets.token_hex(4).upper()}"
-    new_invite = InviteCode(code=new_code_str)
-    session.add(new_invite)
-    session.commit()
-    return {"status": "success", "message": "Código generado", "code": new_code_str}
-
-
-@router.get("/admin/sessions")
-def list_active_sessions(current_admin: User = Depends(get_current_admin)):
-    sessions = AuthService.get_active_sessions(current_admin.username, redis_client)
-    return {"status": "success", "sessions": sessions}
-
-
-@router.post("/admin/sessions/revoke-all")
-def revoke_all_sessions(current_admin: User = Depends(get_current_admin)):
-    AuthService.revoke_all_sessions(current_admin.username, redis_client)
-    return {"status": "success", "message": "Todas las sesiones han sido revocadas."}
 </file>
 
 <file path="backend/app/api/routes_download.py">
@@ -985,32 +780,6 @@ class InteractionRequest(BaseModel):
     interaction_type: str  # Puede ser "view" o "download"
 </file>
 
-<file path="backend/app/schemas/user.py">
-# backend/app/schemas/user.py
-from pydantic import BaseModel
-
-
-class UserRegister(BaseModel):
-    username: str
-    password: str
-    invite_code: str
-
-
-class UserLogin(BaseModel):
-    username: str
-    password: str
-
-
-class Token(BaseModel):
-    access_token: str
-    token_type: str
-
-
-class PasswordChange(BaseModel):
-    old_password: str
-    new_password: str
-</file>
-
 <file path="backend/app/services/__init__.py">
 
 </file>
@@ -1129,175 +898,6 @@ class AuditService:
         except Exception as e:
             session.rollback()
             print(f"⚠️ Error al actualizar métricas de galería: {e}")
-</file>
-
-<file path="backend/app/services/auth_service.py">
-# backend/app/services/auth_service.py
-from jose import jwt
-from fastapi import HTTPException
-from sqlmodel import Session, select
-from app.models.user import User, InviteCode
-from app.core.security import (
-    get_password_hash,
-    verify_password,
-    create_access_token,
-    create_refresh_token,
-    SECRET_KEY,
-    ALGORITHM,
-)
-
-
-class AuthService:
-
-    @staticmethod
-    def register_user(user_data, session: Session):
-        """Lógica de negocio pura para registrar un usuario."""
-        statement = (
-            select(InviteCode)
-            .where(InviteCode.code == user_data.invite_code)
-            .where(InviteCode.is_used == False)
-        )
-        invite = session.exec(statement).first()
-
-        if not invite:
-            raise HTTPException(
-                status_code=400, detail="Código de invitación inválido o ya usado"
-            )
-
-        user_exists = session.exec(
-            select(User).where(User.username == user_data.username)
-        ).first()
-        if user_exists:
-            raise HTTPException(
-                status_code=400, detail="El nombre de usuario ya está en uso"
-            )
-
-        assigned_role = "admin" if invite.code.startswith("TROYA-") else "voyager"
-
-        new_user = User(
-            username=user_data.username,
-            hashed_password=get_password_hash(user_data.password),
-            role=assigned_role,
-        )
-        session.add(new_user)
-        session.commit()
-        session.refresh(new_user)
-
-        invite.is_used = True
-        invite.used_by_id = new_user.id
-        session.add(invite)
-        session.commit()
-
-        return new_user
-
-    @staticmethod
-    def change_password(data, current_user: User, session: Session):
-        """Lógica para cambiar contraseñas."""
-        if not verify_password(data.old_password, current_user.hashed_password):
-            raise HTTPException(
-                status_code=400, detail="La contraseña actual es incorrecta"
-            )
-
-        current_user.hashed_password = get_password_hash(data.new_password)
-        session.add(current_user)
-        session.commit()
-
-    @staticmethod
-    def get_active_sessions(username: str, redis_client):
-        """Consulta Redis para obtener sesiones de un usuario."""
-        prefix = f"session:{username}:*"
-        keys = redis_client.keys(prefix)
-        sessions = []
-        for key in keys:
-            family_id = key.split(":")[-1]
-            sessions.append(
-                {"family_id": family_id, "last_active_jti": redis_client.get(key)}
-            )
-        return sessions
-
-    @staticmethod
-    def revoke_all_sessions(username: str, redis_client):
-        """Botón del pánico: borra todas las sesiones de Redis."""
-        prefix = f"session:{username}:*"
-        keys = redis_client.keys(prefix)
-        if keys:
-            redis_client.delete(*keys)
-
-    @staticmethod
-    def authenticate_user(user_data, session: Session, redis_client):
-        # ... (Mantén el código original de authenticate_user que ya tenías) ...
-        user = session.exec(
-            select(User).where(User.username == user_data.username)
-        ).first()
-        if not user or not verify_password(user_data.password, user.hashed_password):
-            raise HTTPException(
-                status_code=401, detail="Usuario o contraseña incorrectos"
-            )
-
-        access_token = create_access_token(
-            data={"sub": user.username, "role": user.role}
-        )
-        refresh_data = create_refresh_token(data={"sub": user.username})
-
-        redis_key = f"session:{user.username}:{refresh_data['family_id']}"
-        redis_client.setex(redis_key, 60 * 60 * 24 * 7, refresh_data["jti"])
-
-        return access_token, refresh_data["token"], user.username
-
-    @staticmethod
-    def rotate_tokens(refresh_token: str, session: Session, redis_client):
-        # ... (Mantén el código original de rotate_tokens que ya tenías) ...
-        if not refresh_token:
-            raise HTTPException(status_code=401, detail="No hay token de refresco")
-
-        try:
-            payload = jwt.decode(refresh_token, SECRET_KEY, algorithms=[ALGORITHM])
-            username, jti, family_id = (
-                payload.get("sub"),
-                payload.get("jti"),
-                payload.get("family"),
-            )
-
-            if not all([username, jti, family_id]) or payload.get("type") != "refresh":
-                raise HTTPException(
-                    status_code=401, detail="Estructura de token inválida"
-                )
-
-            redis_key = f"session:{username}:{family_id}"
-            active_jti = redis_client.get(redis_key)
-
-            if active_jti and active_jti != jti:
-                redis_client.delete(redis_key)
-                raise HTTPException(
-                    status_code=403, detail="ALERTA: Robo de sesión detectado."
-                )
-
-            if not active_jti:
-                raise HTTPException(
-                    status_code=401, detail="Sesión expirada o cerrada remotamente."
-                )
-
-            user = session.exec(select(User).where(User.username == username)).first()
-            if not user:
-                raise HTTPException(status_code=401, detail="Usuario no encontrado")
-
-            new_access_token = create_access_token(
-                data={"sub": username, "role": user.role}
-            )
-            new_refresh_data = create_refresh_token(
-                data={"sub": username}, family_id=family_id
-            )
-
-            redis_client.setex(redis_key, 60 * 60 * 24 * 7, new_refresh_data["jti"])
-
-            return new_access_token, new_refresh_data["token"]
-
-        except jwt.ExpiredSignatureError:
-            raise HTTPException(
-                status_code=401, detail="Token expirado. Inicia sesión."
-            )
-        except jwt.JWTError:
-            raise HTTPException(status_code=401, detail="Firma inválida.")
 </file>
 
 <file path="backend/app/services/downloader.py">
@@ -1787,38 +1387,6 @@ try:
     print("✅ Conexión a Redis configurada correctamente")
 except Exception as e:
     print(f"❌ ERROR al importar redis_config: {e}")
-</file>
-
-<file path="backend/Dockerfile">
-FROM python:3.11-slim
-
-# Evitar preguntas durante la instalación
-ENV DEBIAN_FRONTEND=noninteractive
-
-# Instalar dependencias necesarias para Chrome
-RUN apt-get update && apt-get install -y \
-    wget \
-    curl \
-    gnupg \
-    unzip \
-    ca-certificates \
-    --no-install-recommends
-
-# Instalar Chrome directamente desde el .deb (Más fiable en Docker)
-RUN wget -q https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb \
-    && apt-get install -y ./google-chrome-stable_current_amd64.deb \
-    && rm google-chrome-stable_current_amd64.deb \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
-
-WORKDIR /app
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-COPY . .
-
-EXPOSE 8000
-# Cambia la última línea de tu backend/Dockerfile a esto:
-CMD ["python", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
 </file>
 
 <file path="backend/pyproject.toml">
@@ -2412,6 +1980,293 @@ sonar.javascript.node.maxspace=4096
 }
 </file>
 
+<file path="backend/app/api/routes_auth.py">
+# backend/app/api/routes_auth.py
+import secrets
+import redis
+from fastapi import APIRouter, Depends, Response, Cookie, HTTPException
+from sqlmodel import Session, select
+
+from app.services.auth_service import AuthService
+from app.services.audit_service import AuditService
+from app.core.db import get_session
+from app.api.deps import get_current_user, get_current_admin, RateLimiter
+from app.models.user import User, InviteCode, AuditLog
+from app.schemas.user import UserRegister, UserLogin, PasswordChange
+
+from fastapi import APIRouter, Depends, Response, Cookie, HTTPException, status
+from app.schemas.user import (
+    UserRegister,
+    UserLogin,
+    PasswordChange,
+    GoogleAuthRequest,
+    GoogleJoinRequest,
+)
+
+# FIX: Inyección de dependencias
+redis_client = redis.Redis(host="redis", port=6379, db=0, decode_responses=True)
+router = APIRouter()
+
+
+@router.post("/register")
+def register_user(user_data: UserRegister, session: Session = Depends(get_session)):
+    new_user = AuthService.register_user(user_data, session)
+    return {
+        "status": "success",
+        "message": "Usuario registrado correctamente",
+        "user": {"username": new_user.username, "role": new_user.role},
+    }
+
+
+@router.post(
+    "/login", dependencies=[Depends(RateLimiter(max_requests=5, window_seconds=60))]
+)
+def login_user(
+    user_data: UserLogin, response: Response, session: Session = Depends(get_session)
+):
+    # DEFENSA ANTI-BOTNET: Límite por cuenta de usuario
+    user_key = f"brute_force_user:{user_data.username}"
+
+    attempts = redis_client.incr(user_key)
+    if attempts == 1:
+        redis_client.expire(user_key, 300)  # Bloqueo de 5 minutos
+
+    if attempts > 5:
+        raise HTTPException(
+            status_code=429,
+            detail=f"La cuenta '{user_data.username}' está bloqueada temporalmente por seguridad. Inténtalo en 5 minutos.",
+        )
+
+    # Autenticación normal
+    try:
+        access_token, refresh_token, username = AuthService.authenticate_user(
+            user_data, session, redis_client
+        )
+    except HTTPException as e:
+        raise e
+
+    # SI ENTRA CON ÉXITO: Reseteamos el contador
+    redis_client.delete(user_key)
+
+    # FIX CRÍTICO: Restaurada la entrega de cookies que se había borrado
+    response.set_cookie(
+        key="access_token",
+        value=access_token,
+        httponly=True,
+        max_age=60 * 15,
+        samesite="lax",
+        path="/",
+    )
+    response.set_cookie(
+        key="refresh_token",
+        value=refresh_token,
+        httponly=True,
+        max_age=60 * 60 * 24 * 7,
+        samesite="lax",
+        path="/api/auth/refresh",
+    )
+
+    AuditService.log_action(session, username, "LOGIN", "Inicio de sesión exitoso")
+    return {"status": "success", "message": f"Bienvenido, {username}"}
+
+
+@router.post("/google")
+def google_auth(
+    data: GoogleAuthRequest, response: Response, session: Session = Depends(get_session)
+):
+    result = AuthService.authenticate_google_user(data.token, session, redis_client)
+
+    # 🛡️ INTERCEPCIÓN HÍBRIDA: Si es nuevo, le decimos al frontend que pare
+    if result["status"] == "needs_invite":
+        response.status_code = status.HTTP_202_ACCEPTED
+        return result
+
+    # Si ya existía, inyectamos las cookies de seguridad
+    response.set_cookie(
+        key="access_token",
+        value=result["access_token"],
+        httponly=True,
+        max_age=60 * 15,
+        samesite="lax",
+        path="/",
+    )
+    response.set_cookie(
+        key="refresh_token",
+        value=result["refresh_token"],
+        httponly=True,
+        max_age=60 * 60 * 24 * 7,
+        samesite="lax",
+        path="/api/auth/refresh",
+    )
+
+    AuditService.log_action(
+        session, result["username"], "LOGIN_GOOGLE", "Inicio de sesión con Google"
+    )
+    return {
+        "status": "success",
+        "message": f"Bienvenido de nuevo, {result['username']}",
+    }
+
+
+@router.post("/google/join")
+def google_join(
+    data: GoogleJoinRequest, response: Response, session: Session = Depends(get_session)
+):
+    # El usuario envía su token de google + el código de invitación + su alias
+    access_token, refresh_token, username = AuthService.register_google_user(
+        data, session, redis_client
+    )
+
+    response.set_cookie(
+        key="access_token",
+        value=access_token,
+        httponly=True,
+        max_age=60 * 15,
+        samesite="lax",
+        path="/",
+    )
+    response.set_cookie(
+        key="refresh_token",
+        value=refresh_token,
+        httponly=True,
+        max_age=60 * 60 * 24 * 7,
+        samesite="lax",
+        path="/api/auth/refresh",
+    )
+
+    AuditService.log_action(
+        session, username, "REGISTER_GOOGLE", "Registro híbrido completado"
+    )
+    return {
+        "status": "success",
+        "message": f"Cuenta creada. Bienvenido a la Resistencia, {username}",
+    }
+
+
+@router.post("/logout")
+def logout_user(response: Response, refresh_token: str | None = Cookie(None)):
+    # 1. Destruimos la cookie del Access Token
+    response.delete_cookie("access_token", path="/")
+
+    # 2. FIX CRÍTICO: Destruimos la cookie del Refresh Token (Hay que especificar su path exacto)
+    response.delete_cookie("refresh_token", path="/api/auth/refresh")
+
+    # 3. CIBERSEGURIDAD: Destruimos la sesión en Redis para que el token quede inservible
+    if refresh_token:
+        try:
+            from jose import jwt
+            from app.core.security import SECRET_KEY, ALGORITHM
+
+            payload = jwt.decode(refresh_token, SECRET_KEY, algorithms=[ALGORITHM])
+            username = payload.get("sub")
+            family_id = payload.get("family")
+
+            if username and family_id:
+                redis_key = f"session:{username}:{family_id}"
+                redis_client.delete(redis_key)
+        except Exception:
+            # Si el token ya era inválido o caducó, simplemente lo ignoramos
+            pass
+
+    return {"status": "success", "message": "Sesión cerrada y destruida por completo"}
+
+
+@router.put("/change-password")
+def change_password(
+    data: PasswordChange,
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    AuthService.change_password(data, current_user, session)
+    return {"status": "success", "message": "Contraseña actualizada correctamente"}
+
+
+@router.get("/me")
+def get_current_user_profile(current_user: User = Depends(get_current_user)):
+    return {
+        "status": "success",
+        "user": {
+            "username": current_user.username,
+            "role": current_user.role,
+            "is_active": current_user.is_active,
+        },
+    }
+
+
+@router.post("/refresh")
+def refresh_access_token(
+    response: Response,
+    refresh_token: str | None = Cookie(None),
+    session: Session = Depends(get_session),
+):
+    try:
+        new_access, new_refresh = AuthService.rotate_tokens(
+            refresh_token, session, redis_client
+        )
+        response.set_cookie(
+            key="access_token",
+            value=new_access,
+            httponly=True,
+            max_age=60 * 15,
+            samesite="lax",
+            path="/",
+        )
+        response.set_cookie(
+            key="refresh_token",
+            value=new_refresh,
+            httponly=True,
+            max_age=60 * 60 * 24 * 7,
+            samesite="lax",
+            path="/api/auth/refresh",
+        )
+        return {"status": "success", "message": "Tokens rotados"}
+    except HTTPException as e:
+        if e.status_code == 403:
+            response.delete_cookie("access_token", path="/")
+            response.delete_cookie("refresh_token", path="/api/auth/refresh")
+        raise e
+
+
+# --- RUTAS ADMIN ---
+
+
+@router.get("/admin/logs")
+def get_audit_logs(
+    limit: int = 50,
+    current_admin: User = Depends(get_current_admin),
+    session: Session = Depends(get_session),
+):
+    statement = select(AuditLog).order_by(AuditLog.timestamp.desc()).limit(limit)
+    logs = session.exec(statement).all()
+    return {"status": "success", "logs": logs}
+
+
+@router.post("/invite-codes")
+def generate_invite_code(
+    role_requested: str = "voyager",
+    current_admin: User = Depends(get_current_admin),
+    session: Session = Depends(get_session),
+):
+    prefix = "VGR" if role_requested == "voyager" else "ART"
+    new_code_str = f"{prefix}-{secrets.token_hex(4).upper()}"
+    new_invite = InviteCode(code=new_code_str)
+    session.add(new_invite)
+    session.commit()
+    return {"status": "success", "message": "Código generado", "code": new_code_str}
+
+
+@router.get("/admin/sessions")
+def list_active_sessions(current_admin: User = Depends(get_current_admin)):
+    sessions = AuthService.get_active_sessions(current_admin.username, redis_client)
+    return {"status": "success", "sessions": sessions}
+
+
+@router.post("/admin/sessions/revoke-all")
+def revoke_all_sessions(current_admin: User = Depends(get_current_admin)):
+    AuthService.revoke_all_sessions(current_admin.username, redis_client)
+    return {"status": "success", "message": "Todas las sesiones han sido revocadas."}
+</file>
+
 <file path="backend/app/models/collection.py">
 from typing import Optional
 from sqlmodel import Field, SQLModel
@@ -2484,6 +2339,311 @@ class AuditLog(SQLModel, table=True):
     action: str
     details: str | None = None
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+</file>
+
+<file path="backend/app/schemas/user.py">
+# backend/app/schemas/user.py
+from pydantic import BaseModel
+
+
+class UserRegister(BaseModel):
+    username: str
+    password: str
+    invite_code: str
+
+
+class UserLogin(BaseModel):
+    username: str
+    password: str
+
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+
+
+class PasswordChange(BaseModel):
+    old_password: str
+    new_password: str
+
+
+class GoogleAuthRequest(BaseModel):
+    token: str
+
+
+class GoogleJoinRequest(BaseModel):
+    token: str
+    invite_code: str
+    username: str
+</file>
+
+<file path="backend/app/services/auth_service.py">
+import os
+from google.oauth2 import id_token
+from google.auth.transport import requests as google_requests
+
+GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
+
+from jose import jwt
+from fastapi import HTTPException
+from sqlmodel import Session, select
+from app.models.user import User, InviteCode
+from app.core.security import (
+    get_password_hash,
+    verify_password,
+    create_access_token,
+    create_refresh_token,
+    SECRET_KEY,
+    ALGORITHM,
+)
+
+
+class AuthService:
+
+    @staticmethod
+    def register_user(user_data, session: Session):
+        """Lógica de negocio pura para registrar un usuario."""
+        statement = (
+            select(InviteCode)
+            .where(InviteCode.code == user_data.invite_code)
+            .where(InviteCode.is_used == False)
+        )
+        invite = session.exec(statement).first()
+
+        if not invite:
+            raise HTTPException(
+                status_code=400, detail="Código de invitación inválido o ya usado"
+            )
+
+        user_exists = session.exec(
+            select(User).where(User.username == user_data.username)
+        ).first()
+        if user_exists:
+            raise HTTPException(
+                status_code=400, detail="El nombre de usuario ya está en uso"
+            )
+
+        assigned_role = "admin" if invite.code.startswith("TROYA-") else "voyager"
+
+        new_user = User(
+            username=user_data.username,
+            hashed_password=get_password_hash(user_data.password),
+            role=assigned_role,
+        )
+        session.add(new_user)
+        session.commit()
+        session.refresh(new_user)
+
+        invite.is_used = True
+        invite.used_by_id = new_user.id
+        session.add(invite)
+        session.commit()
+
+        return new_user
+
+    @staticmethod
+    def change_password(data, current_user: User, session: Session):
+        """Lógica para cambiar contraseñas."""
+        if not verify_password(data.old_password, current_user.hashed_password):
+            raise HTTPException(
+                status_code=400, detail="La contraseña actual es incorrecta"
+            )
+
+        current_user.hashed_password = get_password_hash(data.new_password)
+        session.add(current_user)
+        session.commit()
+
+    @staticmethod
+    def get_active_sessions(username: str, redis_client):
+        """Consulta Redis para obtener sesiones de un usuario."""
+        prefix = f"session:{username}:*"
+        keys = redis_client.keys(prefix)
+        sessions = []
+        for key in keys:
+            family_id = key.split(":")[-1]
+            sessions.append(
+                {"family_id": family_id, "last_active_jti": redis_client.get(key)}
+            )
+        return sessions
+
+    @staticmethod
+    def revoke_all_sessions(username: str, redis_client):
+        """Botón del pánico: borra todas las sesiones de Redis."""
+        prefix = f"session:{username}:*"
+        keys = redis_client.keys(prefix)
+        if keys:
+            redis_client.delete(*keys)
+
+    @staticmethod
+    def authenticate_user(user_data, session: Session, redis_client):
+        # ... (Mantén el código original de authenticate_user que ya tenías) ...
+        user = session.exec(
+            select(User).where(User.username == user_data.username)
+        ).first()
+        if not user or not verify_password(user_data.password, user.hashed_password):
+            raise HTTPException(
+                status_code=401, detail="Usuario o contraseña incorrectos"
+            )
+
+        access_token = create_access_token(
+            data={"sub": user.username, "role": user.role}
+        )
+        refresh_data = create_refresh_token(data={"sub": user.username})
+
+        redis_key = f"session:{user.username}:{refresh_data['family_id']}"
+        redis_client.setex(redis_key, 60 * 60 * 24 * 7, refresh_data["jti"])
+
+        return access_token, refresh_data["token"], user.username
+
+    @staticmethod
+    def rotate_tokens(refresh_token: str, session: Session, redis_client):
+        # ... (Mantén el código original de rotate_tokens que ya tenías) ...
+        if not refresh_token:
+            raise HTTPException(status_code=401, detail="No hay token de refresco")
+
+        try:
+            payload = jwt.decode(refresh_token, SECRET_KEY, algorithms=[ALGORITHM])
+            username, jti, family_id = (
+                payload.get("sub"),
+                payload.get("jti"),
+                payload.get("family"),
+            )
+
+            if not all([username, jti, family_id]) or payload.get("type") != "refresh":
+                raise HTTPException(
+                    status_code=401, detail="Estructura de token inválida"
+                )
+
+            redis_key = f"session:{username}:{family_id}"
+            active_jti = redis_client.get(redis_key)
+
+            if active_jti and active_jti != jti:
+                redis_client.delete(redis_key)
+                raise HTTPException(
+                    status_code=403, detail="ALERTA: Robo de sesión detectado."
+                )
+
+            if not active_jti:
+                raise HTTPException(
+                    status_code=401, detail="Sesión expirada o cerrada remotamente."
+                )
+
+            user = session.exec(select(User).where(User.username == username)).first()
+            if not user:
+                raise HTTPException(status_code=401, detail="Usuario no encontrado")
+
+            new_access_token = create_access_token(
+                data={"sub": username, "role": user.role}
+            )
+            new_refresh_data = create_refresh_token(
+                data={"sub": username}, family_id=family_id
+            )
+
+            redis_client.setex(redis_key, 60 * 60 * 24 * 7, new_refresh_data["jti"])
+
+            return new_access_token, new_refresh_data["token"]
+
+        except jwt.ExpiredSignatureError:
+            raise HTTPException(
+                status_code=401, detail="Token expirado. Inicia sesión."
+            )
+        except jwt.JWTError:
+            raise HTTPException(status_code=401, detail="Firma inválida.")
+
+    @staticmethod
+    def verify_google_token(token: str):
+        """Verifica criptográficamente el JWT contra los servidores de Google"""
+        if not GOOGLE_CLIENT_ID:
+            raise HTTPException(status_code=500, detail="Falta configurar GOOGLE_CLIENT_ID en el servidor")
+        try:
+            idinfo = id_token.verify_oauth2_token(
+                token, google_requests.Request(), GOOGLE_CLIENT_ID
+            )
+            return idinfo
+        except ValueError:
+            raise HTTPException(status_code=401, detail="Token de Google inválido o expirado")
+
+    @staticmethod
+    def authenticate_google_user(token: str, session: Session, redis_client):
+        """Flujo de decisión: ¿Existe el usuario o es nuevo?"""
+        idinfo = AuthService.verify_google_token(token)
+        email = idinfo.get("email")
+        name = idinfo.get("name", "").replace(" ", "").lower()
+
+        # Buscamos si ya existe alguien con este correo
+        user = session.exec(select(User).where(User.email == email)).first()
+
+        if user:
+            # ESCENARIO A: Ya existe. Generamos sesión silenciosamente.
+            access_token = create_access_token(data={"sub": user.username, "role": user.role})
+            refresh_data = create_refresh_token(data={"sub": user.username})
+
+            redis_key = f"session:{user.username}:{refresh_data['family_id']}"
+            redis_client.setex(redis_key, 60 * 60 * 24 * 7, refresh_data["jti"])
+
+            return {
+                "status": "success", 
+                "access_token": access_token, 
+                "refresh_token": refresh_data["token"], 
+                "username": user.username
+            }
+        else:
+            # ESCENARIO B: Es nuevo. Cortamos el flujo y pedimos invitación.
+            # Sugerimos un nombre de usuario basado en su nombre de Google
+            return {
+                "status": "needs_invite", 
+                "email": email, 
+                "suggested_username": name
+            }
+
+    @staticmethod
+    def register_google_user(join_data, session: Session, redis_client):
+        """El usuario nuevo nos ha dado su código de invitación. Lo registramos."""
+        # 1. Volvemos a validar el token de Google por seguridad extrema
+        idinfo = AuthService.verify_google_token(join_data.token)
+        email = idinfo.get("email")
+        provider_id = idinfo.get("sub")
+
+        # 2. Verificamos que el Alias que eligió no esté cogido
+        user_exists = session.exec(select(User).where(User.username == join_data.username)).first()
+        if user_exists:
+            raise HTTPException(status_code=400, detail="El nombre de usuario ya está en uso. Elige otro.")
+
+        # 3. Validar código de invitación (El Muro Físico)
+        statement = select(InviteCode).where(InviteCode.code == join_data.invite_code).where(InviteCode.is_used == False)
+        invite = session.exec(statement).first()
+
+        if not invite:
+            raise HTTPException(status_code=400, detail="Código de invitación inválido o ya fue utilizado")
+
+        assigned_role = "admin" if invite.code.startswith("TROYA-") else "voyager"
+
+        # 4. Crear el usuario en PostgreSQL
+        new_user = User(
+            username=join_data.username,
+            email=email,
+            auth_provider="google",
+            provider_id=provider_id,
+            role=assigned_role,
+        )
+        session.add(new_user)
+        session.commit()
+        session.refresh(new_user)
+
+        # 5. Quemar la invitación para que no se re-use
+        invite.is_used = True
+        invite.used_by_id = new_user.id
+        session.add(invite)
+        session.commit()
+
+        # 6. Crear la sesión en Redis
+        access_token = create_access_token(data={"sub": new_user.username, "role": new_user.role})
+        refresh_data = create_refresh_token(data={"sub": new_user.username})
+
+        redis_key = f"session:{new_user.username}:{refresh_data['family_id']}"
+        redis_client.setex(redis_key, 60 * 60 * 24 * 7, refresh_data["jti"])
+        
+        return access_token, refresh_data["token"], new_user.username
 </file>
 
 <file path="backend/app/utils/storage.py">
@@ -2632,6 +2792,39 @@ app.include_router(search_router, prefix="/api")
 app.include_router(download_router, prefix="/api")
 app.include_router(auth_router, prefix="/api/auth", tags=["Autenticación"])
 app.include_router(prompt_router, prefix="/api/prompts", tags=["Reprompt Studio"])
+</file>
+
+<file path="backend/Dockerfile">
+FROM python:3.11-slim
+
+# Evitar preguntas durante la instalación
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Instalar dependencias necesarias para Chrome
+RUN apt-get update && apt-get install -y \
+    wget \
+    curl \
+    gnupg \
+    unzip \
+    ca-certificates \
+    --no-install-recommends
+
+# Instalación de Google Chrome y sus dependencias
+RUN apt-get update && \
+    apt-get install -y wget gnupg2 && \
+    wget -q https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb && \
+    apt-get install -y ./google-chrome-stable_current_amd64.deb && \
+    rm google-chrome-stable_current_amd64.deb && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+COPY . .
+
+EXPOSE 8000
+# Cambia la última línea de tu backend/Dockerfile a esto:
+CMD ["python", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
 </file>
 
 <file path="frontend/.vscode/mcp.json">
@@ -4579,6 +4772,22 @@ export const authApi = {
 };
 </file>
 
+<file path="frontend/src/services/api/prompts.ts">
+import { API_URL, fetchSeguro } from "./client";
+
+export const promptApi = {
+  guardarPrompt: (data: any) =>
+    fetchSeguro(`${API_URL}/prompts/save`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    }),
+
+  obtenerMisPrompts: () => fetchSeguro(`${API_URL}/prompts/`),
+  eliminarPrompt: (id: number) => fetchSeguro(`${API_URL}/prompts/${id}`, { method: "DELETE" }),
+};
+</file>
+
 <file path="frontend/src/store/authStore.ts">
 import { create } from "zustand";
 import { api } from "@/src/services/api";
@@ -5727,66 +5936,6 @@ export function cn(...inputs: ClassValue[]) {
 }
 </file>
 
-<file path="frontend/middleware.ts">
-// frontend/src/middleware.ts
-import { NextResponse } from "next/server";
-import type { NextRequest } from "next/server";
-
-// 🌍 1. Configuramos los idiomas soportados
-const locales = ["es", "en"];
-const defaultLocale = "es";
-
-export function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl;
-
-  // 🌍 2. ¿La URL actual tiene ya un idioma en la ruta? (ej. /es/algo o /en/algo)
-  const pathnameHasLocale = locales.some(
-    (locale) => pathname.startsWith(`/${locale}/`) || pathname === `/${locale}`,
-  );
-
-  // Si NO tiene idioma (ej. entró a "/studio"), lo redirigimos añadiendo el idioma por defecto
-  if (!pathnameHasLocale) {
-    // Nota: Más adelante podemos hacer que lea el navegador para elegir entre ES/EN
-    return NextResponse.redirect(new URL(`/${defaultLocale}${pathname}`, request.url));
-  }
-
-  // 🔒 3. LOGICA DE AUTENTICACIÓN
-  const token = request.cookies.get("access_token")?.value;
-
-  // Extraemos qué idioma está usando ahora mismo para no perderlo en las redirecciones
-  const currentLocale =
-    locales.find((locale) => pathname.startsWith(`/${locale}/`) || pathname === `/${locale}`) ||
-    defaultLocale;
-
-  // "Limpiamos" la ruta mentalmente para aplicar las reglas más fácil
-  // Si la ruta es "/es/login", pathWithoutLocale será "/login"
-  const pathWithoutLocale = pathname.replace(`/${currentLocale}`, "") || "/";
-
-  const isPublicPath = pathWithoutLocale === "/login" || pathWithoutLocale === "/join";
-
-  // 🔒 REGLA A: Si NO tiene token y va a una ruta privada -> Al Login (con su idioma)
-  if (!token && !isPublicPath) {
-    return NextResponse.redirect(new URL(`/${currentLocale}/login`, request.url));
-  }
-
-  // 🔒 REGLA B: Si SÍ tiene token y va al Login/Join -> Al Home (con su idioma)
-  if (token && isPublicPath) {
-    return NextResponse.redirect(new URL(`/${currentLocale}`, request.url));
-  }
-
-  // Si todo está correcto, le dejamos continuar
-  return NextResponse.next();
-}
-
-// Configuración: ignoramos API, estáticos de Next y archivos públicos de imágenes
-export const config = {
-  matcher: [
-    // Se saltará las rutas /api, _next y archivos con extensión (como .svg, .png, etc)
-    "/((?!api|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
-  ],
-};
-</file>
-
 <file path=".clinerules">
 Eres Arquitecto FullStack y Diseñador UX/UI. El sistema de diseño es minimalismo extremo estilo Civitai: baja carga cognitiva, interfaz invisible y contenido como protagonista absoluto. Elimina cualquier rastro de neo-brutalismo. Reglas estéticas obligatorias con Tailwind CSS: fondos neutros sólidos, bordes sutiles de 1px (border-border), esquinas redondeadas (rounded-lg o rounded-xl), sombras suaves desenfocadas (shadow-sm a shadow-lg), tipografía sans-serif limpia y legible, uso estratégico del espacio negativo. Reglas técnicas obligatorias: TypeScript estricto, arquitectura atómica modular, cero dependencias externas innecesarias, optimización extrema de Core Web Vitals (cero CLS), programación defensiva y manejo estricto de nulos. Ejecuta las tareas con código limpio y escalable. No des explicaciones innecesarias, aplica soluciones directas y eficientes.
 </file>
@@ -5870,6 +6019,66 @@ class ImagePrompt(SQLModel, table=True):
     created_at: datetime = Field(default_factory=datetime.utcnow)
 </file>
 
+<file path="backend/app/schemas/prompt.py">
+from pydantic import BaseModel
+from typing import Optional, Dict, Any
+from datetime import datetime
+from fastapi import Form
+
+
+class PromptCreate(BaseModel):
+    title: str = "Generación IA"
+    prompt: str
+    negative_prompt: Optional[str] = None
+    software: Optional[str] = "Desconocido"
+    model: Optional[str] = None
+    sampler: Optional[str] = None
+
+    steps: Optional[str] = None
+    cfg_scale: Optional[str] = None
+    seed: Optional[str] = None
+    resolution: Optional[str] = None
+    image_url: Optional[str] = None
+    extra_data: Dict[str, Any] = {}
+
+
+class PromptResponse(PromptCreate):
+    id: int
+    user_id: int
+    collection_id: Optional[int] = None
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+def prompt_form_dependency(
+    title: str = Form("Generación IA"),
+    prompt: str = Form(...),
+    negative_prompt: Optional[str] = Form(None),
+    software: Optional[str] = Form("Desconocido"),
+    model: Optional[str] = Form(None),
+    sampler: Optional[str] = Form(None),
+    steps: Optional[str] = Form(None),
+    cfg_scale: Optional[str] = Form(None),
+    seed: Optional[str] = Form(None),
+    resolution: Optional[str] = Form(None),
+) -> PromptCreate:
+    """Extrae los campos del form-data y los valida contra el esquema"""
+    return PromptCreate(
+        title=title,
+        prompt=prompt,
+        negative_prompt=negative_prompt,
+        software=software,
+        model=model,
+        sampler=sampler,
+        steps=steps,
+        cfg_scale=cfg_scale,
+        seed=seed,
+        resolution=resolution,
+    )
+</file>
+
 <file path="backend/app/init_db.py">
 import secrets
 import logging
@@ -5915,28 +6124,6 @@ def init_db():
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
     init_db()
-</file>
-
-<file path="backend/requirements.txt">
-fastapi
-uvicorn
-requests
-beautifulsoup4
-lxml
-selenium
-pydantic
-redis
-rq
-sqlmodel
-psycopg2-binary
-alembic
-passlib[bcrypt]
-python-jose[cryptography]
-python-dotenv
-PyJWT==2.8.0
-redis==5.0.1
-boto3==1.34.62
-python-multipart==0.0.9
 </file>
 
 <file path="backend/reset_db.py">
@@ -7708,6 +7895,66 @@ const nextConfig: NextConfig = {
 };
 
 export default nextConfig;
+</file>
+
+<file path="frontend/proxy.ts">
+// frontend/src/middleware.ts
+import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
+
+// 🌍 1. Configuramos los idiomas soportados
+const locales = ["es", "en"];
+const defaultLocale = "es";
+
+export function proxy(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+
+  // 🌍 2. ¿La URL actual tiene ya un idioma en la ruta? (ej. /es/algo o /en/algo)
+  const pathnameHasLocale = locales.some(
+    (locale) => pathname.startsWith(`/${locale}/`) || pathname === `/${locale}`,
+  );
+
+  // Si NO tiene idioma (ej. entró a "/studio"), lo redirigimos añadiendo el idioma por defecto
+  if (!pathnameHasLocale) {
+    // Nota: Más adelante podemos hacer que lea el navegador para elegir entre ES/EN
+    return NextResponse.redirect(new URL(`/${defaultLocale}${pathname}`, request.url));
+  }
+
+  // 🔒 3. LOGICA DE AUTENTICACIÓN
+  const token = request.cookies.get("access_token")?.value;
+
+  // Extraemos qué idioma está usando ahora mismo para no perderlo en las redirecciones
+  const currentLocale =
+    locales.find((locale) => pathname.startsWith(`/${locale}/`) || pathname === `/${locale}`) ||
+    defaultLocale;
+
+  // "Limpiamos" la ruta mentalmente para aplicar las reglas más fácil
+  // Si la ruta es "/es/login", pathWithoutLocale será "/login"
+  const pathWithoutLocale = pathname.replace(`/${currentLocale}`, "") || "/";
+
+  const isPublicPath = pathWithoutLocale === "/login" || pathWithoutLocale === "/join";
+
+  // 🔒 REGLA A: Si NO tiene token y va a una ruta privada -> Al Login (con su idioma)
+  if (!token && !isPublicPath) {
+    return NextResponse.redirect(new URL(`/${currentLocale}/login`, request.url));
+  }
+
+  // 🔒 REGLA B: Si SÍ tiene token y va al Login/Join -> Al Home (con su idioma)
+  if (token && isPublicPath) {
+    return NextResponse.redirect(new URL(`/${currentLocale}`, request.url));
+  }
+
+  // Si todo está correcto, le dejamos continuar
+  return NextResponse.next();
+}
+
+// Configuración: ignoramos API, estáticos de Next y archivos públicos de imágenes
+export const config = {
+  matcher: [
+    // Se saltará las rutas /api, _next y archivos con extensión (como .svg, .png, etc)
+    "/((?!api|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+  ],
+};
 </file>
 
 <file path="repomix-backend.xml">
@@ -9855,56 +10102,150 @@ if __name__ == '__main__':
 </files>
 </file>
 
-<file path="frontend/app/[lang]/layout.tsx">
-import type { Metadata } from "next";
-import { Prompt, JetBrains_Mono } from "next/font/google";
-import "../globals.css"
-import { AuthProvider } from "@/src/features/auth/AuthProvider";
-import { Navbar } from "@/src/system/organisms/Layout/Navbar/Navbar";
-import { AppToaster } from "@/src/system/organisms/Layout/AppToaster";
-import { GlobalProgress } from "@/src/system/organisms/Layout/GlobalProgress";
-import { cn } from "@/lib/utils";
+<file path="backend/app/api/routes_prompt.py">
+import logging
+import uuid
+from typing import List
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from sqlmodel import Session, select
 
-import { getDictionary, Locale } from "@/src/dictionaries/getDictionary";
-import { I18nProvider } from "@/src/dictionaries/I18nProvider";
+from app.core.db import get_session
+from app.api.deps import get_current_user
+from app.models.user import User
+from app.models.prompt import ImagePrompt
 
-const prompt = Prompt({
-  weight: ["400", "700", "900"],
-  subsets: ["latin"],
-  variable: "--font-prompt",
-});
+from app.schemas.prompt import PromptCreate, PromptResponse, prompt_form_dependency
+from app.utils.storage import subir_imagen_a_r2
 
-const jetbrainsMono = JetBrains_Mono({ subsets: ["latin"], variable: "--font-mono" });
+logger = logging.getLogger("api_prompts")
+router = APIRouter()
 
-export const metadata: Metadata = {
-  title: "reprompt",
-  description: "Wallet para guardar tus imágenes y prompts",
-};
 
-export default async function RootLayout({
-  children,
-  params,
-}: {
-  children: React.ReactNode;
-  params: { lang: string };
-}) {
-  const dictionary = await getDictionary(params.lang as Locale);
+@router.post("/upload")
+async def upload_and_save_prompt(
+    file: UploadFile = File(...),
+    prompt_data: PromptCreate = Depends(prompt_form_dependency),  # <-- CLEAN CODE AQUÍ
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    """
+    Recibe la imagen y sus metadatos. Sube la imagen a R2 y guarda la info en PostgreSQL.
+    """
+    try:
+        # 1. Validar la imagen
+        if not file.content_type.startswith("image/"):
+            raise HTTPException(
+                status_code=400, detail="El archivo debe ser una imagen."
+            )
 
-  return (
-    <html lang={params.lang} className={cn(prompt.variable, "font-mono", jetbrainsMono.variable)}>
-      <body className="antialiased selection:bg-(--accent-color) selection:text-white">
-        <I18nProvider dictionary={dictionary}>
-          <AuthProvider>
-            <GlobalProgress />
-            <Navbar />
-            {children}
-            <AppToaster />
-          </AuthProvider>
-        </I18nProvider>
-      </body>
-    </html>
-  );
-}
+        file_bytes = await file.read()
+
+        ext = file.filename.split(".")[-1] if "." in file.filename else "jpg"
+        unique_filename = f"{current_user.username}/{uuid.uuid4().hex}.{ext}"
+        
+        secure_url = subir_imagen_a_r2(file_bytes, unique_filename, file.content_type)
+
+        new_prompt = ImagePrompt(
+            user_id=current_user.id,
+            image_url=secure_url,
+            **prompt_data.model_dump(
+                exclude={"image_url", "extra_data"}
+            ),  # Excluimos los que inyectamos o no usamos directamente
+        )
+
+        session.add(new_prompt)
+        session.commit()
+        session.refresh(new_prompt)
+
+        return {
+            "status": "success",
+            "message": "Imagen subida a la nube y prompt guardado con éxito.",
+            "data": {"id": new_prompt.id, "image_url": secure_url},
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error en upload_and_save_prompt: {e}")
+        session.rollback()
+        raise HTTPException(
+            status_code=500, detail="Error interno al procesar la imagen."
+        )
+
+
+@router.get("/", response_model=List[PromptResponse])
+def get_my_prompts(
+    skip: int = 0,
+    limit: int = 50,
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    try:
+        statement = (
+            select(ImagePrompt)
+            .where(ImagePrompt.user_id == current_user.id)
+            .order_by(ImagePrompt.created_at.desc())
+            .offset(skip)
+            .limit(limit)
+        )
+
+        prompts = session.exec(statement).all()
+        return prompts
+
+    except Exception as e:
+        logger.error(f"Error obteniendo prompts para usuario {current_user.id}: {e}")
+        raise HTTPException(
+            status_code=500, detail="Error interno al recuperar los datos."
+        )
+
+
+@router.delete("/{prompt_id}")
+def delete_prompt(
+    prompt_id: int,
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    try:
+        # <-- ACTUALIZADO
+        prompt = session.get(ImagePrompt, prompt_id)
+        if not prompt or prompt.user_id != current_user.id:
+            raise HTTPException(
+                status_code=404, detail="Prompt no encontrado o acceso denegado."
+            )
+
+        session.delete(prompt)
+        session.commit()
+        return {"status": "success", "message": "Prompt eliminado del búnker."}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error borrando prompt {prompt_id}: {e}")
+        session.rollback()
+        raise HTTPException(status_code=500, detail="Error al eliminar el prompt.")
+</file>
+
+<file path="backend/requirements.txt">
+fastapi
+uvicorn
+requests
+beautifulsoup4
+lxml
+selenium
+pydantic
+redis
+rq
+sqlmodel
+psycopg2-binary
+alembic
+passlib[bcrypt]
+python-jose[cryptography]
+python-dotenv
+PyJWT==2.8.0
+redis==5.0.1
+boto3==1.34.62
+python-multipart==0.0.9
+google-auth==2.28.1
 </file>
 
 <file path="frontend/src/features/image-viewer/hooks/useViewerNavigation.ts">
@@ -10040,22 +10381,6 @@ export function useViewerSync(activeUrl: string) {
     loadNextPage,
   };
 }
-</file>
-
-<file path="frontend/src/services/api/prompts.ts">
-import { API_URL, fetchSeguro } from "./client";
-
-export const promptApi = {
-  guardarPrompt: (data: any) =>
-    fetchSeguro(`${API_URL}/prompts/save`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
-    }),
-
-  obtenerMisPrompts: () => fetchSeguro(`${API_URL}/prompts/`),
-  eliminarPrompt: (id: number) => fetchSeguro(`${API_URL}/prompts/${id}`, { method: "DELETE" }),
-};
 </file>
 
 <file path="frontend/src/system/atoms/MediaCover.tsx">
@@ -10415,6 +10740,64 @@ export function useTheme() {
 }
 </file>
 
+<file path="frontend/app/[lang]/layout.tsx">
+import type { Metadata } from "next";
+import { Prompt, JetBrains_Mono } from "next/font/google";
+import "../globals.css";
+import { AuthProvider } from "@/src/features/auth/AuthProvider";
+import { Navbar } from "@/src/system/organisms/Layout/Navbar/Navbar";
+import { AppToaster } from "@/src/system/organisms/Layout/AppToaster";
+import { GlobalProgress } from "@/src/system/organisms/Layout/GlobalProgress";
+import { cn } from "@/lib/utils";
+
+import { getDictionary, Locale } from "@/src/dictionaries/getDictionary";
+import { I18nProvider } from "@/src/dictionaries/I18nProvider";
+
+import { GoogleOAuthProvider } from "@react-oauth/google";
+
+const prompt = Prompt({
+  weight: ["400", "700", "900"],
+  subsets: ["latin"],
+  variable: "--font-prompt",
+});
+
+const jetbrainsMono = JetBrains_Mono({ subsets: ["latin"], variable: "--font-mono" });
+
+export const metadata: Metadata = {
+  title: "reprompt",
+  description: "Wallet para guardar tus imágenes y prompts",
+};
+
+export default async function RootLayout({
+  children,
+  params,
+}: {
+  children: React.ReactNode;
+  params: { lang: string };
+}) {
+  const dictionary = await getDictionary(params.lang as Locale);
+
+  const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "";
+
+  return (
+    <html lang={params.lang} className={cn(prompt.variable, "font-mono", jetbrainsMono.variable)}>
+      <body className="antialiased selection:bg-(--accent-color) selection:text-white">
+        <GoogleOAuthProvider clientId={googleClientId}>
+          <I18nProvider dictionary={dictionary}>
+            <AuthProvider>
+              <GlobalProgress />
+              <Navbar />
+              {children}
+              <AppToaster />
+            </AuthProvider>
+          </I18nProvider>
+        </GoogleOAuthProvider>
+      </body>
+    </html>
+  );
+}
+</file>
+
 <file path="frontend/src/store/progressStore.ts">
 import { create } from "zustand";
 
@@ -10479,66 +10862,6 @@ export function HeroSearch() {
     </div>
   );
 }
-</file>
-
-<file path="backend/app/schemas/prompt.py">
-from pydantic import BaseModel
-from typing import Optional, Dict, Any
-from datetime import datetime
-from fastapi import Form
-
-
-class PromptCreate(BaseModel):
-    title: str = "Generación IA"
-    prompt: str
-    negative_prompt: Optional[str] = None
-    software: Optional[str] = "Desconocido"
-    model: Optional[str] = None
-    sampler: Optional[str] = None
-
-    steps: Optional[str] = None
-    cfg_scale: Optional[str] = None
-    seed: Optional[str] = None
-    resolution: Optional[str] = None
-    image_url: Optional[str] = None
-    extra_data: Dict[str, Any] = {}
-
-
-class PromptResponse(PromptCreate):
-    id: int
-    user_id: int
-    collection_id: Optional[int] = None
-    created_at: datetime
-
-    class Config:
-        from_attributes = True
-
-
-def prompt_form_dependency(
-    title: str = Form("Generación IA"),
-    prompt: str = Form(...),
-    negative_prompt: Optional[str] = Form(None),
-    software: Optional[str] = Form("Desconocido"),
-    model: Optional[str] = Form(None),
-    sampler: Optional[str] = Form(None),
-    steps: Optional[str] = Form(None),
-    cfg_scale: Optional[str] = Form(None),
-    seed: Optional[str] = Form(None),
-    resolution: Optional[str] = Form(None),
-) -> PromptCreate:
-    """Extrae los campos del form-data y los valida contra el esquema"""
-    return PromptCreate(
-        title=title,
-        prompt=prompt,
-        negative_prompt=negative_prompt,
-        software=software,
-        model=model,
-        sampler=sampler,
-        steps=steps,
-        cfg_scale=cfg_scale,
-        seed=seed,
-        resolution=resolution,
-    )
 </file>
 
 <file path="frontend/src/features/search/hooks/useSearch.ts">
@@ -10845,129 +11168,6 @@ git:
 		git push origin $$BRANCH; \
 		echo "✅ ¡Sincronización completada con éxito!"; \
 	fi
-</file>
-
-<file path="backend/app/api/routes_prompt.py">
-import logging
-import uuid
-from typing import List
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
-from sqlmodel import Session, select
-
-from app.core.db import get_session
-from app.api.deps import get_current_user
-from app.models.user import User
-from app.models.prompt import ImagePrompt
-
-from app.schemas.prompt import PromptCreate, PromptResponse, prompt_form_dependency
-from app.utils.storage import subir_imagen_a_r2
-
-logger = logging.getLogger("api_prompts")
-router = APIRouter()
-
-
-@router.post("/upload")
-async def upload_and_save_prompt(
-    file: UploadFile = File(...),
-    prompt_data: PromptCreate = Depends(prompt_form_dependency),  # <-- CLEAN CODE AQUÍ
-    current_user: User = Depends(get_current_user),
-    session: Session = Depends(get_session),
-):
-    """
-    Recibe la imagen y sus metadatos. Sube la imagen a R2 y guarda la info en PostgreSQL.
-    """
-    try:
-        # 1. Validar la imagen
-        if not file.content_type.startswith("image/"):
-            raise HTTPException(
-                status_code=400, detail="El archivo debe ser una imagen."
-            )
-
-        file_bytes = await file.read()
-
-        ext = file.filename.split(".")[-1] if "." in file.filename else "jpg"
-        unique_filename = f"{current_user.username}/{uuid.uuid4().hex}.{ext}"
-        
-        secure_url = subir_imagen_a_r2(file_bytes, unique_filename, file.content_type)
-
-        new_prompt = ImagePrompt(
-            user_id=current_user.id,
-            image_url=secure_url,
-            **prompt_data.model_dump(
-                exclude={"image_url", "extra_data"}
-            ),  # Excluimos los que inyectamos o no usamos directamente
-        )
-
-        session.add(new_prompt)
-        session.commit()
-        session.refresh(new_prompt)
-
-        return {
-            "status": "success",
-            "message": "Imagen subida a la nube y prompt guardado con éxito.",
-            "data": {"id": new_prompt.id, "image_url": secure_url},
-        }
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error en upload_and_save_prompt: {e}")
-        session.rollback()
-        raise HTTPException(
-            status_code=500, detail="Error interno al procesar la imagen."
-        )
-
-
-@router.get("/", response_model=List[PromptResponse])
-def get_my_prompts(
-    skip: int = 0,
-    limit: int = 50,
-    current_user: User = Depends(get_current_user),
-    session: Session = Depends(get_session),
-):
-    try:
-        statement = (
-            select(ImagePrompt)
-            .where(ImagePrompt.user_id == current_user.id)
-            .order_by(ImagePrompt.created_at.desc())
-            .offset(skip)
-            .limit(limit)
-        )
-
-        prompts = session.exec(statement).all()
-        return prompts
-
-    except Exception as e:
-        logger.error(f"Error obteniendo prompts para usuario {current_user.id}: {e}")
-        raise HTTPException(
-            status_code=500, detail="Error interno al recuperar los datos."
-        )
-
-
-@router.delete("/{prompt_id}")
-def delete_prompt(
-    prompt_id: int,
-    current_user: User = Depends(get_current_user),
-    session: Session = Depends(get_session),
-):
-    try:
-        # <-- ACTUALIZADO
-        prompt = session.get(ImagePrompt, prompt_id)
-        if not prompt or prompt.user_id != current_user.id:
-            raise HTTPException(
-                status_code=404, detail="Prompt no encontrado o acceso denegado."
-            )
-
-        session.delete(prompt)
-        session.commit()
-        return {"status": "success", "message": "Prompt eliminado del búnker."}
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error borrando prompt {prompt_id}: {e}")
-        session.rollback()
-        raise HTTPException(status_code=500, detail="Error al eliminar el prompt.")
 </file>
 
 <file path="frontend/app/globals.css">
@@ -11528,67 +11728,6 @@ export const mapSearchToMediaCard = (item: GalleryItem): MediaCardData => {
 export const mapViewerToMediaCard = (page: any, index: number): MediaCardData => { /* ... */ return { id: `p-${index}`, imageUrl: page?.image_url || "", title: page?.name || "", aspectRatio: "auto" }; };
 </file>
 
-<file path="frontend/package.json">
-{
-  "name": "frontend-galeria",
-  "version": "0.1.0",
-  "private": true,
-  "scripts": {
-    "dev": "node diagnose.js && next dev",
-    "build": "next build",
-    "format": "prettier --write \"{app,src}/**/*.{ts,tsx,css}\"",
-    "start": "next start",
-    "lint": "next lint",
-    "test": "jest",
-    "test:watch": "jest --watch"
-  },
-  "dependencies": {
-    "@base-ui/react": "^1.3.0",
-    "@phosphor-icons/react": "^2.1.10",
-    "@tabler/icons-react": "^3.41.0",
-    "class-variance-authority": "^0.7.1",
-    "clsx": "^2.1.1",
-    "embla-carousel-react": "^8.6.0",
-    "exifr": "^7.1.3",
-    "jszip": "^3.10.1",
-    "next": "16.2.1",
-    "png-chunk-text": "^1.0.0",
-    "png-chunks-extract": "^1.0.0",
-    "radix-ui": "^1.4.3",
-    "react": "19.2.4",
-    "react-dom": "19.2.4",
-    "react-dropzone": "^15.0.0",
-    "react-hot-toast": "^2.6.0",
-    "react-intersection-observer": "^10.0.3",
-    "tailwind-merge": "^3.5.0",
-    "tw-animate-css": "^1.4.0",
-    "zustand": "^5.0.12"
-  },
-  "devDependencies": {
-    "@tailwindcss/postcss": "^4",
-    "@testing-library/jest-dom": "^6.9.1",
-    "@testing-library/react": "^16.3.2",
-    "@testing-library/user-event": "^14.6.1",
-    "@types/jest": "^30.0.0",
-    "@types/jszip": "^3.4.0",
-    "@types/node": "^20.19.37",
-    "@types/png-chunk-text": "^1.0.3",
-    "@types/png-chunks-extract": "^1.0.2",
-    "@types/react": "^19.2.14",
-    "@types/react-dom": "^19.2.3",
-    "eslint": "^9",
-    "eslint-config-next": "16.2.1",
-    "jest": "^30.3.0",
-    "jest-environment-jsdom": "^30.3.0",
-    "prettier": "^3.8.1",
-    "shadcn": "^4.1.1",
-    "tailwindcss": "^4",
-    "ts-node": "^10.9.2",
-    "typescript": "^5.9.3"
-  }
-}
-</file>
-
 <file path="frontend/src/system/organisms/Layout/Navbar/NavbarSearch.tsx">
 "use client";
 import React, { useCallback, useEffect, useRef } from "react";
@@ -11715,6 +11854,68 @@ export function GlobalProgress() {
       </div>
     </div>
   );
+}
+</file>
+
+<file path="frontend/package.json">
+{
+  "name": "frontend-galeria",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "node diagnose.js && next dev",
+    "build": "next build",
+    "format": "prettier --write \"{app,src}/**/*.{ts,tsx,css}\"",
+    "start": "next start",
+    "lint": "next lint",
+    "test": "jest",
+    "test:watch": "jest --watch"
+  },
+  "dependencies": {
+    "@base-ui/react": "^1.3.0",
+    "@phosphor-icons/react": "^2.1.10",
+    "@react-oauth/google": "^0.13.4",
+    "@tabler/icons-react": "^3.41.0",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "embla-carousel-react": "^8.6.0",
+    "exifr": "^7.1.3",
+    "jszip": "^3.10.1",
+    "next": "16.2.1",
+    "png-chunk-text": "^1.0.0",
+    "png-chunks-extract": "^1.0.0",
+    "radix-ui": "^1.4.3",
+    "react": "19.2.4",
+    "react-dom": "19.2.4",
+    "react-dropzone": "^15.0.0",
+    "react-hot-toast": "^2.6.0",
+    "react-intersection-observer": "^10.0.3",
+    "tailwind-merge": "^3.5.0",
+    "tw-animate-css": "^1.4.0",
+    "zustand": "^5.0.12"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.1",
+    "@types/jest": "^30.0.0",
+    "@types/jszip": "^3.4.0",
+    "@types/node": "^20.19.37",
+    "@types/png-chunk-text": "^1.0.3",
+    "@types/png-chunks-extract": "^1.0.2",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "eslint": "^9",
+    "eslint-config-next": "16.2.1",
+    "jest": "^30.3.0",
+    "jest-environment-jsdom": "^30.3.0",
+    "prettier": "^3.8.1",
+    "shadcn": "^4.1.1",
+    "tailwindcss": "^4",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3"
+  }
 }
 </file>
 
