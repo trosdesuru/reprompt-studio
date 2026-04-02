@@ -30,7 +30,7 @@ async def lifespan(app: FastAPI):
     logger.info("🛑 Apagando API Backend limpiamente...")
 
 
-app = FastAPI(title="EH Explorer API", lifespan=lifespan)
+app = FastAPI(title="reprompt FastAPI", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,

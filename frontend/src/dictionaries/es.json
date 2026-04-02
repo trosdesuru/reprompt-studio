@@ -1,0 +1,17 @@
+{
+  "common": {
+    "loading": "Cargando...",
+    "error": "Ha ocurrido un error",
+    "save": "Guardar"
+  },
+  "nav": {
+    "studio": "Estudio",
+    "gallery": "Galería",
+    "login": "Entrar",
+    "join": "Registro"
+  },
+  "auth": {
+    "login_title": "Bienvenido de nuevo",
+    "join_title": "Únete a Reprompt"
+  }
+}

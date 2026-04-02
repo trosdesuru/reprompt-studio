@@ -11,9 +11,9 @@
 - [x] **1.1. Esquema de Base de Datos Base (SQLModel):**
   - [ ] Añadir soporte para `User` (email, Google Auth, tier pro), `Collection` e `ImagePrompt`.
   - [ ] Preparar los campos `slug` en las colecciones (ej. validando que un usuario no tenga dos slugs idénticos).
-  - [ ] Incluir `is_private` y `share_token` para el futuro muro de pago.
-- [ ] **1.2. Integración Object Storage (S3 / R2):**
-  - [ ] Configurar el backend (FastAPI) para que al recibir una imagen, la envíe a Cloudflare R2 y solo guarde la URL segura (`https://storage.reprompt.com/...`) en PostgreSQL.
+  - [x] Incluir `is_private` y `share_token` para el futuro muro de pago.
+- [x] **1.2. Integración Object Storage (S3 / R2):**
+  - [x] Configurar el backend (FastAPI) para que al recibir una imagen, la envíe a Cloudflare R2 y solo guarde la URL segura (`https://storage.reprompt.com/...`) en PostgreSQL.
 
 💡 **Explicación:** Sin esto, la base de datos crecería de forma descontrolada y el servidor colapsaría al primer intento de ataque.
 
