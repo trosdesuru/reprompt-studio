@@ -4,7 +4,6 @@ import { getRawTextFromFile } from "../utils/fileExtractors";
 import { extractFilesFromZip } from "../utils/fileExtractors/zipExtractor";
 import { handleError } from "@/src/utils/errors/ErrorHandler";
 
-
 export interface BatchItem {
   id: string;
   file: File;
@@ -22,7 +21,7 @@ export function usePromptExtractor() {
   const [isExtracting, setIsExtracting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [batch, setBatch] = useState<BatchItem[]>([]);
-  const [skippedFiles, setSkippedFiles] = useState<SkippedFile[]>([]); // 🟢 NUEVO ESTADO
+  const [skippedFiles, setSkippedFiles] = useState<SkippedFile[]>([]);
 
   const processFiles = useCallback(async (files: File[], fileRejections: any[] = []) => {
     setIsExtracting(true);
@@ -54,20 +53,41 @@ export function usePromptExtractor() {
         throw new Error("No se recibieron archivos válidos.");
       }
 
-      // 2. Extraer metadata de cada archivo
       const newBatchItems: BatchItem[] = [];
 
+      // 2. Extraer metadata de cada archivo
       for (const file of allFilesToProcess) {
         try {
           const rawText = await getRawTextFromFile(file);
+          let parsedData: ExtractedPromptData;
+          
           if (!rawText) {
-            currentSkipped.push({ name: file.name, reason: "Sin metadatos de IA detectados." });
-            continue;
+            // 🛡️ PRAGMATISMO: Si es imagen pero no tiene IA, la dejamos pasar para MODO MANUAL
+            if (file.type.startsWith("image/")) {
+              parsedData = {
+                prompt: "",
+                rawText: "",
+                software: "Desconocido",
+                negativePrompt: "",
+                model: "",
+                sampler: "",
+                steps: "",
+                cfgScale: "",
+                seed: "",
+                resolution: "",
+                loras: [],
+                triggerWords: []
+              };
+            } else {
+              currentSkipped.push({ name: file.name, reason: "Sin metadatos de IA detectados." });
+              continue;
+            }
+          } else {
+            parsedData = parsePromptData(rawText);
           }
 
-          const parsedData = parsePromptData(rawText);
           const previewUrl = file.type.startsWith("image/") ? URL.createObjectURL(file) : null;
-
+          
           newBatchItems.push({
             id: crypto.randomUUID(),
             file,
@@ -85,9 +105,7 @@ export function usePromptExtractor() {
       if (newBatchItems.length > 0) {
         setBatch((prev) => [...prev, ...newBatchItems]);
       } else if (currentSkipped.length > 0) {
-        setError(
-          `Se descartaron ${currentSkipped.length} archivos por no ser válidos o no tener metadatos.`,
-        );
+        setError(`Se descartaron ${currentSkipped.length} archivos por no ser válidos o no tener metadatos.`);
       }
     } catch (err: unknown) {
       setError(handleError(err, "ExtractorBatch"));
@@ -100,6 +118,13 @@ export function usePromptExtractor() {
     setBatch((prev) => prev.map((item) => (item.id === id ? { ...item, status } : item)));
   }, []);
 
+  // 🟢 NUEVO: Función para actualizar los datos que el usuario teclee
+  const updateItemData = useCallback((id: string, newData: Partial<ExtractedPromptData>) => {
+    setBatch((prev) =>
+      prev.map((item) => (item.id === id ? { ...item, data: { ...item.data, ...newData } } : item))
+    );
+  }, []);
+
   const removeItem = useCallback((id: string) => {
     setBatch((prev) => {
       const item = prev.find((p) => p.id === id);
@@ -109,25 +134,28 @@ export function usePromptExtractor() {
   }, []);
 
   const clearBatch = useCallback(() => {
-    batch.forEach((item) => {
-      if (item.previewUrl) URL.revokeObjectURL(item.previewUrl);
+    setBatch((prev) => {
+      prev.forEach((item) => {
+        if (item.previewUrl) URL.revokeObjectURL(item.previewUrl);
+      });
+      return [];
     });
-    setBatch([]);
     setSkippedFiles([]);
     setError(null);
-  }, [batch]);
+  }, []);
 
   const clearSkipped = useCallback(() => {
     setSkippedFiles([]);
   }, []);
 
   return {
-    processFiles,
     isExtracting,
     error,
     batch,
     skippedFiles,
+    processFiles,
     updateItemStatus,
+    updateItemData,
     removeItem,
     clearBatch,
     clearSkipped,

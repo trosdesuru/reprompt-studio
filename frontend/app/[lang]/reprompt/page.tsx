@@ -12,6 +12,7 @@ export default function RepromptPage() {
     batch,
     skippedFiles,
     updateItemStatus,
+    updateItemData,
     removeItem,
     clearBatch,
     clearSkipped,
@@ -41,6 +42,7 @@ export default function RepromptPage() {
               batch={batch}
               skippedFiles={skippedFiles}
               onUpdateStatus={updateItemStatus}
+              onUpdateItemData={updateItemData}
               onRemoveItem={removeItem}
               onClearAll={clearBatch}
               onClearSkipped={clearSkipped}
