@@ -1,8 +1,17 @@
+import logging
+import requests
 import urllib.request
 from urllib.error import URLError, HTTPError
-import logging
 
 logger = logging.getLogger(__name__)
+
+http_session = requests.Session()
+http_session.headers.update(
+    {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+        "Cookie": "nw=1",
+    }
+)
 
 MAGIC_SIGNATURES = {
     "png": b"\x89PNG\r\n\x1a\n",
@@ -14,21 +23,24 @@ MAGIC_SIGNATURES = {
 
 def validate_magic_bytes(file_url: str) -> bool:
     """
-    Descarga los primeros 256 bytes de una URL y verifica que correspondan a una imagen real.
-    Cumple con el principio de fallar de forma segura (Fail-Safe).
+    Verifica la autenticidad del archivo descargando solo 256 bytes.
+    Programación Defensiva: Asume falsedad por defecto.
     """
-    try:
-        req = urllib.request.Request(file_url, headers={"Range": "bytes=0-256"})
+    if not file_url:
+        return False
 
-        with urllib.request.urlopen(req, timeout=5) as response:
-            header_bytes = response.read(256)
+    try:
+        # Inyectamos cabecera Range de forma dinámica para esta petición
+        response = http_session.get(
+            file_url, headers={"Range": "bytes=0-256"}, timeout=5
+        )
+        response.raise_for_status()
+        header_bytes = response.content
 
         if header_bytes.startswith(MAGIC_SIGNATURES["png"]):
             return True
-
         if header_bytes.startswith(MAGIC_SIGNATURES["jpeg"]):
             return True
-
         if (
             header_bytes.startswith(MAGIC_SIGNATURES["webp_riff"])
             and header_bytes[8:12] == MAGIC_SIGNATURES["webp_webp"]
@@ -36,13 +48,10 @@ def validate_magic_bytes(file_url: str) -> bool:
             return True
 
         logger.warning(
-            f"[SECURITY] Archivo malicioso o formato inválido detectado. Abortando. URL: {file_url}"
+            f"[SECURITY] Archivo malicioso detectado y bloqueado. URL: {file_url}"
         )
         return False
 
-    except (HTTPError, URLError) as e:
-        logger.error(f"[SECURITY] Error de red al auditar archivo temporal: {e}")
-        return False
-    except Exception as e:
-        logger.error(f"[SECURITY] Error inesperado en auditoría: {e}")
+    except requests.RequestException as e:
+        logger.error(f"[SECURITY] Error de red al auditar URL {file_url}: {e}")
         return False

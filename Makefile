@@ -38,6 +38,33 @@ nuke:
 	docker-compose up -d
 
 # ==========================================
+# GESTIÓN DE DEPENDENCIAS EN DOCKER
+# ==========================================
+
+# Añadir un paquete al Backend y actualizar requirements.txt
+# Uso: make add-backend pkg=boto3
+add-backend:
+	docker compose exec backend pip install $(pkg)
+	docker compose exec backend sh -c "pip freeze > requirements.txt"
+
+# Añadir un paquete al Frontend y actualizar package.json
+# Uso: make add-frontend pkg=axios
+add-frontend:
+	docker compose exec frontend npm install $(pkg)
+
+# Instalar las dependencias existentes del Backend
+install-backend:
+	docker compose exec backend pip install -r requirements.txt
+
+# Instalar las dependencias existentes del Frontend
+install-frontend:
+	docker compose exec frontend npm install
+
+# Instalar todo (Backend + Frontend)
+# Uso: make install-all
+install-all: install-backend install-frontend
+
+# ==========================================
 # 📊 LOGS Y MONITOREO
 # ==========================================
 .PHONY: log-back log-front log-back-30 log-front-30 stats mem-check clean-docker

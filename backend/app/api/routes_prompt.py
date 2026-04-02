@@ -10,8 +10,10 @@ from app.models.prompt import ImagePrompt
 from app.schemas.prompt import PromptCreate
 from app.api.deps import get_current_user, RateLimiter
 from app.core.config import settings
-
+from app.services.storage import s3_client
 from app.utils.storage import eliminar_de_r2
+from app.services.storage import move_to_permanent, delete_file
+from app.services.security import validate_magic_bytes
 import boto3
 
 s3_client = boto3.client(
@@ -80,6 +82,27 @@ def guardar_prompt(
     current_user: User = Depends(get_current_user),
     session: Session = Depends(get_session),
 ):
+
+    is_valid = validate_magic_bytes(data.image_url)
+
+    base_url = settings.R2_PUBLIC_URL.rstrip("/") + "/"
+    old_key = data.image_url.replace(base_url, "")
+
+    if not is_valid:
+        delete_file(old_key)
+        raise HTTPException(
+            status_code=400, detail="El archivo está corrupto o es malicioso."
+        )
+
+    new_key = old_key.replace("temp/", "prompts/", 1)
+
+    if not move_to_permanent(old_key, new_key):
+        raise HTTPException(
+            status_code=500, detail="Error interno al consolidar el archivo."
+        )
+
+    final_image_url = f"{base_url}{new_key}"
+    data.image_url = final_image_url
     try:
         # El frontend ya subió la imagen y solo nos manda la URL pública. ¡FastAPI no sufre!
         nuevo_prompt = ImagePrompt(
