@@ -1,78 +1,131 @@
-import { IconCopy, IconCheck, IconTrash } from "@tabler/icons-react";
-import { useState } from "react";
-import { SavedPrompt } from "@/src/features/studio/hooks/useStudio";
-import { Badge } from "../../atoms/Badge";
+"use client";
 
-interface Props {
+import { useState } from "react";
+import { IconCopy, IconTrash, IconCheck, IconPhoto } from "@tabler/icons-react";
+import { SavedPrompt } from "@/src/features/studio/hooks/useStudio";
+
+interface PromptCardProps {
   item: SavedPrompt;
   onDelete: (id: number) => void;
 }
 
-export function PromptCard({ item, onDelete }: Props) {
+export function PromptCard({ item, onDelete }: PromptCardProps) {
   const [copied, setCopied] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
 
-  const copyPrompt = (e: React.MouseEvent) => {
+  const handleCopy = (e: React.MouseEvent) => {
     e.stopPropagation();
-    navigator.clipboard.writeText(item.prompt);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  const handleDelete = () => {
-    if (window.confirm("¿Seguro que quieres borrar este prompt de tu búnker?")) {
-      setIsDeleting(true); // 🟢 Usamos setIsDeleting
-      onDelete(item.id); // 🟢 Usamos onDelete
+    if (item.prompt) {
+      navigator.clipboard.writeText(item.prompt);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
     }
   };
 
-  const date = new Date(item.created_at).toLocaleDateString(); // 🟢 Variable date preparada
-
   return (
     <div
-      className={`neo-border bg-(--bg-secondary) flex flex-col h-full hover:neo-shadow-accent transition-all group ${isDeleting ? "opacity-50 scale-95" : ""}`}
+      className="group flex flex-col bg-background rounded-xl border border-border shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
     >
-      {item.image_url && (
-        <div className="h-48 border-b-2 border-(--border-color) bg-black overflow-hidden relative">
+      {/* 🖼️ ÁREA DE IMAGEN (1:1 o 4:5 aspect ratio) */}
+      <div className="relative aspect-square sm:aspect-[4/5] bg-muted/10 overflow-hidden">
+        {item.image_url ? (
           <img
             src={item.image_url}
             alt={item.title}
-            className="w-full h-full object-cover"
             loading="lazy"
+            className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
           />
-        </div>
-      )}
+        ) : (
+          <div className="w-full h-full flex flex-col items-center justify-center text-muted-foreground/50">
+            <IconPhoto size={48} stroke={1} />
+            <span className="text-xs font-mono mt-2">Sin imagen</span>
+          </div>
+        )}
 
-      {/* Cabecera */}
-      <div className="bg-background border-b-2 border-(--border-color) p-3 flex justify-between items-center">
-        <span className="font-mono text-xs font-black uppercase truncate pr-2">{item.title}</span>
-        <div className="flex items-center gap-2">
-          <span className="text-[10px] font-mono text-(--text-secondary)">{date}</span>{" "}
-          {/* 🟢 Mostramos date */}
-          <button
-            onClick={handleDelete}
-            className="text-red-500 hover:text-red-700 transition-colors"
+        {/* Capa de oscurecimiento on hover para que resalten los botones */}
+        <div
+          className={`absolute inset-0 bg-black/20 transition-opacity duration-300 ${isHovered ? "opacity-100" : "opacity-0"}`}
+        />
+
+        {/* 🏷️ Badge de Software */}
+        {item.software && (
+          <div
+            className={`absolute top-3 left-3 transition-opacity duration-300 ${isHovered ? "opacity-100" : "opacity-0"}`}
           >
-            <IconTrash size={16} /> {/* 🟢 Usamos IconTrash */}
+            <span className="bg-background/90 backdrop-blur-sm text-foreground text-[10px] font-bold px-2.5 py-1 rounded-md border border-border/50 uppercase tracking-widest shadow-sm">
+              {item.software}
+            </span>
+          </div>
+        )}
+
+        {/* 🗑️ Botón de Eliminar */}
+        <div
+          className={`absolute top-3 right-3 transition-opacity duration-300 ${isHovered ? "opacity-100" : "opacity-0"}`}
+        >
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              if (window.confirm("¿Seguro que deseas eliminar este prompt del búnker?")) {
+                onDelete(item.id);
+              }
+            }}
+            className="bg-background/90 backdrop-blur-sm hover:bg-red-500/10 hover:text-red-500 text-foreground p-2 rounded-full border border-border/50 transition-colors shadow-sm"
+            title="Eliminar"
+          >
+            <IconTrash size={16} stroke={1.5} />
           </button>
         </div>
       </div>
 
-      <div className="p-4 grow relative overflow-hidden bg-background">
-        <p className="font-mono text-sm leading-relaxed line-clamp-4 text-foreground">
-          {item.prompt}
-        </p>
-        <button
-          onClick={copyPrompt}
-          className="absolute top-2 right-2 p-1.5 bg-(--accent-color) text-white neo-border opacity-0 group-hover:opacity-100 transition-opacity"
-        >
-          {copied ? <IconCheck size={16} /> : <IconCopy size={16} />}
-        </button>
-      </div>
+      {/* 📝 ÁREA DE CONTENIDO */}
+      <div className="p-5 flex flex-col grow gap-4">
+        {/* Cabecera: Título y Modelo */}
+        <div>
+          <h3 className="font-bold text-base tracking-tight truncate" title={item.title}>
+            {item.title}
+          </h3>
+          <div className="flex items-center gap-2 mt-1">
+            <span className="text-xs text-muted-foreground truncate">
+              {item.model || "Modelo desconocido"}
+            </span>
+            {item.sampler && (
+              <>
+                <span className="text-muted-foreground/30 text-[10px]">•</span>
+                <span className="text-xs text-muted-foreground truncate">{item.sampler}</span>
+              </>
+            )}
+          </div>
+        </div>
 
-      <div className="p-3 border-t-2 border-(--border-color) bg-(--bg-secondary) flex flex-wrap gap-2">
-        <Badge color="bg-purple-500" text={item.software || "IA"} />
-        {item.model && <Badge color="bg-blue-500" text={item.model} />}
+        {/* Caja del Prompt */}
+        <div className="relative group/prompt bg-muted/30 rounded-lg p-3 border border-border/50 mt-auto">
+          <p className="text-xs font-mono text-foreground/80 line-clamp-3 leading-relaxed">
+            {item.prompt || <span className="italic opacity-50">Sin prompt</span>}
+          </p>
+
+          {/* Botón de Copiar (Aparece al hacer hover en la caja del prompt) */}
+          {item.prompt && (
+            <button
+              onClick={handleCopy}
+              className="absolute top-2 right-2 p-1.5 bg-background border border-border rounded-md shadow-sm opacity-0 group-hover/prompt:opacity-100 hover:bg-accent hover:text-accent-foreground transition-all"
+              title="Copiar Prompt"
+            >
+              {copied ? (
+                <IconCheck size={14} className="text-green-500" stroke={2} />
+              ) : (
+                <IconCopy size={14} stroke={1.5} />
+              )}
+            </button>
+          )}
+        </div>
+
+        {/* Pie de tarjeta (Fecha y dimensiones) */}
+        <div className="flex justify-between items-center text-[10px] text-muted-foreground font-mono uppercase tracking-widest pt-1">
+          <span>{new Date(item.created_at).toLocaleDateString()}</span>
+          {item.resolution && <span>{item.resolution}</span>}
+        </div>
       </div>
     </div>
   );

@@ -11,8 +11,9 @@ export interface SavedPrompt {
   model?: string;
   sampler?: string;
   created_at: string;
-  image_url?: string; // 🟢 Aquí está la propiedad que pedía PromptCard
+  image_url?: string;
   extra_data: { loras?: any[]; triggerWords?: string[] };
+  resolution?: string;
 }
 
 export function useStudio() {
