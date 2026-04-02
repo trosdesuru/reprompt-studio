@@ -2,8 +2,8 @@ frontend:
     build: ./frontend
     volumes:
       - ./frontend:/app
-      - /app/node_modules    # <-- Esto protege los módulos internos del contenedor
-      - /app/.next           # <-- Esto protege la compilación interna
+      - /app/node_modules
+      - /app/.next
     ports:
       - "3000:3000"
     environment:

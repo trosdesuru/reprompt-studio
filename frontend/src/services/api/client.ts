@@ -1,9 +1,20 @@
 import { AuthError, NetworkError } from "@/src/utils/errors/AppErrors";
 
-export const API_URL = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000") + "/api";
-
 let isRefreshing = false;
 let failedQueue: Array<{ resolve: (value?: unknown) => void; reject: (reason?: any) => void }> = [];
+
+const isServer = typeof window === "undefined";
+const getInternalUrl = () => {
+  const url = process.env.INTERNAL_API_URL || "http://backend:8000";
+  return url.endsWith("/api") ? url : `${url}/api`;
+};
+
+const getBrowserUrl = () => {
+  const url = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+  return url.endsWith("/api") ? url : `${url}/api`;
+};
+
+export const API_URL = isServer ? getInternalUrl() : getBrowserUrl();
 
 const processQueue = (error: Error | null) => {
   failedQueue.forEach((prom) => {

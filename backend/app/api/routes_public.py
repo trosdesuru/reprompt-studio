@@ -5,6 +5,7 @@ from app.core.db import get_session
 from app.models.user import User
 from app.models.collection import Collection
 from app.models.prompt import ImagePrompt
+from app.api.deps import RateLimiter, GlobalRateLimiter, get_optional_user
 
 router = APIRouter()
 
@@ -44,7 +45,10 @@ def get_public_profile(username: str, session: Session = Depends(get_session)):
 
 @router.get("/profile/{username}/{collection_slug}")
 def get_public_collection(
-    username: str, collection_slug: str, session: Session = Depends(get_session)
+    username: str,
+    collection_slug: str,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_optional_user),
 ):
     """Devuelve una colección específica siempre y cuando sea pública."""
     user = session.exec(select(User).where(User.username == username)).first()
@@ -63,6 +67,12 @@ def get_public_collection(
             status_code=404, detail="Colección no encontrada o es privada"
         )
 
+    if collection.is_private:
+        if not current_user or current_user.id != collection.user_id:
+            raise HTTPException(
+                status_code=403, detail="Esta colección es privada o no existe."
+            )
+
     prompts = session.exec(
         select(ImagePrompt)
         .where(ImagePrompt.collection_id == collection.id)
@@ -77,11 +87,12 @@ def get_public_collection(
     }
 
 
-# Añadir al final de backend/app/api/routes_public.py
-
-
 @router.get("/prompt/{prompt_id}")
-def get_public_prompt_detail(prompt_id: int, session: Session = Depends(get_session)):
+def get_public_prompt_detail(
+    prompt_id: int,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_optional_user),
+):
     """Devuelve el detalle de un prompt, su metadata, y las imágenes relacionadas (Colección y Usuario)"""
 
     # 1. Buscar la imagen
@@ -103,9 +114,11 @@ def get_public_prompt_detail(prompt_id: int, session: Session = Depends(get_sess
             select(Collection).where(Collection.id == prompt.collection_id)
         ).first()
         if collection and collection.is_private:
-            raise HTTPException(
-                status_code=403, detail="Esta imagen pertenece a una colección privada"
-            )
+            if not current_user or current_user.id != collection.user_id:
+                raise HTTPException(
+                    status_code=403,
+                    detail="Esta imagen pertenece a una colección privada",
+                )
 
         # Otras imágenes de esta misma colección
         related_collection = session.exec(

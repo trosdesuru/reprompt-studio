@@ -5,11 +5,11 @@ import { api } from "@/src/services/api";
 import { PromptCard } from "@/src/system/organisms/Studio/PromptCard";
 import { SavedPrompt } from "@/src/features/studio/hooks/useStudio";
 import Link from "next/link";
-import { IconArrowLeft, IconPhotoOff } from "@tabler/icons-react";
+import { IconArrowLeft, IconPhotoOff, IconLock } from "@tabler/icons-react";
 
 interface CollectionData {
   user: { username: string };
-  collection: { name: string; description: string };
+  collection: { name: string; description: string; is_private: boolean };
   prompts: SavedPrompt[];
 }
 
@@ -54,9 +54,16 @@ export default function PublicCollectionPage({
         </Link>
 
         <header className="flex flex-col gap-2 border-b border-border pb-8">
-          <h1 className="text-4xl font-black tracking-tighter text-(--accent-color)">
-            {data.collection.name}
-          </h1>
+          <div className="flex items-center gap-4">
+            <h1 className="text-4xl font-black tracking-tighter text-(--accent-color)">
+              {data.collection.name}
+            </h1>
+            {data.collection.is_private && (
+              <span className="bg-red-500/10 text-red-500 border border-red-500/20 text-[10px] font-bold px-2 py-1 flex items-center gap-1 uppercase tracking-widest rounded-md">
+                <IconLock size={12} /> Privada
+              </span>
+            )}
+          </div>
           <p className="text-muted-foreground text-sm max-w-2xl">
             {data.collection.description || "Colección sin descripción."}
           </p>

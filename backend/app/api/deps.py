@@ -96,3 +96,18 @@ def get_current_admin(current_user: User = Depends(get_current_user)):
             detail="No tienes suficientes privilegios (Requiere rol Admin)",
         )
     return current_user
+
+
+def get_optional_user(request: Request, session: Session = Depends(get_session)):
+    """Verifica el JWT pero no lanza error si no existe. Útil para identificar al dueño en rutas públicas."""
+    token = request.cookies.get("access_token")
+    if not token:
+        return None
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        username: str = payload.get("sub")
+        if username:
+            return session.exec(select(User).where(User.username == username)).first()
+    except JWTError:
+        return None
+    return None

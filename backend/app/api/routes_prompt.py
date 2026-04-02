@@ -8,6 +8,7 @@ from app.api.deps import get_current_user
 from app.models.user import User
 from app.models.prompt import ImagePrompt
 from app.schemas.prompt import PromptCreate
+from app.api.deps import get_current_user, RateLimiter
 
 from app.utils.storage import generar_presigned_url, eliminar_de_r2
 
@@ -25,7 +26,10 @@ class PresignedUrlRequest(BaseModel):
 # ==========================================
 
 
-@router.post("/generate-upload-url")
+@router.post(
+    "/generate-upload-url",
+    dependencies=[Depends(RateLimiter(max_requests=10, window_seconds=60))],
+)
 def get_upload_url(
     data: PresignedUrlRequest, current_user: User = Depends(get_current_user)
 ):
@@ -41,7 +45,9 @@ def get_upload_url(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/save")
+@router.post(
+    "/save", dependencies=[Depends(RateLimiter(max_requests=10, window_seconds=60))]
+)
 def guardar_prompt(
     data: PromptCreate,
     current_user: User = Depends(get_current_user),
