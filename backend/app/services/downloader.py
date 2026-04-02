@@ -7,7 +7,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 
-from app.core.config import http_session
+from app.services.security import http_session
 from app.core.webdriver_mgr import navegador_seguro
 
 # Importamos nuestras utilidades limpias

@@ -5,7 +5,7 @@ import json
 import redis
 from urllib.parse import quote
 from bs4 import BeautifulSoup
-from app.core.config import http_session
+from app.services.security import http_session
 
 logger = logging.getLogger("scraper")
 
