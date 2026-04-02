@@ -26,23 +26,15 @@ def guardar_prompt(
     try:
         url_final = data.image_url
 
-        # 🟢 2. INTERCEPCIÓN Y SUBIDA A R2
-        # Comprobamos si nos llega la imagen incrustada en Base64 desde el frontend
         if data.image_url and data.image_url.startswith("data:image"):
-            # Separar la cabecera (data:image/jpeg;base64) de los datos puros
             header, encoded_data = data.image_url.split(",", 1)
-            content_type = header.split(";")[0].split(":")[
-                1
-            ]  # ej. image/png o image/jpeg
+            content_type = header.split(";")[0].split(":")[1]
             ext = content_type.split("/")[1]
 
-            # Decodificar a bytes binarios
             file_bytes = base64.b64decode(encoded_data)
 
-            # Generar un nombre único para evitar colisiones (ej. prompts/tu_usuario/8f3a...png)
             file_name = f"prompts/{current_user.username}/{uuid.uuid4().hex}.{ext}"
 
-            # Subir a Cloudflare R2 usando tu función (devuelve la URL pública)
             url_final = subir_imagen_a_r2(file_bytes, file_name, content_type)
 
         nuevo_prompt = ImagePrompt(
@@ -122,7 +114,7 @@ def eliminar_prompt(
 @router.post("/upload")
 async def upload_and_save_prompt(
     file: UploadFile = File(...),
-    prompt_data: PromptCreate = Depends(prompt_form_dependency),  # <-- CLEAN CODE AQUÍ
+    prompt_data: PromptCreate = Depends(prompt_form_dependency),
     current_user: User = Depends(get_current_user),
     session: Session = Depends(get_session),
 ):
@@ -130,7 +122,6 @@ async def upload_and_save_prompt(
     Recibe la imagen y sus metadatos. Sube la imagen a R2 y guarda la info en PostgreSQL.
     """
     try:
-        # 1. Validar la imagen
         if not file.content_type.startswith("image/"):
             raise HTTPException(
                 status_code=400, detail="El archivo debe ser una imagen."
@@ -146,9 +137,7 @@ async def upload_and_save_prompt(
         new_prompt = ImagePrompt(
             user_id=current_user.id,
             image_url=secure_url,
-            **prompt_data.model_dump(
-                exclude={"image_url", "extra_data"}
-            ),  # Excluimos los que inyectamos o no usamos directamente
+            **prompt_data.model_dump(exclude={"image_url", "extra_data"}),
         )
 
         session.add(new_prompt)
