@@ -317,107 +317,6 @@ This section contains the contents of the repository's files.
 
 </file>
 
-<file path="backend/app/api/deps.py">
-# backend/app/api/deps.py
-import os
-import redis
-from fastapi import Depends, HTTPException, status, Request
-from jose import jwt, JWTError
-from sqlmodel import Session, select
-from app.core.db import get_session
-from app.models.user import User
-
-SECRET_KEY = os.getenv("SECRET_KEY", "super_clave_secreta_de_respaldo")
-ALGORITHM = "HS256"
-
-# 🟢 CONFIGURACIÓN REDIS
-REDIS_URL = os.getenv("REDIS_URL", "redis://redis:6379/0")
-redis_limiter = redis.from_url(REDIS_URL, decode_responses=True)
-
-
-class RateLimiter:
-    """Escudo Anti-Fuerza Bruta por IP para rutas específicas."""
-
-    def __init__(self, max_requests: int, window_seconds: int):
-        self.max_requests = max_requests
-        self.window_seconds = window_seconds
-
-    def __call__(self, request: Request):
-        client_ip = request.client.host if request.client else "127.0.0.1"
-        redis_key = f"rate_limit:{client_ip}:{request.url.path}"
-
-        try:
-            current_requests = redis_limiter.incr(redis_key)
-            if current_requests == 1:
-                redis_limiter.expire(redis_key, self.window_seconds)
-
-            if current_requests > self.max_requests:
-                raise HTTPException(
-                    status_code=429,
-                    detail=f"Límite de seguridad excedido. Máximo {self.max_requests} intentos cada {self.window_seconds} segundos.",
-                )
-        except redis.RedisError:
-            pass
-
-
-class GlobalRateLimiter:
-    """Escudo Anti-DDoS Global. Corta la corriente si el servidor entero se satura."""
-
-    def __init__(self, max_global_requests: int, window_seconds: int):
-        self.max_requests = max_global_requests
-        self.window_seconds = window_seconds
-
-    def __call__(self, request: Request):
-        global_key = f"global_limit:{request.url.path}"
-        try:
-            current_requests = redis_limiter.incr(global_key)
-            if current_requests == 1:
-                redis_limiter.expire(global_key, self.window_seconds)
-
-            if current_requests > self.max_requests:
-                raise HTTPException(
-                    status_code=503,
-                    detail="El servidor está experimentando un pico de tráfico anómalo. Por favor, espera unos segundos.",
-                )
-        except redis.RedisError:
-            pass
-
-
-def get_current_user(request: Request, session: Session = Depends(get_session)):
-    """Verifica el JWT leyéndolo directamente desde la Cookie HttpOnly."""
-    token = request.cookies.get("access_token")
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED, detail="No autenticado"
-    )
-
-    if not token:
-        raise credentials_exception
-
-    try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        username: str = payload.get("sub")
-        if username is None:
-            raise credentials_exception
-    except JWTError:
-        raise credentials_exception
-
-    user = session.exec(select(User).where(User.username == username)).first()
-    if user is None:
-        raise credentials_exception
-
-    return user
-
-
-def get_current_admin(current_user: User = Depends(get_current_user)):
-    """Dependencia de RBAC: Verifica que el usuario logueado sea Administrador."""
-    if current_user.role != "admin":
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="No tienes suficientes privilegios (Requiere rol Admin)",
-        )
-    return current_user
-</file>
-
 <file path="backend/app/api/routes_download.py">
 from fastapi import Depends
 from app.api.deps import get_current_user
@@ -1921,82 +1820,6 @@ export function parsePromptData(rawText: string): ExtractedPromptData {
 }
 </file>
 
-<file path="frontend/src/services/api/client.ts">
-import { AuthError, NetworkError } from "@/src/utils/errors/AppErrors";
-
-export const API_URL = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000") + "/api";
-
-let isRefreshing = false;
-let failedQueue: Array<{ resolve: (value?: unknown) => void; reject: (reason?: any) => void }> = [];
-
-const processQueue = (error: Error | null) => {
-  failedQueue.forEach((prom) => {
-    if (error) {
-      prom.reject(error);
-    } else {
-      prom.resolve();
-    }
-  });
-  failedQueue = [];
-};
-
-export const fetchSeguro = async <T = any>(
-  url: string,
-  options: RequestInit = {},
-  retries = 1,
-): Promise<T> => {
-  const res = await fetch(url, {
-    ...options,
-    credentials: "include",
-  });
-
-  if (res.status === 401 && retries > 0) {
-    if (isRefreshing) {
-      return new Promise((resolve, reject) => {
-        failedQueue.push({ resolve, reject });
-      })
-        .then(() => {
-          return fetchSeguro<T>(url, options, 0);
-        })
-        .catch((err) => {
-          throw err;
-        });
-    }
-
-    isRefreshing = true;
-    console.log("🔑 Access Token caducado. Iniciando refresco silencioso maestro...");
-
-    try {
-      const refreshRes = await fetch(`${API_URL}/auth/refresh`, {
-        method: "POST",
-        credentials: "include",
-      });
-
-      if (refreshRes.ok) {
-        console.log("✅ Token mutado. Liberando peticiones en cola...");
-        processQueue(null);
-        return await fetchSeguro<T>(url, options, 0);
-      } else {
-        throw new Error("El servidor rechazó el refresco.");
-      }
-    } catch (err) {
-      processQueue(err as Error);
-
-      throw new AuthError("Sesión expirada de forma definitiva.");
-    } finally {
-      isRefreshing = false;
-    }
-  }
-
-  if (!res.ok) {
-    const errorData = await res.json().catch(() => ({}));
-    throw new NetworkError(errorData.detail || "Fallo en la petición HTTP", res.status);
-  }
-
-  return res.json();
-};
-</file>
-
 <file path="frontend/src/store/notificationStore.tsx">
 import { create } from "zustand";
 import toast from "react-hot-toast";
@@ -3361,19 +3184,6 @@ pathsToCheck.forEach((p) => {
 console.log("---------------------------------------");
 </file>
 
-<file path="frontend/docker-compose.yml">
-frontend:
-    build: ./frontend
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules    # <-- Esto protege los módulos internos del contenedor
-      - /app/.next           # <-- Esto protege la compilación interna
-    ports:
-      - "3000:3000"
-    environment:
-      - NEXT_PUBLIC_API_URL=http://localhost:8000
-</file>
-
 <file path="frontend/Dockerfile">
 FROM node:20-alpine
 
@@ -3594,6 +3404,122 @@ sonar.javascript.node.maxspace=4096
     }
   }
 }
+</file>
+
+<file path="backend/app/api/deps.py">
+# backend/app/api/deps.py
+import os
+import redis
+from fastapi import Depends, HTTPException, status, Request
+from jose import jwt, JWTError
+from sqlmodel import Session, select
+from app.core.db import get_session
+from app.models.user import User
+
+SECRET_KEY = os.getenv("SECRET_KEY", "super_clave_secreta_de_respaldo")
+ALGORITHM = "HS256"
+
+# 🟢 CONFIGURACIÓN REDIS
+REDIS_URL = os.getenv("REDIS_URL", "redis://redis:6379/0")
+redis_limiter = redis.from_url(REDIS_URL, decode_responses=True)
+
+
+class RateLimiter:
+    """Escudo Anti-Fuerza Bruta por IP para rutas específicas."""
+
+    def __init__(self, max_requests: int, window_seconds: int):
+        self.max_requests = max_requests
+        self.window_seconds = window_seconds
+
+    def __call__(self, request: Request):
+        client_ip = request.client.host if request.client else "127.0.0.1"
+        redis_key = f"rate_limit:{client_ip}:{request.url.path}"
+
+        try:
+            current_requests = redis_limiter.incr(redis_key)
+            if current_requests == 1:
+                redis_limiter.expire(redis_key, self.window_seconds)
+
+            if current_requests > self.max_requests:
+                raise HTTPException(
+                    status_code=429,
+                    detail=f"Límite de seguridad excedido. Máximo {self.max_requests} intentos cada {self.window_seconds} segundos.",
+                )
+        except redis.RedisError:
+            pass
+
+
+class GlobalRateLimiter:
+    """Escudo Anti-DDoS Global. Corta la corriente si el servidor entero se satura."""
+
+    def __init__(self, max_global_requests: int, window_seconds: int):
+        self.max_requests = max_global_requests
+        self.window_seconds = window_seconds
+
+    def __call__(self, request: Request):
+        global_key = f"global_limit:{request.url.path}"
+        try:
+            current_requests = redis_limiter.incr(global_key)
+            if current_requests == 1:
+                redis_limiter.expire(global_key, self.window_seconds)
+
+            if current_requests > self.max_requests:
+                raise HTTPException(
+                    status_code=503,
+                    detail="El servidor está experimentando un pico de tráfico anómalo. Por favor, espera unos segundos.",
+                )
+        except redis.RedisError:
+            pass
+
+
+def get_current_user(request: Request, session: Session = Depends(get_session)):
+    """Verifica el JWT leyéndolo directamente desde la Cookie HttpOnly."""
+    token = request.cookies.get("access_token")
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED, detail="No autenticado"
+    )
+
+    if not token:
+        raise credentials_exception
+
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        username: str = payload.get("sub")
+        if username is None:
+            raise credentials_exception
+    except JWTError:
+        raise credentials_exception
+
+    user = session.exec(select(User).where(User.username == username)).first()
+    if user is None:
+        raise credentials_exception
+
+    return user
+
+
+def get_current_admin(current_user: User = Depends(get_current_user)):
+    """Dependencia de RBAC: Verifica que el usuario logueado sea Administrador."""
+    if current_user.role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No tienes suficientes privilegios (Requiere rol Admin)",
+        )
+    return current_user
+
+
+def get_optional_user(request: Request, session: Session = Depends(get_session)):
+    """Verifica el JWT pero no lanza error si no existe. Útil para identificar al dueño en rutas públicas."""
+    token = request.cookies.get("access_token")
+    if not token:
+        return None
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        username: str = payload.get("sub")
+        if username:
+            return session.exec(select(User).where(User.username == username)).first()
+    except JWTError:
+        return None
+    return None
 </file>
 
 <file path="backend/app/api/routes_auth.py">
@@ -4597,89 +4523,6 @@ export default function LoginPage() {
           REGISTRARSE AQUÍ
         </Link>
       </p>
-    </main>
-  );
-}
-</file>
-
-<file path="frontend/app/[lang]/[username]/[collection_slug]/page.tsx">
-"use client";
-
-import { use, useEffect, useState } from "react";
-import { api } from "@/src/services/api";
-import { PromptCard } from "@/src/system/organisms/Studio/PromptCard";
-import { SavedPrompt } from "@/src/features/studio/hooks/useStudio";
-import Link from "next/link";
-import { IconArrowLeft, IconPhotoOff } from "@tabler/icons-react";
-
-interface CollectionData {
-  user: { username: string };
-  collection: { name: string; description: string };
-  prompts: SavedPrompt[];
-}
-
-export default function PublicCollectionPage({
-  params,
-}: {
-  params: Promise<{ lang: string; username: string; collection_slug: string }>;
-}) {
-  const { lang, username, collection_slug } = use(params);
-  const [data, setData] = useState<CollectionData | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    api
-      .getPublicCollection(username, collection_slug)
-      .then((res) => setData(res))
-      .catch(() => setData(null))
-      .finally(() => setLoading(false));
-  }, [username, collection_slug]);
-
-  if (loading)
-    return (
-      <div className="min-h-screen flex items-center justify-center font-mono animate-pulse">
-        Cargando colección...
-      </div>
-    );
-  if (!data)
-    return (
-      <div className="min-h-screen flex items-center justify-center font-mono text-red-500">
-        Colección no encontrada o privada.
-      </div>
-    );
-
-  return (
-    <main className="min-h-screen bg-background p-4 md:p-8">
-      <div className="max-w-7xl mx-auto space-y-8">
-        <Link
-          href={`/${lang}/${username}`}
-          className="inline-flex items-center gap-2 text-xs font-mono text-muted-foreground hover:text-foreground transition-colors uppercase tracking-widest"
-        >
-          <IconArrowLeft size={16} /> Volver a @{data.user.username}
-        </Link>
-
-        <header className="flex flex-col gap-2 border-b border-border pb-8">
-          <h1 className="text-4xl font-black tracking-tighter text-(--accent-color)">
-            {data.collection.name}
-          </h1>
-          <p className="text-muted-foreground text-sm max-w-2xl">
-            {data.collection.description || "Colección sin descripción."}
-          </p>
-        </header>
-
-        {data.prompts.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-20 text-muted-foreground/50 bg-muted/5 rounded-xl border border-dashed border-border/50">
-            <IconPhotoOff size={48} stroke={1} className="mb-4" />
-            <p className="font-mono text-xs uppercase tracking-widest">Esta colección está vacía</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-6">
-            {data.prompts.map((prompt) => (
-              <PromptCard key={prompt.id} item={prompt} />
-            ))}
-          </div>
-        )}
-      </div>
     </main>
   );
 }
@@ -6206,6 +6049,93 @@ export const authApi = {
 };
 </file>
 
+<file path="frontend/src/services/api/client.ts">
+import { AuthError, NetworkError } from "@/src/utils/errors/AppErrors";
+
+let isRefreshing = false;
+let failedQueue: Array<{ resolve: (value?: unknown) => void; reject: (reason?: any) => void }> = [];
+
+const isServer = typeof window === "undefined";
+const getInternalUrl = () => {
+  const url = process.env.INTERNAL_API_URL || "http://backend:8000";
+  return url.endsWith("/api") ? url : `${url}/api`;
+};
+
+const getBrowserUrl = () => {
+  const url = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+  return url.endsWith("/api") ? url : `${url}/api`;
+};
+
+export const API_URL = isServer ? getInternalUrl() : getBrowserUrl();
+
+const processQueue = (error: Error | null) => {
+  failedQueue.forEach((prom) => {
+    if (error) {
+      prom.reject(error);
+    } else {
+      prom.resolve();
+    }
+  });
+  failedQueue = [];
+};
+
+export const fetchSeguro = async <T = any>(
+  url: string,
+  options: RequestInit = {},
+  retries = 1,
+): Promise<T> => {
+  const res = await fetch(url, {
+    ...options,
+    credentials: "include",
+  });
+
+  if (res.status === 401 && retries > 0) {
+    if (isRefreshing) {
+      return new Promise((resolve, reject) => {
+        failedQueue.push({ resolve, reject });
+      })
+        .then(() => {
+          return fetchSeguro<T>(url, options, 0);
+        })
+        .catch((err) => {
+          throw err;
+        });
+    }
+
+    isRefreshing = true;
+    console.log("🔑 Access Token caducado. Iniciando refresco silencioso maestro...");
+
+    try {
+      const refreshRes = await fetch(`${API_URL}/auth/refresh`, {
+        method: "POST",
+        credentials: "include",
+      });
+
+      if (refreshRes.ok) {
+        console.log("✅ Token mutado. Liberando peticiones en cola...");
+        processQueue(null);
+        return await fetchSeguro<T>(url, options, 0);
+      } else {
+        throw new Error("El servidor rechazó el refresco.");
+      }
+    } catch (err) {
+      processQueue(err as Error);
+
+      throw new AuthError("Sesión expirada de forma definitiva.");
+    } finally {
+      isRefreshing = false;
+    }
+  }
+
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new NetworkError(errorData.detail || "Fallo en la petición HTTP", res.status);
+  }
+
+  return res.json();
+};
+</file>
+
 <file path="frontend/src/services/api/downloads.ts">
 import { API_URL, fetchSeguro } from "./client";
 
@@ -7325,6 +7255,19 @@ export function cn(...inputs: ClassValue[]) {
 }
 </file>
 
+<file path="frontend/docker-compose.yml">
+frontend:
+    build: ./frontend
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+      - /app/.next
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
+</file>
+
 <file path=".gitignore">
 # trosdesuru-scraper-galerias/.gitignore
 
@@ -7640,6 +7583,96 @@ def reset_database():
 
 if __name__ == "__main__":
     reset_database()
+</file>
+
+<file path="frontend/app/[lang]/[username]/[collection_slug]/page.tsx">
+"use client";
+
+import { use, useEffect, useState } from "react";
+import { api } from "@/src/services/api";
+import { PromptCard } from "@/src/system/organisms/Studio/PromptCard";
+import { SavedPrompt } from "@/src/features/studio/hooks/useStudio";
+import Link from "next/link";
+import { IconArrowLeft, IconPhotoOff, IconLock } from "@tabler/icons-react";
+
+interface CollectionData {
+  user: { username: string };
+  collection: { name: string; description: string; is_private: boolean };
+  prompts: SavedPrompt[];
+}
+
+export default function PublicCollectionPage({
+  params,
+}: {
+  params: Promise<{ lang: string; username: string; collection_slug: string }>;
+}) {
+  const { lang, username, collection_slug } = use(params);
+  const [data, setData] = useState<CollectionData | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    api
+      .getPublicCollection(username, collection_slug)
+      .then((res) => setData(res))
+      .catch(() => setData(null))
+      .finally(() => setLoading(false));
+  }, [username, collection_slug]);
+
+  if (loading)
+    return (
+      <div className="min-h-screen flex items-center justify-center font-mono animate-pulse">
+        Cargando colección...
+      </div>
+    );
+  if (!data)
+    return (
+      <div className="min-h-screen flex items-center justify-center font-mono text-red-500">
+        Colección no encontrada o privada.
+      </div>
+    );
+
+  return (
+    <main className="min-h-screen bg-background p-4 md:p-8">
+      <div className="max-w-7xl mx-auto space-y-8">
+        <Link
+          href={`/${lang}/${username}`}
+          className="inline-flex items-center gap-2 text-xs font-mono text-muted-foreground hover:text-foreground transition-colors uppercase tracking-widest"
+        >
+          <IconArrowLeft size={16} /> Volver a @{data.user.username}
+        </Link>
+
+        <header className="flex flex-col gap-2 border-b border-border pb-8">
+          <div className="flex items-center gap-4">
+            <h1 className="text-4xl font-black tracking-tighter text-(--accent-color)">
+              {data.collection.name}
+            </h1>
+            {data.collection.is_private && (
+              <span className="bg-red-500/10 text-red-500 border border-red-500/20 text-[10px] font-bold px-2 py-1 flex items-center gap-1 uppercase tracking-widest rounded-md">
+                <IconLock size={12} /> Privada
+              </span>
+            )}
+          </div>
+          <p className="text-muted-foreground text-sm max-w-2xl">
+            {data.collection.description || "Colección sin descripción."}
+          </p>
+        </header>
+
+        {data.prompts.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-20 text-muted-foreground/50 bg-muted/5 rounded-xl border border-dashed border-border/50">
+            <IconPhotoOff size={48} stroke={1} className="mb-4" />
+            <p className="font-mono text-xs uppercase tracking-widest">Esta colección está vacía</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+            {data.prompts.map((prompt) => (
+              <PromptCard key={prompt.id} item={prompt} />
+            ))}
+          </div>
+        )}
+      </div>
+    </main>
+  );
+}
 </file>
 
 <file path="frontend/app/[lang]/page.tsx">
@@ -8819,221 +8852,6 @@ El código es solo un medio para un fin: ganar dinero, ahorrar tiempo o resolver
 6. Obsesión por el Borde (Seguridad y Rendimiento)
 * Nunca confía en el usuario. Practica la programación a la defensiva extrema (sanitizando inputs, rate-limiting, asumiendo que todo token puede ser robado).
 * Pelea por los milisegundos. Sabe que un segundo extra en cargar la web significa perder el 10% de los usuarios, tal y como hicimos nosotros al optimizar el CLS y las imágenes de Reprompt.
-</file>
-
-<file path="backend/app/api/routes_public.py">
-# backend/app/api/routes_public.py
-from fastapi import APIRouter, Depends, HTTPException
-from sqlmodel import Session, select, or_
-from app.core.db import get_session
-from app.models.user import User
-from app.models.collection import Collection
-from app.models.prompt import ImagePrompt
-
-router = APIRouter()
-
-
-@router.get("/profile/{username}")
-def get_public_profile(username: str, session: Session = Depends(get_session)):
-    """Devuelve los datos públicos de un usuario, sus colecciones y sus prompts recientes."""
-    user = session.exec(select(User).where(User.username == username)).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="Usuario no encontrado")
-
-    # 1. Colecciones Públicas
-    collections = session.exec(
-        select(Collection)
-        .where(Collection.user_id == user.id)
-        .where(Collection.is_private == False)
-    ).all()
-
-    # 2. Prompts Públicos (Que no estén en una colección o que su colección sea pública)
-    statement = (
-        select(ImagePrompt)
-        .outerjoin(Collection, ImagePrompt.collection_id == Collection.id)
-        .where(ImagePrompt.user_id == user.id)
-        .where(or_(ImagePrompt.collection_id == None, Collection.is_private == False))
-        .order_by(ImagePrompt.created_at.desc())
-        .limit(50)  # Traemos los últimos 50 para el escaparate
-    )
-    prompts = session.exec(statement).all()
-
-    return {
-        "status": "success",
-        "user": {"username": user.username, "role": user.role, "tier": user.tier},
-        "collections": collections,
-        "recent_prompts": prompts,
-    }
-
-
-@router.get("/profile/{username}/{collection_slug}")
-def get_public_collection(
-    username: str, collection_slug: str, session: Session = Depends(get_session)
-):
-    """Devuelve una colección específica siempre y cuando sea pública."""
-    user = session.exec(select(User).where(User.username == username)).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="Usuario no encontrado")
-
-    collection = session.exec(
-        select(Collection)
-        .where(Collection.user_id == user.id)
-        .where(Collection.slug == collection_slug)
-        .where(Collection.is_private == False)
-    ).first()
-
-    if not collection:
-        raise HTTPException(
-            status_code=404, detail="Colección no encontrada o es privada"
-        )
-
-    prompts = session.exec(
-        select(ImagePrompt)
-        .where(ImagePrompt.collection_id == collection.id)
-        .order_by(ImagePrompt.created_at.desc())
-    ).all()
-
-    return {
-        "status": "success",
-        "user": {"username": user.username},
-        "collection": collection,
-        "prompts": prompts,
-    }
-
-
-# Añadir al final de backend/app/api/routes_public.py
-
-
-@router.get("/prompt/{prompt_id}")
-def get_public_prompt_detail(prompt_id: int, session: Session = Depends(get_session)):
-    """Devuelve el detalle de un prompt, su metadata, y las imágenes relacionadas (Colección y Usuario)"""
-
-    # 1. Buscar la imagen
-    prompt = session.exec(
-        select(ImagePrompt).where(ImagePrompt.id == prompt_id)
-    ).first()
-    if not prompt:
-        raise HTTPException(status_code=404, detail="Imagen no encontrada")
-
-    # 2. Buscar al dueño
-    user = session.exec(select(User).where(User.id == prompt.user_id)).first()
-
-    # 3. Validar privacidad y buscar relacionadas de la Colección
-    collection = None
-    related_collection = []
-
-    if prompt.collection_id:
-        collection = session.exec(
-            select(Collection).where(Collection.id == prompt.collection_id)
-        ).first()
-        if collection and collection.is_private:
-            raise HTTPException(
-                status_code=403, detail="Esta imagen pertenece a una colección privada"
-            )
-
-        # Otras imágenes de esta misma colección
-        related_collection = session.exec(
-            select(ImagePrompt)
-            .where(ImagePrompt.collection_id == prompt.collection_id)
-            .where(ImagePrompt.id != prompt.id)
-            .order_by(ImagePrompt.created_at.desc())
-            .limit(6)
-        ).all()
-
-    # 4. Otras imágenes públicas del mismo Usuario
-    statement = (
-        select(ImagePrompt)
-        .outerjoin(Collection, ImagePrompt.collection_id == Collection.id)
-        .where(ImagePrompt.user_id == user.id)
-        .where(ImagePrompt.id != prompt.id)
-        .where(or_(ImagePrompt.collection_id == None, Collection.is_private == False))
-        .order_by(ImagePrompt.created_at.desc())
-        .limit(12)
-    )
-    related_user = session.exec(statement).all()
-
-    return {
-        "status": "success",
-        "prompt": prompt,
-        "user": {"username": user.username, "role": user.role},
-        "collection": collection,
-        "related_collection": related_collection,
-        "related_user": related_user,
-    }
-
-
-@router.get("/feed")
-def get_public_feed(session: Session = Depends(get_session), limit: int = 50):
-    """Devuelve un mix de Prompts sueltos y Colecciones para la Home (Estilo Pinterest)"""
-
-    # 1. Colecciones Públicas
-    collections = session.exec(
-        select(Collection, User)
-        .join(User, Collection.user_id == User.id)
-        .where(Collection.is_private == False)
-        .order_by(Collection.created_at.desc())
-        .limit(limit)
-    ).all()
-
-    # 2. Prompts sueltos públicos
-    prompts = session.exec(
-        select(ImagePrompt, User)
-        .join(User, ImagePrompt.user_id == User.id)
-        .where(ImagePrompt.collection_id == None)
-        .order_by(ImagePrompt.created_at.desc())
-        .limit(limit)
-    ).all()
-
-    feed = []
-
-    # Formatear Colecciones
-    for col, user in collections:
-        cover = session.exec(
-            select(ImagePrompt)
-            .where(ImagePrompt.collection_id == col.id)
-            .order_by(ImagePrompt.created_at.desc())
-            .limit(1)
-        ).first()
-
-        items = session.exec(
-            select(ImagePrompt).where(ImagePrompt.collection_id == col.id)
-        ).all()
-
-        feed.append(
-            {
-                "type": "collection",
-                "id": f"col_{col.id}",
-                "raw_id": col.id,
-                "created_at": str(col.created_at),  # 🛡️ Convertido a texto
-                "title": col.name,
-                "slug": col.slug,
-                "username": user.username,
-                "image_url": cover.image_url if cover else None,
-                "items_count": len(items),
-            }
-        )
-
-    # Formatear Prompts
-    for p, user in prompts:
-        feed.append(
-            {
-                "type": "prompt",
-                "id": f"prompt_{p.id}",
-                "raw_id": p.id,
-                "created_at": str(p.created_at),  # 🛡️ Convertido a texto
-                "title": p.title,
-                "prompt": p.prompt,
-                "username": user.username,
-                "image_url": p.image_url,
-                "model": p.model,
-                "resolution": p.resolution,
-            }
-        )
-
-    # Ordenar cronológicamente
-    feed.sort(key=lambda x: x["created_at"], reverse=True)
-
-    return {"status": "success", "feed": feed[:limit]}
 </file>
 
 <file path="backend/app/main.py">
@@ -12305,6 +12123,234 @@ if __name__ == '__main__':
 </files>
 </file>
 
+<file path="backend/app/api/routes_public.py">
+# backend/app/api/routes_public.py
+from fastapi import APIRouter, Depends, HTTPException
+from sqlmodel import Session, select, or_
+from app.core.db import get_session
+from app.models.user import User
+from app.models.collection import Collection
+from app.models.prompt import ImagePrompt
+from app.api.deps import RateLimiter, GlobalRateLimiter, get_optional_user
+
+router = APIRouter()
+
+
+@router.get("/profile/{username}")
+def get_public_profile(username: str, session: Session = Depends(get_session)):
+    """Devuelve los datos públicos de un usuario, sus colecciones y sus prompts recientes."""
+    user = session.exec(select(User).where(User.username == username)).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+
+    # 1. Colecciones Públicas
+    collections = session.exec(
+        select(Collection)
+        .where(Collection.user_id == user.id)
+        .where(Collection.is_private == False)
+    ).all()
+
+    # 2. Prompts Públicos (Que no estén en una colección o que su colección sea pública)
+    statement = (
+        select(ImagePrompt)
+        .outerjoin(Collection, ImagePrompt.collection_id == Collection.id)
+        .where(ImagePrompt.user_id == user.id)
+        .where(or_(ImagePrompt.collection_id == None, Collection.is_private == False))
+        .order_by(ImagePrompt.created_at.desc())
+        .limit(50)  # Traemos los últimos 50 para el escaparate
+    )
+    prompts = session.exec(statement).all()
+
+    return {
+        "status": "success",
+        "user": {"username": user.username, "role": user.role, "tier": user.tier},
+        "collections": collections,
+        "recent_prompts": prompts,
+    }
+
+
+@router.get("/profile/{username}/{collection_slug}")
+def get_public_collection(
+    username: str,
+    collection_slug: str,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_optional_user),
+):
+    """Devuelve una colección específica siempre y cuando sea pública."""
+    user = session.exec(select(User).where(User.username == username)).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+
+    collection = session.exec(
+        select(Collection)
+        .where(Collection.user_id == user.id)
+        .where(Collection.slug == collection_slug)
+        .where(Collection.is_private == False)
+    ).first()
+
+    if not collection:
+        raise HTTPException(
+            status_code=404, detail="Colección no encontrada o es privada"
+        )
+
+    if collection.is_private:
+        if not current_user or current_user.id != collection.user_id:
+            raise HTTPException(
+                status_code=403, detail="Esta colección es privada o no existe."
+            )
+
+    prompts = session.exec(
+        select(ImagePrompt)
+        .where(ImagePrompt.collection_id == collection.id)
+        .order_by(ImagePrompt.created_at.desc())
+    ).all()
+
+    return {
+        "status": "success",
+        "user": {"username": user.username},
+        "collection": collection,
+        "prompts": prompts,
+    }
+
+
+@router.get("/prompt/{prompt_id}")
+def get_public_prompt_detail(
+    prompt_id: int,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_optional_user),
+):
+    """Devuelve el detalle de un prompt, su metadata, y las imágenes relacionadas (Colección y Usuario)"""
+
+    # 1. Buscar la imagen
+    prompt = session.exec(
+        select(ImagePrompt).where(ImagePrompt.id == prompt_id)
+    ).first()
+    if not prompt:
+        raise HTTPException(status_code=404, detail="Imagen no encontrada")
+
+    # 2. Buscar al dueño
+    user = session.exec(select(User).where(User.id == prompt.user_id)).first()
+
+    # 3. Validar privacidad y buscar relacionadas de la Colección
+    collection = None
+    related_collection = []
+
+    if prompt.collection_id:
+        collection = session.exec(
+            select(Collection).where(Collection.id == prompt.collection_id)
+        ).first()
+        if collection and collection.is_private:
+            if not current_user or current_user.id != collection.user_id:
+                raise HTTPException(
+                    status_code=403,
+                    detail="Esta imagen pertenece a una colección privada",
+                )
+
+        # Otras imágenes de esta misma colección
+        related_collection = session.exec(
+            select(ImagePrompt)
+            .where(ImagePrompt.collection_id == prompt.collection_id)
+            .where(ImagePrompt.id != prompt.id)
+            .order_by(ImagePrompt.created_at.desc())
+            .limit(6)
+        ).all()
+
+    # 4. Otras imágenes públicas del mismo Usuario
+    statement = (
+        select(ImagePrompt)
+        .outerjoin(Collection, ImagePrompt.collection_id == Collection.id)
+        .where(ImagePrompt.user_id == user.id)
+        .where(ImagePrompt.id != prompt.id)
+        .where(or_(ImagePrompt.collection_id == None, Collection.is_private == False))
+        .order_by(ImagePrompt.created_at.desc())
+        .limit(12)
+    )
+    related_user = session.exec(statement).all()
+
+    return {
+        "status": "success",
+        "prompt": prompt,
+        "user": {"username": user.username, "role": user.role},
+        "collection": collection,
+        "related_collection": related_collection,
+        "related_user": related_user,
+    }
+
+
+@router.get("/feed")
+def get_public_feed(session: Session = Depends(get_session), limit: int = 50):
+    """Devuelve un mix de Prompts sueltos y Colecciones para la Home (Estilo Pinterest)"""
+
+    # 1. Colecciones Públicas
+    collections = session.exec(
+        select(Collection, User)
+        .join(User, Collection.user_id == User.id)
+        .where(Collection.is_private == False)
+        .order_by(Collection.created_at.desc())
+        .limit(limit)
+    ).all()
+
+    # 2. Prompts sueltos públicos
+    prompts = session.exec(
+        select(ImagePrompt, User)
+        .join(User, ImagePrompt.user_id == User.id)
+        .where(ImagePrompt.collection_id == None)
+        .order_by(ImagePrompt.created_at.desc())
+        .limit(limit)
+    ).all()
+
+    feed = []
+
+    # Formatear Colecciones
+    for col, user in collections:
+        cover = session.exec(
+            select(ImagePrompt)
+            .where(ImagePrompt.collection_id == col.id)
+            .order_by(ImagePrompt.created_at.desc())
+            .limit(1)
+        ).first()
+
+        items = session.exec(
+            select(ImagePrompt).where(ImagePrompt.collection_id == col.id)
+        ).all()
+
+        feed.append(
+            {
+                "type": "collection",
+                "id": f"col_{col.id}",
+                "raw_id": col.id,
+                "created_at": str(col.created_at),  # 🛡️ Convertido a texto
+                "title": col.name,
+                "slug": col.slug,
+                "username": user.username,
+                "image_url": cover.image_url if cover else None,
+                "items_count": len(items),
+            }
+        )
+
+    # Formatear Prompts
+    for p, user in prompts:
+        feed.append(
+            {
+                "type": "prompt",
+                "id": f"prompt_{p.id}",
+                "raw_id": p.id,
+                "created_at": str(p.created_at),  # 🛡️ Convertido a texto
+                "title": p.title,
+                "prompt": p.prompt,
+                "username": user.username,
+                "image_url": p.image_url,
+                "model": p.model,
+                "resolution": p.resolution,
+            }
+        )
+
+    # Ordenar cronológicamente
+    feed.sort(key=lambda x: x["created_at"], reverse=True)
+
+    return {"status": "success", "feed": feed[:limit]}
+</file>
+
 <file path="frontend/src/features/search/hooks/useSearch.ts">
 "use client";
 
@@ -12923,137 +12969,6 @@ git:
 	fi
 </file>
 
-<file path="backend/app/api/routes_prompt.py">
-# backend/app/api/routes_prompt.py
-import uuid
-from pydantic import BaseModel
-from fastapi import APIRouter, Depends, HTTPException
-from sqlmodel import Session, select
-from app.core.db import get_session
-from app.api.deps import get_current_user
-from app.models.user import User
-from app.models.prompt import ImagePrompt
-from app.schemas.prompt import PromptCreate
-
-from app.utils.storage import generar_presigned_url, eliminar_de_r2
-
-router = APIRouter()
-
-
-# Schema para pedir el ticket
-class PresignedUrlRequest(BaseModel):
-    file_name: str
-    content_type: str
-
-
-# ==========================================
-# RUTAS ESTÁTICAS
-# ==========================================
-
-
-@router.post("/generate-upload-url")
-def get_upload_url(
-    data: PresignedUrlRequest, current_user: User = Depends(get_current_user)
-):
-    """Devuelve un ticket temporal para subir un archivo directo a R2"""
-    ext = data.file_name.split(".")[-1] if "." in data.file_name else "png"
-    # Saneamiento de nombre: Evita colisiones y bloquea ejecutables maliciosos lógicamente
-    safe_key = f"prompts/{current_user.username}/{uuid.uuid4().hex}.{ext}"
-
-    try:
-        urls = generar_presigned_url(safe_key, data.content_type)
-        return {"status": "success", "data": urls}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@router.post("/save")
-def guardar_prompt(
-    data: PromptCreate,
-    current_user: User = Depends(get_current_user),
-    session: Session = Depends(get_session),
-):
-    try:
-        # El frontend ya subió la imagen y solo nos manda la URL pública. ¡FastAPI no sufre!
-        nuevo_prompt = ImagePrompt(
-            user_id=current_user.id,
-            title=data.title,
-            prompt=data.prompt,
-            negative_prompt=data.negative_prompt,
-            software=data.software,
-            model=data.model,
-            sampler=data.sampler,
-            steps=data.steps,
-            cfg_scale=data.cfg_scale,
-            seed=data.seed,
-            resolution=data.resolution,
-            image_url=data.image_url,
-            extra_data=data.extra_data,
-        )
-        session.add(nuevo_prompt)
-        session.commit()
-        session.refresh(nuevo_prompt)
-
-        return {
-            "status": "success",
-            "message": "Metadata guardada exitosamente",
-            "data": nuevo_prompt,
-        }
-    except Exception as e:
-        session.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@router.get("/")
-def obtener_mis_prompts(
-    current_user: User = Depends(get_current_user),
-    session: Session = Depends(get_session),
-):
-    statement = (
-        select(ImagePrompt)
-        .where(ImagePrompt.user_id == current_user.id)
-        .order_by(ImagePrompt.created_at.desc())
-    )
-    resultados = session.exec(statement).all()
-    return resultados
-
-
-# ==========================================
-# RUTAS DINÁMICAS
-# ==========================================
-
-
-@router.delete("/{prompt_id}")
-def eliminar_prompt(
-    prompt_id: int,
-    current_user: User = Depends(get_current_user),
-    session: Session = Depends(get_session),
-):
-    statement = (
-        select(ImagePrompt)
-        .where(ImagePrompt.id == prompt_id)
-        .where(ImagePrompt.user_id == current_user.id)
-    )
-    prompt = session.exec(statement).first()
-
-    if not prompt:
-        raise HTTPException(
-            status_code=404,
-            detail="Prompt no encontrado o no tienes permiso para borrarlo",
-        )
-
-    # 🟢 SANEAMIENTO R2: Destruimos la imagen huérfana de Cloudflare
-    if prompt.image_url:
-        eliminar_de_r2(prompt.image_url)
-
-    session.delete(prompt)
-    session.commit()
-    return {
-        "status": "success",
-        "message": "Prompt y archivo eliminados correctamente del búnker",
-    }
-</file>
-
 <file path="frontend/app/globals.css">
 @import "tailwindcss";
 @import "tw-animate-css";
@@ -13451,6 +13366,143 @@ export const mapViewerToMediaCard = (page: any, index: number): MediaCardData =>
     "typescript": "^5.9.3"
   }
 }
+</file>
+
+<file path="backend/app/api/routes_prompt.py">
+# backend/app/api/routes_prompt.py
+import uuid
+from pydantic import BaseModel
+from fastapi import APIRouter, Depends, HTTPException
+from sqlmodel import Session, select
+from app.core.db import get_session
+from app.api.deps import get_current_user
+from app.models.user import User
+from app.models.prompt import ImagePrompt
+from app.schemas.prompt import PromptCreate
+from app.api.deps import get_current_user, RateLimiter
+
+from app.utils.storage import generar_presigned_url, eliminar_de_r2
+
+router = APIRouter()
+
+
+# Schema para pedir el ticket
+class PresignedUrlRequest(BaseModel):
+    file_name: str
+    content_type: str
+
+
+# ==========================================
+# RUTAS ESTÁTICAS
+# ==========================================
+
+
+@router.post(
+    "/generate-upload-url",
+    dependencies=[Depends(RateLimiter(max_requests=10, window_seconds=60))],
+)
+def get_upload_url(
+    data: PresignedUrlRequest, current_user: User = Depends(get_current_user)
+):
+    """Devuelve un ticket temporal para subir un archivo directo a R2"""
+    ext = data.file_name.split(".")[-1] if "." in data.file_name else "png"
+    # Saneamiento de nombre: Evita colisiones y bloquea ejecutables maliciosos lógicamente
+    safe_key = f"prompts/{current_user.username}/{uuid.uuid4().hex}.{ext}"
+
+    try:
+        urls = generar_presigned_url(safe_key, data.content_type)
+        return {"status": "success", "data": urls}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post(
+    "/save", dependencies=[Depends(RateLimiter(max_requests=10, window_seconds=60))]
+)
+def guardar_prompt(
+    data: PromptCreate,
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    try:
+        # El frontend ya subió la imagen y solo nos manda la URL pública. ¡FastAPI no sufre!
+        nuevo_prompt = ImagePrompt(
+            user_id=current_user.id,
+            title=data.title,
+            prompt=data.prompt,
+            negative_prompt=data.negative_prompt,
+            software=data.software,
+            model=data.model,
+            sampler=data.sampler,
+            steps=data.steps,
+            cfg_scale=data.cfg_scale,
+            seed=data.seed,
+            resolution=data.resolution,
+            image_url=data.image_url,
+            extra_data=data.extra_data,
+        )
+        session.add(nuevo_prompt)
+        session.commit()
+        session.refresh(nuevo_prompt)
+
+        return {
+            "status": "success",
+            "message": "Metadata guardada exitosamente",
+            "data": nuevo_prompt,
+        }
+    except Exception as e:
+        session.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/")
+def obtener_mis_prompts(
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    statement = (
+        select(ImagePrompt)
+        .where(ImagePrompt.user_id == current_user.id)
+        .order_by(ImagePrompt.created_at.desc())
+    )
+    resultados = session.exec(statement).all()
+    return resultados
+
+
+# ==========================================
+# RUTAS DINÁMICAS
+# ==========================================
+
+
+@router.delete("/{prompt_id}")
+def eliminar_prompt(
+    prompt_id: int,
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    statement = (
+        select(ImagePrompt)
+        .where(ImagePrompt.id == prompt_id)
+        .where(ImagePrompt.user_id == current_user.id)
+    )
+    prompt = session.exec(statement).first()
+
+    if not prompt:
+        raise HTTPException(
+            status_code=404,
+            detail="Prompt no encontrado o no tienes permiso para borrarlo",
+        )
+
+    # 🟢 SANEAMIENTO R2: Destruimos la imagen huérfana de Cloudflare
+    if prompt.image_url:
+        eliminar_de_r2(prompt.image_url)
+
+    session.delete(prompt)
+    session.commit()
+    return {
+        "status": "success",
+        "message": "Prompt y archivo eliminados correctamente del búnker",
+    }
 </file>
 
 <file path="frontend/src/store/searchStore.ts">
