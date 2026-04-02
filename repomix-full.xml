@@ -9812,157 +9812,6 @@ if __name__ == '__main__':
 </files>
 </file>
 
-<file path="backend/app/api/routes_prompt.py">
-import logging
-import uuid
-from typing import List
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
-from sqlmodel import Session, select
-
-from app.core.db import get_session
-from app.api.deps import get_current_user
-from app.models.user import User
-from app.models.prompt import ImagePrompt
-
-from app.schemas.prompt import PromptCreate, PromptResponse, prompt_form_dependency
-from app.utils.storage import subir_imagen_a_r2
-
-logger = logging.getLogger("api_prompts")
-router = APIRouter()
-
-
-@router.post("/save")
-def guardar_prompt(
-    data: PromptCreate,
-    current_user: User = Depends(get_current_user),
-    session: Session = Depends(get_session),
-):
-    try:
-        nuevo_prompt = ImagePrompt(
-            user_id=current_user.id,
-            title=data.title,
-            prompt=data.prompt,
-            negative_prompt=data.negative_prompt,
-            software=data.software,
-            model=data.model,
-            sampler=data.sampler,
-            steps=data.steps,
-            cfg_scale=data.cfg_scale,
-            seed=data.seed,
-            resolution=data.resolution,
-            image_url=data.image_url,
-            extra_data=data.extra_data,
-        )
-        session.add(nuevo_prompt)
-        session.commit()
-        session.refresh(nuevo_prompt)
-        return {
-            "status": "success",
-            "message": "Prompt guardado correctamente",
-            "data": nuevo_prompt,
-        }
-    except Exception as e:
-        session.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@router.get("/")
-def obtener_mis_prompts(
-    current_user: User = Depends(get_current_user),
-    session: Session = Depends(get_session),
-):
-    # Buscamos solo los prompts del usuario logueado y los ordenamos de más nuevo a más viejo
-    statement = (
-        select(ImagePrompt)
-        .where(ImagePrompt.user_id == current_user.id)
-        .order_by(ImagePrompt.created_at.desc())
-    )
-    resultados = session.exec(statement).all()
-    return resultados
-
-
-# ==========================================
-# 🟢 2. RUTAS DINÁMICAS (Siempre abajo)
-# ==========================================
-
-
-@router.delete("/{prompt_id}")
-def eliminar_prompt(
-    prompt_id: int,
-    current_user: User = Depends(get_current_user),
-    session: Session = Depends(get_session),
-):
-    # Buscamos el prompt asegurándonos de que le pertenece al usuario
-    statement = (
-        select(ImagePrompt)
-        .where(ImagePrompt.id == prompt_id)
-        .where(ImagePrompt.user_id == current_user.id)
-    )
-    prompt = session.exec(statement).first()
-
-    if not prompt:
-        raise HTTPException(
-            status_code=404,
-            detail="Prompt no encontrado o no tienes permiso para borrarlo",
-        )
-
-    session.delete(prompt)
-    session.commit()
-    return {"status": "success", "message": "Prompt eliminado del búnker"}
-
-
-@router.post("/upload")
-async def upload_and_save_prompt(
-    file: UploadFile = File(...),
-    prompt_data: PromptCreate = Depends(prompt_form_dependency),  # <-- CLEAN CODE AQUÍ
-    current_user: User = Depends(get_current_user),
-    session: Session = Depends(get_session),
-):
-    """
-    Recibe la imagen y sus metadatos. Sube la imagen a R2 y guarda la info en PostgreSQL.
-    """
-    try:
-        # 1. Validar la imagen
-        if not file.content_type.startswith("image/"):
-            raise HTTPException(
-                status_code=400, detail="El archivo debe ser una imagen."
-            )
-
-        file_bytes = await file.read()
-
-        ext = file.filename.split(".")[-1] if "." in file.filename else "jpg"
-        unique_filename = f"{current_user.username}/{uuid.uuid4().hex}.{ext}"
-
-        secure_url = subir_imagen_a_r2(file_bytes, unique_filename, file.content_type)
-
-        new_prompt = ImagePrompt(
-            user_id=current_user.id,
-            image_url=secure_url,
-            **prompt_data.model_dump(
-                exclude={"image_url", "extra_data"}
-            ),  # Excluimos los que inyectamos o no usamos directamente
-        )
-
-        session.add(new_prompt)
-        session.commit()
-        session.refresh(new_prompt)
-
-        return {
-            "status": "success",
-            "message": "Imagen subida a la nube y prompt guardado con éxito.",
-            "data": {"id": new_prompt.id, "image_url": secure_url},
-        }
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error en upload_and_save_prompt: {e}")
-        session.rollback()
-        raise HTTPException(
-            status_code=500, detail="Error interno al procesar la imagen."
-        )
-</file>
-
 <file path="backend/requirements.txt">
 fastapi
 uvicorn
@@ -11068,6 +10917,169 @@ export function HeroSearch() {
     </div>
   );
 }
+</file>
+
+<file path="backend/app/api/routes_prompt.py">
+import logging
+import base64
+import uuid
+from typing import List
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from sqlmodel import Session, select
+
+from app.core.db import get_session
+from app.api.deps import get_current_user
+from app.models.user import User
+from app.models.prompt import ImagePrompt
+
+from app.schemas.prompt import PromptCreate, PromptResponse, prompt_form_dependency
+from app.utils.storage import subir_imagen_a_r2
+
+logger = logging.getLogger("api_prompts")
+router = APIRouter()
+
+
+@router.post("/save")
+def guardar_prompt(
+    data: PromptCreate,
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    try:
+        url_final = data.image_url
+
+        if data.image_url and data.image_url.startswith("data:image"):
+            header, encoded_data = data.image_url.split(",", 1)
+            content_type = header.split(";")[0].split(":")[1]
+            ext = content_type.split("/")[1]
+
+            file_bytes = base64.b64decode(encoded_data)
+
+            file_name = f"prompts/{current_user.username}/{uuid.uuid4().hex}.{ext}"
+
+            url_final = subir_imagen_a_r2(file_bytes, file_name, content_type)
+
+        nuevo_prompt = ImagePrompt(
+            user_id=current_user.id,
+            title=data.title,
+            prompt=data.prompt,
+            negative_prompt=data.negative_prompt,
+            software=data.software,
+            model=data.model,
+            sampler=data.sampler,
+            steps=data.steps,
+            cfg_scale=data.cfg_scale,
+            seed=data.seed,
+            resolution=data.resolution,
+            image_url=url_final,
+            extra_data=data.extra_data,
+        )
+        session.add(nuevo_prompt)
+        session.commit()
+        session.refresh(nuevo_prompt)
+
+        return {
+            "status": "success",
+            "message": "Metadata guardada y archivo subido a R2",
+            "data": nuevo_prompt,
+        }
+    except Exception as e:
+        session.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/")
+def obtener_mis_prompts(
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    statement = (
+        select(ImagePrompt)
+        .where(ImagePrompt.user_id == current_user.id)
+        .order_by(ImagePrompt.created_at.desc())
+    )
+    resultados = session.exec(statement).all()
+    return resultados
+
+
+# ==========================================
+# RUTAS DINÁMICAS
+# ==========================================
+
+
+@router.delete("/{prompt_id}")
+def eliminar_prompt(
+    prompt_id: int,
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    statement = (
+        select(ImagePrompt)
+        .where(ImagePrompt.id == prompt_id)
+        .where(ImagePrompt.user_id == current_user.id)
+    )
+    prompt = session.exec(statement).first()
+
+    if not prompt:
+        raise HTTPException(
+            status_code=404,
+            detail="Prompt no encontrado o no tienes permiso para borrarlo",
+        )
+
+    # NOTA: Opcionalmente, aquí podríamos llamar a s3_client.delete_object(...) para borrar también de R2
+
+    session.delete(prompt)
+    session.commit()
+    return {"status": "success", "message": "Prompt eliminado del búnker"}
+
+
+@router.post("/upload")
+async def upload_and_save_prompt(
+    file: UploadFile = File(...),
+    prompt_data: PromptCreate = Depends(prompt_form_dependency),
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    """
+    Recibe la imagen y sus metadatos. Sube la imagen a R2 y guarda la info en PostgreSQL.
+    """
+    try:
+        if not file.content_type.startswith("image/"):
+            raise HTTPException(
+                status_code=400, detail="El archivo debe ser una imagen."
+            )
+
+        file_bytes = await file.read()
+
+        ext = file.filename.split(".")[-1] if "." in file.filename else "jpg"
+        unique_filename = f"{current_user.username}/{uuid.uuid4().hex}.{ext}"
+
+        secure_url = subir_imagen_a_r2(file_bytes, unique_filename, file.content_type)
+
+        new_prompt = ImagePrompt(
+            user_id=current_user.id,
+            image_url=secure_url,
+            **prompt_data.model_dump(exclude={"image_url", "extra_data"}),
+        )
+
+        session.add(new_prompt)
+        session.commit()
+        session.refresh(new_prompt)
+
+        return {
+            "status": "success",
+            "message": "Imagen subida a la nube y prompt guardado con éxito.",
+            "data": {"id": new_prompt.id, "image_url": secure_url},
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error en upload_and_save_prompt: {e}")
+        session.rollback()
+        raise HTTPException(
+            status_code=500, detail="Error interno al procesar la imagen."
+        )
 </file>
 
 <file path="frontend/app/[lang]/layout.tsx">
@@ -12600,6 +12612,7 @@ export default function RepromptPage() {
     batch,
     skippedFiles,
     updateItemStatus,
+    updateItemData,
     removeItem,
     clearBatch,
     clearSkipped,
@@ -12629,6 +12642,7 @@ export default function RepromptPage() {
               batch={batch}
               skippedFiles={skippedFiles}
               onUpdateStatus={updateItemStatus}
+              onUpdateItemData={updateItemData}
               onRemoveItem={removeItem}
               onClearAll={clearBatch}
               onClearSkipped={clearSkipped}
@@ -14340,7 +14354,6 @@ import { getRawTextFromFile } from "../utils/fileExtractors";
 import { extractFilesFromZip } from "../utils/fileExtractors/zipExtractor";
 import { handleError } from "@/src/utils/errors/ErrorHandler";
 
-
 export interface BatchItem {
   id: string;
   file: File;
@@ -14358,7 +14371,7 @@ export function usePromptExtractor() {
   const [isExtracting, setIsExtracting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [batch, setBatch] = useState<BatchItem[]>([]);
-  const [skippedFiles, setSkippedFiles] = useState<SkippedFile[]>([]); // 🟢 NUEVO ESTADO
+  const [skippedFiles, setSkippedFiles] = useState<SkippedFile[]>([]);
 
   const processFiles = useCallback(async (files: File[], fileRejections: any[] = []) => {
     setIsExtracting(true);
@@ -14390,20 +14403,41 @@ export function usePromptExtractor() {
         throw new Error("No se recibieron archivos válidos.");
       }
 
-      // 2. Extraer metadata de cada archivo
       const newBatchItems: BatchItem[] = [];
 
+      // 2. Extraer metadata de cada archivo
       for (const file of allFilesToProcess) {
         try {
           const rawText = await getRawTextFromFile(file);
+          let parsedData: ExtractedPromptData;
+          
           if (!rawText) {
-            currentSkipped.push({ name: file.name, reason: "Sin metadatos de IA detectados." });
-            continue;
+            // 🛡️ PRAGMATISMO: Si es imagen pero no tiene IA, la dejamos pasar para MODO MANUAL
+            if (file.type.startsWith("image/")) {
+              parsedData = {
+                prompt: "",
+                rawText: "",
+                software: "Desconocido",
+                negativePrompt: "",
+                model: "",
+                sampler: "",
+                steps: "",
+                cfgScale: "",
+                seed: "",
+                resolution: "",
+                loras: [],
+                triggerWords: []
+              };
+            } else {
+              currentSkipped.push({ name: file.name, reason: "Sin metadatos de IA detectados." });
+              continue;
+            }
+          } else {
+            parsedData = parsePromptData(rawText);
           }
 
-          const parsedData = parsePromptData(rawText);
           const previewUrl = file.type.startsWith("image/") ? URL.createObjectURL(file) : null;
-
+          
           newBatchItems.push({
             id: crypto.randomUUID(),
             file,
@@ -14421,9 +14455,7 @@ export function usePromptExtractor() {
       if (newBatchItems.length > 0) {
         setBatch((prev) => [...prev, ...newBatchItems]);
       } else if (currentSkipped.length > 0) {
-        setError(
-          `Se descartaron ${currentSkipped.length} archivos por no ser válidos o no tener metadatos.`,
-        );
+        setError(`Se descartaron ${currentSkipped.length} archivos por no ser válidos o no tener metadatos.`);
       }
     } catch (err: unknown) {
       setError(handleError(err, "ExtractorBatch"));
@@ -14436,6 +14468,13 @@ export function usePromptExtractor() {
     setBatch((prev) => prev.map((item) => (item.id === id ? { ...item, status } : item)));
   }, []);
 
+  // 🟢 NUEVO: Función para actualizar los datos que el usuario teclee
+  const updateItemData = useCallback((id: string, newData: Partial<ExtractedPromptData>) => {
+    setBatch((prev) =>
+      prev.map((item) => (item.id === id ? { ...item, data: { ...item.data, ...newData } } : item))
+    );
+  }, []);
+
   const removeItem = useCallback((id: string) => {
     setBatch((prev) => {
       const item = prev.find((p) => p.id === id);
@@ -14445,25 +14484,28 @@ export function usePromptExtractor() {
   }, []);
 
   const clearBatch = useCallback(() => {
-    batch.forEach((item) => {
-      if (item.previewUrl) URL.revokeObjectURL(item.previewUrl);
+    setBatch((prev) => {
+      prev.forEach((item) => {
+        if (item.previewUrl) URL.revokeObjectURL(item.previewUrl);
+      });
+      return [];
     });
-    setBatch([]);
     setSkippedFiles([]);
     setError(null);
-  }, [batch]);
+  }, []);
 
   const clearSkipped = useCallback(() => {
     setSkippedFiles([]);
   }, []);
 
   return {
-    processFiles,
     isExtracting,
     error,
     batch,
     skippedFiles,
+    processFiles,
     updateItemStatus,
+    updateItemData,
     removeItem,
     clearBatch,
     clearSkipped,
@@ -16660,11 +16702,19 @@ export function LoginForm() {
         </p>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
-        <div className="mt-6">
-          <GoogleAuthButton />
-        </div>
+      <div className="mt-6">
+        <GoogleAuthButton />
+      </div>
+      
+      <div className="relative flex items-center py-4">
+        <div className="grow border-t border-border"></div>
+        <span className="shrink-0 px-4 text-xs font-mono text-muted-foreground uppercase tracking-widest">
+          o
+        </span>
+        <div className="grow border-t border-border"></div>
+      </div>
 
+      <form onSubmit={handleSubmit} className="space-y-6">
         <FormField
           label="Usuario"
           name="username"
@@ -16693,13 +16743,6 @@ export function LoginForm() {
           Iniciar Secuencia de Entrada
         </Button>
       </form>
-
-      <div className="mt-6 text-center">
-        <p className="text-[10px] font-mono text-(--text-secondary) uppercase opacity-50">
-          Terminal ID:{" "}
-          {typeof window !== "undefined" ? window.crypto.randomUUID().split("-")[0] : "..."}
-        </p>
-      </div>
     </div>
   );
 }
@@ -16922,23 +16965,23 @@ export function ExtractorDropzone({
 <file path="src/system/organisms/Extractor/Inspector/BatchInspector.tsx">
 import { useState } from "react";
 import { BatchItem, SkippedFile } from "@/src/features/extractor/hooks/usePromptExtractor";
+import { ExtractedPromptData } from "@/src/features/extractor/utils/promptParser";
 import { Button } from "@/src/system/atoms/Button";
 import {
   IconTrash,
   IconDeviceFloppy,
-  IconCheck,
   IconAlertTriangle,
   IconX,
 } from "@tabler/icons-react";
 import { api } from "@/src/services/api";
 import { handleError } from "@/src/utils/errors/ErrorHandler";
-import { InspectorBadges } from "./InspectorBadges";
 import { useNotificationStore } from "@/src/store/notificationStore";
 
 interface Props {
   batch: BatchItem[];
   skippedFiles: SkippedFile[];
   onUpdateStatus: (id: string, status: BatchItem["status"]) => void;
+  onUpdateItemData: (id: string, newData: Partial<ExtractedPromptData>) => void;
   onRemoveItem: (id: string) => void;
   onClearAll: () => void;
   onClearSkipped: () => void;
@@ -16958,6 +17001,7 @@ export function BatchInspector({
   batch,
   skippedFiles,
   onUpdateStatus,
+  onUpdateItemData,
   onRemoveItem,
   onClearAll,
   onClearSkipped,
@@ -16967,7 +17011,6 @@ export function BatchInspector({
 
   const handleSaveItem = async (item: BatchItem) => {
     if (item.status === "success") return;
-
     onUpdateStatus(item.id, "saving");
 
     try {
@@ -16988,16 +17031,17 @@ export function BatchInspector({
         seed: item.data.seed,
         resolution: item.data.resolution,
         image_url: finalImageUrl,
-        extra_data: { loras: item.data.loras || [], triggerWords: item.data.triggerWords || [] },
+        extra_data: {
+          loras: item.data.loras || [],
+          triggerWords: item.data.triggerWords || [],
+        },
       };
 
       await api.guardarPrompt(payload);
       onUpdateStatus(item.id, "success");
       notify("Búnker", "Prompt guardado correctamente", "success");
-
       setTimeout(() => {
         onRemoveItem(item.id);
-        notify("Búnker", "Prompt eliminado correctamente", "success");
       }, 1000);
     } catch (err: unknown) {
       handleError(err, "SaveBatchItem");
@@ -17008,14 +17052,13 @@ export function BatchInspector({
   const handleSaveAll = async () => {
     setIsGlobalLoading(true);
     const pendingItems = batch.filter((i) => i.status !== "success");
-    // Procesamos uno a uno o en Promise.allSettled. Para evitar saturar tu base de datos, Promise.allSettled es ideal:
     await Promise.allSettled(pendingItems.map((item) => handleSaveItem(item)));
     setIsGlobalLoading(false);
   };
 
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* 🚨 FEEDBACK DE ARCHIVOS DESCARTADOS */}
+      {/* FEEDBACK DE ARCHIVOS DESCARTADOS INTACTO AQUÍ */}
       {skippedFiles.length > 0 && (
         <div className="bg-orange-500/10 border-2 border-orange-500 p-4 neo-border relative">
           <button
@@ -17025,8 +17068,7 @@ export function BatchInspector({
             <IconX size={20} />
           </button>
           <div className="flex items-center gap-2 text-orange-600 font-black font-mono uppercase mb-2">
-            <IconAlertTriangle size={20} />
-            Se descartaron {skippedFiles.length} archivos
+            <IconAlertTriangle size={20} /> Se descartaron {skippedFiles.length} archivos
           </div>
           <div className="max-h-32 overflow-y-auto custom-scrollbar">
             <ul className="text-xs font-mono text-orange-800 space-y-1">
@@ -17035,7 +17077,7 @@ export function BatchInspector({
                   <span className="font-bold truncate w-1/3" title={f.name}>
                     {f.name}
                   </span>
-                  <span className="opacity-70 truncate w-2/3">- {f.reason}</span>
+                  <span className="opacity-70 truncate w-2/3">{f.reason}</span>
                 </li>
               ))}
             </ul>
@@ -17043,84 +17085,132 @@ export function BatchInspector({
         </div>
       )}
 
-      {/* PANEL DE CONTROL GLOBAL */}
-      <div className="bg-(--bg-secondary) p-4 neo-border flex flex-col sm:flex-row justify-between items-center gap-4 sticky top-20 z-30 shadow-2xl">
-        <div className="font-mono font-black uppercase flex gap-4">
-          <span className="text-(--accent-color)">Archivos Listos: {batch.length}</span>
+      {/* 🎛️ CONTROLES GLOBALES */}
+      <div className="flex flex-col sm:flex-row justify-between items-center bg-(--bg-secondary) p-4 neo-border gap-4">
+        <div className="font-mono text-sm font-bold uppercase">
+          <span className="text-(--accent-color)">{batch.length}</span> listos para búnker
         </div>
-        <div className="flex gap-2 w-full sm:w-auto">
-          <Button
-            onClick={handleSaveAll}
-            isLoading={isGlobalLoading}
-            className="flex-1 sm:flex-none flex items-center gap-2"
-          >
-            <IconDeviceFloppy size={18} /> Guardar Todos
-          </Button>
+        <div className="flex w-full sm:w-auto gap-3">
           <Button
             onClick={onClearAll}
-            variant="danger"
+            variant="ghost"
             disabled={isGlobalLoading}
-            className="flex-1 sm:flex-none flex items-center gap-2"
+            className="text-red-500 hover:bg-red-500/10"
           >
-            <IconTrash size={18} /> Descartar Todos
+            Descartar Todos
+          </Button>
+          <Button onClick={handleSaveAll} isLoading={isGlobalLoading} className="w-full sm:w-auto">
+            <IconDeviceFloppy size={18} className="mr-2" /> Guardar Todo
           </Button>
         </div>
       </div>
 
-      {/* CUADRÍCULA DE RESULTADOS */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6 pb-20">
-        {batch.map((item) => (
-          <div
-            key={item.id}
-            className={`bg-background neo-border neo-shadow flex flex-col overflow-hidden transition-all ${item.status === "success" ? "opacity-50 scale-95 border-green-500" : ""}`}
-          >
-            <div className="h-48 relative border-b-2 border-(--border-color) bg-black flex items-center justify-center">
-              {item.previewUrl ? (
-                <img src={item.previewUrl} alt="Preview" className="w-full h-full object-cover" />
-              ) : (
-                <span className="font-mono text-xs opacity-50 font-black uppercase text-white">
-                  Modo Texto
-                </span>
-              )}
-              {item.status === "success" && (
-                <div className="absolute inset-0 bg-green-500/80 flex items-center justify-center text-white font-black text-2xl font-mono uppercase">
-                  <IconCheck size={48} />
-                </div>
-              )}
-            </div>
+      {/* 🖼️ GRID DE BATCH ITEMS */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        {batch.map((item) => {
+          const isManual = item.data.software === "Desconocido";
+          return (
+            <div
+              key={item.id}
+              className={`neo-border bg-(--bg-secondary) flex flex-col h-420px relative group overflow-hidden transition-all ${
+                item.status === "success" ? "opacity-50 grayscale" : "hover:neo-shadow-accent"
+              }`}
+            >
+              {/* Imagen */}
+              <div className="relative h-48 shrink-0 border-b-2 border-(--border-color) bg-black">
+                {item.previewUrl ? (
+                  <img
+                    src={item.previewUrl}
+                    alt={item.file.name}
+                    className="w-full h-full object-cover opacity-90"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-xs font-mono text-muted-foreground">
+                    Sin visual
+                  </div>
+                )}
 
-            <div className="p-4 grow space-y-4">
-              <InspectorBadges data={item.data} />
-              <div className="bg-(--bg-secondary) p-2 border border-(--border-color) overflow-hidden h-24 relative">
-                <p className="font-mono text-[10px] leading-relaxed line-clamp-4">
-                  {item.data.prompt}
-                </p>
-                <div className="absolute bottom-0 left-0 w-full h-8 bg-linear-to-t from-(--bg-secondary) to-transparent" />
+                <div className="absolute top-2 left-2 flex flex-col gap-1">
+                  <span
+                    className={`bg-black/80 ${isManual ? "text-yellow-400" : "text-white"} font-mono text-[10px] font-bold px-2 py-0.5 border border-(--border-color)`}
+                  >
+                    {item.data.software}
+                  </span>
+                </div>
+              </div>
+
+              {/* 🟢 Contenido: Lógica Híbrida (Formulario Manual o Texto Fijo) */}
+              <div className="p-4 bg-background grow flex flex-col gap-2 overflow-hidden">
+                {isManual ? (
+                  <div className="flex flex-col h-full gap-2">
+                    <textarea
+                      placeholder="Escribe el prompt aquí..."
+                      className="w-full grow text-xs font-mono p-2 neo-border bg-muted/10 focus:outline-none focus:ring-2 focus:ring-(--accent-color) resize-none custom-scrollbar"
+                      value={item.data.prompt}
+                      onChange={(e) => onUpdateItemData(item.id, { prompt: e.target.value })}
+                    />
+                    <div className="flex gap-2 shrink-0">
+                      <input
+                        type="text"
+                        placeholder="Modelo (Ej. Midjourney v6)"
+                        className="w-1/2 text-xs font-mono p-2 neo-border bg-muted/10 focus:outline-none focus:ring-2 focus:ring-(--accent-color)"
+                        value={item.data.model || ""}
+                        onChange={(e) => onUpdateItemData(item.id, { model: e.target.value })}
+                      />
+                      <input
+                        type="text"
+                        placeholder="Sampler (Ej. Euler a)"
+                        className="w-1/2 text-xs font-mono p-2 neo-border bg-muted/10 focus:outline-none focus:ring-2 focus:ring-(--accent-color)"
+                        value={item.data.sampler || ""}
+                        onChange={(e) => onUpdateItemData(item.id, { sampler: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  <div className="h-full overflow-y-auto custom-scrollbar pr-2">
+                    <p className="font-mono text-xs text-(--text-secondary) leading-relaxed">
+                      {item.data.prompt || (
+                        <span className="italic opacity-50 text-red-500">
+                          No se detectó un prompt en la metadata.
+                        </span>
+                      )}
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Barra de Acciones */}
+              <div className="border-t-2 shrink-0 border-(--border-color) flex justify-between bg-muted/20">
+                <button
+                  onClick={() => handleSaveItem(item)}
+                  disabled={item.status === "saving" || item.status === "success"}
+                  className={`flex-1 p-3 font-bold font-mono text-xs uppercase tracking-wider transition-colors ${
+                    item.status === "success"
+                      ? "text-green-500"
+                      : item.status === "error"
+                        ? "text-red-500 hover:bg-red-500/10"
+                        : "text-foreground hover:bg-(--accent-color) hover:text-white"
+                  }`}
+                >
+                  {item.status === "saving"
+                    ? "Guardando..."
+                    : item.status === "success"
+                      ? "¡Guardado!"
+                      : item.status === "error"
+                        ? "Reintentar"
+                        : "Guardar en Búnker"}
+                </button>
+                <button
+                  onClick={() => onRemoveItem(item.id)}
+                  disabled={item.status === "saving"}
+                  className="p-3 bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-colors border-l-2 border-(--border-color)"
+                >
+                  <IconTrash size={18} />
+                </button>
               </div>
             </div>
-
-            <div className="flex border-t-2 border-(--border-color)">
-              <button
-                onClick={() => handleSaveItem(item)}
-                disabled={item.status === "saving" || item.status === "success"}
-                className={`flex-1 p-3 font-mono font-black text-xs uppercase flex items-center justify-center gap-2 transition-colors ${item.status === "error" ? "bg-red-500 text-white" : "hover:bg-(--accent-color) hover:text-white"}`}
-              >
-                {item.status === "saving"
-                  ? "Guardando..."
-                  : item.status === "error"
-                    ? "Reintentar"
-                    : "Guardar"}
-              </button>
-              <button
-                onClick={() => onRemoveItem(item.id)}
-                disabled={item.status === "saving"}
-                className="p-3 bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-colors border-l-2 border-(--border-color)"
-              >
-                <IconTrash size={18} />
-              </button>
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
