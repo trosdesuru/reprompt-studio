@@ -38,6 +38,39 @@ nuke:
 	docker-compose up -d
 
 # ==========================================
+# 📊 LOGS Y MONITOREO
+# ==========================================
+.PHONY: log-back log-front log-back-30 log-front-30 stats mem-check clean-docker
+
+log-back:
+	@echo "📜 Mostrando logs del Backend en vivo..."
+	docker-compose logs -f backend
+
+log-front:
+	@echo "📜 Mostrando logs del Frontend en vivo..."
+	docker-compose logs -f frontend
+
+log-back-30:
+	@echo "📜 Mostrando los últimos 30 logs del Backend..."b
+	docker-compose logs --tail=30 -f backend
+
+log-front-30:
+	@echo "📜 Mostrando los últimos 30 logs del Frontend..."
+	docker-compose logs --tail=30 -f frontend
+
+stats:
+	@echo "📈 Monitoreando uso de CPU y Memoria en vivo (Presiona CTRL+C para salir)..."
+	docker stats
+
+mem-check:
+	@echo "💾 Inspeccionando espacio ocupado por Docker en el disco duro..."
+	docker system df
+
+clean-docker:
+	@echo "🧹 Realizando limpieza profunda de Docker (Caché, imágenes sin uso, contenedores parados)..."
+	docker system prune -a -f --volumes
+
+# ==========================================
 # 📦 REPOMIX: EXTRACCIÓN DE PROYECTO
 # ==========================================
 .PHONY: repofront repoback repoall
