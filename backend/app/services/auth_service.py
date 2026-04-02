@@ -1,4 +1,9 @@
-# backend/app/services/auth_service.py
+import os
+from google.oauth2 import id_token
+from google.auth.transport import requests as google_requests
+
+GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
+
 from jose import jwt
 from fastapi import HTTPException
 from sqlmodel import Session, select
@@ -164,3 +169,98 @@ class AuthService:
             )
         except jwt.JWTError:
             raise HTTPException(status_code=401, detail="Firma inválida.")
+
+    @staticmethod
+    def verify_google_token(token: str):
+        """Verifica criptográficamente el JWT contra los servidores de Google"""
+        if not GOOGLE_CLIENT_ID:
+            raise HTTPException(status_code=500, detail="Falta configurar GOOGLE_CLIENT_ID en el servidor")
+        try:
+            idinfo = id_token.verify_oauth2_token(
+                token, google_requests.Request(), GOOGLE_CLIENT_ID
+            )
+            return idinfo
+        except ValueError:
+            raise HTTPException(status_code=401, detail="Token de Google inválido o expirado")
+
+    @staticmethod
+    def authenticate_google_user(token: str, session: Session, redis_client):
+        """Flujo de decisión: ¿Existe el usuario o es nuevo?"""
+        idinfo = AuthService.verify_google_token(token)
+        email = idinfo.get("email")
+        name = idinfo.get("name", "").replace(" ", "").lower()
+
+        # Buscamos si ya existe alguien con este correo
+        user = session.exec(select(User).where(User.email == email)).first()
+
+        if user:
+            # ESCENARIO A: Ya existe. Generamos sesión silenciosamente.
+            access_token = create_access_token(data={"sub": user.username, "role": user.role})
+            refresh_data = create_refresh_token(data={"sub": user.username})
+
+            redis_key = f"session:{user.username}:{refresh_data['family_id']}"
+            redis_client.setex(redis_key, 60 * 60 * 24 * 7, refresh_data["jti"])
+
+            return {
+                "status": "success", 
+                "access_token": access_token, 
+                "refresh_token": refresh_data["token"], 
+                "username": user.username
+            }
+        else:
+            # ESCENARIO B: Es nuevo. Cortamos el flujo y pedimos invitación.
+            # Sugerimos un nombre de usuario basado en su nombre de Google
+            return {
+                "status": "needs_invite", 
+                "email": email, 
+                "suggested_username": name
+            }
+
+    @staticmethod
+    def register_google_user(join_data, session: Session, redis_client):
+        """El usuario nuevo nos ha dado su código de invitación. Lo registramos."""
+        # 1. Volvemos a validar el token de Google por seguridad extrema
+        idinfo = AuthService.verify_google_token(join_data.token)
+        email = idinfo.get("email")
+        provider_id = idinfo.get("sub")
+
+        # 2. Verificamos que el Alias que eligió no esté cogido
+        user_exists = session.exec(select(User).where(User.username == join_data.username)).first()
+        if user_exists:
+            raise HTTPException(status_code=400, detail="El nombre de usuario ya está en uso. Elige otro.")
+
+        # 3. Validar código de invitación (El Muro Físico)
+        statement = select(InviteCode).where(InviteCode.code == join_data.invite_code).where(InviteCode.is_used == False)
+        invite = session.exec(statement).first()
+
+        if not invite:
+            raise HTTPException(status_code=400, detail="Código de invitación inválido o ya fue utilizado")
+
+        assigned_role = "admin" if invite.code.startswith("TROYA-") else "voyager"
+
+        # 4. Crear el usuario en PostgreSQL
+        new_user = User(
+            username=join_data.username,
+            email=email,
+            auth_provider="google",
+            provider_id=provider_id,
+            role=assigned_role,
+        )
+        session.add(new_user)
+        session.commit()
+        session.refresh(new_user)
+
+        # 5. Quemar la invitación para que no se re-use
+        invite.is_used = True
+        invite.used_by_id = new_user.id
+        session.add(invite)
+        session.commit()
+
+        # 6. Crear la sesión en Redis
+        access_token = create_access_token(data={"sub": new_user.username, "role": new_user.role})
+        refresh_data = create_refresh_token(data={"sub": new_user.username})
+
+        redis_key = f"session:{new_user.username}:{refresh_data['family_id']}"
+        redis_client.setex(redis_key, 60 * 60 * 24 * 7, refresh_data["jti"])
+        
+        return access_token, refresh_data["token"], new_user.username

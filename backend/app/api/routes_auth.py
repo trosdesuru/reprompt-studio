@@ -11,6 +11,15 @@ from app.api.deps import get_current_user, get_current_admin, RateLimiter
 from app.models.user import User, InviteCode, AuditLog
 from app.schemas.user import UserRegister, UserLogin, PasswordChange
 
+from fastapi import APIRouter, Depends, Response, Cookie, HTTPException, status
+from app.schemas.user import (
+    UserRegister,
+    UserLogin,
+    PasswordChange,
+    GoogleAuthRequest,
+    GoogleJoinRequest,
+)
+
 # FIX: Inyección de dependencias
 redis_client = redis.Redis(host="redis", port=6379, db=0, decode_responses=True)
 router = APIRouter()
@@ -76,6 +85,79 @@ def login_user(
 
     AuditService.log_action(session, username, "LOGIN", "Inicio de sesión exitoso")
     return {"status": "success", "message": f"Bienvenido, {username}"}
+
+
+@router.post("/google")
+def google_auth(
+    data: GoogleAuthRequest, response: Response, session: Session = Depends(get_session)
+):
+    result = AuthService.authenticate_google_user(data.token, session, redis_client)
+
+    # 🛡️ INTERCEPCIÓN HÍBRIDA: Si es nuevo, le decimos al frontend que pare
+    if result["status"] == "needs_invite":
+        response.status_code = status.HTTP_202_ACCEPTED
+        return result
+
+    # Si ya existía, inyectamos las cookies de seguridad
+    response.set_cookie(
+        key="access_token",
+        value=result["access_token"],
+        httponly=True,
+        max_age=60 * 15,
+        samesite="lax",
+        path="/",
+    )
+    response.set_cookie(
+        key="refresh_token",
+        value=result["refresh_token"],
+        httponly=True,
+        max_age=60 * 60 * 24 * 7,
+        samesite="lax",
+        path="/api/auth/refresh",
+    )
+
+    AuditService.log_action(
+        session, result["username"], "LOGIN_GOOGLE", "Inicio de sesión con Google"
+    )
+    return {
+        "status": "success",
+        "message": f"Bienvenido de nuevo, {result['username']}",
+    }
+
+
+@router.post("/google/join")
+def google_join(
+    data: GoogleJoinRequest, response: Response, session: Session = Depends(get_session)
+):
+    # El usuario envía su token de google + el código de invitación + su alias
+    access_token, refresh_token, username = AuthService.register_google_user(
+        data, session, redis_client
+    )
+
+    response.set_cookie(
+        key="access_token",
+        value=access_token,
+        httponly=True,
+        max_age=60 * 15,
+        samesite="lax",
+        path="/",
+    )
+    response.set_cookie(
+        key="refresh_token",
+        value=refresh_token,
+        httponly=True,
+        max_age=60 * 60 * 24 * 7,
+        samesite="lax",
+        path="/api/auth/refresh",
+    )
+
+    AuditService.log_action(
+        session, username, "REGISTER_GOOGLE", "Registro híbrido completado"
+    )
+    return {
+        "status": "success",
+        "message": f"Cuenta creada. Bienvenido a la Resistencia, {username}",
+    }
 
 
 @router.post("/logout")

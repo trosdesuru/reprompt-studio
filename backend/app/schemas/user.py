@@ -21,3 +21,13 @@ class Token(BaseModel):
 class PasswordChange(BaseModel):
     old_password: str
     new_password: str
+
+
+class GoogleAuthRequest(BaseModel):
+    token: str
+
+
+class GoogleJoinRequest(BaseModel):
+    token: str
+    invite_code: str
+    username: str

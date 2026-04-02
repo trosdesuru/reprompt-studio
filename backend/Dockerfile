@@ -12,13 +12,14 @@ RUN apt-get update && apt-get install -y \
     ca-certificates \
     --no-install-recommends
 
-# Instalar Chrome directamente desde el .deb (Más fiable en Docker)
-RUN wget -q https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb \
-    && apt-get install -y ./google-chrome-stable_current_amd64.deb \
-    && rm google-chrome-stable_current_amd64.deb \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
-
+# Instalación de Google Chrome y sus dependencias
+RUN apt-get update && \
+    apt-get install -y wget gnupg2 && \
+    wget -q https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb && \
+    apt-get install -y ./google-chrome-stable_current_amd64.deb && \
+    rm google-chrome-stable_current_amd64.deb && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
