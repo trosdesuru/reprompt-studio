@@ -53,8 +53,24 @@ export const api = {
   },
 
   getPublicPromptDetail: async (promptId: string) => {
-    const res = await fetch(`/api/public/prompt/${promptId}`);
+    const res = await fetch(`${API_URL}/public/prompt/${promptId}`);
     if (!res.ok) throw new Error("Imagen no encontrada o privada");
     return res.json();
+  },
+
+  getPublicFeed: async () => {
+    const res = await fetch(`${API_URL}/public/feed`);
+    const text = await res.text();
+
+    try {
+      const data = JSON.parse(text);
+      if (!res.ok) throw new Error(data.detail || "Error del servidor");
+      
+      return data;
+
+    } catch (e) {
+      console.error("El servidor ha devuelto HTML o ha crasheado:", text);
+      throw new Error("Error de conexión al cargar el feed público");
+    }
   },
 };

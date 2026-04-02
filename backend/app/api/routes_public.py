@@ -136,3 +136,77 @@ def get_public_prompt_detail(prompt_id: int, session: Session = Depends(get_sess
         "related_collection": related_collection,
         "related_user": related_user,
     }
+
+
+@router.get("/feed")
+def get_public_feed(session: Session = Depends(get_session), limit: int = 50):
+    """Devuelve un mix de Prompts sueltos y Colecciones para la Home (Estilo Pinterest)"""
+
+    # 1. Colecciones Públicas
+    collections = session.exec(
+        select(Collection, User)
+        .join(User, Collection.user_id == User.id)
+        .where(Collection.is_private == False)
+        .order_by(Collection.created_at.desc())
+        .limit(limit)
+    ).all()
+
+    # 2. Prompts sueltos públicos
+    prompts = session.exec(
+        select(ImagePrompt, User)
+        .join(User, ImagePrompt.user_id == User.id)
+        .where(ImagePrompt.collection_id == None)
+        .order_by(ImagePrompt.created_at.desc())
+        .limit(limit)
+    ).all()
+
+    feed = []
+
+    # Formatear Colecciones
+    for col, user in collections:
+        cover = session.exec(
+            select(ImagePrompt)
+            .where(ImagePrompt.collection_id == col.id)
+            .order_by(ImagePrompt.created_at.desc())
+            .limit(1)
+        ).first()
+
+        items = session.exec(
+            select(ImagePrompt).where(ImagePrompt.collection_id == col.id)
+        ).all()
+
+        feed.append(
+            {
+                "type": "collection",
+                "id": f"col_{col.id}",
+                "raw_id": col.id,
+                "created_at": str(col.created_at),  # 🛡️ Convertido a texto
+                "title": col.name,
+                "slug": col.slug,
+                "username": user.username,
+                "image_url": cover.image_url if cover else None,
+                "items_count": len(items),
+            }
+        )
+
+    # Formatear Prompts
+    for p, user in prompts:
+        feed.append(
+            {
+                "type": "prompt",
+                "id": f"prompt_{p.id}",
+                "raw_id": p.id,
+                "created_at": str(p.created_at),  # 🛡️ Convertido a texto
+                "title": p.title,
+                "prompt": p.prompt,
+                "username": user.username,
+                "image_url": p.image_url,
+                "model": p.model,
+                "resolution": p.resolution,
+            }
+        )
+
+    # Ordenar cronológicamente
+    feed.sort(key=lambda x: x["created_at"], reverse=True)
+
+    return {"status": "success", "feed": feed[:limit]}
