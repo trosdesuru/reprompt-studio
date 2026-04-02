@@ -1,35 +1,32 @@
-import { AppError, AuthError, ExtractionError, NetworkError } from "./AppErrors";
+import { AuthError, NetworkError } from "./AppErrors";
 
-export const handleError = (error: unknown, context?: string): string => {
-  if (error instanceof AuthError) {
-    const isLoginRoute = typeof window !== "undefined" && window.location.pathname === "/login";
-    if (!isLoginRoute) {
-      console.warn("🔐 Acceso denegado. Redirigiendo al login...");
-      if (typeof window !== "undefined") window.location.href = "/login";
+export const handleError = (err: unknown, context: string): string => {
+  console.error(`[${context}] Error capturado:`, err);
+
+  if (err instanceof AuthError) {
+    console.warn("🔐 Acceso denegado o sesión caducada.");
+
+    if (typeof window !== "undefined") {
+      const currentPath = window.location.pathname;
+
+      if (!currentPath.includes("/login") && !currentPath.includes("/join")) {
+        console.warn("Redirigiendo al login...");
+
+        const localeMatch = currentPath.match(/^\/([a-z]{2})\//);
+        const localePrefix = localeMatch ? `/${localeMatch[1]}` : "";
+        window.location.href = `${localePrefix}/login`;
+      }
     }
-    return error.message;
+    return "Sesión expirada. Por favor, inicia sesión de nuevo.";
   }
 
-  if (error instanceof ExtractionError) {
-    console.warn(`🧩 [Extractor] ${error.code}: ${error.message}`);
-    return error.message;
+  if (err instanceof NetworkError) {
+    return `Error de conexión (${err.statusCode}): ${err.message}`;
   }
 
-  if (error instanceof NetworkError) {
-    console.error(`📡 [Red] HTTP ${error.statusCode || "Unknown"}: ${error.message}`);
-    return error.message; // 🟢 Devolvemos el mensaje real que manda FastAPI
+  if (err instanceof Error) {
+    return err.message;
   }
 
-  if (error instanceof AppError) {
-    console.warn(`🚧 [${context || "App"}] ${error.code}: ${error.message}`);
-    return error.message;
-  }
-
-  if (error instanceof Error) {
-    console.error(`💥 [Error Crítico] ${context || "Sistema"}:`, error);
-    return error.message;
-  }
-
-  console.error("👽 [Error Alienígena]:", error);
-  return "Ha ocurrido un error inesperado en el sistema.";
+  return "Error inesperado en el sistema.";
 };

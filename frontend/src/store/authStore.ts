@@ -29,7 +29,11 @@ export const useAuthStore = create<AuthState>((set) => ({
     } finally {
       set({ user: null });
       if (typeof window !== "undefined") {
-        window.location.href = "/login";
+        const currentPath = window.location.pathname;
+        const localeMatch = currentPath.match(/^\/([a-z]{2})(?:\/|$)/);
+        const localePrefix = localeMatch ? `/${localeMatch[1]}` : "";
+
+        window.location.href = `${localePrefix}/login`;
       }
     }
   },
