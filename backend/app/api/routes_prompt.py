@@ -16,6 +16,86 @@ logger = logging.getLogger("api_prompts")
 router = APIRouter()
 
 
+@router.post("/save")
+def guardar_prompt(
+    data: PromptCreate,
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    try:
+        nuevo_prompt = ImagePrompt(
+            user_id=current_user.id,
+            title=data.title,
+            prompt=data.prompt,
+            negative_prompt=data.negative_prompt,
+            software=data.software,
+            model=data.model,
+            sampler=data.sampler,
+            steps=data.steps,
+            cfg_scale=data.cfg_scale,
+            seed=data.seed,
+            resolution=data.resolution,
+            image_url=data.image_url,
+            extra_data=data.extra_data,
+        )
+        session.add(nuevo_prompt)
+        session.commit()
+        session.refresh(nuevo_prompt)
+        return {
+            "status": "success",
+            "message": "Prompt guardado correctamente",
+            "data": nuevo_prompt,
+        }
+    except Exception as e:
+        session.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/")
+def obtener_mis_prompts(
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    # Buscamos solo los prompts del usuario logueado y los ordenamos de más nuevo a más viejo
+    statement = (
+        select(ImagePrompt)
+        .where(ImagePrompt.user_id == current_user.id)
+        .order_by(ImagePrompt.created_at.desc())
+    )
+    resultados = session.exec(statement).all()
+    return resultados
+
+
+# ==========================================
+# 🟢 2. RUTAS DINÁMICAS (Siempre abajo)
+# ==========================================
+
+
+@router.delete("/{prompt_id}")
+def eliminar_prompt(
+    prompt_id: int,
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    # Buscamos el prompt asegurándonos de que le pertenece al usuario
+    statement = (
+        select(ImagePrompt)
+        .where(ImagePrompt.id == prompt_id)
+        .where(ImagePrompt.user_id == current_user.id)
+    )
+    prompt = session.exec(statement).first()
+
+    if not prompt:
+        raise HTTPException(
+            status_code=404,
+            detail="Prompt no encontrado o no tienes permiso para borrarlo",
+        )
+
+    session.delete(prompt)
+    session.commit()
+    return {"status": "success", "message": "Prompt eliminado del búnker"}
+
+
 @router.post("/upload")
 async def upload_and_save_prompt(
     file: UploadFile = File(...),
@@ -37,7 +117,7 @@ async def upload_and_save_prompt(
 
         ext = file.filename.split(".")[-1] if "." in file.filename else "jpg"
         unique_filename = f"{current_user.username}/{uuid.uuid4().hex}.{ext}"
-        
+
         secure_url = subir_imagen_a_r2(file_bytes, unique_filename, file.content_type)
 
         new_prompt = ImagePrompt(
@@ -66,55 +146,3 @@ async def upload_and_save_prompt(
         raise HTTPException(
             status_code=500, detail="Error interno al procesar la imagen."
         )
-
-
-@router.get("/", response_model=List[PromptResponse])
-def get_my_prompts(
-    skip: int = 0,
-    limit: int = 50,
-    current_user: User = Depends(get_current_user),
-    session: Session = Depends(get_session),
-):
-    try:
-        statement = (
-            select(ImagePrompt)
-            .where(ImagePrompt.user_id == current_user.id)
-            .order_by(ImagePrompt.created_at.desc())
-            .offset(skip)
-            .limit(limit)
-        )
-
-        prompts = session.exec(statement).all()
-        return prompts
-
-    except Exception as e:
-        logger.error(f"Error obteniendo prompts para usuario {current_user.id}: {e}")
-        raise HTTPException(
-            status_code=500, detail="Error interno al recuperar los datos."
-        )
-
-
-@router.delete("/{prompt_id}")
-def delete_prompt(
-    prompt_id: int,
-    current_user: User = Depends(get_current_user),
-    session: Session = Depends(get_session),
-):
-    try:
-        # <-- ACTUALIZADO
-        prompt = session.get(ImagePrompt, prompt_id)
-        if not prompt or prompt.user_id != current_user.id:
-            raise HTTPException(
-                status_code=404, detail="Prompt no encontrado o acceso denegado."
-            )
-
-        session.delete(prompt)
-        session.commit()
-        return {"status": "success", "message": "Prompt eliminado del búnker."}
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error borrando prompt {prompt_id}: {e}")
-        session.rollback()
-        raise HTTPException(status_code=500, detail="Error al eliminar el prompt.")
