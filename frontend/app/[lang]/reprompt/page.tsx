@@ -1,10 +1,13 @@
 "use client";
 
+import { use } from "react";
 import { usePromptExtractor } from "@/src/features/extractor/hooks/usePromptExtractor";
 import { ExtractorDropzone } from "@/src/system/organisms/Extractor/Dropzone";
 import { BatchInspector } from "@/src/system/organisms/Extractor/Inspector/BatchInspector";
 
-export default function RepromptPage() {
+export default function RepromptPage({ params }: { params: Promise<{ lang: string }> }) {
+  const { lang } = use(params);
+  
   const {
     processFiles,
     isExtracting,

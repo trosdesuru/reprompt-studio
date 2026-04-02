@@ -1,11 +1,14 @@
 "use client";
 
+import { use } from "react";
 import { useStudio } from "@/src/features/studio/hooks/useStudio";
 import { PromptCard } from "@/src/system/organisms/Studio/PromptCard";
 import { IconWand, IconDatabase } from "@tabler/icons-react";
 import Link from "next/link";
 
-export default function StudioPage() {
+export default function StudioPage({ params }: { params: Promise<{ lang: string }> }) {
+  const { lang } = use(params);
+
   const { prompts, isLoading, error, deletePrompt } = useStudio();
 
   return (

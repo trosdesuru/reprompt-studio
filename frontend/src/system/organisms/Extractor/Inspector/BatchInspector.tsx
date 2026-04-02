@@ -2,12 +2,7 @@ import { useState } from "react";
 import { BatchItem, SkippedFile } from "@/src/features/extractor/hooks/usePromptExtractor";
 import { ExtractedPromptData } from "@/src/features/extractor/utils/promptParser";
 import { Button } from "@/src/system/atoms/Button";
-import {
-  IconTrash,
-  IconDeviceFloppy,
-  IconAlertTriangle,
-  IconX,
-} from "@tabler/icons-react";
+import { IconTrash, IconDeviceFloppy, IconAlertTriangle, IconX } from "@tabler/icons-react";
 import { api } from "@/src/services/api";
 import { handleError } from "@/src/utils/errors/ErrorHandler";
 import { useNotificationStore } from "@/src/store/notificationStore";
@@ -21,16 +16,6 @@ interface Props {
   onClearAll: () => void;
   onClearSkipped: () => void;
 }
-
-const blobToBase64 = async (blobUrl: string): Promise<string> => {
-  const response = await fetch(blobUrl);
-  const blob = await response.blob();
-  return new Promise<string>((resolve) => {
-    const reader = new FileReader();
-    reader.onloadend = () => resolve(reader.result as string);
-    reader.readAsDataURL(blob);
-  });
-};
 
 export function BatchInspector({
   batch,
@@ -50,8 +35,36 @@ export function BatchInspector({
 
     try {
       let finalImageUrl = null;
+
       if (item.previewUrl && item.previewUrl.startsWith("blob:")) {
-        finalImageUrl = await blobToBase64(item.previewUrl);
+        const response = await fetch(item.previewUrl);
+        const blob = await response.blob();
+
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+        const ticketRes = await fetch(`${API_URL}/api/prompts/generate-upload-url`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ file_name: item.file.name, content_type: blob.type }),
+        });
+
+        if (!ticketRes.ok) throw new Error("No se pudo obtener el ticket de subida de R2");
+        const { data: ticketData } = await ticketRes.json();
+
+        const uploadRes = await fetch(ticketData.upload_url, {
+          method: "PUT",
+          headers: { "Content-Type": blob.type },
+          body: blob,
+        });
+
+        if (!uploadRes.ok) throw new Error("Fallo la subida física a Cloudflare R2");
+
+        // 4. Asignar la URL pública final
+        finalImageUrl = ticketData.file_url;
+        if (!uploadRes.ok) throw new Error("Fallo la subida física a Cloudflare R2");
+
+        // 4. Asignar la URL pública final
+        finalImageUrl = ticketData.file_url;
       }
 
       const payload = {
@@ -74,10 +87,13 @@ export function BatchInspector({
 
       await api.savePrompt(payload);
       onUpdateStatus(item.id, "success");
+
       notify("Búnker", "Prompt guardado correctamente", "success");
+
       setTimeout(() => {
         onRemoveItem(item.id);
       }, 1000);
+      
     } catch (err: unknown) {
       handleError(err, "SaveBatchItem");
       onUpdateStatus(item.id, "error");

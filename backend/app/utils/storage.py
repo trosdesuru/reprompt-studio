@@ -58,6 +58,47 @@ def subir_imagen_a_r2(
         raise e
 
 
+def generar_presigned_url(file_name: str, content_type: str) -> dict:
+    """Genera un ticket de un solo uso para que el Frontend suba directo a R2"""
+    if not s3_client or not R2_BUCKET_NAME:
+        raise ValueError("Servicio R2 no configurado en .env.")
+    try:
+        # Genera una URL temporal con permiso explícito de 'put_object' (Subida)
+        presigned_url = s3_client.generate_presigned_url(
+            "put_object",
+            Params={
+                "Bucket": R2_BUCKET_NAME,
+                "Key": file_name,
+                "ContentType": content_type,
+            },
+            ExpiresIn=3600,  # El ticket caduca en 1 hora
+        )
+
+        # Esta será la URL final pública una vez subido el archivo
+        url_publica = f"{R2_PUBLIC_URL.rstrip('/')}/{file_name}"
+        return {"upload_url": presigned_url, "file_url": url_publica}
+
+    except Exception as e:
+        logger.error(f"❌ Error generando presigned URL: {e}")
+        raise e
+
+
+def eliminar_de_r2(file_url: str):
+    """Borra físicamente el archivo del bucket para no dejar huérfanos"""
+    if not s3_client or not R2_BUCKET_NAME or not file_url:
+        return
+    try:
+        base_url = R2_PUBLIC_URL.rstrip("/")
+        # Verificamos que la URL pertenezca a nuestro bucket
+        if file_url.startswith(base_url):
+            # Extraemos la ruta interna (ej. prompts/edu/archivo.png)
+            key = file_url.replace(base_url + "/", "")
+            logger.info(f"🗑️ Eliminando de R2: {key}")
+            s3_client.delete_object(Bucket=R2_BUCKET_NAME, Key=key)
+    except Exception as e:
+        logger.error(f"❌ Error eliminando objeto de R2: {e}")
+
+
 # ========================================================
 # ⬇️ FUNCIONES LEGACY (Mantenidas para compatibilidad local)
 # ========================================================

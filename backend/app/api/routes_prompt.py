@@ -1,20 +1,44 @@
-import logging
-import base64
+# backend/app/api/routes_prompt.py
 import uuid
-from typing import List
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from pydantic import BaseModel
+from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session, select
-
 from app.core.db import get_session
 from app.api.deps import get_current_user
 from app.models.user import User
 from app.models.prompt import ImagePrompt
+from app.schemas.prompt import PromptCreate
 
-from app.schemas.prompt import PromptCreate, PromptResponse, prompt_form_dependency
-from app.utils.storage import subir_imagen_a_r2
+from app.utils.storage import generar_presigned_url, eliminar_de_r2
 
-logger = logging.getLogger("api_prompts")
 router = APIRouter()
+
+
+# Schema para pedir el ticket
+class PresignedUrlRequest(BaseModel):
+    file_name: str
+    content_type: str
+
+
+# ==========================================
+# RUTAS ESTÁTICAS
+# ==========================================
+
+
+@router.post("/generate-upload-url")
+def get_upload_url(
+    data: PresignedUrlRequest, current_user: User = Depends(get_current_user)
+):
+    """Devuelve un ticket temporal para subir un archivo directo a R2"""
+    ext = data.file_name.split(".")[-1] if "." in data.file_name else "png"
+    # Saneamiento de nombre: Evita colisiones y bloquea ejecutables maliciosos lógicamente
+    safe_key = f"prompts/{current_user.username}/{uuid.uuid4().hex}.{ext}"
+
+    try:
+        urls = generar_presigned_url(safe_key, data.content_type)
+        return {"status": "success", "data": urls}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/save")
@@ -24,19 +48,7 @@ def guardar_prompt(
     session: Session = Depends(get_session),
 ):
     try:
-        url_final = data.image_url
-
-        if data.image_url and data.image_url.startswith("data:image"):
-            header, encoded_data = data.image_url.split(",", 1)
-            content_type = header.split(";")[0].split(":")[1]
-            ext = content_type.split("/")[1]
-
-            file_bytes = base64.b64decode(encoded_data)
-
-            file_name = f"prompts/{current_user.username}/{uuid.uuid4().hex}.{ext}"
-
-            url_final = subir_imagen_a_r2(file_bytes, file_name, content_type)
-
+        # El frontend ya subió la imagen y solo nos manda la URL pública. ¡FastAPI no sufre!
         nuevo_prompt = ImagePrompt(
             user_id=current_user.id,
             title=data.title,
@@ -49,7 +61,7 @@ def guardar_prompt(
             cfg_scale=data.cfg_scale,
             seed=data.seed,
             resolution=data.resolution,
-            image_url=url_final,
+            image_url=data.image_url,
             extra_data=data.extra_data,
         )
         session.add(nuevo_prompt)
@@ -58,7 +70,7 @@ def guardar_prompt(
 
         return {
             "status": "success",
-            "message": "Metadata guardada y archivo subido a R2",
+            "message": "Metadata guardada exitosamente",
             "data": nuevo_prompt,
         }
     except Exception as e:
@@ -104,57 +116,13 @@ def eliminar_prompt(
             detail="Prompt no encontrado o no tienes permiso para borrarlo",
         )
 
-    # NOTA: Opcionalmente, aquí podríamos llamar a s3_client.delete_object(...) para borrar también de R2
+    # 🟢 SANEAMIENTO R2: Destruimos la imagen huérfana de Cloudflare
+    if prompt.image_url:
+        eliminar_de_r2(prompt.image_url)
 
     session.delete(prompt)
     session.commit()
-    return {"status": "success", "message": "Prompt eliminado del búnker"}
-
-
-@router.post("/upload")
-async def upload_and_save_prompt(
-    file: UploadFile = File(...),
-    prompt_data: PromptCreate = Depends(prompt_form_dependency),
-    current_user: User = Depends(get_current_user),
-    session: Session = Depends(get_session),
-):
-    """
-    Recibe la imagen y sus metadatos. Sube la imagen a R2 y guarda la info en PostgreSQL.
-    """
-    try:
-        if not file.content_type.startswith("image/"):
-            raise HTTPException(
-                status_code=400, detail="El archivo debe ser una imagen."
-            )
-
-        file_bytes = await file.read()
-
-        ext = file.filename.split(".")[-1] if "." in file.filename else "jpg"
-        unique_filename = f"{current_user.username}/{uuid.uuid4().hex}.{ext}"
-
-        secure_url = subir_imagen_a_r2(file_bytes, unique_filename, file.content_type)
-
-        new_prompt = ImagePrompt(
-            user_id=current_user.id,
-            image_url=secure_url,
-            **prompt_data.model_dump(exclude={"image_url", "extra_data"}),
-        )
-
-        session.add(new_prompt)
-        session.commit()
-        session.refresh(new_prompt)
-
-        return {
-            "status": "success",
-            "message": "Imagen subida a la nube y prompt guardado con éxito.",
-            "data": {"id": new_prompt.id, "image_url": secure_url},
-        }
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error en upload_and_save_prompt: {e}")
-        session.rollback()
-        raise HTTPException(
-            status_code=500, detail="Error interno al procesar la imagen."
-        )
+    return {
+        "status": "success",
+        "message": "Prompt y archivo eliminados correctamente del búnker",
+    }
