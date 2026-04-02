@@ -41,20 +41,21 @@ The content is organized as follows:
 
 <directory_structure>
 app/
-  admin/
-    page.tsx
-  join/
-    page.tsx
-  login/
-    page.tsx
-  reprompt/
-    page.tsx
-  studio/
+  [lang]/
+    admin/
+      page.tsx
+    join/
+      page.tsx
+    login/
+      page.tsx
+    reprompt/
+      page.tsx
+    studio/
+      page.tsx
+    layout.tsx
     page.tsx
   favicon.ico
   globals.css
-  layout.tsx
-  page.tsx
 components/
   ui/
     button.tsx
@@ -241,7 +242,7 @@ tsconfig.json
 <files>
 This section contains the contents of the repository's files.
 
-<file path="app/admin/page.tsx">
+<file path="app/[lang]/admin/page.tsx">
 // frontend/app/admin/page.tsx
 "use client";
 
@@ -329,7 +330,7 @@ export default function AdminDashboard() {
 }
 </file>
 
-<file path="app/join/page.tsx">
+<file path="app/[lang]/join/page.tsx">
 "use client";
 
 import Link from "next/link";
@@ -350,7 +351,7 @@ export default function JoinPage() {
 }
 </file>
 
-<file path="app/login/page.tsx">
+<file path="app/[lang]/login/page.tsx">
 "use client";
 
 import Link from "next/link";
@@ -395,7 +396,7 @@ export default function LoginPage() {
 }
 </file>
 
-<file path="app/reprompt/page.tsx">
+<file path="app/[lang]/reprompt/page.tsx">
 "use client";
 
 import { usePromptExtractor } from "@/src/features/extractor/hooks/usePromptExtractor";
@@ -451,7 +452,7 @@ export default function RepromptPage() {
 }
 </file>
 
-<file path="app/studio/page.tsx">
+<file path="app/[lang]/studio/page.tsx">
 "use client";
 
 import { useStudio } from "@/src/features/studio/hooks/useStudio";
@@ -527,6 +528,127 @@ export default function StudioPage() {
               <PromptCard key={prompt.id} item={prompt} onDelete={deletePrompt} />
             ))}
           </div>
+        )}
+      </div>
+    </main>
+  );
+}
+</file>
+
+<file path="app/[lang]/layout.tsx">
+import type { Metadata } from "next";
+import { Prompt, JetBrains_Mono } from "next/font/google";
+import "../globals.css";
+import { AuthProvider } from "@/src/features/auth/AuthProvider";
+import { Navbar } from "@/src/system/organisms/Layout/Navbar/Navbar";
+import { AppToaster } from "@/src/system/organisms/Layout/AppToaster";
+import { GlobalProgress } from "@/src/system/organisms/Layout/GlobalProgress";
+import { cn } from "@/lib/utils";
+
+const prompt = Prompt({
+  weight: ["400", "700", "900"],
+  subsets: ["latin"],
+  variable: "--font-prompt",
+});
+
+const jetbrainsMono = JetBrains_Mono({ subsets: ["latin"], variable: "--font-mono" });
+
+export const metadata: Metadata = {
+  title: "reprompt",
+  description: "Wallet para guardar tus imágenes y prompts",
+};
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <html lang="es" className={cn(prompt.variable, "font-mono", jetbrainsMono.variable)}>
+      <body className="antialiased selection:bg-(--accent-color) selection:text-white">
+        <AuthProvider>
+          <GlobalProgress />
+          <Navbar />
+          {children}
+          <AppToaster />
+        </AuthProvider>
+      </body>
+    </html>
+  );
+}
+</file>
+
+<file path="app/[lang]/page.tsx">
+"use client";
+
+import { useEffect } from "react";
+import dynamic from "next/dynamic";
+import { useSearchStore } from "@/src/store/searchStore";
+import { useSearch } from "@/src/features/search/hooks/useSearch";
+import { useHomeInteraction } from "@/src/features/home/hooks/useHomeInteraction";
+
+// 🧱 Componentes Síncronos (Vitales para el primer renderizado y SEO)
+import { HeroSearch } from "@/src/system/organisms/Search/HeroSearch";
+import { TrendingSection } from "@/src/system/organisms/Search/TrendingSection/TrendingSection";
+import { SearchResults } from "@/src/system/organisms/Search/SearchResults/SearchResults";
+import { FeedState } from "@/src/system/molecules/Feedback/FeedState";
+
+const ImageViewerModal = dynamic(
+  () =>
+    import("@/src/system/organisms/Viewer/ImageViewerModal/ImageViewerModal").then(
+      (mod) => mod.ImageViewerModal,
+    ),
+  { ssr: false },
+);
+
+export default function Home() {
+  const { query, results, isLoading, isLoadingMore, hasMore, error, loadMore } = useSearch();
+  const { trending, fetchTrending } = useSearchStore();
+
+  const interactions = useHomeInteraction();
+
+  useEffect(() => {
+    fetchTrending();
+  }, [fetchTrending]);
+
+  if (process.env.NODE_ENV === "development") {
+    console.log("🚨 TELEMETRÍA [HOME]:", { isLoading, count: results?.length, hasMore, query });
+  }
+
+  return (
+    <main className="min-h-screen bg-background text-foreground font-sans">
+      <HeroSearch />
+
+      {error && <FeedState type="error" message={error} />}
+
+      <div className="max-w-90rem mx-auto px-4 pb-12">
+        {!query ? (
+          <TrendingSection
+            trending={trending}
+            onOpenVisor={interactions.handleOpenVisor}
+            onDownloadTotal={interactions.handleDownloadTotal}
+          />
+        ) : isLoading && results.length === 0 ? (
+          <FeedState type="loading" />
+        ) : !isLoading && results.length === 0 ? (
+          <FeedState type="empty" highlight={query} />
+        ) : (
+          <SearchResults
+            results={results}
+            onOpenVisor={interactions.handleOpenVisor}
+            onDownloadTotal={interactions.handleDownloadTotal}
+            hasMore={hasMore}
+            isLoadingMore={isLoadingMore}
+            onLoadMore={loadMore}
+          />
+        )}
+
+        {interactions.viewerSync.isViewerOpen && (
+          <ImageViewerModal
+            title={interactions.activeTitle}
+            pages={interactions.viewerSync.viewerPages}
+            isLoading={interactions.viewerSync.isViewerLoading}
+            isLoadingMore={interactions.viewerSync.isLoadingMore}
+            hasMorePages={interactions.viewerSync.hasMorePages}
+            onLoadMore={interactions.viewerSync.loadNextPage}
+            onClose={interactions.viewerSync.closeViewer}
+          />
         )}
       </div>
     </main>
@@ -742,127 +864,6 @@ body {
   html {
     @apply font-mono;
   }
-}
-</file>
-
-<file path="app/layout.tsx">
-import type { Metadata } from "next";
-import { Prompt, JetBrains_Mono } from "next/font/google";
-import "./globals.css";
-import { AuthProvider } from "@/src/features/auth/AuthProvider";
-import { Navbar } from "@/src/system/organisms/Layout/Navbar/Navbar";
-import { AppToaster } from "@/src/system/organisms/Layout/AppToaster";
-import { GlobalProgress } from "@/src/system/organisms/Layout/GlobalProgress";
-import { cn } from "@/lib/utils";
-
-const prompt = Prompt({
-  weight: ["400", "700", "900"],
-  subsets: ["latin"],
-  variable: "--font-prompt",
-});
-
-const jetbrainsMono = JetBrains_Mono({ subsets: ["latin"], variable: "--font-mono" });
-
-export const metadata: Metadata = {
-  title: "reprompt",
-  description: "Wallet para guardar tus imágenes y prompts",
-};
-
-export default function RootLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <html lang="es" className={cn(prompt.variable, "font-mono", jetbrainsMono.variable)}>
-      <body className="antialiased selection:bg-(--accent-color) selection:text-white">
-        <AuthProvider>
-          <GlobalProgress />
-          <Navbar />
-          {children}
-          <AppToaster />
-        </AuthProvider>
-      </body>
-    </html>
-  );
-}
-</file>
-
-<file path="app/page.tsx">
-"use client";
-
-import { useEffect } from "react";
-import dynamic from "next/dynamic";
-import { useSearchStore } from "@/src/store/searchStore";
-import { useSearch } from "@/src/features/search/hooks/useSearch";
-import { useHomeInteraction } from "@/src/features/home/hooks/useHomeInteraction";
-
-// 🧱 Componentes Síncronos (Vitales para el primer renderizado y SEO)
-import { HeroSearch } from "@/src/system/organisms/Search/HeroSearch";
-import { TrendingSection } from "@/src/system/organisms/Search/TrendingSection/TrendingSection";
-import { SearchResults } from "@/src/system/organisms/Search/SearchResults/SearchResults";
-import { FeedState } from "@/src/system/molecules/Feedback/FeedState";
-
-const ImageViewerModal = dynamic(
-  () =>
-    import("@/src/system/organisms/Viewer/ImageViewerModal/ImageViewerModal").then(
-      (mod) => mod.ImageViewerModal,
-    ),
-  { ssr: false },
-);
-
-export default function Home() {
-  const { query, results, isLoading, isLoadingMore, hasMore, error, loadMore } = useSearch();
-  const { trending, fetchTrending } = useSearchStore();
-
-  const interactions = useHomeInteraction();
-
-  useEffect(() => {
-    fetchTrending();
-  }, [fetchTrending]);
-
-  if (process.env.NODE_ENV === "development") {
-    console.log("🚨 TELEMETRÍA [HOME]:", { isLoading, count: results?.length, hasMore, query });
-  }
-
-  return (
-    <main className="min-h-screen bg-background text-foreground font-sans">
-      <HeroSearch />
-
-      {error && <FeedState type="error" message={error} />}
-
-      <div className="max-w-90rem mx-auto px-4 pb-12">
-        {!query ? (
-          <TrendingSection
-            trending={trending}
-            onOpenVisor={interactions.handleOpenVisor}
-            onDownloadTotal={interactions.handleDownloadTotal}
-          />
-        ) : isLoading && results.length === 0 ? (
-          <FeedState type="loading" />
-        ) : !isLoading && results.length === 0 ? (
-          <FeedState type="empty" highlight={query} />
-        ) : (
-          <SearchResults
-            results={results}
-            onOpenVisor={interactions.handleOpenVisor}
-            onDownloadTotal={interactions.handleDownloadTotal}
-            hasMore={hasMore}
-            isLoadingMore={isLoadingMore}
-            onLoadMore={loadMore}
-          />
-        )}
-
-        {interactions.viewerSync.isViewerOpen && (
-          <ImageViewerModal
-            title={interactions.activeTitle}
-            pages={interactions.viewerSync.viewerPages}
-            isLoading={interactions.viewerSync.isViewerLoading}
-            isLoadingMore={interactions.viewerSync.isLoadingMore}
-            hasMorePages={interactions.viewerSync.hasMorePages}
-            onLoadMore={interactions.viewerSync.loadNextPage}
-            onClose={interactions.viewerSync.closeViewer}
-          />
-        )}
-      </div>
-    </main>
-  );
 }
 </file>
 
@@ -2935,7 +2936,11 @@ export const useAuthStore = create<AuthState>((set) => ({
     } finally {
       set({ user: null });
       if (typeof window !== "undefined") {
-        window.location.href = "/login";
+        const currentPath = window.location.pathname;
+        const localeMatch = currentPath.match(/^\/([a-z]{2})(?:\/|$)/);
+        const localePrefix = localeMatch ? `/${localeMatch[1]}` : "";
+
+        window.location.href = `${localePrefix}/login`;
       }
     }
   },
@@ -6570,40 +6575,37 @@ export class NetworkError extends AppError {
 </file>
 
 <file path="src/utils/errors/ErrorHandler.ts">
-import { AppError, AuthError, ExtractionError, NetworkError } from "./AppErrors";
+import { AuthError, NetworkError } from "./AppErrors";
 
-export const handleError = (error: unknown, context?: string): string => {
-  if (error instanceof AuthError) {
-    const isLoginRoute = typeof window !== "undefined" && window.location.pathname === "/login";
-    if (!isLoginRoute) {
-      console.warn("🔐 Acceso denegado. Redirigiendo al login...");
-      if (typeof window !== "undefined") window.location.href = "/login";
+export const handleError = (err: unknown, context: string): string => {
+  console.error(`[${context}] Error capturado:`, err);
+
+  if (err instanceof AuthError) {
+    console.warn("🔐 Acceso denegado o sesión caducada.");
+
+    if (typeof window !== "undefined") {
+      const currentPath = window.location.pathname;
+
+      if (!currentPath.includes("/login") && !currentPath.includes("/join")) {
+        console.warn("Redirigiendo al login...");
+
+        const localeMatch = currentPath.match(/^\/([a-z]{2})\//);
+        const localePrefix = localeMatch ? `/${localeMatch[1]}` : "";
+        window.location.href = `${localePrefix}/login`;
+      }
     }
-    return error.message;
+    return "Sesión expirada. Por favor, inicia sesión de nuevo.";
   }
 
-  if (error instanceof ExtractionError) {
-    console.warn(`🧩 [Extractor] ${error.code}: ${error.message}`);
-    return error.message;
+  if (err instanceof NetworkError) {
+    return `Error de conexión (${err.statusCode}): ${err.message}`;
   }
 
-  if (error instanceof NetworkError) {
-    console.error(`📡 [Red] HTTP ${error.statusCode || "Unknown"}: ${error.message}`);
-    return error.message; // 🟢 Devolvemos el mensaje real que manda FastAPI
+  if (err instanceof Error) {
+    return err.message;
   }
 
-  if (error instanceof AppError) {
-    console.warn(`🚧 [${context || "App"}] ${error.code}: ${error.message}`);
-    return error.message;
-  }
-
-  if (error instanceof Error) {
-    console.error(`💥 [Error Crítico] ${context || "Sistema"}:`, error);
-    return error.message;
-  }
-
-  console.error("👽 [Error Alienígena]:", error);
-  return "Ha ocurrido un error inesperado en el sistema.";
+  return "Error inesperado en el sistema.";
 };
 </file>
 
