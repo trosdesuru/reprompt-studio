@@ -3,5 +3,7 @@
         "connectionId": "trosdesuru",
         "projectKey": "tu_usuario_bot_descarga"
     },
-    "standard.enable": false
+    "standard.enable": false,
+    "python-envs.defaultEnvManager": "ms-python.python:system",
+    "python.defaultInterpreterPath": "${workspaceFolder}/backend/venv/bin/python"
 }

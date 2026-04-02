@@ -1,11 +1,16 @@
 # ==========================================
 # 🐳 DOCKER: ORQUESTACIÓN Y RESETEOS
 # ==========================================
-.PHONY: up build stop down restart reset nuke
+.PHONY: up build stop down restart reset nuke add-backend
 
 up:
 	@echo "🚀 Levantando contenedores (Build normal)..."
 	docker-compose up
+
+add-backend:
+	@if [ -z "$(pkg)" ]; then echo "❌ Error: Falta el paquete. Uso: make add-backend pkg=nombre_paquete"; exit 1; fi
+	docker compose exec backend pip install $(pkg)
+	docker compose exec backend sh -c "pip freeze > requirements.txt"
 
 build:
 	@echo "🔨 Construyendo contenedores sin cache..."
@@ -36,33 +41,6 @@ nuke:
 	@echo "🏗️ Reconstruyendo desde cero absoluto..."
 	docker-compose build --no-cache
 	docker-compose up -d
-
-# ==========================================
-# GESTIÓN DE DEPENDENCIAS EN DOCKER
-# ==========================================
-
-# Añadir un paquete al Backend y actualizar requirements.txt
-# Uso: make add-backend pkg=boto3
-add-backend:
-	docker compose exec backend pip install $(pkg)
-	docker compose exec backend sh -c "pip freeze > requirements.txt"
-
-# Añadir un paquete al Frontend y actualizar package.json
-# Uso: make add-frontend pkg=axios
-add-frontend:
-	docker compose exec frontend npm install $(pkg)
-
-# Instalar las dependencias existentes del Backend
-install-backend:
-	docker compose exec backend pip install -r requirements.txt
-
-# Instalar las dependencias existentes del Frontend
-install-frontend:
-	docker compose exec frontend npm install
-
-# Instalar todo (Backend + Frontend)
-# Uso: make install-all
-install-all: install-backend install-frontend
 
 # ==========================================
 # 📊 LOGS Y MONITOREO

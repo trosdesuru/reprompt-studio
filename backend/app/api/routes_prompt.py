@@ -14,15 +14,7 @@ from app.services.storage import s3_client
 from app.utils.storage import eliminar_de_r2
 from app.services.storage import move_to_permanent, delete_file
 from app.services.security import validate_magic_bytes
-import boto3
-
-s3_client = boto3.client(
-    "s3",
-    endpoint_url=settings.R2_ENDPOINT_URL,
-    aws_access_key_id=settings.R2_ACCESS_KEY,
-    aws_secret_access_key=settings.R2_SECRET_KEY,
-    region_name="auto",
-)
+from app.services.storage import s3_client
 
 router = APIRouter()
 
