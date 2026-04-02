@@ -80,14 +80,14 @@ export function ExtractorInspector({ data, previewUrl, onReset }: Props) {
           : "[VACÍO]",
       });
 
-      await api.guardarPrompt(payload);
+      await api.savePrompt(payload);
       console.log("✅ [DEBUG FRONTEND] 6. El backend respondió 200 OK.");
 
       setSaveStatus("success");
       setTimeout(() => setSaveStatus("idle"), 3000);
     } catch (err: unknown) {
       console.error("💥 [DEBUG FRONTEND] Error en la petición:", err);
-      handleError(err, "GuardarPrompt");
+      handleError(err, "savePrompt");
       setSaveStatus("error");
       setTimeout(() => setSaveStatus("idle"), 3000);
     } finally {

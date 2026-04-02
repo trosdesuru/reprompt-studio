@@ -1527,13 +1527,13 @@ export const fetchSeguro = async <T = any>(
 import { API_URL, fetchSeguro } from "./client";
 
 export const downloadApi = {
-  descargarTotal: (url: string, title: string) =>
+  downloadAll: (url: string, title: string) =>
     fetchSeguro(`${API_URL}/descargar`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ url, title }),
     }),
-  descargarImagen: (url_img: string, title: string, index: number) =>
+  downloadImage: (url_img: string, title: string, index: number) =>
     fetchSeguro(`${API_URL}/descargar_imagen`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -1546,15 +1546,15 @@ export const downloadApi = {
 import { API_URL, fetchSeguro } from "./client";
 
 export const promptApi = {
-  guardarPrompt: (data: any) =>
+  savePrompt: (data: any) =>
     fetchSeguro(`${API_URL}/prompts/save`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
     }),
 
-  obtenerMisPrompts: () => fetchSeguro(`${API_URL}/prompts/`),
-  eliminarPrompt: (id: number) => fetchSeguro(`${API_URL}/prompts/${id}`, { method: "DELETE" }),
+  getMyPrompt: () => fetchSeguro(`${API_URL}/prompts/`),
+  deletePrompt: (id: number) => fetchSeguro(`${API_URL}/prompts/${id}`, { method: "DELETE" }),
 };
 </file>
 
@@ -1578,9 +1578,9 @@ export const searchApi = {
   resolverImagen: (url: string) =>
     fetchSeguro(`${API_URL}/resolver_imagen?url=${encodeURIComponent(url)}`),
 
-  obtenerTendencias: (limit: number = 5) => fetchSeguro(`${API_URL}/tendencias?limit=${limit}`),
+  getTrends: (limit: number = 5) => fetchSeguro(`${API_URL}/tendencias?limit=${limit}`),
 
-  registrarInteraccion: (
+  registerInteraction: (
     item: { url: string; title: string; thumb: string },
     type: "view" | "download",
   ) =>
@@ -4804,7 +4804,7 @@ export function useHomeInteraction() {
     viewerSync.openViewer(item.url);
     
     // Disparamos la métrica en background sin esperar (Fire and Forget)
-    api.registrarInteraccion(item, "view").catch((err) => 
+    api.registerInteraction(item, "view").catch((err) => 
       console.error("Fallo al registrar vista:", err)
     );
   }, [viewerSync]);
@@ -4812,8 +4812,8 @@ export function useHomeInteraction() {
   const handleDownloadTotal = useCallback(async (item: GalleryItem) => {
     try {
       notify("Descarga", `⬇️ Preparando ${item.title}...`, "info");
-      await api.descargarTotal(item.url, item.title);
-      api.registrarInteraccion(item, "download").catch(console.error);
+      await api.downloadAll(item.url, item.title);
+      api.registerInteraction(item, "download").catch(console.error);
       notify("Éxito", `✅ Descarga encolada: ${item.title}`, "success");
     } catch (err) {
       notify("Error", "❌ Falla crítica al encolar la descarga.", "error");
@@ -4856,7 +4856,7 @@ export function useStudio() {
     setIsLoading(true);
     setError(null);
     try {
-      const data = await api.obtenerMisPrompts();
+      const data = await api.getMyPrompt();
       setPrompts(data);
     } catch (err: unknown) {
       const msg = handleError(err, "useStudio");
@@ -4868,7 +4868,7 @@ export function useStudio() {
 
   const deletePrompt = async (id: number) => {
     try {
-      await api.eliminarPrompt(id);
+      await api.deletePrompt(id);
       setPrompts((prev) => prev.filter((p) => p.id !== id));
     } catch (err: unknown) {
       handleError(err, "BorrarPrompt");
@@ -6796,14 +6796,14 @@ export function ExtractorInspector({ data, previewUrl, onReset }: Props) {
           : "[VACÍO]",
       });
 
-      await api.guardarPrompt(payload);
+      await api.savePrompt(payload);
       console.log("✅ [DEBUG FRONTEND] 6. El backend respondió 200 OK.");
 
       setSaveStatus("success");
       setTimeout(() => setSaveStatus("idle"), 3000);
     } catch (err: unknown) {
       console.error("💥 [DEBUG FRONTEND] Error en la petición:", err);
-      handleError(err, "GuardarPrompt");
+      handleError(err, "savePrompt");
       setSaveStatus("error");
       setTimeout(() => setSaveStatus("idle"), 3000);
     } finally {
@@ -10265,7 +10265,7 @@ export function BatchInspector({
         },
       };
 
-      await api.guardarPrompt(payload);
+      await api.savePrompt(payload);
       onUpdateStatus(item.id, "success");
       notify("Búnker", "Prompt guardado correctamente", "success");
       setTimeout(() => {
@@ -11785,7 +11785,7 @@ export const useSearchStore = create<SearchState>((set, get) => ({
   fetchTrending: async () => {
     useProgressStore.getState().start();
     try {
-      const data = await api.obtenerTendencias(5);
+      const data = await api.getTrends(5);
       if (data.status === "success") set({ trending: data.data });
       useProgressStore.getState().done();
     } catch (err) {
@@ -14893,7 +14893,7 @@ export function useHomeInteraction() {
     viewerSync.openViewer(item.url);
     
     // Disparamos la métrica en background sin esperar (Fire and Forget)
-    api.registrarInteraccion(item, "view").catch((err) => 
+    api.registerInteraction(item, "view").catch((err) => 
       console.error("Fallo al registrar vista:", err)
     );
   }, [viewerSync]);
@@ -14901,8 +14901,8 @@ export function useHomeInteraction() {
   const handleDownloadTotal = useCallback(async (item: GalleryItem) => {
     try {
       notify("Descarga", `⬇️ Preparando ${item.title}...`, "info");
-      await api.descargarTotal(item.url, item.title);
-      api.registrarInteraccion(item, "download").catch(console.error);
+      await api.downloadAll(item.url, item.title);
+      api.registerInteraction(item, "download").catch(console.error);
       notify("Éxito", `✅ Descarga encolada: ${item.title}`, "success");
     } catch (err) {
       notify("Error", "❌ Falla crítica al encolar la descarga.", "error");
@@ -15121,7 +15121,7 @@ export function useStudio() {
     setIsLoading(true);
     setError(null);
     try {
-      const data = await api.obtenerMisPrompts();
+      const data = await api.getMyPrompt();
       setPrompts(data);
     } catch (err: unknown) {
       const msg = handleError(err, "useStudio");
@@ -15133,7 +15133,7 @@ export function useStudio() {
 
   const deletePrompt = async (id: number) => {
     try {
-      await api.eliminarPrompt(id);
+      await api.deletePrompt(id);
       setPrompts((prev) => prev.filter((p) => p.id !== id));
     } catch (err: unknown) {
       handleError(err, "BorrarPrompt");
@@ -15267,13 +15267,13 @@ export const fetchSeguro = async <T = any>(
 import { API_URL, fetchSeguro } from "./client";
 
 export const downloadApi = {
-  descargarTotal: (url: string, title: string) =>
+  downloadAll: (url: string, title: string) =>
     fetchSeguro(`${API_URL}/descargar`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ url, title }),
     }),
-  descargarImagen: (url_img: string, title: string, index: number) =>
+  downloadImage: (url_img: string, title: string, index: number) =>
     fetchSeguro(`${API_URL}/descargar_imagen`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -15286,15 +15286,15 @@ export const downloadApi = {
 import { API_URL, fetchSeguro } from "./client";
 
 export const promptApi = {
-  guardarPrompt: (data: any) =>
+  savePrompt: (data: any) =>
     fetchSeguro(`${API_URL}/prompts/save`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
     }),
 
-  obtenerMisPrompts: () => fetchSeguro(`${API_URL}/prompts/`),
-  eliminarPrompt: (id: number) => fetchSeguro(`${API_URL}/prompts/${id}`, { method: "DELETE" }),
+  getMyPrompt: () => fetchSeguro(`${API_URL}/prompts/`),
+  deletePrompt: (id: number) => fetchSeguro(`${API_URL}/prompts/${id}`, { method: "DELETE" }),
 };
 </file>
 
@@ -15318,9 +15318,9 @@ export const searchApi = {
   resolverImagen: (url: string) =>
     fetchSeguro(`${API_URL}/resolver_imagen?url=${encodeURIComponent(url)}`),
 
-  obtenerTendencias: (limit: number = 5) => fetchSeguro(`${API_URL}/tendencias?limit=${limit}`),
+  getTrends: (limit: number = 5) => fetchSeguro(`${API_URL}/tendencias?limit=${limit}`),
 
-  registrarInteraccion: (
+  registerInteraction: (
     item: { url: string; title: string; thumb: string },
     type: "view" | "download",
   ) =>
@@ -15678,7 +15678,7 @@ export const useSearchStore = create<SearchState>((set, get) => ({
   fetchTrending: async () => {
     useProgressStore.getState().start();
     try {
-      const data = await api.obtenerTendencias(5);
+      const data = await api.getTrends(5);
       if (data.status === "success") set({ trending: data.data });
       useProgressStore.getState().done();
     } catch (err) {
@@ -17037,7 +17037,7 @@ export function BatchInspector({
         },
       };
 
-      await api.guardarPrompt(payload);
+      await api.savePrompt(payload);
       onUpdateStatus(item.id, "success");
       notify("Búnker", "Prompt guardado correctamente", "success");
       setTimeout(() => {
@@ -17300,14 +17300,14 @@ export function ExtractorInspector({ data, previewUrl, onReset }: Props) {
           : "[VACÍO]",
       });
 
-      await api.guardarPrompt(payload);
+      await api.savePrompt(payload);
       console.log("✅ [DEBUG FRONTEND] 6. El backend respondió 200 OK.");
 
       setSaveStatus("success");
       setTimeout(() => setSaveStatus("idle"), 3000);
     } catch (err: unknown) {
       console.error("💥 [DEBUG FRONTEND] Error en la petición:", err);
-      handleError(err, "GuardarPrompt");
+      handleError(err, "savePrompt");
       setSaveStatus("error");
       setTimeout(() => setSaveStatus("idle"), 3000);
     } finally {

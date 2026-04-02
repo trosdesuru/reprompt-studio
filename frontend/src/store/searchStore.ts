@@ -124,7 +124,7 @@ export const useSearchStore = create<SearchState>((set, get) => ({
   fetchTrending: async () => {
     useProgressStore.getState().start();
     try {
-      const data = await api.obtenerTendencias(5);
+      const data = await api.getTrends(5);
       if (data.status === "success") set({ trending: data.data });
       useProgressStore.getState().done();
     } catch (err) {

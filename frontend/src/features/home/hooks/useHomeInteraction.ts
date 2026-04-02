@@ -17,7 +17,7 @@ export function useHomeInteraction() {
     viewerSync.openViewer(item.url);
     
     // Disparamos la métrica en background sin esperar (Fire and Forget)
-    api.registrarInteraccion(item, "view").catch((err) => 
+    api.registerInteraction(item, "view").catch((err) => 
       console.error("Fallo al registrar vista:", err)
     );
   }, [viewerSync]);
@@ -25,8 +25,8 @@ export function useHomeInteraction() {
   const handleDownloadTotal = useCallback(async (item: GalleryItem) => {
     try {
       notify("Descarga", `⬇️ Preparando ${item.title}...`, "info");
-      await api.descargarTotal(item.url, item.title);
-      api.registrarInteraccion(item, "download").catch(console.error);
+      await api.downloadAll(item.url, item.title);
+      api.registerInteraction(item, "download").catch(console.error);
       notify("Éxito", `✅ Descarga encolada: ${item.title}`, "success");
     } catch (err) {
       notify("Error", "❌ Falla crítica al encolar la descarga.", "error");

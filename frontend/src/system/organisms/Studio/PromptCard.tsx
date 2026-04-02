@@ -29,7 +29,7 @@ export function PromptCard({ item, onDelete }: PromptCardProps) {
       onMouseLeave={() => setIsHovered(false)}
     >
       {/* 🖼️ ÁREA DE IMAGEN (1:1 o 4:5 aspect ratio) */}
-      <div className="relative aspect-square sm:aspect-[4/5] bg-muted/10 overflow-hidden">
+      <div className="relative aspect-square sm:aspect-4/5 bg-muted/10 overflow-hidden">
         {item.image_url ? (
           <img
             src={item.image_url}

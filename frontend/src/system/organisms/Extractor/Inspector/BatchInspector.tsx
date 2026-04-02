@@ -72,7 +72,7 @@ export function BatchInspector({
         },
       };
 
-      await api.guardarPrompt(payload);
+      await api.savePrompt(payload);
       onUpdateStatus(item.id, "success");
       notify("Búnker", "Prompt guardado correctamente", "success");
       setTimeout(() => {

@@ -1,13 +1,13 @@
 import { API_URL, fetchSeguro } from "./client";
 
 export const promptApi = {
-  guardarPrompt: (data: any) =>
+  savePrompt: (data: any) =>
     fetchSeguro(`${API_URL}/prompts/save`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
     }),
 
-  obtenerMisPrompts: () => fetchSeguro(`${API_URL}/prompts/`),
-  eliminarPrompt: (id: number) => fetchSeguro(`${API_URL}/prompts/${id}`, { method: "DELETE" }),
+  getMyPrompt: () => fetchSeguro(`${API_URL}/prompts/`),
+  deletePrompt: (id: number) => fetchSeguro(`${API_URL}/prompts/${id}`, { method: "DELETE" }),
 };

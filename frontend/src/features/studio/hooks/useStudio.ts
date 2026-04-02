@@ -25,7 +25,7 @@ export function useStudio() {
     setIsLoading(true);
     setError(null);
     try {
-      const data = await api.obtenerMisPrompts();
+      const data = await api.getMyPrompt();
       setPrompts(data);
     } catch (err: unknown) {
       const msg = handleError(err, "useStudio");
@@ -37,7 +37,7 @@ export function useStudio() {
 
   const deletePrompt = async (id: number) => {
     try {
-      await api.eliminarPrompt(id);
+      await api.deletePrompt(id);
       setPrompts((prev) => prev.filter((p) => p.id !== id));
     } catch (err: unknown) {
       handleError(err, "BorrarPrompt");

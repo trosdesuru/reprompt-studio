@@ -17,9 +17,9 @@ export const searchApi = {
   resolverImagen: (url: string) =>
     fetchSeguro(`${API_URL}/resolver_imagen?url=${encodeURIComponent(url)}`),
 
-  obtenerTendencias: (limit: number = 5) => fetchSeguro(`${API_URL}/tendencias?limit=${limit}`),
+  getTrends: (limit: number = 5) => fetchSeguro(`${API_URL}/tendencias?limit=${limit}`),
 
-  registrarInteraccion: (
+  registerInteraction: (
     item: { url: string; title: string; thumb: string },
     type: "view" | "download",
   ) =>
