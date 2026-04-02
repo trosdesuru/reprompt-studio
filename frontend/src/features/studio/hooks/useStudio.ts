@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { api } from "@/src/services/api";
 import { handleError } from "@/src/utils/errors/ErrorHandler";
+import { toast } from "react-hot-toast/headless";
 
 export interface SavedPrompt {
   id: number;
@@ -14,10 +15,21 @@ export interface SavedPrompt {
   image_url?: string;
   extra_data: { loras?: any[]; triggerWords?: string[] };
   resolution?: string;
+  collection_id: number | null;
+}
+
+export interface Collection {
+  id: number;
+  name: string;
+  slug: string;
+  description: string | null;
+  is_private: boolean;
+  created_at: string;
 }
 
 export function useStudio() {
   const [prompts, setPrompts] = useState<SavedPrompt[]>([]);
+  const [collections, setCollections] = useState<Collection[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -25,15 +37,33 @@ export function useStudio() {
     setIsLoading(true);
     setError(null);
     try {
-      const data = await api.getMyPrompt();
-      setPrompts(data);
+      const [promptsRes, collectionsRes] = await Promise.all([
+        api.getMyPrompt(),
+        api.getMyCollections(),
+      ]);
+      setPrompts(promptsRes);
+      setCollections(collectionsRes.collections || []);
+
     } catch (err: unknown) {
       const msg = handleError(err, "useStudio");
       setError(msg);
+      
     } finally {
       setIsLoading(false);
     }
   }, []);
+
+  const assignToCollection = async (promptId: number, collectionId: number | null) => {
+    try {
+      await api.assignPromptToCollection(promptId, collectionId);
+      setPrompts((prev) =>
+        prev.map((p) => (p.id === promptId ? { ...p, collection_id: collectionId } : p)),
+      );
+      toast.success("Imagen movida correctamente");
+    } catch (error) {
+      toast.error("Error al mover la imagen");
+    }
+  };
 
   const deletePrompt = async (id: number) => {
     try {
@@ -49,5 +79,13 @@ export function useStudio() {
     fetchPrompts();
   }, [fetchPrompts]);
 
-  return { prompts, isLoading, error, refetch: fetchPrompts, deletePrompt };
+  return {
+    prompts,
+    collections,
+    isLoading,
+    error,
+    refetch: fetchPrompts,
+    assignToCollection,
+    deletePrompt,
+  };
 }

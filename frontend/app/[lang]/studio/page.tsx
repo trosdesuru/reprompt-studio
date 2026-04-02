@@ -1,83 +1,127 @@
 "use client";
 
-import { use } from "react";
+import { use, useState } from "react";
 import { useStudio } from "@/src/features/studio/hooks/useStudio";
 import { PromptCard } from "@/src/system/organisms/Studio/PromptCard";
-import { IconWand, IconDatabase } from "@tabler/icons-react";
+import { CreateCollectionModal } from "@/src/system/organisms/Studio/CreateCollectionModal";
+import { IconWand, IconDatabase, IconPlus, IconLock } from "@tabler/icons-react";
+import { useAuthStore } from "@/src/store/authStore";
 import Link from "next/link";
 
 export default function StudioPage({ params }: { params: Promise<{ lang: string }> }) {
   const { lang } = use(params);
+  const user = useAuthStore((state: any) => state.user);
+  const { prompts, collections, isLoading, error, deletePrompt, assignToCollection, refetch } =
+    useStudio();
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const { prompts, isLoading, error, deletePrompt } = useStudio();
+  if (isLoading)
+    return (
+      <div className="min-h-screen flex items-center justify-center font-mono">
+        Cargando Búnker...
+      </div>
+    );
+  if (error)
+    return (
+      <div className="min-h-screen flex items-center justify-center text-red-500">{error}</div>
+    );
 
   return (
-    <main className="min-h-screen bg-background p-4 sm:p-8 animate-fade-in">
-      <div className="max-w-7xl mx-auto space-y-8">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-end border-b-4 border-(--border-color) pb-6 gap-4">
+    <main className="min-h-screen bg-background p-4 md:p-8">
+      <div className="max-w-7xl mx-auto space-y-12">
+        {/* Cabecera y Controles */}
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-border pb-8">
           <div>
-            <div className="flex items-center gap-2 mb-2">
-              <IconDatabase className="text-(--accent-color)" size={24} />
-              <span className="font-mono text-xs font-bold uppercase tracking-widest text-(--text-secondary)">
-                Base de Datos Local
-              </span>
-            </div>
-            <h1 className="text-4xl md:text-5xl font-black uppercase tracking-tighter leading-none">
-              MI <span className="text-(--accent-color)">ESTUDIO</span>
+            <h1 className="text-3xl font-black tracking-tighter flex items-center gap-3">
+              <IconDatabase className="text-(--accent-color)" size={32} /> Mi Búnker
             </h1>
+            <p className="text-muted-foreground mt-1">Gestiona tus prompts y galerías.</p>
           </div>
-
-          <Link
-            href="/reprompt"
-            className="flex items-center gap-2 bg-(--accent-color) text-white px-6 py-3 neo-border neo-shadow text-sm font-bold uppercase hover:-translate-y-1 transition-all active:translate-y-0"
-          >
-            <IconWand size={18} /> Extraer Nuevo
-          </Link>
+          <div className="flex gap-3">
+            <Link
+              href={`/${lang}/reprompt`}
+              className="bg-background border border-border hover:bg-muted/30 text-foreground px-4 py-2 rounded-md font-mono text-sm font-bold uppercase tracking-widest transition-colors flex items-center gap-2"
+            >
+              <IconWand size={18} /> Extraer Más
+            </Link>
+            <button
+              onClick={() => setIsModalOpen(true)}
+              className="bg-(--accent-color) text-white px-4 py-2 rounded-md font-mono text-sm font-bold uppercase tracking-widest hover:bg-opacity-90 transition-colors flex items-center gap-2"
+            >
+              <IconPlus size={18} /> Nueva Colección
+            </button>
+          </div>
         </div>
 
-        {isLoading && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {[1, 2, 3, 4, 5, 6].map((i) => (
-              <div
-                key={i}
-                className="h-64 bg-(--bg-secondary) neo-border animate-pulse opacity-50"
-              />
-            ))}
-          </div>
+        {/* 📁 Sección de Colecciones */}
+        {collections.length > 0 && (
+          <section className="space-y-4">
+            <h2 className="text-sm font-mono font-bold uppercase tracking-widest text-muted-foreground">
+              Tus Colecciones
+            </h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+              {collections.map((col) => (
+                <div
+                  key={col.id}
+                  className="p-4 bg-background border border-border rounded-xl hover:shadow-md transition-shadow relative"
+                >
+                  {col.is_private && (
+                    <IconLock
+                      size={14}
+                      className="absolute top-4 right-4 text-muted-foreground/50"
+                    />
+                  )}
+                  <h3 className="font-bold text-lg">{col.name}</h3>
+                  <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                    {col.description || "Sin descripción"}
+                  </p>
+                  <div className="mt-4 pt-4 border-t border-border/50 flex justify-between items-center text-xs font-mono">
+                    <span className="text-muted-foreground">
+                      {prompts.filter((p) => p.collection_id === col.id).length} items
+                    </span>
+                    <Link
+                      href={`/${lang}/${user?.username}/${col.slug}`}
+                      className="text-(--accent-color) hover:underline"
+                    >
+                      Ver Pública &rarr;
+                    </Link>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
         )}
 
-        {error && (
-          <div className="bg-red-50 border-2 border-red-500 p-6 neo-border text-red-700 font-mono text-sm">
-            <p className="font-black uppercase mb-2">🚨 Error de Sincronización</p>
-            {error}
-          </div>
-        )}
-
-        {!isLoading && !error && prompts.length === 0 && (
-          <div className="text-center p-20 bg-(--bg-secondary) border-4 border-dashed border-(--border-color)">
-            <p className="font-mono text-xl text-(--text-secondary) font-bold">
-              Tu búnker está vacío.
-            </p>
-            <p className="text-sm text-(--text-secondary) mt-2 mb-8">
-              Sube imágenes en Reprompt Studio para empezar a guardar conocimiento.
-            </p>
-            <Link
-              href="/reprompt"
-              className="text-(--accent-color) font-black underline underline-offset-8 decoration-4 hover:text-foreground transition-colors uppercase"
-            >
-              Ir al Extractor ahora →
-            </Link>
-          </div>
-        )}
-
-        {!isLoading && prompts.length > 0 && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 pb-20">
-            {prompts.map((prompt) => (
-              <PromptCard key={prompt.id} item={prompt} onDelete={deletePrompt} />
-            ))}
-          </div>
-        )}
+        {/* 🖼️ Grid Principal de Prompts */}
+        <section className="space-y-4">
+          <h2 className="text-sm font-mono font-bold uppercase tracking-widest text-muted-foreground">
+            Todos tus Prompts
+          </h2>
+          {prompts.length === 0 ? (
+            <div className="text-center py-20 bg-muted/10 border border-dashed border-border rounded-xl">
+              <p className="text-muted-foreground font-mono">Aún no hay prompts guardados.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+              {prompts.map((prompt) => (
+                <PromptCard
+                  key={prompt.id}
+                  item={prompt}
+                  collections={collections}
+                  onDelete={deletePrompt}
+                  onAssign={assignToCollection}
+                />
+              ))}
+            </div>
+          )}
+        </section>
       </div>
+
+      <CreateCollectionModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onSuccess={refetch}
+      />
     </main>
   );
 }

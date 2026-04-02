@@ -20,4 +20,35 @@ export const api = {
     if (!res.ok) throw new Error("Colección no encontrada");
     return res.json();
   },
+
+  createCollection: async (data: { name: string; description?: string; is_private: boolean }) => {
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+    const res = await fetch(`${API_URL}/api/collections`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error("Error creando colección");
+    return res.json();
+  },
+
+  getMyCollections: async () => {
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+    const res = await fetch(`${API_URL}/api/collections/`, { credentials: "include" });
+    if (!res.ok) throw new Error("Error obteniendo colecciones");
+    return res.json();
+  },
+
+  assignPromptToCollection: async (promptId: number, collectionId: number | null) => {
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+    const res = await fetch(`${API_URL}/api/collections/assign/${promptId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ collection_id: collectionId }),
+    });
+    if (!res.ok) throw new Error("Error asignando imagen");
+    return res.json();
+  },
 };

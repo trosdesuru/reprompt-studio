@@ -9,6 +9,7 @@ from app.api.routes_search import router as search_router
 from app.api.routes_auth import router as auth_router
 from app.api.routes_prompt import router as prompt_router
 from app.api.routes_public import router as public_router
+from app.api.routes_collections import router as collections_router
 
 logging.basicConfig(
     level=logging.INFO,
@@ -46,3 +47,4 @@ app.include_router(download_router, prefix="/api")
 app.include_router(auth_router, prefix="/api/auth", tags=["Autenticación"])
 app.include_router(prompt_router, prefix="/api/prompts", tags=["Reprompt Studio"])
 app.include_router(public_router, prefix="/api/public", tags=["Escaparate Público"])
+app.include_router(collections_router, prefix="/api/collections", tags=["Colecciones"])

@@ -1,15 +1,17 @@
 "use client";
 
 import { useState } from "react";
-import { IconCopy, IconTrash, IconCheck, IconPhoto } from "@tabler/icons-react";
-import { SavedPrompt } from "@/src/features/studio/hooks/useStudio";
+import { IconCopy, IconTrash, IconCheck, IconPhoto, IconFolderPlus } from "@tabler/icons-react";
+import { Collection, SavedPrompt } from "@/src/features/studio/hooks/useStudio";
 
 interface PromptCardProps {
   item: SavedPrompt;
+  collections?: Collection[];
   onDelete?: (id: number) => void;
+  onAssign?: (promptId: number, collectionId: number | null) => void;
 }
 
-export function PromptCard({ item, onDelete }: PromptCardProps) {
+export function PromptCard({ item, collections = [], onAssign, onDelete }: PromptCardProps) {
   const [copied, setCopied] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
 
@@ -28,7 +30,6 @@ export function PromptCard({ item, onDelete }: PromptCardProps) {
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      {/* 🖼️ ÁREA DE IMAGEN (1:1 o 4:5 aspect ratio) */}
       <div className="relative aspect-square sm:aspect-4/5 bg-muted/10 overflow-hidden">
         {item.image_url ? (
           <img
@@ -48,6 +49,31 @@ export function PromptCard({ item, onDelete }: PromptCardProps) {
         <div
           className={`absolute inset-0 bg-black/20 transition-opacity duration-300 ${isHovered ? "opacity-100" : "opacity-0"}`}
         />
+
+        {onAssign && collections.length > 0 && (
+          <div
+            className={`absolute top-3 left-3 transition-opacity duration-300 ${isHovered ? "opacity-100" : "opacity-0"}`}
+          >
+            <div className="relative flex items-center bg-background/90 backdrop-blur-sm border border-border/50 rounded-md overflow-hidden shadow-sm">
+              <div className="pl-2 text-muted-foreground">
+                <IconFolderPlus size={14} />
+              </div>
+              <select
+                className="bg-transparent text-[10px] font-bold uppercase tracking-widest text-foreground py-1.5 pl-1 pr-4 focus:outline-none cursor-pointer appearance-none"
+                value={item.collection_id || ""}
+                onChange={(e) => onAssign(item.id, e.target.value ? Number(e.target.value) : null)}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <option value="">Suelto</option>
+                {collections.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+        )}
 
         {/* 🏷️ Badge de Software */}
         {item.software && (
