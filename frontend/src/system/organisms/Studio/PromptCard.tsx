@@ -6,7 +6,7 @@ import { SavedPrompt } from "@/src/features/studio/hooks/useStudio";
 
 interface PromptCardProps {
   item: SavedPrompt;
-  onDelete: (id: number) => void;
+  onDelete?: (id: number) => void;
 }
 
 export function PromptCard({ item, onDelete }: PromptCardProps) {
@@ -60,23 +60,24 @@ export function PromptCard({ item, onDelete }: PromptCardProps) {
           </div>
         )}
 
-        {/* 🗑️ Botón de Eliminar */}
-        <div
-          className={`absolute top-3 right-3 transition-opacity duration-300 ${isHovered ? "opacity-100" : "opacity-0"}`}
-        >
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              if (window.confirm("¿Seguro que deseas eliminar este prompt del búnker?")) {
-                onDelete(item.id);
-              }
-            }}
-            className="bg-background/90 backdrop-blur-sm hover:bg-red-500/10 hover:text-red-500 text-foreground p-2 rounded-full border border-border/50 transition-colors shadow-sm"
-            title="Eliminar"
+        {onDelete && (
+          <div
+            className={`absolute top-3 right-3 transition-opacity duration-300 ${isHovered ? "opacity-100" : "opacity-0"}`}
           >
-            <IconTrash size={16} stroke={1.5} />
-          </button>
-        </div>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                if (window.confirm("¿Seguro que deseas eliminar este prompt del búnker?")) {
+                  onDelete(item.id);
+                }
+              }}
+              className="bg-background/90 backdrop-blur-sm hover:bg-red-500/10 hover:text-red-500 text-foreground p-2 rounded-full border border-border/50 transition-colors shadow-sm"
+              title="Eliminar"
+            >
+              <IconTrash size={16} stroke={1.5} />
+            </button>
+          </div>
+        )}
       </div>
 
       {/* 📝 ÁREA DE CONTENIDO */}
