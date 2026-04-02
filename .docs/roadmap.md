@@ -112,3 +112,7 @@
 
 - Eliminar los secretos antiguos del historial de Git puede corromper ramas si no se hace con cuidado.
 - Afinar el Rate Limiter: Si es muy estricto, bloquearás a usuarios legítimos; si es muy laxo, un bot agotará tu capa gratuita de base de datos en 30 minutos.
+
+
+739158113933-hl6ibonv8dfmqmro4rni1c0uijppo1e9.apps.googleusercontent.com
+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GOCSPX-plm9UelbuIKWNsEkf2ULHXVhp6nk
