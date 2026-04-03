@@ -2,7 +2,6 @@ import os
 from sqlmodel import create_engine, Session
 from dotenv import load_dotenv
 
-# Cargar variables del .env
 load_dotenv()
 
 DATABASE_URL = os.getenv("DATABASE_URL")
@@ -10,8 +9,14 @@ DATABASE_URL = os.getenv("DATABASE_URL")
 if not DATABASE_URL:
     raise ValueError("🚨 CRÍTICO: No se encontró DATABASE_URL en el archivo .env")
 
-# pool_pre_ping=True es vital para bases de datos Serverless en la nube
-engine = create_engine(DATABASE_URL, echo=False, pool_pre_ping=True)
+engine = create_engine(
+    DATABASE_URL,
+    echo=False,
+    pool_pre_ping=True,  # 🟢 MAGIA 1: Ping proactivo
+    pool_recycle=300,  # 🟢 MAGIA 2: Renueva conexiones cada 5 min
+    pool_size=5,
+    max_overflow=10,
+)
 
 
 def get_session():

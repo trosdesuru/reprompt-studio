@@ -638,55 +638,82 @@ def assign_prompt_to_collection(
 </file>
 
 <file path="app/api/routes_download.py">
-from fastapi import Depends
+from rq import Queue
+from rq.job import Job
+from rq.exceptions import NoSuchJobError
+from fastapi import APIRouter, Depends, HTTPException
+from app.core.redis_config import conn
+from app.services.downloader import generar_zip_coleccion, ejecutar_descarga_individual
 from app.api.deps import get_current_user
-from sqlmodel import Session
 from app.models.user import User
-
-import re
-
-from sqlmodel import Session
-from fastapi import APIRouter, Depends
-from app.core.db import get_session
-from app.services.audit_service import AuditService
-
-from app.core.redis_config import download_queue
-from app.schemas.requests import DescargaRequest, DescargaUnaRequest
-from app.services.downloader import ejecutar_descarga, ejecutar_descarga_individual
-from app.services.audit_service import AuditService
-from app.utils.storage import preparar_directorio
 
 router = APIRouter()
 
+# 🛡️ Conectamos con la cola exacta que está escuchando worker-1
+downloads_queue = Queue("downloads", connection=conn)
 
-@router.post("/descargar")
-def endpoint_descargar(
-    req: DescargaRequest,
-    current_user: User = Depends(get_current_user),
-    session: Session = Depends(get_session),  # 🟢 ¡Faltaba pedir la sesión aquí!
+
+@router.post("/collection/{collection_id}")
+def descargar_coleccion_completa(
+    collection_id: str, current_user: User = Depends(get_current_user)
 ):
-    carpeta_limpia = re.sub(r'[\\/*?:"<>|]', "", req.title).strip() or "galeria"
-    download_dir = preparar_directorio("/storage/galleries", carpeta_limpia)
+    """Delega la generación masiva del ZIP al Worker de Redis para no congelar la API."""
+    try:
+        job = downloads_queue.enqueue(
+            generar_zip_coleccion,
+            collection_id,
+            current_user.email,
+            job_timeout="1h",  # Margen amplio para colecciones enormes
+        )
+        return {
+            "status": "processing",
+            "job_id": job.get_id(),
+            "message": "Generando ZIP en segundo plano.",
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail="Error al encolar la descarga masiva"
+        )
 
-    job = download_queue.enqueue(ejecutar_descarga, req.url, download_dir)
-    return {"status": "success", "message": "Descarga enviada a la cola"}
 
-
-@router.post("/descargar_imagen")
-def endpoint_descargar_imagen(
-    req: DescargaUnaRequest, current_user: User = Depends(get_current_user)
+@router.get("/single/{image_key}")
+def descargar_una_imagen(
+    image_key: str, current_user: User = Depends(get_current_user)
 ):
-    carpeta_limpia = re.sub(r'[\\/*?:"<>|]', "", req.title).strip() or "galeria"
+    """Resolución sincrónica instantánea para archivos únicos."""
+    try:
+        url = ejecutar_descarga_individual(image_key)
+        return {"download_url": url}
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail="Error al generar el acceso directo en R2"
+        )
 
-    # 1. Usamos nuestra utilidad para crear la carpeta
-    download_dir = preparar_directorio("/storage/galleries", carpeta_limpia)
 
-    # 2. Enviamos a la cola de Redis
-    job = download_queue.enqueue(
-        ejecutar_descarga_individual, req.url_img, download_dir, req.index
-    )
+@router.get("/status/{job_id}")
+def verificar_estado_descarga(
+    job_id: str, current_user: User = Depends(get_current_user)
+):
+    """
+    El frontend consulta este endpoint cada 2 segundos.
+    Lee directamente de Redis el estado del Worker sin tocar la Base de Datos.
+    """
+    try:
+        job = Job.fetch(job_id, connection=conn)
 
-    return {"status": "success", "message": f"Imagen {req.index} enviada a la cola"}
+        if job.is_finished:
+            return {"status": "finished", "download_url": job.result}
+        elif job.is_failed:
+            return {"status": "failed", "error": str(job.exc_info)}
+        else:
+            return {"status": "processing"}
+
+    except NoSuchJobError:
+        raise HTTPException(
+            status_code=404, detail="El trabajo de descarga no existe o ha caducado"
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Error interno al consultar Redis")
 </file>
 
 <file path="app/api/routes_prompt.py">
@@ -871,12 +898,13 @@ def eliminar_prompt(
 <file path="app/api/routes_public.py">
 # backend/app/api/routes_public.py
 from fastapi import APIRouter, Depends, HTTPException
-from sqlmodel import Session, select, or_
+from sqlmodel import Session, select, or_, func
 from app.core.db import get_session
 from app.models.user import User
 from app.models.collection import Collection
 from app.models.prompt import ImagePrompt
-from app.api.deps import RateLimiter, GlobalRateLimiter, get_optional_user
+from app.api.deps import get_optional_user, get_optional_user
+from typing import Optional
 
 router = APIRouter()
 
@@ -1023,64 +1051,73 @@ def get_public_prompt_detail(
 
 
 @router.get("/feed")
-def get_public_feed(session: Session = Depends(get_session), limit: int = 50):
-    """Devuelve un mix de Prompts sueltos y Colecciones para la Home (Estilo Pinterest)"""
+def get_public_feed(
+    include_self: bool = False,
+    limit: int = 50,
+    session: Session = Depends(get_session),
+    current_user: Optional[User] = Depends(get_optional_user),
+):
+    """Devuelve un mix de Prompts sueltos y Colecciones para la Home optimizado"""
 
-    # 1. Colecciones Públicas
-    collections = session.exec(
+    query_col = (
         select(Collection, User)
         .join(User, Collection.user_id == User.id)
         .where(Collection.is_private == False)
-        .order_by(Collection.created_at.desc())
-        .limit(limit)
-    ).all()
+    )
 
-    # 2. Prompts sueltos públicos
-    prompts = session.exec(
+    query_prompt = (
         select(ImagePrompt, User)
         .join(User, ImagePrompt.user_id == User.id)
         .where(ImagePrompt.collection_id == None)
-        .order_by(ImagePrompt.created_at.desc())
-        .limit(limit)
+    )
+
+    if current_user and not include_self:
+        query_col = query_col.where(User.id != current_user.id)
+        query_prompt = query_prompt.where(User.id != current_user.id)
+
+    collections = session.exec(
+        query_col.order_by(Collection.created_at.desc()).limit(limit)
+    ).all()
+    prompts = session.exec(
+        query_prompt.order_by(ImagePrompt.created_at.desc()).limit(limit)
     ).all()
 
     feed = []
 
-    # Formatear Colecciones
     for col, user in collections:
-        cover = session.exec(
-            select(ImagePrompt)
+        count_statement = select(func.count(ImagePrompt.id)).where(
+            ImagePrompt.collection_id == col.id
+        )
+        items_count = session.exec(count_statement).one()
+
+        cover_url = session.exec(
+            select(ImagePrompt.image_url)
             .where(ImagePrompt.collection_id == col.id)
             .order_by(ImagePrompt.created_at.desc())
             .limit(1)
         ).first()
-
-        items = session.exec(
-            select(ImagePrompt).where(ImagePrompt.collection_id == col.id)
-        ).all()
 
         feed.append(
             {
                 "type": "collection",
                 "id": f"col_{col.id}",
                 "raw_id": col.id,
-                "created_at": str(col.created_at),  # 🛡️ Convertido a texto
+                "created_at": str(col.created_at),
                 "title": col.name,
                 "slug": col.slug,
                 "username": user.username,
-                "image_url": cover.image_url if cover else None,
-                "items_count": len(items),
+                "image_url": cover_url,
+                "items_count": items_count,
             }
         )
 
-    # Formatear Prompts
     for p, user in prompts:
         feed.append(
             {
                 "type": "prompt",
                 "id": f"prompt_{p.id}",
                 "raw_id": p.id,
-                "created_at": str(p.created_at),  # 🛡️ Convertido a texto
+                "created_at": str(p.created_at),
                 "title": p.title,
                 "prompt": p.prompt,
                 "username": user.username,
@@ -1090,7 +1127,6 @@ def get_public_feed(session: Session = Depends(get_session), limit: int = 50):
             }
         )
 
-    # Ordenar cronológicamente
     feed.sort(key=lambda x: x["created_at"], reverse=True)
 
     return {"status": "success", "feed": feed[:limit]}
@@ -2031,17 +2067,24 @@ class AuthService:
 </file>
 
 <file path="app/services/downloader.py">
-# backend/app/services/downloader.py
+import io
+import json
+import zipfile
+import boto3
 import logging
 import time
-
 import requests
+
+from sqlmodel import Session, select
+
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.support.ui import WebDriverWait
 
+from app.core.db import engine
+from app.core.config import settings
+from app.models.prompt import ImagePrompt
+from app.models.collection import Collection
 from app.services.security import http_session
-from app.core.webdriver_mgr import navegador_seguro
 
 # Importamos nuestras utilidades limpias
 from app.utils.storage import guardar_archivo
@@ -2049,88 +2092,104 @@ from app.utils.storage import guardar_archivo
 logger = logging.getLogger("downloader")
 
 
-def ejecutar_descarga(url: str, download_dir: str):
-    """Descarga todas las imágenes de una galería automatizando Chrome."""
-    logger.info(f"📥 [DESCARGA TOTAL] Iniciando en: {download_dir}")
+def generar_zip_coleccion(collection_id: str, user_email: str):
+    """
+    Tarea asíncrona para RQ. Empaqueta una colección entera en un ZIP
+    usando buffers de memoria y la sube de vuelta a R2 como un enlace temporal.
+    """
+    s3_client = boto3.client(
+        "s3",
+        endpoint_url=settings.R2_ENDPOINT_URL,
+        aws_access_key_id=settings.R2_ACCESS_KEY_ID,
+        aws_secret_access_key=settings.R2_SECRET_ACCESS_KEY,
+        region_name="auto",
+    )
 
-    # 1. SOLICITAMOS EL NAVEGADOR DE FORMA SEGURA
-    with navegador_seguro() as driver:
-        wait = WebDriverWait(driver, 10)
+    with Session(engine) as session:
+        coleccion = session.get(Collection, collection_id)
+        if not coleccion:
+            return
 
-        driver.get(url)
-        driver.add_cookie({"name": "nw", "value": "1", "domain": ".e-hentai.org"})
-        driver.refresh()
-        img_count = 1
+        prompts = session.exec(
+            select(ImagePrompt).where(ImagePrompt.collection_id == collection_id)
+        ).all()
 
-        while True:
-            wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "#gdt, .itg")))
-            thumbs = driver.find_elements(By.CSS_SELECTOR, 'a[href*="/s/"]')
-            links = list(
-                dict.fromkeys(
-                    [t.get_attribute("href") for t in thumbs if t.get_attribute("href")]
-                )
-            )
+    # Buffer en memoria para no usar el disco SSD del servidor
+    zip_buffer = io.BytesIO()
+    metadata_list = []
 
-            for link in links:
-                driver.get(link)
-                try:
-                    img_element = wait.until(
-                        EC.presence_of_element_located((By.ID, "img"))
-                    )
-                    src = img_element.get_attribute("src")
+    with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
+        for idx, prompt in enumerate(prompts):
+            # 1. Extraer key de R2 desde la URL pública
+            file_key = prompt.image_url.split("/")[-1]
+            if "prompts/" not in file_key:
+                file_key = f"prompts/{file_key}"
 
-                    # Usamos requests para bajar los bytes
-                    r = requests.get(
-                        src,
-                        headers={
-                            "User-Agent": "Mozilla/5.0",
-                            "Referer": driver.current_url,
-                        },
-                        stream=True,
-                        timeout=10,
-                    )
-
-                    if r.status_code == 200:
-                        ext = src.split(".")[-1].split("?")[0] if "." in src else "jpg"
-                        nombre_archivo = f"image_{img_count:03d}.{ext}"
-
-                        # Guardamos usando nuestro gestor de disco
-                        guardar_archivo(
-                            download_dir, nombre_archivo, r.iter_content(1024)
-                        )
-
-                        logger.info(f"🖼️ [{img_count:03d}] Guardada")
-                        img_count += 1
-                        time.sleep(1)
-                except Exception as e:
-                    logger.error(f"❌ Error en imagen: {e}")
-
-                driver.back()
-
-            # Paginación
+            # 2. Descargar imagen desde R2 a memoria
             try:
-                next_button = driver.find_element(By.XPATH, "//a[text()='>']")
-                next_button.click()
-                time.sleep(2)
-            except:
-                logger.info("🏁 Fin de las páginas. Saliendo del bucle.")
-                break
+                response = s3_client.get_object(
+                    Bucket=settings.R2_BUCKET_NAME, Key=file_key
+                )
+                image_bytes = response["Body"].read()
+
+                # 3. Escribir imagen en el ZIP
+                filename = f"{idx:03d}_{prompt.title.replace(' ', '_')}.png"
+                zip_file.writestr(filename, image_bytes)
+
+                # 4. Guardar metadatos para el JSON final
+                metadata_list.append(
+                    {
+                        "filename": filename,
+                        "prompt": prompt.prompt,
+                        "model": prompt.model,
+                        "sampler": prompt.sampler,
+                    }
+                )
+            except Exception:
+                continue  # Tolerancia a fallos: si una imagen falla, el ZIP sigue
+
+        # 5. Escribir el manifiesto JSON con todos los prompts
+        zip_file.writestr("prompts_metadata.json", json.dumps(metadata_list, indent=2))
+
+    zip_buffer.seek(0)
+
+    # 6. Subir el ZIP temporal a R2
+    zip_key = f"temp/downloads/{collection_id}.zip"
+    s3_client.upload_fileobj(
+        zip_buffer,
+        settings.R2_BUCKET_NAME,
+        zip_key,
+        ExtraArgs={"ContentType": "application/zip"},
+    )
+
+    # 7. Generar URL pre-firmada (caduca en 1 hora)
+    download_url = s3_client.generate_presigned_url(
+        "get_object",
+        Params={"Bucket": settings.R2_BUCKET_NAME, "Key": zip_key},
+        ExpiresIn=3600,
+    )
+
+    # (Opcional) Aquí notificarías al usuario vía WebSockets o Email de que su ZIP está listo
+    return download_url
 
 
-def ejecutar_descarga_individual(url_img: str, download_dir: str, indice: int):
-    """Descarga una sola imagen suelta (No necesita Selenium)."""
-    try:
-        r = requests.get(url_img, headers=http_session.headers, stream=True, timeout=10)
-        if r.status_code == 200:
-            ext = url_img.split(".")[-1].split("?")[0] if "." in url_img else "jpg"
-            nombre_archivo = f"image_{indice:03d}.{ext}"
+def ejecutar_descarga_individual(image_key: str) -> str:
+    """Genera un presigned URL instantáneo para una sola imagen (Sin Worker)."""
+    s3_client = boto3.client(
+        "s3",
+        endpoint_url=settings.R2_ENDPOINT_URL,
+        aws_access_key_id=settings.R2_ACCESS_KEY_ID,
+        aws_secret_access_key=settings.R2_SECRET_ACCESS_KEY,
+        region_name="auto",
+    )
+    if "prompts/" not in image_key:
+        image_key = f"prompts/{image_key}"
 
-            guardar_archivo(download_dir, nombre_archivo, r.iter_content(1024))
-            logger.info(f"✅ Imagen suelta {indice} guardada.")
-        else:
-            logger.error(f"❌ Error al descargar imagen {indice}, HTTP {r.status_code}")
-    except Exception as e:
-        logger.error(f"❌ Error de red en descarga individual: {e}")
+    return s3_client.generate_presigned_url(
+        "get_object",
+        Params={"Bucket": settings.R2_BUCKET_NAME, "Key": image_key},
+        ExpiresIn=3600,
+    )
 </file>
 
 <file path="app/services/scraper.py">
@@ -2644,45 +2703,85 @@ def guardar_json(ruta_directorio: str, nombre_archivo: str, datos: list | dict) 
 </file>
 
 <file path="app/init_db.py">
+import time
 import secrets
 import logging
+from sqlalchemy.exc import OperationalError
 from sqlmodel import SQLModel, Session, select
+
 from app.core.db import engine
 from app.models.user import InviteCode, User, AuditLog
 from app.models.gallery import GalleryMetric
 from app.models.prompt import ImagePrompt
 from app.models.collection import Collection
-from app.models.prompt import ImagePrompt
 
 logger = logging.getLogger("init_db")
 
 
 def init_db():
-    logger.info("⏳ Conectando a Neon.tech y sincronizando tablas...")
-    try:
-        SQLModel.metadata.create_all(engine)
-        logger.info("✅ Sincronización de tablas completada.")
-    except Exception as e:
-        logger.error(f"❌ Error crítico sincronizando tablas: {e}")
-        raise e
+    max_retries = 5
+    retry_delay = 5
 
-    with Session(engine) as session:
-        existing_code = session.exec(select(InviteCode)).first()
+    logger.info("🔌 [DB] Iniciando secuencia de conexión a la Base de Datos...")
 
-        if not existing_code:
-            master_code = f"TROYA-{secrets.token_hex(4).upper()}"
-            new_invite = InviteCode(code=master_code)
+    connection_successful = False
 
-            session.add(new_invite)
-            session.commit()
+    for attempt in range(max_retries):
+        try:
+            logger.info(
+                f"⏳ [DB] [Intento {attempt + 1}/{max_retries}] Contactando con el servidor de Neon.tech..."
+            )
 
-            logger.info("✨ Base de Datos inicializada por primera vez.")
-            logger.warning("=" * 40)
-            logger.warning(f"🔑 TU CÓDIGO MAESTRO ES: {master_code}")
-            logger.warning("⚠️ Cópialo ahora. Úsalo para crear tu cuenta Admin.")
-            logger.warning("=" * 40)
-        else:
-            logger.info("✅ Las tablas ya existían y la base de datos está lista.")
+            # Intentamos crear/sincronizar las tablas
+            SQLModel.metadata.create_all(engine)
+
+            logger.info(
+                "✅ [DB] ¡Conexión establecida con éxito y tablas sincronizadas!"
+            )
+            connection_successful = True
+            break  # Salimos del bucle mágico porque hemos tenido éxito
+
+        except OperationalError as e:
+            # Capturamos específicamente el error de desconexión / timeout
+            logger.warning(
+                f"⚠️ [DB] Falló el intento {attempt + 1}. Servidor inalcanzable (posible Cold Start)."
+            )
+
+            if attempt < max_retries - 1:
+                logger.info(
+                    f"💤 [DB] Esperando {retry_delay} segundos para que Neon.tech despierte..."
+                )
+                time.sleep(retry_delay)
+            else:
+                logger.error(
+                    "❌ [DB] ERROR CRÍTICO: Imposible conectar tras múltiples intentos."
+                )
+                logger.error(f"Detalle técnico: {str(e)}")
+                raise e
+        except Exception as e:
+            # Cualquier otro error (ej. credenciales inválidas) explota directamente
+            logger.error(f"❌ [DB] Error inesperado sincronizando tablas: {e}")
+            raise e
+
+    if connection_successful:
+        with Session(engine) as session:
+            existing_code = session.exec(select(InviteCode)).first()
+
+            if not existing_code:
+                # Base de datos virgen, creamos el código maestro
+                master_code = f"TROYA-{secrets.token_hex(4).upper()}"
+                new_invite = InviteCode(code=master_code)
+
+                session.add(new_invite)
+                session.commit()
+
+                logger.info("✨ Base de Datos inicializada por primera vez.")
+                logger.warning("=" * 40)
+                logger.warning(f"🔑 TU CÓDIGO MAESTRO ES: {master_code}")
+                logger.warning("⚠️ Cópialo ahora. Úsalo para crear tu cuenta Admin.")
+                logger.warning("=" * 40)
+            else:
+                logger.info("✅ Las tablas ya existían y la base de datos está lista.")
 
 
 if __name__ == "__main__":
@@ -2736,7 +2835,7 @@ app.add_middleware(
 )
 
 app.include_router(search_router, prefix="/api")
-app.include_router(download_router, prefix="/api")
+app.include_router(download_router, prefix="/api/download", tags=["Descargas"])
 app.include_router(auth_router, prefix="/api/auth", tags=["Autenticación"])
 app.include_router(prompt_router, prefix="/api/prompts", tags=["Reprompt Studio"])
 app.include_router(public_router, prefix="/api/public", tags=["Escaparate Público"])

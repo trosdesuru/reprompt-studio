@@ -22,11 +22,12 @@ logger = logging.getLogger("backend")
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("🚀 API Backend iniciada. Sistemas en línea.")
-
     try:
         init_db()
     except Exception as e:
         logger.error(f"❌ Error al inicializar la base de datos: {e}")
+
+        raise RuntimeError("Imposible iniciar el servidor sin Base de Datos.") from e
 
     yield
     logger.info("🛑 Apagando API Backend limpiamente...")
