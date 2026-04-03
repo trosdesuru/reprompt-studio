@@ -1,5 +1,6 @@
 import os
 from sqlmodel import create_engine, Session
+from sqlalchemy.pool import NullPool
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -16,23 +17,16 @@ if raw_url.startswith("postgres://"):
 else:
     clean_url = raw_url
 
-clean_url = clean_url.replace("-pooler", "")
-
-if "?" in clean_url:
-    clean_url = clean_url.split("?")[0]
+conn_args = {}
+if "sslmode" not in clean_url:
+    conn_args["sslmode"] = "require"
 
 engine = create_engine(
     clean_url,
-    connect_args={
-        "sslmode": "require"
-    },
+    connect_args=conn_args,
     echo=False,
-    pool_pre_ping=True,
-    pool_recycle=300,
-    pool_size=5,
-    max_overflow=10,
+    poolclass=NullPool,
 )
-
 
 def get_session():
     with Session(engine) as session:
