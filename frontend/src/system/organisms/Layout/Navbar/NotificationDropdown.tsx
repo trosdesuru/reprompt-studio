@@ -4,8 +4,7 @@ import { useState, useRef } from "react";
 import { useNotificationStore } from "@/src/store/notificationStore";
 import { useClickOutside } from "@/src/utils/hooks/useClickOutside";
 import {
-  IconBell,
-  IconBellFilled,
+  IconInbox,
   IconCheck,
   IconTrash,
   IconInfoCircle,
@@ -35,24 +34,22 @@ export function NotificationDropdown() {
 
   return (
     <div className="relative" ref={menuRef}>
-      {/* Botón de la Campana con Badge */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="relative p-2 rounded-md transition-colors hover:bg-(--bg-secondary) text-foreground"
+        className="relative p-2 rounded-md transition-colors text-muted-foreground hover:text-foreground hover:bg-(--bg-secondary) cursor-pointer"
       >
         {unreadCount > 0 ? (
-          <IconBellFilled size={24} className="text-(--accent-color) animate-pulse-slow" />
+          <IconInbox size={24} className="text-(--accent-color)" />
         ) : (
-          <IconBell size={24} />
+          <IconInbox size={24} />
         )}
         {unreadCount > 0 && (
-          <span className="absolute top-1 right-1 flex items-center justify-center min-w-4.5 h-4.5 bg-red-500 text-white text-[10px] font-black font-mono rounded-full border-2 border-background">
+          <span className="p-2 absolute top-1 right-1 flex items-center justify-center min-w-4.5 h-4.5 bg-red-500 text-white text-[10px] font-black font-mono rounded-full border-2 border-background">
             {unreadCount > 9 ? "9+" : unreadCount}
           </span>
         )}
       </button>
 
-      {/* Desplegable de la Bandeja */}
       {isOpen && (
         <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-[#1A1B1E] border-2 border-(--border-color) shadow-[0_8px_30px_rgb(0,0,0,0.8)] rounded-lg flex flex-col z-100 animate-fade-in origin-top-right overflow-hidden">
           {/* Header */}
