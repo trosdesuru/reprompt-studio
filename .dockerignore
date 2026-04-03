@@ -6,4 +6,8 @@ backend/__pycache__
 .git
 storage/galleries
 *.json
-.env
+.env.**
+node_modules
+npm-debug.log
+.next
+out

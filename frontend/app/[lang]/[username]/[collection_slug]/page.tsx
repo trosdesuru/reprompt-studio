@@ -1,15 +1,17 @@
 "use client";
 
+import { IconArrowLeft, IconPhotoOff, IconLock } from "@tabler/icons-react";
 import { use, useEffect, useState } from "react";
-import { api } from "@/src/services/api";
+import Link from "next/link";
+
 import { PromptCard } from "@/src/system/organisms/Studio/PromptCard";
 import { SavedPrompt } from "@/src/features/studio/hooks/useStudio";
-import Link from "next/link";
-import { IconArrowLeft, IconPhotoOff, IconLock } from "@tabler/icons-react";
+import { DownloadButton } from "@/src/system/molecules/DownloadButton";
+import { api } from "@/src/services/api";
 
 interface CollectionData {
   user: { username: string };
-  collection: { name: string; description: string; is_private: boolean };
+  collection: { id: string; name: string; description: string; is_private: boolean };
   prompts: SavedPrompt[];
 }
 
@@ -53,17 +55,22 @@ export default function PublicCollectionPage({
           <IconArrowLeft size={16} /> Volver a @{data.user.username}
         </Link>
 
-        <header className="flex flex-col gap-2 border-b border-border pb-8">
-          <div className="flex items-center gap-4">
-            <h1 className="text-4xl font-black tracking-tighter text-(--accent-color)">
-              {data.collection.name}
-            </h1>
-            {data.collection.is_private && (
-              <span className="bg-red-500/10 text-red-500 border border-red-500/20 text-[10px] font-bold px-2 py-1 flex items-center gap-1 uppercase tracking-widest rounded-md">
-                <IconLock size={12} /> Privada
-              </span>
-            )}
+        <header className="flex flex-col gap-4 border-b border-border pb-8">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <h1 className="text-4xl font-black tracking-tighter text-(--accent-color)">
+                {data.collection.name}
+              </h1>
+              {data.collection.is_private && (
+                <span className="bg-red-500/10 text-red-500 border border-red-500/20 text-[10px] font-bold px-2 py-1 flex items-center gap-1 uppercase tracking-widest rounded-md">
+                  <IconLock size={12} /> Privada
+                </span>
+              )}
+            </div>
+
+            {data.prompts.length > 0 && <DownloadButton collectionId={data.collection.id} />}
           </div>
+
           <p className="text-muted-foreground text-sm max-w-2xl">
             {data.collection.description || "Colección sin descripción."}
           </p>

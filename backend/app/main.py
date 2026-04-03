@@ -43,7 +43,7 @@ app.add_middleware(
 )
 
 app.include_router(search_router, prefix="/api")
-app.include_router(download_router, prefix="/api")
+app.include_router(download_router, prefix="/api/download", tags=["Descargas"])
 app.include_router(auth_router, prefix="/api/auth", tags=["Autenticación"])
 app.include_router(prompt_router, prefix="/api/prompts", tags=["Reprompt Studio"])
 app.include_router(public_router, prefix="/api/public", tags=["Escaparate Público"])
