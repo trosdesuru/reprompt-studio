@@ -25,7 +25,7 @@ export function usePublicFeed(query: string) {
     setFeedError(null);
 
     api
-      .getPublicFeed({ include_self: showMyArt })
+      .getPublicFeed({ include_self: false })
       .then((res) => setFeed(res.feed || []))
       .catch((err) => {
         console.error("Error cargando feed:", err);

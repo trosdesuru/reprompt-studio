@@ -1,11 +1,12 @@
 # backend/app/api/routes_public.py
 from fastapi import APIRouter, Depends, HTTPException
-from sqlmodel import Session, select, or_
+from sqlmodel import Session, select, or_, func
 from app.core.db import get_session
 from app.models.user import User
 from app.models.collection import Collection
 from app.models.prompt import ImagePrompt
-from app.api.deps import RateLimiter, GlobalRateLimiter, get_optional_user
+from app.api.deps import get_optional_user, get_current_user_optional
+from typing import Optional
 
 router = APIRouter()
 
@@ -152,64 +153,73 @@ def get_public_prompt_detail(
 
 
 @router.get("/feed")
-def get_public_feed(session: Session = Depends(get_session), limit: int = 50):
-    """Devuelve un mix de Prompts sueltos y Colecciones para la Home (Estilo Pinterest)"""
+def get_public_feed(
+    include_self: bool = False,
+    limit: int = 50,
+    session: Session = Depends(get_session),
+    current_user: Optional[User] = Depends(get_current_user_optional),
+):
+    """Devuelve un mix de Prompts sueltos y Colecciones para la Home optimizado"""
 
-    # 1. Colecciones Públicas
-    collections = session.exec(
+    query_col = (
         select(Collection, User)
         .join(User, Collection.user_id == User.id)
         .where(Collection.is_private == False)
-        .order_by(Collection.created_at.desc())
-        .limit(limit)
-    ).all()
+    )
 
-    # 2. Prompts sueltos públicos
-    prompts = session.exec(
+    query_prompt = (
         select(ImagePrompt, User)
         .join(User, ImagePrompt.user_id == User.id)
         .where(ImagePrompt.collection_id == None)
-        .order_by(ImagePrompt.created_at.desc())
-        .limit(limit)
+    )
+
+    if current_user and not include_self:
+        query_col = query_col.where(User.id != current_user.id)
+        query_prompt = query_prompt.where(User.id != current_user.id)
+
+    collections = session.exec(
+        query_col.order_by(Collection.created_at.desc()).limit(limit)
+    ).all()
+    prompts = session.exec(
+        query_prompt.order_by(ImagePrompt.created_at.desc()).limit(limit)
     ).all()
 
     feed = []
 
-    # Formatear Colecciones
     for col, user in collections:
-        cover = session.exec(
-            select(ImagePrompt)
+        count_statement = select(func.count(ImagePrompt.id)).where(
+            ImagePrompt.collection_id == col.id
+        )
+        items_count = session.exec(count_statement).one()
+
+        cover_url = session.exec(
+            select(ImagePrompt.image_url)
             .where(ImagePrompt.collection_id == col.id)
             .order_by(ImagePrompt.created_at.desc())
             .limit(1)
         ).first()
-
-        items = session.exec(
-            select(ImagePrompt).where(ImagePrompt.collection_id == col.id)
-        ).all()
 
         feed.append(
             {
                 "type": "collection",
                 "id": f"col_{col.id}",
                 "raw_id": col.id,
-                "created_at": str(col.created_at),  # 🛡️ Convertido a texto
+                "created_at": str(col.created_at),
                 "title": col.name,
                 "slug": col.slug,
                 "username": user.username,
-                "image_url": cover.image_url if cover else None,
-                "items_count": len(items),
+                "image_url": cover_url,
+                "items_count": items_count,
             }
         )
 
-    # Formatear Prompts
     for p, user in prompts:
         feed.append(
             {
                 "type": "prompt",
                 "id": f"prompt_{p.id}",
                 "raw_id": p.id,
-                "created_at": str(p.created_at),  # 🛡️ Convertido a texto
+                "created_at": str(p.created_at),
                 "title": p.title,
                 "prompt": p.prompt,
                 "username": user.username,
@@ -219,7 +229,6 @@ def get_public_feed(session: Session = Depends(get_session), limit: int = 50):
             }
         )
 
-    # Ordenar cronológicamente
     feed.sort(key=lambda x: x["created_at"], reverse=True)
 
     return {"status": "success", "feed": feed[:limit]}
