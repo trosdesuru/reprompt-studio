@@ -5,7 +5,7 @@ from app.core.db import get_session
 from app.models.user import User
 from app.models.collection import Collection
 from app.models.prompt import ImagePrompt
-from app.api.deps import get_optional_user, get_current_user_optional
+from app.api.deps import get_optional_user, get_optional_user
 from typing import Optional
 
 router = APIRouter()
@@ -157,7 +157,7 @@ def get_public_feed(
     include_self: bool = False,
     limit: int = 50,
     session: Session = Depends(get_session),
-    current_user: Optional[User] = Depends(get_current_user_optional),
+    current_user: Optional[User] = Depends(get_optional_user),
 ):
     """Devuelve un mix de Prompts sueltos y Colecciones para la Home optimizado"""
 
