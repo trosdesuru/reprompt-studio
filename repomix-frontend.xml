@@ -157,6 +157,7 @@ src/
     molecules/
       Feedback/
         FeedState.tsx
+      DownloadButton.tsx
       FilterBar.tsx
       FormField.tsx
       MediaOverlay.tsx
@@ -205,7 +206,7 @@ src/
         TrendingSection/
           index.ts
           TrendingSection.tsx
-        HeroSearch.tsx
+        Hero.tsx
       Studio/
         CreateCollectionModal.tsx
         PromptCard.tsx
@@ -392,16 +393,18 @@ export default function LoginPage() {
 <file path="app/[lang]/[username]/[collection_slug]/page.tsx">
 "use client";
 
+import { IconArrowLeft, IconPhotoOff, IconLock } from "@tabler/icons-react";
 import { use, useEffect, useState } from "react";
-import { api } from "@/src/services/api";
+import Link from "next/link";
+
 import { PromptCard } from "@/src/system/organisms/Studio/PromptCard";
 import { SavedPrompt } from "@/src/features/studio/hooks/useStudio";
-import Link from "next/link";
-import { IconArrowLeft, IconPhotoOff, IconLock } from "@tabler/icons-react";
+import { DownloadButton } from "@/src/system/molecules/DownloadButton";
+import { api } from "@/src/services/api";
 
 interface CollectionData {
   user: { username: string };
-  collection: { name: string; description: string; is_private: boolean };
+  collection: { id: string; name: string; description: string; is_private: boolean };
   prompts: SavedPrompt[];
 }
 
@@ -445,17 +448,22 @@ export default function PublicCollectionPage({
           <IconArrowLeft size={16} /> Volver a @{data.user.username}
         </Link>
 
-        <header className="flex flex-col gap-2 border-b border-border pb-8">
-          <div className="flex items-center gap-4">
-            <h1 className="text-4xl font-black tracking-tighter text-(--accent-color)">
-              {data.collection.name}
-            </h1>
-            {data.collection.is_private && (
-              <span className="bg-red-500/10 text-red-500 border border-red-500/20 text-[10px] font-bold px-2 py-1 flex items-center gap-1 uppercase tracking-widest rounded-md">
-                <IconLock size={12} /> Privada
-              </span>
-            )}
+        <header className="flex flex-col gap-4 border-b border-border pb-8">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <h1 className="text-4xl font-black tracking-tighter text-(--accent-color)">
+                {data.collection.name}
+              </h1>
+              {data.collection.is_private && (
+                <span className="bg-red-500/10 text-red-500 border border-red-500/20 text-[10px] font-bold px-2 py-1 flex items-center gap-1 uppercase tracking-widest rounded-md">
+                  <IconLock size={12} /> Privada
+                </span>
+              )}
+            </div>
+
+            {data.prompts.length > 0 && <DownloadButton collectionId={data.collection.id} />}
           </div>
+
           <p className="text-muted-foreground text-sm max-w-2xl">
             {data.collection.description || "Colección sin descripción."}
           </p>
@@ -1083,17 +1091,18 @@ export default async function RootLayout({
 <file path="app/[lang]/page.tsx">
 "use client";
 
-import { use, useEffect, useState } from "react";
-import dynamic from "next/dynamic";
-import { useSearch } from "@/src/features/search/hooks/useSearch";
-import { api } from "@/src/services/api";
-import { useHomeInteraction } from "@/src/features/home/hooks/useHomeInteraction";
-import Link from "next/link";
 import { IconStack2, IconUser } from "@tabler/icons-react";
 
-import { HeroSearch } from "@/src/system/organisms/Search/HeroSearch";
-import { SearchResults } from "@/src/system/organisms/Search/SearchResults/SearchResults";
+import Link from "next/link";
+import dynamic from "next/dynamic";
+import { use, useEffect, useState } from "react";
+import { useSearch } from "@/src/features/search/hooks/useSearch";
+
+import { api } from "@/src/services/api";
+import { Hero } from "@/src/system/organisms/Search/Hero";
 import { FeedState } from "@/src/system/molecules/Feedback/FeedState";
+import { useHomeInteraction } from "@/src/features/home/hooks/useHomeInteraction";
+import { SearchResults } from "@/src/system/organisms/Search/SearchResults/SearchResults";
 
 const ImageViewerModal = dynamic(
   () =>
@@ -1133,7 +1142,7 @@ export default function Home({ params }: { params: Promise<{ lang: string }> }) 
 
   return (
     <main className="min-h-screen bg-background text-foreground font-sans">
-      <HeroSearch />
+      <Hero />
 
       {error && <FeedState type="error" message={error} />}
 
@@ -4687,6 +4696,68 @@ export function FeedState({ type, message, highlight }: FeedStateProps) {
 }
 </file>
 
+<file path="src/system/molecules/DownloadButton.tsx">
+"use client";
+
+import { useState } from "react";
+import { downloadApi } from "@/src/services/api/downloads";
+import { IconDownload, IconLoader2 } from "@tabler/icons-react";
+
+interface DownloadButtonProps {
+  collectionId: string;
+}
+
+export function DownloadButton({ collectionId }: DownloadButtonProps) {
+  const [isDownloading, setIsDownloading] = useState(false);
+
+  const handleDownloadCollection = async () => {
+    setIsDownloading(true);
+    try {
+      const { job_id } = await downloadApi.solicitarZipColeccion(collectionId);
+
+      const pollStatus = async () => {
+        const { status, download_url } = await downloadApi.verificarEstado(job_id);
+
+        if (status === "finished") {
+          window.location.href = download_url;
+          setIsDownloading(false);
+
+        } else if (status === "failed") {
+          console.error("❌ Error empaquetando el ZIP en el Worker");
+          setIsDownloading(false);
+
+        } else {
+          setTimeout(pollStatus, 2500);
+        }
+      };
+      pollStatus();
+      
+    } catch (error) {
+      console.error("❌ Fallo al iniciar la descarga:", error);
+      setIsDownloading(false);
+    }
+  };
+
+  return (
+    <button
+      onClick={handleDownloadCollection}
+      disabled={isDownloading}
+      className="bg-(--accent-color) text-white px-4 py-2 rounded-md font-mono text-xs md:text-sm font-bold uppercase tracking-widest hover:bg-opacity-90 transition-colors flex items-center gap-2 disabled:opacity-80 disabled:cursor-not-allowed neo-border neo-shadow-accent"
+    >
+      {isDownloading ? (
+        <>
+          <IconLoader2 size={18} className="animate-spin" /> Preparando ZIP...
+        </>
+      ) : (
+        <>
+          <IconDownload size={18} /> Descargar Colección
+        </>
+      )}
+    </button>
+  );
+}
+</file>
+
 <file path="src/system/molecules/FilterBar.tsx">
 import { EH_CATEGORIES } from "@/src/constants/filters";
 import { FilterChip } from "../atoms/FilterChip";
@@ -7041,12 +7112,12 @@ export function TrendingSection({ trending, onOpenVisor, onDownloadTotal }: Tren
 }
 </file>
 
-<file path="src/system/organisms/Search/HeroSearch.tsx">
+<file path="src/system/organisms/Search/Hero.tsx">
 "use client";
 
 import { Heading } from "@/src/system/atoms/Heading";
 
-export function HeroSearch() {
+export function Hero() {
   return (
     <div className="w-full py-12 md:py-20 flex flex-col items-center justify-center text-center px-4 animate-in fade-in duration-700">
       <Heading level="h1" className="mb-4">
@@ -8078,19 +8149,6 @@ pathsToCheck.forEach((p) => {
 console.log("---------------------------------------");
 </file>
 
-<file path="docker-compose.yml">
-frontend:
-    build: ./frontend
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
-      - /app/.next
-    ports:
-      - "3000:3000"
-    environment:
-      - NEXT_PUBLIC_API_URL=http://localhost:8000
-</file>
-
 <file path="Dockerfile">
 FROM node:20-alpine
 
@@ -8440,6 +8498,19 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+</file>
+
+<file path="docker-compose.yml">
+frontend:
+    build: ./frontend
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+      - /app/.next
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
 </file>
 
 </files>
