@@ -42,13 +42,11 @@ export const useAuthStore = create<AuthState>((set) => ({
     set({ isLoadingAuth: true });
     try {
       const res = await api.obtenerPerfil();
-      console.log("🕵️‍♂️ QA [authStore] Respuesta Backend:", res);
 
       const username = res?.username || res?.data?.username || res?.user?.username;
       const role = res?.role || res?.data?.role || res?.user?.role || "user";
 
       if (username) {
-        console.log(`✅ QA [authStore] Usuario detectado: ${username} (${role})`);
         set({ user: { username, role }, isLoadingAuth: false });
       } else {
         console.warn("⚠️ QA [authStore] 200 OK pero JSON no tiene 'username':", res);

@@ -1,49 +1,49 @@
-from fastapi import Depends
+# backend/app/api/routes_download.py
+from fastapi import APIRouter, Depends, HTTPException
+from rq import Queue
+from app.core.redis_config import conn
+from app.services.downloader import generar_zip_coleccion, ejecutar_descarga_individual
 from app.api.deps import get_current_user
-from sqlmodel import Session
 from app.models.user import User
-
-import re
-
-from sqlmodel import Session
-from fastapi import APIRouter, Depends
-from app.core.db import get_session
-from app.services.audit_service import AuditService
-
-from app.core.redis_config import download_queue
-from app.schemas.requests import DescargaRequest, DescargaUnaRequest
-from app.services.downloader import ejecutar_descarga, ejecutar_descarga_individual
-from app.services.audit_service import AuditService
-from app.utils.storage import preparar_directorio
 
 router = APIRouter()
 
+# 🛡️ Conectamos con la cola exacta que está escuchando worker-1
+downloads_queue = Queue("downloads", connection=conn)
 
-@router.post("/descargar")
-def endpoint_descargar(
-    req: DescargaRequest,
-    current_user: User = Depends(get_current_user),
-    session: Session = Depends(get_session),  # 🟢 ¡Faltaba pedir la sesión aquí!
+
+@router.post("/collection/{collection_id}")
+def descargar_coleccion_completa(
+    collection_id: str, current_user: User = Depends(get_current_user)
 ):
-    carpeta_limpia = re.sub(r'[\\/*?:"<>|]', "", req.title).strip() or "galeria"
-    download_dir = preparar_directorio("/storage/galleries", carpeta_limpia)
+    """Delega la generación masiva del ZIP al Worker de Redis para no congelar la API."""
+    try:
+        job = downloads_queue.enqueue(
+            generar_zip_coleccion,
+            collection_id,
+            current_user.email,
+            job_timeout="1h",  # Margen amplio para colecciones enormes
+        )
+        return {
+            "status": "processing",
+            "job_id": job.get_id(),
+            "message": "Generando ZIP en segundo plano.",
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail="Error al encolar la descarga masiva"
+        )
 
-    job = download_queue.enqueue(ejecutar_descarga, req.url, download_dir)
-    return {"status": "success", "message": "Descarga enviada a la cola"}
 
-
-@router.post("/descargar_imagen")
-def endpoint_descargar_imagen(
-    req: DescargaUnaRequest, current_user: User = Depends(get_current_user)
+@router.get("/single/{image_key}")
+def descargar_una_imagen(
+    image_key: str, current_user: User = Depends(get_current_user)
 ):
-    carpeta_limpia = re.sub(r'[\\/*?:"<>|]', "", req.title).strip() or "galeria"
-
-    # 1. Usamos nuestra utilidad para crear la carpeta
-    download_dir = preparar_directorio("/storage/galleries", carpeta_limpia)
-
-    # 2. Enviamos a la cola de Redis
-    job = download_queue.enqueue(
-        ejecutar_descarga_individual, req.url_img, download_dir, req.index
-    )
-
-    return {"status": "success", "message": f"Imagen {req.index} enviada a la cola"}
+    """Resolución sincrónica instantánea para archivos únicos."""
+    try:
+        url = ejecutar_descarga_individual(image_key)
+        return {"download_url": url}
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail="Error al generar el acceso directo en R2"
+        )

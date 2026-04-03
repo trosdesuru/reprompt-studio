@@ -1,14 +1,21 @@
-# backend/app/services/downloader.py
+import io
+import json
+import zipfile
+import boto3
 import logging
 import time
-
 import requests
+
+from sqlmodel import Session, select
+
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.support.ui import WebDriverWait
 
+from app.core.db import engine
+from app.core.config import settings
+from app.models.prompt import ImagePrompt
+from app.models.collection import Collection
 from app.services.security import http_session
-from app.core.webdriver_mgr import navegador_seguro
 
 # Importamos nuestras utilidades limpias
 from app.utils.storage import guardar_archivo
@@ -16,85 +23,101 @@ from app.utils.storage import guardar_archivo
 logger = logging.getLogger("downloader")
 
 
-def ejecutar_descarga(url: str, download_dir: str):
-    """Descarga todas las imágenes de una galería automatizando Chrome."""
-    logger.info(f"📥 [DESCARGA TOTAL] Iniciando en: {download_dir}")
+def generar_zip_coleccion(collection_id: str, user_email: str):
+    """
+    Tarea asíncrona para RQ. Empaqueta una colección entera en un ZIP
+    usando buffers de memoria y la sube de vuelta a R2 como un enlace temporal.
+    """
+    s3_client = boto3.client(
+        "s3",
+        endpoint_url=settings.R2_ENDPOINT_URL,
+        aws_access_key_id=settings.R2_ACCESS_KEY_ID,
+        aws_secret_access_key=settings.R2_SECRET_ACCESS_KEY,
+        region_name="auto",
+    )
 
-    # 1. SOLICITAMOS EL NAVEGADOR DE FORMA SEGURA
-    with navegador_seguro() as driver:
-        wait = WebDriverWait(driver, 10)
+    with Session(engine) as session:
+        coleccion = session.get(Collection, collection_id)
+        if not coleccion:
+            return
 
-        driver.get(url)
-        driver.add_cookie({"name": "nw", "value": "1", "domain": ".e-hentai.org"})
-        driver.refresh()
-        img_count = 1
+        prompts = session.exec(
+            select(ImagePrompt).where(ImagePrompt.collection_id == collection_id)
+        ).all()
 
-        while True:
-            wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "#gdt, .itg")))
-            thumbs = driver.find_elements(By.CSS_SELECTOR, 'a[href*="/s/"]')
-            links = list(
-                dict.fromkeys(
-                    [t.get_attribute("href") for t in thumbs if t.get_attribute("href")]
-                )
-            )
+    # Buffer en memoria para no usar el disco SSD del servidor
+    zip_buffer = io.BytesIO()
+    metadata_list = []
 
-            for link in links:
-                driver.get(link)
-                try:
-                    img_element = wait.until(
-                        EC.presence_of_element_located((By.ID, "img"))
-                    )
-                    src = img_element.get_attribute("src")
+    with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
+        for idx, prompt in enumerate(prompts):
+            # 1. Extraer key de R2 desde la URL pública
+            file_key = prompt.image_url.split("/")[-1]
+            if "prompts/" not in file_key:
+                file_key = f"prompts/{file_key}"
 
-                    # Usamos requests para bajar los bytes
-                    r = requests.get(
-                        src,
-                        headers={
-                            "User-Agent": "Mozilla/5.0",
-                            "Referer": driver.current_url,
-                        },
-                        stream=True,
-                        timeout=10,
-                    )
-
-                    if r.status_code == 200:
-                        ext = src.split(".")[-1].split("?")[0] if "." in src else "jpg"
-                        nombre_archivo = f"image_{img_count:03d}.{ext}"
-
-                        # Guardamos usando nuestro gestor de disco
-                        guardar_archivo(
-                            download_dir, nombre_archivo, r.iter_content(1024)
-                        )
-
-                        logger.info(f"🖼️ [{img_count:03d}] Guardada")
-                        img_count += 1
-                        time.sleep(1)
-                except Exception as e:
-                    logger.error(f"❌ Error en imagen: {e}")
-
-                driver.back()
-
-            # Paginación
+            # 2. Descargar imagen desde R2 a memoria
             try:
-                next_button = driver.find_element(By.XPATH, "//a[text()='>']")
-                next_button.click()
-                time.sleep(2)
-            except:
-                logger.info("🏁 Fin de las páginas. Saliendo del bucle.")
-                break
+                response = s3_client.get_object(
+                    Bucket=settings.R2_BUCKET_NAME, Key=file_key
+                )
+                image_bytes = response["Body"].read()
+
+                # 3. Escribir imagen en el ZIP
+                filename = f"{idx:03d}_{prompt.title.replace(' ', '_')}.png"
+                zip_file.writestr(filename, image_bytes)
+
+                # 4. Guardar metadatos para el JSON final
+                metadata_list.append(
+                    {
+                        "filename": filename,
+                        "prompt": prompt.prompt,
+                        "model": prompt.model,
+                        "sampler": prompt.sampler,
+                    }
+                )
+            except Exception:
+                continue  # Tolerancia a fallos: si una imagen falla, el ZIP sigue
+
+        # 5. Escribir el manifiesto JSON con todos los prompts
+        zip_file.writestr("prompts_metadata.json", json.dumps(metadata_list, indent=2))
+
+    zip_buffer.seek(0)
+
+    # 6. Subir el ZIP temporal a R2
+    zip_key = f"temp/downloads/{collection_id}.zip"
+    s3_client.upload_fileobj(
+        zip_buffer,
+        settings.R2_BUCKET_NAME,
+        zip_key,
+        ExtraArgs={"ContentType": "application/zip"},
+    )
+
+    # 7. Generar URL pre-firmada (caduca en 1 hora)
+    download_url = s3_client.generate_presigned_url(
+        "get_object",
+        Params={"Bucket": settings.R2_BUCKET_NAME, "Key": zip_key},
+        ExpiresIn=3600,
+    )
+
+    # (Opcional) Aquí notificarías al usuario vía WebSockets o Email de que su ZIP está listo
+    return download_url
 
 
-def ejecutar_descarga_individual(url_img: str, download_dir: str, indice: int):
-    """Descarga una sola imagen suelta (No necesita Selenium)."""
-    try:
-        r = requests.get(url_img, headers=http_session.headers, stream=True, timeout=10)
-        if r.status_code == 200:
-            ext = url_img.split(".")[-1].split("?")[0] if "." in url_img else "jpg"
-            nombre_archivo = f"image_{indice:03d}.{ext}"
+def ejecutar_descarga_individual(image_key: str) -> str:
+    """Genera un presigned URL instantáneo para una sola imagen (Sin Worker)."""
+    s3_client = boto3.client(
+        "s3",
+        endpoint_url=settings.R2_ENDPOINT_URL,
+        aws_access_key_id=settings.R2_ACCESS_KEY_ID,
+        aws_secret_access_key=settings.R2_SECRET_ACCESS_KEY,
+        region_name="auto",
+    )
+    if "prompts/" not in image_key:
+        image_key = f"prompts/{image_key}"
 
-            guardar_archivo(download_dir, nombre_archivo, r.iter_content(1024))
-            logger.info(f"✅ Imagen suelta {indice} guardada.")
-        else:
-            logger.error(f"❌ Error al descargar imagen {indice}, HTTP {r.status_code}")
-    except Exception as e:
-        logger.error(f"❌ Error de red en descarga individual: {e}")
+    return s3_client.generate_presigned_url(
+        "get_object",
+        Params={"Bucket": settings.R2_BUCKET_NAME, "Key": image_key},
+        ExpiresIn=3600,
+    )

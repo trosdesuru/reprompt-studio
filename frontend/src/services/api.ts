@@ -4,6 +4,18 @@ import { downloadApi } from "./api/downloads";
 import { promptApi } from "./api/prompts";
 import { API_URL } from "./api/client";
 
+const RESERVED_ROUTES = new Set([
+  "login",
+  "register",
+  "join",
+  "admin",
+  "studio",
+  "reprompt",
+  "api",
+  "_next",
+  "favicon.ico",
+]);
+
 export const api = {
   ...authApi,
   ...searchApi,
@@ -11,11 +23,19 @@ export const api = {
   ...promptApi,
 
   getPublicProfile: async (username: string) => {
+    if (RESERVED_ROUTES.has(username.toLowerCase())) {
+      return Promise.reject(new Error("Ruta reeservada deel sistema"));
+    }
+
     const res = await fetch(`${API_URL}/public/profile/${username}`);
     if (!res.ok) throw new Error("Perfil no encontrado");
     return res.json();
   },
   getPublicCollection: async (username: string, slug: string) => {
+    if (RESERVED_ROUTES.has(username.toLowerCase())) {
+      return Promise.reject(new Error("Ruta reservada del sistema"));
+    }
+
     const res = await fetch(`${API_URL}/public/profile/${username}/${slug}`);
     if (!res.ok) throw new Error("Colección no encontrada");
     return res.json();
@@ -65,9 +85,8 @@ export const api = {
     try {
       const data = JSON.parse(text);
       if (!res.ok) throw new Error(data.detail || "Error del servidor");
-      
-      return data;
 
+      return data;
     } catch (e) {
       console.error("El servidor ha devuelto HTML o ha crasheado:", text);
       throw new Error("Error de conexión al cargar el feed público");

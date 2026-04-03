@@ -45,8 +45,10 @@ app/
     __init__.py
     deps.py
     routes_auth.py
+    routes_collections.py
     routes_download.py
     routes_prompt.py
+    routes_public.py
     routes_search.py
   core/
     __init__.py
@@ -72,6 +74,8 @@ app/
     auth_service.py
     downloader.py
     scraper.py
+    security.py
+    storage.py
   utils/
     storage.py
   __init__.py
@@ -107,21 +111,30 @@ from app.models.user import User
 SECRET_KEY = os.getenv("SECRET_KEY", "super_clave_secreta_de_respaldo")
 ALGORITHM = "HS256"
 
-# 🟢 CONFIGURACIÓN REDIS
 REDIS_URL = os.getenv("REDIS_URL", "redis://redis:6379/0")
 redis_limiter = redis.from_url(REDIS_URL, decode_responses=True)
 
 
 class RateLimiter:
-    """Escudo Anti-Fuerza Bruta por IP para rutas específicas."""
+    """Escudo Anti-Fuerza Bruta optimizado. Limita por User ID si está logueado, sino por IP."""
 
     def __init__(self, max_requests: int, window_seconds: int):
         self.max_requests = max_requests
         self.window_seconds = window_seconds
 
     def __call__(self, request: Request):
-        client_ip = request.client.host if request.client else "127.0.0.1"
-        redis_key = f"rate_limit:{client_ip}:{request.url.path}"
+        client_identifier = request.client.host if request.client else "127.0.0.1"
+
+        token = request.cookies.get("access_token")
+        if token:
+            try:
+                payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+                if payload.get("sub"):
+                    client_identifier = f"user:{payload.get('sub')}"
+            except JWTError:
+                pass
+
+        redis_key = f"rate_limit:{client_identifier}:{request.url.path}"
 
         try:
             current_requests = redis_limiter.incr(redis_key)
@@ -129,11 +142,14 @@ class RateLimiter:
                 redis_limiter.expire(redis_key, self.window_seconds)
 
             if current_requests > self.max_requests:
+                # Lanzamos 429 explícito
                 raise HTTPException(
                     status_code=429,
                     detail=f"Límite de seguridad excedido. Máximo {self.max_requests} intentos cada {self.window_seconds} segundos.",
                 )
         except redis.RedisError:
+            # Programación Defensiva: Si Redis se cae, dejamos pasar el tráfico (Fail-open)
+            # antes que tirar todo el servidor.
             pass
 
 
@@ -193,6 +209,21 @@ def get_current_admin(current_user: User = Depends(get_current_user)):
             detail="No tienes suficientes privilegios (Requiere rol Admin)",
         )
     return current_user
+
+
+def get_optional_user(request: Request, session: Session = Depends(get_session)):
+    """Verifica el JWT pero no lanza error si no existe. Útil para identificar al dueño en rutas públicas."""
+    token = request.cookies.get("access_token")
+    if not token:
+        return None
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        username: str = payload.get("sub")
+        if username:
+            return session.exec(select(User).where(User.username == username)).first()
+    except JWTError:
+        return None
+    return None
 </file>
 
 <file path="app/api/routes_auth.py">
@@ -482,6 +513,130 @@ def revoke_all_sessions(current_admin: User = Depends(get_current_admin)):
     return {"status": "success", "message": "Todas las sesiones han sido revocadas."}
 </file>
 
+<file path="app/api/routes_collections.py">
+import re
+import unicodedata
+from typing import Optional
+from pydantic import BaseModel
+from fastapi import APIRouter, Depends, HTTPException
+from sqlmodel import Session, select
+from app.core.db import get_session
+from app.api.deps import get_current_user
+from app.models.user import User
+from app.models.collection import Collection
+from app.models.prompt import ImagePrompt
+
+router = APIRouter()
+
+
+class CollectionCreate(BaseModel):
+    name: str
+    description: Optional[str] = None
+    is_private: bool = False
+
+
+class AssignPrompt(BaseModel):
+    collection_id: Optional[int]
+
+
+def create_unique_slug(name: str, user_id: int, session: Session) -> str:
+    """Genera un slug seguro, quitando tildes y añadiendo número si hay colisión."""
+    name_normalized = (
+        unicodedata.normalize("NFKD", name).encode("ASCII", "ignore").decode("utf-8")
+    )
+
+    # 2. Limpiar caracteres raros y espacios por guiones
+    base_slug = (
+        re.sub(r"[^a-z0-9]+", "-", name_normalized.lower()).strip("-") or "coleccion"
+    )
+
+    slug = base_slug
+    counter = 1
+
+    # 3. Evitar colisiones (si ya tienes otra que se llame igual)
+    while session.exec(
+        select(Collection).where(Collection.user_id == user_id, Collection.slug == slug)
+    ).first():
+        slug = f"{base_slug}-{counter}"
+        counter += 1
+
+    return slug
+
+
+@router.post("/")
+def create_collection(
+    data: CollectionCreate,
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    slug = create_unique_slug(data.name, current_user.id, session)
+
+    nueva_coleccion = Collection(
+        user_id=current_user.id,
+        name=data.name,
+        slug=slug,
+        description=data.description,
+        is_private=data.is_private,
+    )
+
+    session.add(nueva_coleccion)
+    session.commit()
+    session.refresh(nueva_coleccion)
+
+    return {
+        "status": "success",
+        "message": "Colección creada",
+        "collection": nueva_coleccion,
+    }
+
+
+@router.get("/")
+def get_my_collections(
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    statement = (
+        select(Collection)
+        .where(Collection.user_id == current_user.id)
+        .order_by(Collection.created_at.desc())
+    )
+    colecciones = session.exec(statement).all()
+    return {"status": "success", "collections": colecciones}
+
+
+@router.put("/assign/{prompt_id}")
+def assign_prompt_to_collection(
+    prompt_id: int,
+    data: AssignPrompt,
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    prompt = session.exec(
+        select(ImagePrompt).where(
+            ImagePrompt.id == prompt_id, ImagePrompt.user_id == current_user.id
+        )
+    ).first()
+    if not prompt:
+        raise HTTPException(status_code=404, detail="Prompt no encontrado")
+
+    # Validamos que la colección sea suya si no es None
+    if data.collection_id:
+        col = session.exec(
+            select(Collection).where(
+                Collection.id == data.collection_id,
+                Collection.user_id == current_user.id,
+            )
+        ).first()
+        if not col:
+            raise HTTPException(status_code=404, detail="Colección no encontrada")
+
+    prompt.collection_id = data.collection_id
+    session.add(prompt)
+    session.commit()
+
+    return {"status": "success", "message": "Imagen movida correctamente"}
+</file>
+
 <file path="app/api/routes_download.py">
 from fastapi import Depends
 from app.api.deps import get_current_user
@@ -545,13 +700,17 @@ from app.api.deps import get_current_user
 from app.models.user import User
 from app.models.prompt import ImagePrompt
 from app.schemas.prompt import PromptCreate
-
-from app.utils.storage import generar_presigned_url, eliminar_de_r2
+from app.api.deps import get_current_user, RateLimiter
+from app.core.config import settings
+from app.services.storage import s3_client
+from app.utils.storage import eliminar_de_r2
+from app.services.storage import move_to_permanent, delete_file
+from app.services.security import validate_magic_bytes
+from app.services.storage import s3_client
 
 router = APIRouter()
 
 
-# Schema para pedir el ticket
 class PresignedUrlRequest(BaseModel):
     file_name: str
     content_type: str
@@ -562,28 +721,72 @@ class PresignedUrlRequest(BaseModel):
 # ==========================================
 
 
-@router.post("/generate-upload-url")
+@router.post(
+    "/generate-upload-url",
+    dependencies=[Depends(RateLimiter(max_requests=100, window_seconds=60))],
+)
 def get_upload_url(
     data: PresignedUrlRequest, current_user: User = Depends(get_current_user)
 ):
-    """Devuelve un ticket temporal para subir un archivo directo a R2"""
-    ext = data.file_name.split(".")[-1] if "." in data.file_name else "png"
-    # Saneamiento de nombre: Evita colisiones y bloquea ejecutables maliciosos lógicamente
-    safe_key = f"prompts/{current_user.username}/{uuid.uuid4().hex}.{ext}"
+    file_extension = data.filename.split(".")[-1].lower()
+    if file_extension not in ["png", "jpg", "jpeg", "webp"]:
+        raise HTTPException(status_code=400, detail="Extensión no permitida.")
+
+    # 2. REGLA DE CUARENTENA: Destruimos el nombre original y forzamos la ruta /temp
+    safe_filename = f"{uuid.uuid4().hex}.{file_extension}"
+    s3_key = f"temp/{current_user.id}/{safe_filename}"
 
     try:
-        urls = generar_presigned_url(safe_key, data.content_type)
-        return {"status": "success", "data": urls}
+        presigned_url = s3_client.generate_presigned_url(
+            "put_object",
+            Params={
+                "Bucket": settings.R2_BUCKET__NAME,
+                "Key": s3_key,
+                "ContentType": f"image/{'jpeg' if file_extension == 'jpg' else file_extension}",
+            },
+            ExpiresIn=300,
+        )
+
+        return {
+            "status": "success",
+            "upload_url": presigned_url,
+            "key": s3_key,
+        }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(
+            status_code=500, detail="Error generando acceso seguro al servidor."
+        )
 
 
-@router.post("/save")
+@router.post(
+    "/save", dependencies=[Depends(RateLimiter(max_requests=100, window_seconds=60))]
+)
 def guardar_prompt(
     data: PromptCreate,
     current_user: User = Depends(get_current_user),
     session: Session = Depends(get_session),
 ):
+
+    is_valid = validate_magic_bytes(data.image_url)
+
+    base_url = settings.R2_PUBLIC_URL.rstrip("/") + "/"
+    old_key = data.image_url.replace(base_url, "")
+
+    if not is_valid:
+        delete_file(old_key)
+        raise HTTPException(
+            status_code=400, detail="El archivo está corrupto o es malicioso."
+        )
+
+    new_key = old_key.replace("temp/", "prompts/", 1)
+
+    if not move_to_permanent(old_key, new_key):
+        raise HTTPException(
+            status_code=500, detail="Error interno al consolidar el archivo."
+        )
+
+    final_image_url = f"{base_url}{new_key}"
+    data.image_url = final_image_url
     try:
         # El frontend ya subió la imagen y solo nos manda la URL pública. ¡FastAPI no sufre!
         nuevo_prompt = ImagePrompt(
@@ -663,6 +866,234 @@ def eliminar_prompt(
         "status": "success",
         "message": "Prompt y archivo eliminados correctamente del búnker",
     }
+</file>
+
+<file path="app/api/routes_public.py">
+# backend/app/api/routes_public.py
+from fastapi import APIRouter, Depends, HTTPException
+from sqlmodel import Session, select, or_
+from app.core.db import get_session
+from app.models.user import User
+from app.models.collection import Collection
+from app.models.prompt import ImagePrompt
+from app.api.deps import RateLimiter, GlobalRateLimiter, get_optional_user
+
+router = APIRouter()
+
+
+@router.get("/profile/{username}")
+def get_public_profile(username: str, session: Session = Depends(get_session)):
+    """Devuelve los datos públicos de un usuario, sus colecciones y sus prompts recientes."""
+    user = session.exec(select(User).where(User.username == username)).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+
+    # 1. Colecciones Públicas
+    collections = session.exec(
+        select(Collection)
+        .where(Collection.user_id == user.id)
+        .where(Collection.is_private == False)
+    ).all()
+
+    # 2. Prompts Públicos (Que no estén en una colección o que su colección sea pública)
+    statement = (
+        select(ImagePrompt)
+        .outerjoin(Collection, ImagePrompt.collection_id == Collection.id)
+        .where(ImagePrompt.user_id == user.id)
+        .where(or_(ImagePrompt.collection_id == None, Collection.is_private == False))
+        .order_by(ImagePrompt.created_at.desc())
+        .limit(50)  # Traemos los últimos 50 para el escaparate
+    )
+    prompts = session.exec(statement).all()
+
+    return {
+        "status": "success",
+        "user": {"username": user.username, "role": user.role, "tier": user.tier},
+        "collections": collections,
+        "recent_prompts": prompts,
+    }
+
+
+@router.get("/profile/{username}/{collection_slug}")
+def get_public_collection(
+    username: str,
+    collection_slug: str,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_optional_user),
+):
+    """Devuelve una colección específica siempre y cuando sea pública."""
+    user = session.exec(select(User).where(User.username == username)).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+
+    collection = session.exec(
+        select(Collection)
+        .where(Collection.user_id == user.id)
+        .where(Collection.slug == collection_slug)
+        .where(Collection.is_private == False)
+    ).first()
+
+    if not collection:
+        raise HTTPException(
+            status_code=404, detail="Colección no encontrada o es privada"
+        )
+
+    if collection.is_private:
+        if not current_user or current_user.id != collection.user_id:
+            raise HTTPException(
+                status_code=403, detail="Esta colección es privada o no existe."
+            )
+
+    prompts = session.exec(
+        select(ImagePrompt)
+        .where(ImagePrompt.collection_id == collection.id)
+        .order_by(ImagePrompt.created_at.desc())
+    ).all()
+
+    return {
+        "status": "success",
+        "user": {"username": user.username},
+        "collection": collection,
+        "prompts": prompts,
+    }
+
+
+@router.get("/prompt/{prompt_id}")
+def get_public_prompt_detail(
+    prompt_id: int,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_optional_user),
+):
+    """Devuelve el detalle de un prompt, su metadata, y las imágenes relacionadas (Colección y Usuario)"""
+
+    # 1. Buscar la imagen
+    prompt = session.exec(
+        select(ImagePrompt).where(ImagePrompt.id == prompt_id)
+    ).first()
+    if not prompt:
+        raise HTTPException(status_code=404, detail="Imagen no encontrada")
+
+    # 2. Buscar al dueño
+    user = session.exec(select(User).where(User.id == prompt.user_id)).first()
+
+    # 3. Validar privacidad y buscar relacionadas de la Colección
+    collection = None
+    related_collection = []
+
+    if prompt.collection_id:
+        collection = session.exec(
+            select(Collection).where(Collection.id == prompt.collection_id)
+        ).first()
+        if collection and collection.is_private:
+            if not current_user or current_user.id != collection.user_id:
+                raise HTTPException(
+                    status_code=403,
+                    detail="Esta imagen pertenece a una colección privada",
+                )
+
+        # Otras imágenes de esta misma colección
+        related_collection = session.exec(
+            select(ImagePrompt)
+            .where(ImagePrompt.collection_id == prompt.collection_id)
+            .where(ImagePrompt.id != prompt.id)
+            .order_by(ImagePrompt.created_at.desc())
+            .limit(6)
+        ).all()
+
+    # 4. Otras imágenes públicas del mismo Usuario
+    statement = (
+        select(ImagePrompt)
+        .outerjoin(Collection, ImagePrompt.collection_id == Collection.id)
+        .where(ImagePrompt.user_id == user.id)
+        .where(ImagePrompt.id != prompt.id)
+        .where(or_(ImagePrompt.collection_id == None, Collection.is_private == False))
+        .order_by(ImagePrompt.created_at.desc())
+        .limit(12)
+    )
+    related_user = session.exec(statement).all()
+
+    return {
+        "status": "success",
+        "prompt": prompt,
+        "user": {"username": user.username, "role": user.role},
+        "collection": collection,
+        "related_collection": related_collection,
+        "related_user": related_user,
+    }
+
+
+@router.get("/feed")
+def get_public_feed(session: Session = Depends(get_session), limit: int = 50):
+    """Devuelve un mix de Prompts sueltos y Colecciones para la Home (Estilo Pinterest)"""
+
+    # 1. Colecciones Públicas
+    collections = session.exec(
+        select(Collection, User)
+        .join(User, Collection.user_id == User.id)
+        .where(Collection.is_private == False)
+        .order_by(Collection.created_at.desc())
+        .limit(limit)
+    ).all()
+
+    # 2. Prompts sueltos públicos
+    prompts = session.exec(
+        select(ImagePrompt, User)
+        .join(User, ImagePrompt.user_id == User.id)
+        .where(ImagePrompt.collection_id == None)
+        .order_by(ImagePrompt.created_at.desc())
+        .limit(limit)
+    ).all()
+
+    feed = []
+
+    # Formatear Colecciones
+    for col, user in collections:
+        cover = session.exec(
+            select(ImagePrompt)
+            .where(ImagePrompt.collection_id == col.id)
+            .order_by(ImagePrompt.created_at.desc())
+            .limit(1)
+        ).first()
+
+        items = session.exec(
+            select(ImagePrompt).where(ImagePrompt.collection_id == col.id)
+        ).all()
+
+        feed.append(
+            {
+                "type": "collection",
+                "id": f"col_{col.id}",
+                "raw_id": col.id,
+                "created_at": str(col.created_at),  # 🛡️ Convertido a texto
+                "title": col.name,
+                "slug": col.slug,
+                "username": user.username,
+                "image_url": cover.image_url if cover else None,
+                "items_count": len(items),
+            }
+        )
+
+    # Formatear Prompts
+    for p, user in prompts:
+        feed.append(
+            {
+                "type": "prompt",
+                "id": f"prompt_{p.id}",
+                "raw_id": p.id,
+                "created_at": str(p.created_at),  # 🛡️ Convertido a texto
+                "title": p.title,
+                "prompt": p.prompt,
+                "username": user.username,
+                "image_url": p.image_url,
+                "model": p.model,
+                "resolution": p.resolution,
+            }
+        )
+
+    # Ordenar cronológicamente
+    feed.sort(key=lambda x: x["created_at"], reverse=True)
+
+    return {"status": "success", "feed": feed[:limit]}
 </file>
 
 <file path="app/api/routes_search.py">
@@ -782,16 +1213,33 @@ def registrar_interaccion(
 </file>
 
 <file path="app/core/config.py">
-import requests
+# backend/app/core/config.py
+from pydantic_settings import BaseSettings
 
-# Sesión global persistente para máxima velocidad
-http_session = requests.Session()
-http_session.headers.update(
-    {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
-        "Cookie": "nw=1",
-    }
-)
+class Settings(BaseSettings):
+    # Base de datos y Core
+    DATABASE_URL: str
+    SECRET_KEY: str
+    REDIS_URL: str
+
+    # Cloudflare R2
+    R2_ENDPOINT_URL: str
+    R2_ACCESS_KEY: str
+    R2_SECRET_KEY: str
+    R2_BUCKET_NAME: str
+    R2_PUBLIC_URL: str
+
+    # Google Auth
+    GOOGLE_CLIENT_ID: str
+    GOOGLE_CLIENT_SECRET: str
+    INVITE_ONLY_MODE: bool = True
+
+    class Config:
+        env_file = ".env"
+        extra = "ignore" # Ignora variables extra en el sistema para no crashear
+
+# Instanciamos la configuración para que el resto de la app la pueda importar
+settings = Settings()
 </file>
 
 <file path="app/core/db.py">
@@ -1592,7 +2040,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 
-from app.core.config import http_session
+from app.services.security import http_session
 from app.core.webdriver_mgr import navegador_seguro
 
 # Importamos nuestras utilidades limpias
@@ -1693,7 +2141,7 @@ import json
 import redis
 from urllib.parse import quote
 from bs4 import BeautifulSoup
-from app.core.config import http_session
+from app.services.security import http_session
 
 logger = logging.getLogger("scraper")
 
@@ -1951,6 +2399,107 @@ def extraer_imagen_real(url_visor: str):
         return None
 </file>
 
+<file path="app/services/security.py">
+import logging
+import requests
+import urllib.request
+from urllib.error import URLError, HTTPError
+
+logger = logging.getLogger(__name__)
+
+http_session = requests.Session()
+http_session.headers.update(
+    {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+        "Cookie": "nw=1",
+    }
+)
+
+MAGIC_SIGNATURES = {
+    "png": b"\x89PNG\r\n\x1a\n",
+    "jpeg": b"\xff\xd8\xff",
+    "webp_riff": b"RIFF",
+    "webp_webp": b"WEBP",
+}
+
+
+def validate_magic_bytes(file_url: str) -> bool:
+    """
+    Verifica la autenticidad del archivo descargando solo 256 bytes.
+    Programación Defensiva: Asume falsedad por defecto.
+    """
+    if not file_url:
+        return False
+
+    try:
+        # Inyectamos cabecera Range de forma dinámica para esta petición
+        response = http_session.get(
+            file_url, headers={"Range": "bytes=0-256"}, timeout=5
+        )
+        response.raise_for_status()
+        header_bytes = response.content
+
+        if header_bytes.startswith(MAGIC_SIGNATURES["png"]):
+            return True
+        if header_bytes.startswith(MAGIC_SIGNATURES["jpeg"]):
+            return True
+        if (
+            header_bytes.startswith(MAGIC_SIGNATURES["webp_riff"])
+            and header_bytes[8:12] == MAGIC_SIGNATURES["webp_webp"]
+        ):
+            return True
+
+        logger.warning(
+            f"[SECURITY] Archivo malicioso detectado y bloqueado. URL: {file_url}"
+        )
+        return False
+
+    except requests.RequestException as e:
+        logger.error(f"[SECURITY] Error de red al auditar URL {file_url}: {e}")
+        return False
+</file>
+
+<file path="app/services/storage.py">
+# backend/app/services/storage.py
+import boto3
+import logging
+from app.core.config import settings
+
+logger = logging.getLogger(__name__)
+
+# Centralizamos el cliente aquí
+s3_client = boto3.client(
+    "s3",
+    endpoint_url=settings.R2_ENDPOINT_URL,
+    aws_access_key_id=settings.R2_ACCESS_KEY,
+    aws_secret_access_key=settings.R2_SECRET_KEY,
+    region_name="auto",
+)
+
+
+def move_to_permanent(old_key: str, new_key: str) -> bool:
+    """Mueve un objeto dentro del bucket y borra el original."""
+    try:
+        s3_client.copy_object(
+            Bucket=settings.R2_BUCKET_NAME,
+            CopySource={"Bucket": settings.R2_BUCKET_NAME, "Key": old_key},
+            Key=new_key,
+        )
+        s3_client.delete_object(Bucket=settings.R2_BUCKET_NAME, Key=old_key)
+        return True
+    except Exception as e:
+        logger.error(f"[STORAGE] Error moviendo llave {old_key} a {new_key}: {e}")
+        return False
+
+
+def delete_file(key: str) -> None:
+    """Destruye un objeto malicioso o huérfano."""
+    try:
+        s3_client.delete_object(Bucket=settings.R2_BUCKET_NAME, Key=key)
+    except Exception as e:
+        logger.error(f"[STORAGE] Error borrando llave {key}: {e}")
+</file>
+
 <file path="app/utils/storage.py">
 # backend/app/utils/storage.py
 import json
@@ -1961,7 +2510,6 @@ from botocore.exceptions import ClientError
 
 logger = logging.getLogger("storage")
 
-# 🟢 CONFIGURACIÓN R2 / S3 LECTURA DEL .ENV
 R2_ENDPOINT_URL = os.getenv("R2_ENDPOINT_URL")
 R2_ACCESS_KEY = os.getenv("R2_ACCESS_KEY")
 R2_SECRET_KEY = os.getenv("R2_SECRET_KEY")
@@ -2153,6 +2701,8 @@ from app.api.routes_download import router as download_router
 from app.api.routes_search import router as search_router
 from app.api.routes_auth import router as auth_router
 from app.api.routes_prompt import router as prompt_router
+from app.api.routes_public import router as public_router
+from app.api.routes_collections import router as collections_router
 
 logging.basicConfig(
     level=logging.INFO,
@@ -2189,6 +2739,8 @@ app.include_router(search_router, prefix="/api")
 app.include_router(download_router, prefix="/api")
 app.include_router(auth_router, prefix="/api/auth", tags=["Autenticación"])
 app.include_router(prompt_router, prefix="/api/prompts", tags=["Reprompt Studio"])
+app.include_router(public_router, prefix="/api/public", tags=["Escaparate Público"])
+app.include_router(collections_router, prefix="/api/collections", tags=["Colecciones"])
 </file>
 
 <file path="scripts/run_analytics.py">
@@ -2353,26 +2905,68 @@ ignore_missing_imports = true
 </file>
 
 <file path="requirements.txt">
-fastapi
-uvicorn
-requests
-beautifulsoup4
-lxml
-selenium
-pydantic
-redis
-rq
-sqlmodel
-psycopg2-binary
-alembic
-passlib[bcrypt]
-python-jose[cryptography]
-python-dotenv
-PyJWT==2.8.0
-redis==5.0.1
+alembic==1.18.4
+annotated-doc==0.0.4
+annotated-types==0.7.0
+anyio==4.13.0
+attrs==26.1.0
+bcrypt==5.0.0
+beautifulsoup4==4.14.3
 boto3==1.34.62
-python-multipart==0.0.9
+botocore==1.34.162
+cachetools==5.5.2
+certifi==2026.2.25
+cffi==2.0.0
+charset-normalizer==3.4.7
+click==8.3.1
+croniter==6.2.2
+cryptography==46.0.6
+ecdsa==0.19.2
+fastapi==0.135.3
 google-auth==2.28.1
+greenlet==3.3.2
+h11==0.16.0
+idna==3.11
+jmespath==1.1.0
+lxml==6.0.2
+Mako==1.3.10
+MarkupSafe==3.0.3
+outcome==1.3.0.post0
+passlib==1.7.4
+psycopg2-binary==2.9.11
+pyasn1==0.6.3
+pyasn1_modules==0.4.2
+pycparser==3.0
+pydantic==2.12.5
+pydantic-settings==2.13.1
+pydantic_core==2.41.5
+PyJWT==2.8.0
+PySocks==1.7.1
+python-dateutil==2.9.0.post0
+python-dotenv==1.2.2
+python-jose==3.5.0
+python-multipart==0.0.9
+redis==5.0.1
+requests==2.33.1
+rq==2.7.0
+rsa==4.9.1
+s3transfer==0.10.4
+selenium==4.41.0
+six==1.17.0
+sniffio==1.3.1
+sortedcontainers==2.4.0
+soupsieve==2.8.3
+SQLAlchemy==2.0.48
+sqlmodel==0.0.37
+starlette==1.0.0
+trio==0.33.0
+trio-websocket==0.12.2
+typing-inspection==0.4.2
+typing_extensions==4.15.0
+urllib3==2.6.3
+uvicorn==0.42.0
+websocket-client==1.9.0
+wsproto==1.3.2
 </file>
 
 <file path="reset_db.py">

@@ -76,6 +76,7 @@ export function LoginForm() {
           value={formData.username}
           onChange={handleChange}
           placeholder="Tu alias..."
+          autoComplete="email"
           required
         />
 
@@ -85,6 +86,7 @@ export function LoginForm() {
           type="password"
           value={formData.password}
           onChange={handleChange}
+          autoComplete="current-password"
           placeholder="••••••••"
           required
         />
