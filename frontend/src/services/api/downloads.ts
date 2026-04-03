@@ -1,5 +1,7 @@
-import { API_URL, fetchSeguro } from "./client";
+import { fetchSeguro } from "./client";
+import { ENV } from "@/src/services/config/env";
 
+export const API_URL = ENV.API_URL;
 export const downloadApi = {
   downloadAll: (url: string, title: string) =>
     fetchSeguro(`${API_URL}/descargar`, {

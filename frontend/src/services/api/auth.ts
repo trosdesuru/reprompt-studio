@@ -1,6 +1,6 @@
 import { UserLogin, UserRegister } from "@/src/types/auth.types";
 import { fetchSeguro } from "./client";
-import { ENV } from "@/src/config/env";
+import { ENV } from "@/src/services/config/env";
 
 export const API_URL = ENV.API_URL;
 console.log("🕵️‍♂️ [DEBUG] Valor real de API_URL inyectado por Next:", API_URL);
