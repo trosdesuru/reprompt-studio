@@ -1,84 +1,61 @@
-import { AuthError, NetworkError } from "@/src/utils/errors/AppErrors";
+export const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
 
 let isRefreshing = false;
-let failedQueue: Array<{ resolve: (value?: unknown) => void; reject: (reason?: any) => void }> = [];
+let refreshPromise: Promise<boolean> | null = null;
 
-const isServer = typeof window === "undefined";
-const getInternalUrl = () => {
-  const url = process.env.INTERNAL_API_URL || "http://backend:8000";
-  return url.endsWith("/api") ? url : `${url}/api`;
-};
-
-const getBrowserUrl = () => {
-  const url = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-  return url.endsWith("/api") ? url : `${url}/api`;
-};
-
-export const API_URL = isServer ? getInternalUrl() : getBrowserUrl();
-
-const processQueue = (error: Error | null) => {
-  failedQueue.forEach((prom) => {
-    if (error) {
-      prom.reject(error);
-    } else {
-      prom.resolve();
-    }
-  });
-  failedQueue = [];
-};
-
-export const fetchSeguro = async <T = any>(
-  url: string,
-  options: RequestInit = {},
-  retries = 1,
-): Promise<T> => {
-  const res = await fetch(url, {
+export async function fetchSeguro(endpoint: string, options: RequestInit = {}) {
+  let response = await fetch(endpoint, {
     ...options,
     credentials: "include",
   });
 
-  if (res.status === 401 && retries > 0) {
-    if (isRefreshing) {
-      return new Promise((resolve, reject) => {
-        failedQueue.push({ resolve, reject });
-      })
-        .then(() => {
-          return fetchSeguro<T>(url, options, 0);
-        })
-        .catch((err) => {
-          throw err;
-        });
+  if (
+    response.status === 401 &&
+    !endpoint.includes("/auth/login") &&
+    !endpoint.includes("/auth/refresh")
+  ) {
+    console.warn(
+      `🔄 [SECURITY] Access Token expirado en ${endpoint}. Intentando rotación transparente...`,
+    );
+
+    if (!isRefreshing) {
+      isRefreshing = true;
+      refreshPromise = (async () => {
+        try {
+          const refreshRes = await fetch(`${API_URL}/auth/refresh`, {
+            method: "POST",
+            credentials: "include",
+          });
+          return refreshRes.ok;
+        } catch (error) {
+          return false;
+        } finally {
+          isRefreshing = false;
+        }
+      })();
     }
 
-    isRefreshing = true;
-    console.log("🔑 Access Token caducado. Iniciando refresco silencioso maestro...");
+    const refreshSuccessful = await refreshPromise;
 
-    try {
-      const refreshRes = await fetch(`${API_URL}/auth/refresh`, {
-        method: "POST",
+    if (refreshSuccessful) {
+      console.log(`✅ [SECURITY] Rotación exitosa. Reintentando petición original a ${endpoint}`);
+      response = await fetch(endpoint, {
+        ...options,
         credentials: "include",
       });
-
-      if (refreshRes.ok) {
-        console.log("✅ Token mutado. Liberando peticiones en cola...");
-        processQueue(null);
-        return await fetchSeguro<T>(url, options, 0);
-      } else {
-        throw new Error("El servidor rechazó el refresco.");
+    } else {
+      console.error("🚷 [SECURITY] Refresh Token inválido. Sesión terminada.");
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new Event("auth:unauthorized"));
       }
-    } catch (err) {
-      processQueue(err as Error);
-
-      throw new AuthError("Sesión expirada de forma definitiva.");
-    } finally {
-      isRefreshing = false;
+      throw new Error("Sesión expirada completamente");
     }
   }
 
-  if (!res.ok) {
-    const errorData = await res.json().catch(() => ({}));
-    throw new NetworkError(errorData.detail || "Fallo en la petición HTTP", res.status);
+  if (!response.ok) {
+    console.error(`❌ [API_ERROR] Fallo en ${endpoint}: ${response.status} ${response.statusText}`);
+    throw new Error(`Error ${response.status}: ${response.statusText}`);
   }
 
-  return res.json();
-};
+  return response.json();
+}

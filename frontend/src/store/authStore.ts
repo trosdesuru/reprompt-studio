@@ -13,6 +13,7 @@ interface AuthState {
   login: (userData: User) => void;
   logout: () => Promise<void>;
   checkAuth: () => Promise<void>;
+  logoutSilencioso: () => void;
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
@@ -20,6 +21,11 @@ export const useAuthStore = create<AuthState>((set) => ({
   isLoadingAuth: true,
 
   login: (userData) => set({ user: userData, isLoadingAuth: false }),
+
+  logoutSilencioso: () => {
+    console.log("🤫 [AUTH_STORE] Ejecutando limpieza de estado en memoria.");
+    set({ user: null, isLoadingAuth: false });
+  },
 
   logout: async () => {
     try {
@@ -47,14 +53,38 @@ export const useAuthStore = create<AuthState>((set) => ({
       const role = res?.role || res?.data?.role || res?.user?.role || "user";
 
       if (username) {
-        set({ user: { username, role }, isLoadingAuth: false });
+        set({ user: { username, role } });
       } else {
         console.warn("⚠️ QA [authStore] 200 OK pero JSON no tiene 'username':", res);
-        set({ user: null, isLoadingAuth: false });
+        set({ user: null });
       }
     } catch (error: unknown) {
-      handleError(error, "AuthStore");
-      set({ user: null, isLoadingAuth: false });
+      console.warn("🛑 [AUTH_STORE] CheckAuth falló (Probable 401).");
+      try {
+        handleError(error, "AuthStore");
+      } catch (e) {
+        console.error("Error interno en handleError:", e);
+      }
+      set({ user: null });
+    } finally {
+      set({ isLoadingAuth: false });
     }
   },
 }));
+
+if (typeof window !== "undefined") {
+  window.addEventListener("auth:unauthorized", () => {
+    const state = useAuthStore.getState();
+
+    if (state.user || state.isLoadingAuth) {
+      state.logoutSilencioso();
+
+      if (!window.location.pathname.includes("/login")) {
+        console.warn("🚷 [SECURITY_ACTION] Interceptado 401. Expulsando a /login...");
+        const localeMatch = window.location.pathname.match(/^\/([a-z]{2})(?:\/|$)/);
+        const localePrefix = localeMatch ? `/${localeMatch[1]}` : "";
+        window.location.href = `${localePrefix}/login`;
+      }
+    }
+  });
+}

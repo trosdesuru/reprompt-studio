@@ -3740,6 +3740,18 @@ import { downloadApi } from "./api/downloads";
 import { promptApi } from "./api/prompts";
 import { API_URL } from "./api/client";
 
+const RESERVED_ROUTES = new Set([
+  "login",
+  "register",
+  "join",
+  "admin",
+  "studio",
+  "reprompt",
+  "api",
+  "_next",
+  "favicon.ico",
+]);
+
 export const api = {
   ...authApi,
   ...searchApi,
@@ -3747,11 +3759,19 @@ export const api = {
   ...promptApi,
 
   getPublicProfile: async (username: string) => {
+    if (RESERVED_ROUTES.has(username.toLowerCase())) {
+      return Promise.reject(new Error("Ruta reeservada deel sistema"));
+    }
+
     const res = await fetch(`${API_URL}/public/profile/${username}`);
     if (!res.ok) throw new Error("Perfil no encontrado");
     return res.json();
   },
   getPublicCollection: async (username: string, slug: string) => {
+    if (RESERVED_ROUTES.has(username.toLowerCase())) {
+      return Promise.reject(new Error("Ruta reservada del sistema"));
+    }
+
     const res = await fetch(`${API_URL}/public/profile/${username}/${slug}`);
     if (!res.ok) throw new Error("Colección no encontrada");
     return res.json();
@@ -3801,9 +3821,8 @@ export const api = {
     try {
       const data = JSON.parse(text);
       if (!res.ok) throw new Error(data.detail || "Error del servidor");
-      
-      return data;
 
+      return data;
     } catch (e) {
       console.error("El servidor ha devuelto HTML o ha crasheado:", text);
       throw new Error("Error de conexión al cargar el feed público");
@@ -3857,13 +3876,11 @@ export const useAuthStore = create<AuthState>((set) => ({
     set({ isLoadingAuth: true });
     try {
       const res = await api.obtenerPerfil();
-      console.log("🕵️‍♂️ QA [authStore] Respuesta Backend:", res);
 
       const username = res?.username || res?.data?.username || res?.user?.username;
       const role = res?.role || res?.data?.role || res?.user?.role || "user";
 
       if (username) {
-        console.log(`✅ QA [authStore] Usuario detectado: ${username} (${role})`);
         set({ user: { username, role }, isLoadingAuth: false });
       } else {
         console.warn("⚠️ QA [authStore] 200 OK pero JSON no tiene 'username':", res);
@@ -3984,27 +4001,22 @@ export const useProgressStore = create<ProgressState>((set) => {
     isAnimating: false,
     progress: 0,
     start: () => {
-      console.log("🚨 [STORE] 🟢 START llamado. Animating: true, Progress: 5");
       set({ isAnimating: true, progress: 5 });
       clearInterval(timer);
       timer = setInterval(() => {
         set((state) => {
           const nextProgress = state.progress >= 90 ? state.progress : state.progress + (10 - state.progress / 10);
-          console.log(`🚨 [STORE] ⏱️ Tick del Timer -> Progress: ${nextProgress.toFixed(2)}`);
           return { progress: nextProgress };
         });
       }, 300);
     },
     setProgress: (value) => {
-      console.log(`🚨 [STORE] 🔵 setProgress llamado -> Value: ${value}`);
       set({ isAnimating: true, progress: value });
     },
     done: () => {
-      console.log("🚨 [STORE] 🔴 DONE llamado. Forzando Progress: 100");
       clearInterval(timer);
       set({ isAnimating: true, progress: 100 });
       setTimeout(() => {
-        console.log("🚨 [STORE] 👻 Timeout 400ms terminado. Apagando barra (Animating: false, Progress: 0)");
         set({ isAnimating: false, progress: 0 });
       }, 400);
     },
@@ -5271,6 +5283,7 @@ export function LoginForm() {
           value={formData.username}
           onChange={handleChange}
           placeholder="Tu alias..."
+          autoComplete="email"
           required
         />
 
@@ -5280,6 +5293,7 @@ export function LoginForm() {
           type="password"
           value={formData.password}
           onChange={handleChange}
+          autoComplete="current-password"
           placeholder="••••••••"
           required
         />
