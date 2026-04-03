@@ -78,8 +78,8 @@ export const api = {
     return res.json();
   },
 
-  getPublicFeed: async () => {
-    const res = await fetch(`${API_URL}/public/feed`);
+  getPublicFeed: async (options?: { include_self?: boolean }) => {
+    const res = await fetch(`${API_URL}/public/feed${options?.include_self ? "?include_self=true" : ""}`);
     const text = await res.text();
 
     try {

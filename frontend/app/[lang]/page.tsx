@@ -37,7 +37,13 @@ export default function Home({ params }: { params: Promise<{ lang: string }> }) 
 
       <div className="max-w-90rem mx-auto px-4 pb-12">
         {!search.query ? (
-          <PublicFeedGrid feed={publicFeed.feed} isLoading={publicFeed.isFeedLoading} lang={lang} />
+          <PublicFeedGrid
+            feed={publicFeed.feed}
+            isLoading={publicFeed.isFeedLoading}
+            lang={lang}
+            showMyArt={publicFeed.showMyArt}
+            onToggleMyArt={() => publicFeed.setShowMyArt(!publicFeed.showMyArt)}
+          />
         ) : search.isLoading && search.results.length === 0 ? (
           <FeedState type="loading" />
         ) : !search.isLoading && search.results.length === 0 ? (

@@ -16,6 +16,7 @@ export function usePublicFeed(query: string) {
   const [feed, setFeed] = useState<FeedItem[]>([]);
   const [isFeedLoading, setIsFeedLoading] = useState(true);
   const [feedError, setFeedError] = useState<string | null>(null);
+  const [showMyArt, setShowMyArt] = useState(false);
 
   useEffect(() => {
     if (query) return;
@@ -24,14 +25,14 @@ export function usePublicFeed(query: string) {
     setFeedError(null);
 
     api
-      .getPublicFeed()
+      .getPublicFeed({ include_self: showMyArt })
       .then((res) => setFeed(res.feed || []))
       .catch((err) => {
         console.error("Error cargando feed:", err);
         setFeedError("Hubo un problema al cargar el arte de la comunidad.");
       })
       .finally(() => setIsFeedLoading(false));
-  }, [query]);
+  }, [query, showMyArt]);
 
-  return { feed, isFeedLoading, feedError };
+  return { feed, isFeedLoading, showMyArt, setShowMyArt, feedError };
 }
