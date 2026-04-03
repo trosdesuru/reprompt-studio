@@ -2,7 +2,7 @@ import { authApi } from "./api/auth";
 import { searchApi } from "./api/search";
 import { downloadApi } from "./api/downloads";
 import { promptApi } from "./api/prompts";
-import { API_URL } from "./api/client";
+import { API_URL, fetchSeguro } from "./api/client";
 
 const RESERVED_ROUTES = new Set([
   "login",
@@ -79,7 +79,9 @@ export const api = {
   },
 
   getPublicFeed: async (options?: { include_self?: boolean }) => {
-    const res = await fetch(`${API_URL}/public/feed${options?.include_self ? "?include_self=true" : ""}`);
+    const res = await fetch(
+      `${API_URL}/public/feed${options?.include_self ? "?include_self=true" : ""}`,
+    );
     const text = await res.text();
 
     try {
@@ -91,5 +93,19 @@ export const api = {
       console.error("El servidor ha devuelto HTML o ha crasheado:", text);
       throw new Error("Error de conexión al cargar el feed público");
     }
+  },
+
+  verifyGoogleCode: async (data: { code: string }) => {
+    // Hace un POST enviando el código para que el backend lo valide y devuelva las cookies
+    return fetchSeguro(`${API_URL}/auth/google/join`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  },
+
+  getGoogleAuthUrl: async () => {
+    return fetchSeguro(`${API_URL}/auth/google`, {
+      method: "POST"
+    });
   },
 };

@@ -75,9 +75,11 @@ components/
 lib/
   utils.ts
 public/
+  logo-black.png
   logo-brand-black.svg
   logo-brand-white.svg
-  logo.svg
+  logo-white.png
+  logo-white.svg
 src/
   constants/
     filters.ts
@@ -93,6 +95,7 @@ src/
       admin.types.ts
     auth/
       hooks/
+        useLoginForm.tsx
         useRedirectIfAuthenticated.ts
       AuthProvider.tsx
       GoogleAuthButton.tsx
@@ -146,6 +149,9 @@ src/
     atoms/
       icons/
         IconLampOn.tsx
+      Login/
+        FormDivider.tsx
+        FormHeader.tsx
       Badge.tsx
       Button.tsx
       FilterChip.tsx
@@ -160,6 +166,10 @@ src/
         FeedItemCard.tsx
       Feedback/
         FeedState.tsx
+      Filters/
+        FeedFilters.tsx
+      Media/
+        LazyImage.tsx
       DownloadButton.tsx
       FilterBar.tsx
       FormField.tsx
@@ -1133,7 +1143,13 @@ export default function Home({ params }: { params: Promise<{ lang: string }> }) 
 
       <div className="max-w-90rem mx-auto px-4 pb-12">
         {!search.query ? (
-          <PublicFeedGrid feed={publicFeed.feed} isLoading={publicFeed.isFeedLoading} lang={lang} />
+          <PublicFeedGrid
+            feed={publicFeed.feed}
+            isLoading={publicFeed.isFeedLoading}
+            lang={lang}
+            showMyArt={publicFeed.showMyArt}
+            onToggleMyArt={() => publicFeed.setShowMyArt(!publicFeed.showMyArt)}
+          />
         ) : search.isLoading && search.results.length === 0 ? (
           <FeedState type="loading" />
         ) : !search.isLoading && search.results.length === 0 ? (
@@ -2226,7 +2242,7 @@ export function cn(...inputs: ClassValue[]) {
 </svg>
 </file>
 
-<file path="public/logo.svg">
+<file path="public/logo-white.svg">
 <svg width="219" height="208" viewBox="0 0 219 208" fill="none" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
 <rect width="219" height="208" fill="url(#pattern0_36_8)"/>
 <defs>
@@ -2433,6 +2449,56 @@ export interface AuditLog {
   action: string;
   details: string;
   timestamp: string;
+}
+</file>
+
+<file path="src/features/auth/hooks/useLoginForm.tsx">
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { api } from "@/src/services/api";
+import { useAuthStore } from "@/src/store/authStore";
+import { useNotificationStore } from "@/src/store/notificationStore";
+import { handleError } from "@/src/utils/errors/ErrorHandler";
+
+export function useLoginForm() {
+  const { checkAuth } = useAuthStore();
+  const router = useRouter();
+  const notify = useNotificationStore((state) => state.notify);
+
+  const [isLoading, setIsLoading] = useState(false);
+  const [formData, setFormData] = useState({
+    username: "",
+    password: "",
+  });
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+
+    try {
+      await api.login(formData);
+      await checkAuth();
+      notify("Sistemas en línea", `Bienvenido de nuevo, ${formData.username}`, "success");
+      router.push("/");
+    } catch (err: unknown) {
+      const msg = handleError(err, "LoginForm");
+      notify("Error de Acceso", msg, "error");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return {
+    formData,
+    isLoading,
+    handleChange,
+    handleSubmit,
+  };
 }
 </file>
 
@@ -3226,6 +3292,7 @@ export function usePublicFeed(query: string) {
   const [feed, setFeed] = useState<FeedItem[]>([]);
   const [isFeedLoading, setIsFeedLoading] = useState(true);
   const [feedError, setFeedError] = useState<string | null>(null);
+  const [showMyArt, setShowMyArt] = useState(false);
 
   useEffect(() => {
     if (query) return;
@@ -3234,16 +3301,16 @@ export function usePublicFeed(query: string) {
     setFeedError(null);
 
     api
-      .getPublicFeed()
+      .getPublicFeed({ include_self: false })
       .then((res) => setFeed(res.feed || []))
       .catch((err) => {
         console.error("Error cargando feed:", err);
         setFeedError("Hubo un problema al cargar el arte de la comunidad.");
       })
       .finally(() => setIsFeedLoading(false));
-  }, [query]);
+  }, [query, showMyArt]);
 
-  return { feed, isFeedLoading, feedError };
+  return { feed, isFeedLoading, showMyArt, setShowMyArt, feedError };
 }
 </file>
 
@@ -3789,8 +3856,8 @@ export const api = {
     return res.json();
   },
 
-  getPublicFeed: async () => {
-    const res = await fetch(`${API_URL}/public/feed`);
+  getPublicFeed: async (options?: { include_self?: boolean }) => {
+    const res = await fetch(`${API_URL}/public/feed${options?.include_self ? "?include_self=true" : ""}`);
     const text = await res.text();
 
     try {
@@ -4264,6 +4331,35 @@ export const IconLamp2On = forwardRef<SVGSVGElement, SVGProps<SVGSVGElement>>(
 IconLamp2On.displayName = "IconLamp2On";
 </file>
 
+<file path="src/system/atoms/Login/FormDivider.tsx">
+export function FormDivider() {
+  return (
+    <div className="relative flex items-center py-4">
+      <div className="grow border-t border-border"></div>
+      <span className="shrink-0 px-4 text-xs font-mono text-muted-foreground uppercase tracking-widest">
+        o
+      </span>
+      <div className="grow border-t border-border"></div>
+    </div>
+  );
+}
+</file>
+
+<file path="src/system/atoms/Login/FormHeader.tsx">
+export function FormHeader() {
+  return (
+    <div className="mb-8 text-center">
+      <h2 className="text-2xl font-black uppercase font-mono tracking-tighter">
+        Acceso al <span className="text-(--accent-color)">Búnker</span>
+      </h2>
+      <p className="text-xs font-mono text-(--text-secondary) mt-2 uppercase">
+        Identifícate para gestionar tus prompts
+      </p>
+    </div>
+  );
+}
+</file>
+
 <file path="src/system/atoms/Badge.tsx">
 interface BadgeProps {
   text: string;
@@ -4632,6 +4728,7 @@ export function Skeleton({ className = "" }: { className?: string }) {
 import Link from "next/link";
 import { IconStack2, IconUser } from "@tabler/icons-react";
 import { FeedItem } from "@/src/features/home/hooks/usePublicFeed";
+import { LazyImage } from "../Media/LazyImage";
 
 interface FeedItemCardProps {
   item: FeedItem;
@@ -4650,14 +4747,23 @@ export function FeedItemCard({ item, lang }: FeedItemCardProps) {
       className="group relative cursor-pointer bg-muted/10 neo-border overflow-hidden aspect-4/5 hover:neo-shadow-accent transition-all block"
     >
       {item.image_url ? (
-        <img
+        <LazyImage
           src={item.image_url}
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
           alt={item.title}
         />
       ) : (
-        <div className="w-full h-full flex items-center justify-center bg-muted text-muted-foreground text-xs font-mono">
-          Sin portada
+        <div className="w-full h-full group-hover:scale-105 transition-transform duration-500">
+          <LazyImage
+            src="/logo-black.png"
+            className="w-full h-full object-cover block dark:hidden opacity-80"
+            alt="Portada por defecto"
+          />
+          <LazyImage
+            src="/logo-white.png"
+            className="w-full h-full object-cover hidden dark:block opacity-80"
+            alt="Portada por defecto"
+          />
         </div>
       )}
 
@@ -4714,6 +4820,83 @@ export function FeedState({ type, message, highlight }: FeedStateProps) {
       <p className="text-sm max-w-md text-center">
         No encontramos resultados para <span className="text-foreground font-bold">"{highlight}"</span>.
       </p>
+    </div>
+  );
+}
+</file>
+
+<file path="src/system/molecules/Filters/FeedFilters.tsx">
+import { IconEye, IconEyeOff } from "@tabler/icons-react";
+
+interface FeedFiltersProps {
+  showMyArt: boolean;
+  onToggleMyArt: () => void;
+}
+
+export function FeedFilters({ showMyArt, onToggleMyArt }: FeedFiltersProps) {
+  return (
+    <div className="flex items-center justify-end mb-6">
+      <button
+        onClick={onToggleMyArt}
+        className={`flex items-center gap-2 px-3 py-1.5 text-xs font-mono font-bold uppercase tracking-wider rounded-md transition-all neo-border ${
+          showMyArt
+            ? "bg-(--accent-color) text-white neo-shadow-accent"
+            : "bg-muted/10 text-muted-foreground hover:bg-muted/20"
+        }`}
+      >
+        {showMyArt ? <IconEye size={16} /> : <IconEyeOff size={16} />}
+        {showMyArt ? "Ocultar mi arte" : "Mostrar mi arte"}
+      </button>
+    </div>
+  );
+}
+</file>
+
+<file path="src/system/molecules/Media/LazyImage.tsx">
+"use client";
+
+import { useState } from "react";
+
+interface LazyImageProps {
+  src: string;
+  alt: string;
+  className?: string;
+}
+
+export function LazyImage({ src, alt, className = "" }: LazyImageProps) {
+  const [isLoaded, setIsLoaded] = useState(false);
+
+  return (
+    <div className="relative w-full h-full overflow-hidden bg-muted/10">
+      <div
+        className={`absolute inset-0 flex items-center justify-center bg-muted/20 transition-opacity duration-500 z-0 ${
+          isLoaded ? "opacity-0" : "opacity-100"
+        }`}
+      >
+        <img
+          src="/logo-white.png"
+          alt="Cargando..."
+          className="w-6 h-6 object-contain opacity-20 block dark:hidden"
+        />
+        <img
+          src="/logo-black.png"
+          alt="Cargando..."
+          className="w-6 h-6 object-contain opacity-80 hidden dark:block"
+        />
+      </div>
+
+      <img
+        src={src}
+        alt={alt}
+        loading="lazy"
+        onLoad={() => setIsLoaded(true)}
+        className={`
+          absolute inset-0 w-full h-full object-cover z-10
+          transition-all duration-700 ease-in-out
+          ${isLoaded ? "opacity-100 blur-0 scale-100" : "opacity-0 blur-md scale-110"}
+          ${className}
+        `}
+      />
     </div>
   );
 }
@@ -5325,73 +5508,26 @@ export function ChangePasswordModal({ onClose }: ChangePasswordModalProps) {
 <file path="src/system/organisms/Auth/LoginForm.tsx">
 "use client";
 
-import { useState } from "react";
-import { api } from "@/src/services/api";
-import { useAuthStore } from "@/src/store/authStore";
-import { useRouter } from "next/navigation";
-import { handleError } from "@/src/utils/errors/ErrorHandler";
-import { useNotificationStore } from "@/src/store/notificationStore";
-// 🟢 Importamos el Sistema de Diseño
+import { useLoginForm } from "@/src/features/auth/hooks/useLoginForm";
+
 import { FormField } from "@/src/system/molecules/FormField";
 import { Button } from "@/src/system/atoms/Button";
 import { GoogleAuthButton } from "@/src/features/auth/GoogleAuthButton";
+import { FormDivider } from "../../atoms/Login/FormDivider";
+import { FormHeader } from "../../atoms/Login/FormHeader";
 
 export function LoginForm() {
-  const { checkAuth } = useAuthStore();
-  const router = useRouter();
-  const notify = useNotificationStore((state) => state.notify);
-
-  const [isLoading, setIsLoading] = useState(false);
-  // 🟢 Centralizamos el estado en un objeto para evitar los errores de "Cannot find name"
-  const [formData, setFormData] = useState({
-    username: "",
-    password: "",
-  });
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-
-    try {
-      await api.login(formData);
-      await checkAuth();
-      notify("Sistemas en línea", `Bienvenido de nuevo, ${formData.username}`, "success");
-      router.push("/");
-    } catch (err: unknown) {
-      const msg = handleError(err, "LoginForm");
-      notify("Error de Acceso", msg, "error");
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const { formData, isLoading, handleChange, handleSubmit } = useLoginForm();
 
   return (
     <div className="w-full max-w-md mx-auto p-8 bg-(--bg-secondary) neo-border neo-shadow">
-      <div className="mb-8 text-center">
-        <h2 className="text-2xl font-black uppercase font-mono tracking-tighter">
-          Acceso al <span className="text-(--accent-color)">Búnker</span>
-        </h2>
-        <p className="text-xs font-mono text-(--text-secondary) mt-2 uppercase">
-          Identifícate para gestionar tus prompts
-        </p>
-      </div>
+      <FormHeader />
 
       <div className="mt-6">
         <GoogleAuthButton />
       </div>
-      
-      <div className="relative flex items-center py-4">
-        <div className="grow border-t border-border"></div>
-        <span className="shrink-0 px-4 text-xs font-mono text-muted-foreground uppercase tracking-widest">
-          o
-        </span>
-        <div className="grow border-t border-border"></div>
-      </div>
+
+      <FormDivider />
 
       <form onSubmit={handleSubmit} className="space-y-6">
         <FormField
@@ -5401,7 +5537,7 @@ export function LoginForm() {
           value={formData.username}
           onChange={handleChange}
           placeholder="Tu alias..."
-          autoComplete="email"
+          autoComplete="username"
           required
         />
 
@@ -6188,28 +6324,40 @@ export function InspectorResources({ data }: { data: ExtractedPromptData }) {
 </file>
 
 <file path="src/system/organisms/Feed/PublicFeedGrid.tsx">
-import { FeedState } from "@/src/system/molecules/Feedback/FeedState";
 import { FeedItemCard } from "@/src/system/molecules/Cards/FeedItemCard";
+import { FeedState } from "@/src/system/molecules/Feedback/FeedState";
 import { FeedItem } from "@/src/features/home/hooks/usePublicFeed";
+import { FeedFilters } from "../../molecules/Filters/FeedFilters";
 
 interface PublicFeedGridProps {
   feed: FeedItem[];
   isLoading: boolean;
   lang: string;
+  showMyArt: boolean;
+  onToggleMyArt: () => void;
 }
 
-export function PublicFeedGrid({ feed, isLoading, lang }: PublicFeedGridProps) {
+export function PublicFeedGrid({
+  feed,
+  isLoading,
+  lang,
+  showMyArt,
+  onToggleMyArt,
+}: PublicFeedGridProps) {
   return (
     <div className="pt-8">
-      <h2 className="text-xl font-black font-mono uppercase tracking-widest mb-6 text-(--accent-color)">
-        Explora la Comunidad
-      </h2>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+        <h2 className="text-xl font-black font-mono uppercase tracking-widest text-(--accent-color)">
+          Explora la Comunidad
+        </h2>
 
+        <FeedFilters showMyArt={showMyArt} onToggleMyArt={onToggleMyArt} />
+      </div>
       {isLoading ? (
         <FeedState type="loading" />
       ) : feed.length === 0 ? (
         <div className="text-center py-20 text-muted-foreground font-mono neo-border bg-muted/5">
-          Aún no hay arte público en la plataforma.
+          Aún no hay arte público en la plataforma con estos filtros.
         </div>
       ) : (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">

@@ -1,57 +1,125 @@
 "use client";
 
 import { useLoginForm } from "@/src/features/auth/hooks/useLoginForm";
+import { useGoogleAuth } from "@/src/features/auth/hooks/useGoogleAuth";
+import { GoogleLogin } from "@react-oauth/google";
 
 import { FormField } from "@/src/system/molecules/FormField";
 import { Button } from "@/src/system/atoms/Button";
-import { GoogleAuthButton } from "@/src/features/auth/GoogleAuthButton";
+import { IconArrowLeft } from "@tabler/icons-react";
 import { FormDivider } from "../../atoms/Login/FormDivider";
 import { FormHeader } from "../../atoms/Login/FormHeader";
 
 export function LoginForm() {
-  const { formData, isLoading, handleChange, handleSubmit } = useLoginForm();
+  const standardAuth = useLoginForm();
+  const googleAuth = useGoogleAuth();
 
   return (
     <div className="w-full max-w-md mx-auto p-8 bg-(--bg-secondary) neo-border neo-shadow">
-      <FormHeader />
+      {googleAuth.step === "invite" ? (
+        <div className="animate-in fade-in slide-in-from-bottom-4 duration-300">
+          <div className="mb-8 text-center">
+            <h2 className="text-2xl font-black uppercase font-mono tracking-tighter">
+              Último <span className="text-(--accent-color)">Paso</span>
+            </h2>
+            <p className="text-xs font-mono text-(--text-secondary) mt-2 uppercase">
+              Completa tu registro con Google
+            </p>
+          </div>
 
-      <div className="mt-6">
-        <GoogleAuthButton />
-      </div>
+          <form onSubmit={googleAuth.handleJoinSubmit} className="space-y-6">
+            <FormField
+              label="Tu alias (Público)"
+              name="username"
+              type="text"
+              value={googleAuth.username}
+              onChange={(e) => googleAuth.setUsername(e.target.value)}
+              placeholder="ej. cyberpunk_artist"
+              required
+            />
 
-      <FormDivider />
+            <FormField
+              label="Código de invitación"
+              name="inviteCode"
+              type="text"
+              value={googleAuth.inviteCode}
+              onChange={(e) => googleAuth.setInviteCode(e.target.value)}
+              placeholder="ej. TROYA-123"
+              className="uppercase"
+              required
+            />
 
-      <form onSubmit={handleSubmit} className="space-y-6">
-        <FormField
-          label="Usuario"
-          name="username"
-          type="text"
-          value={formData.username}
-          onChange={handleChange}
-          placeholder="Tu alias..."
-          autoComplete="username"
-          required
-        />
+            <div className="flex flex-col-reverse sm:flex-row gap-4 pt-2">
+              <Button
+                type="button"
+                onClick={googleAuth.cancelGoogleLogin}
+                disabled={googleAuth.isLoading}
+                className="w-full sm:w-1/3 justify-center h-12 bg-transparent text-foreground border border-border hover:bg-muted font-mono uppercase text-xs"
+              >
+                <IconArrowLeft size={16} className="mr-2" /> Volver
+              </Button>
 
-        <FormField
-          label="Contraseña"
-          name="password"
-          type="password"
-          value={formData.password}
-          onChange={handleChange}
-          autoComplete="current-password"
-          placeholder="••••••••"
-          required
-        />
+              <Button
+                type="submit"
+                isLoading={googleAuth.isLoading}
+                className="w-full sm:w-2/3 justify-center h-12 text-sm font-black uppercase tracking-widest bg-white text-black hover:bg-gray-200"
+              >
+                Completar
+              </Button>
+            </div>
+          </form>
+        </div>
+      ) : (
+        <div className="animate-in fade-in zoom-in-95 duration-300">
+          <FormHeader />
 
-        <Button
-          type="submit"
-          isLoading={isLoading}
-          className="w-full justify-center h-12 text-sm font-black uppercase tracking-widest"
-        >
-          Iniciar Secuencia de Entrada
-        </Button>
-      </form>
+          <div className="mt-6 flex justify-center w-full">
+            {/* 🟢 Botón nativo de Google que abre el Popup */}
+            <GoogleLogin
+              onSuccess={googleAuth.handleGoogleSuccess}
+              onError={googleAuth.handleGoogleError}
+              useOneTap={false}
+              theme="filled_black"
+              shape="rectangular"
+              text="continue_with"
+            />
+          </div>
+
+          <FormDivider />
+
+          <form onSubmit={standardAuth.handleSubmit} className="space-y-6">
+            <FormField
+              label="Usuario"
+              name="username"
+              type="text"
+              value={standardAuth.formData.username}
+              onChange={standardAuth.handleChange}
+              placeholder="Tu alias..."
+              autoComplete="username"
+              required
+            />
+
+            <FormField
+              label="Contraseña"
+              name="password"
+              type="password"
+              value={standardAuth.formData.password}
+              onChange={standardAuth.handleChange}
+              autoComplete="current-password"
+              placeholder="••••••••"
+              required
+            />
+
+            <Button
+              type="submit"
+              isLoading={standardAuth.isLoading}
+              className="w-full justify-center h-12 text-sm font-black uppercase tracking-widest"
+            >
+              Iniciar Secuencia
+            </Button>
+          </form>
+        </div>
+      )}
     </div>
   );
 }

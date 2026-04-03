@@ -3,31 +3,28 @@
 import { useState } from "react";
 import { GoogleLogin } from "@react-oauth/google";
 import { useAuthStore } from "@/src/store/authStore";
+
 import toast from "react-hot-toast";
 
 export function GoogleAuthButton() {
   const checkAuth = useAuthStore((state) => state.checkAuth);
 
-  // Estados para el Flujo Híbrido
   const [step, setStep] = useState<"google" | "invite">("google");
   const [tempToken, setTempToken] = useState("");
   const [inviteCode, setInviteCode] = useState("");
   const [username, setUsername] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
-  // 1. Manejador del éxito de Google
-  // 1. Manejador del éxito de Google
   const handleGoogleSuccess = async (credentialResponse: any) => {
     try {
       setIsLoading(true);
 
-      // 🛡️ Apuntamos al backend real
       const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
       const res = await fetch(`${API_URL}/api/auth/google`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        credentials: "include", // 🛡️ OBLIGATORIO para guardar las cookies de FastAPI
+        credentials: "include",
         body: JSON.stringify({ token: credentialResponse.credential }),
       });
 
@@ -52,7 +49,6 @@ export function GoogleAuthButton() {
     }
   };
 
-  // 2. Manejador del envío del Código de Invitación
   const handleJoinSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!inviteCode || !username) return toast.error("Rellena todos los campos");
@@ -89,7 +85,6 @@ export function GoogleAuthButton() {
     }
   };
 
-  // RENDERIZADO: Paso 1 (Botón de Google)
   if (step === "google") {
     return (
       <div className="flex justify-center w-full">
@@ -105,7 +100,6 @@ export function GoogleAuthButton() {
     );
   }
 
-  // RENDERIZADO: Paso 2 (Formulario de Invitación)
   return (
     <form
       onSubmit={handleJoinSubmit}
