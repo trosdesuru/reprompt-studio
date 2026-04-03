@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { IconStack2, IconUser } from "@tabler/icons-react";
 import { FeedItem } from "@/src/features/home/hooks/usePublicFeed";
+import { LazyImage } from "../Media/LazyImage";
 
 interface FeedItemCardProps {
   item: FeedItem;
@@ -19,7 +20,7 @@ export function FeedItemCard({ item, lang }: FeedItemCardProps) {
       className="group relative cursor-pointer bg-muted/10 neo-border overflow-hidden aspect-4/5 hover:neo-shadow-accent transition-all block"
     >
       {item.image_url ? (
-        <img
+        <LazyImage
           src={item.image_url}
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
           alt={item.title}
