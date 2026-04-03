@@ -4,28 +4,26 @@ const nextConfig: NextConfig = {
   images: {
     remotePatterns: [
       {
-        protocol: 'https',
-        hostname: '**.e-hentai.org',
-      },
-      {
-        protocol: 'https',
-        hostname: 'ehgt.org',
-      },
-      {
-        protocol: 'https',
-        hostname: '**.ehgt.org',
-      },
-      {
-        protocol: 'https',
-        hostname: '**.hatenablog.com',
-      },
-      {
-        protocol: 'https',
-        hostname: '**pub-**.r2.dev',
+        protocol: "https",
+        hostname: "**pub-**.r2.dev",
       },
     ],
-    formats: ['image/avif', 'image/webp'],
+    formats: ["image/avif", "image/webp"],
     minimumCacheTTL: 604800,
+  },
+
+  async headers() {
+    return [
+      {
+        source: "/(.*)",
+        headers: [
+          {
+            key: "Cross-Origin-Opener-Policy",
+            value: "same-origin-allow-popups",
+          },
+        ],
+      },
+    ];
   },
 };
 
