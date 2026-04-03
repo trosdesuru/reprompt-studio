@@ -31,7 +31,7 @@ class PresignedUrlRequest(BaseModel):
 
 @router.post(
     "/generate-upload-url",
-    dependencies=[Depends(RateLimiter(max_requests=10, window_seconds=60))],
+    dependencies=[Depends(RateLimiter(max_requests=100, window_seconds=60))],
 )
 def get_upload_url(
     data: PresignedUrlRequest, current_user: User = Depends(get_current_user)
@@ -67,7 +67,7 @@ def get_upload_url(
 
 
 @router.post(
-    "/save", dependencies=[Depends(RateLimiter(max_requests=10, window_seconds=60))]
+    "/save", dependencies=[Depends(RateLimiter(max_requests=100, window_seconds=60))]
 )
 def guardar_prompt(
     data: PromptCreate,

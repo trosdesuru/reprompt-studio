@@ -10,21 +10,30 @@ from app.models.user import User
 SECRET_KEY = os.getenv("SECRET_KEY", "super_clave_secreta_de_respaldo")
 ALGORITHM = "HS256"
 
-# 🟢 CONFIGURACIÓN REDIS
 REDIS_URL = os.getenv("REDIS_URL", "redis://redis:6379/0")
 redis_limiter = redis.from_url(REDIS_URL, decode_responses=True)
 
 
 class RateLimiter:
-    """Escudo Anti-Fuerza Bruta por IP para rutas específicas."""
+    """Escudo Anti-Fuerza Bruta optimizado. Limita por User ID si está logueado, sino por IP."""
 
     def __init__(self, max_requests: int, window_seconds: int):
         self.max_requests = max_requests
         self.window_seconds = window_seconds
 
     def __call__(self, request: Request):
-        client_ip = request.client.host if request.client else "127.0.0.1"
-        redis_key = f"rate_limit:{client_ip}:{request.url.path}"
+        client_identifier = request.client.host if request.client else "127.0.0.1"
+
+        token = request.cookies.get("access_token")
+        if token:
+            try:
+                payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+                if payload.get("sub"):
+                    client_identifier = f"user:{payload.get('sub')}"
+            except JWTError:
+                pass
+
+        redis_key = f"rate_limit:{client_identifier}:{request.url.path}"
 
         try:
             current_requests = redis_limiter.incr(redis_key)
@@ -32,11 +41,14 @@ class RateLimiter:
                 redis_limiter.expire(redis_key, self.window_seconds)
 
             if current_requests > self.max_requests:
+                # Lanzamos 429 explícito
                 raise HTTPException(
                     status_code=429,
                     detail=f"Límite de seguridad excedido. Máximo {self.max_requests} intentos cada {self.window_seconds} segundos.",
                 )
         except redis.RedisError:
+            # Programación Defensiva: Si Redis se cae, dejamos pasar el tráfico (Fail-open)
+            # antes que tirar todo el servidor.
             pass
 
 
