@@ -1,8 +1,9 @@
-export const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
+import { ENV } from "@/src/config/env";
 
 let isRefreshing = false;
 let refreshPromise: Promise<boolean> | null = null;
 
+export const API_URL = ENV.API_URL;
 export async function fetchSeguro(endpoint: string, options: RequestInit = {}) {
   let response = await fetch(endpoint, {
     ...options,
