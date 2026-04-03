@@ -37,9 +37,8 @@ export function UniversalMediaCard({
       )}
       onClick={onClick}
     >
-      <MediaCover src={data.imageUrl} alt={data.title} aspectRatio={data.aspectRatio} />
+      <MediaCover src={data.imageUrl} alt={data.title} />
 
-      {/* Solo mostramos el overlay si hay una imagen válida para evitar ruido visual */}
       {data.imageUrl && (
         <MediaOverlay
           title={data.title}

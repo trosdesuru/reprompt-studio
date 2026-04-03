@@ -1,6 +1,7 @@
-# backend/app/api/routes_download.py
-from fastapi import APIRouter, Depends, HTTPException
 from rq import Queue
+from rq.job import Job
+from rq.exceptions import NoSuchJobError
+from fastapi import APIRouter, Depends, HTTPException
 from app.core.redis_config import conn
 from app.services.downloader import generar_zip_coleccion, ejecutar_descarga_individual
 from app.api.deps import get_current_user
@@ -47,3 +48,29 @@ def descargar_una_imagen(
         raise HTTPException(
             status_code=500, detail="Error al generar el acceso directo en R2"
         )
+
+
+@router.get("/status/{job_id}")
+def verificar_estado_descarga(
+    job_id: str, current_user: User = Depends(get_current_user)
+):
+    """
+    El frontend consulta este endpoint cada 2 segundos.
+    Lee directamente de Redis el estado del Worker sin tocar la Base de Datos.
+    """
+    try:
+        job = Job.fetch(job_id, connection=conn)
+
+        if job.is_finished:
+            return {"status": "finished", "download_url": job.result}
+        elif job.is_failed:
+            return {"status": "failed", "error": str(job.exc_info)}
+        else:
+            return {"status": "processing"}
+
+    except NoSuchJobError:
+        raise HTTPException(
+            status_code=404, detail="El trabajo de descarga no existe o ha caducado"
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Error interno al consultar Redis")
