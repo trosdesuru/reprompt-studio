@@ -44,7 +44,7 @@ export function LoginForm() {
               type="text"
               value={googleAuth.inviteCode}
               onChange={(e) => googleAuth.setInviteCode(e.target.value)}
-              placeholder="ej. TROYA-123"
+              placeholder="ej. VGR-A1234B56"
               className="uppercase"
               required
             />

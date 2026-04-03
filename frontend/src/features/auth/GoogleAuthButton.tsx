@@ -126,7 +126,7 @@ export function GoogleAuthButton() {
           value={inviteCode}
           onChange={(e) => setInviteCode(e.target.value)}
           className="px-3 py-2 text-sm bg-background border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-primary uppercase"
-          placeholder="ej. TROYA-123"
+          placeholder="ej. VY-123"
           disabled={isLoading}
         />
       </div>
