@@ -26,8 +26,17 @@ export function FeedItemCard({ item, lang }: FeedItemCardProps) {
           alt={item.title}
         />
       ) : (
-        <div className="w-full h-full flex items-center justify-center bg-muted text-muted-foreground text-xs font-mono">
-          Sin portada
+        <div className="w-full h-full group-hover:scale-105 transition-transform duration-500">
+          <LazyImage
+            src="/logo-black.png"
+            className="w-full h-full object-cover block dark:hidden opacity-80"
+            alt="Portada por defecto"
+          />
+          <LazyImage
+            src="/logo-white.png"
+            className="w-full h-full object-cover hidden dark:block opacity-80"
+            alt="Portada por defecto"
+          />
         </div>
       )}
 
