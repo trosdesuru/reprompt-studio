@@ -1,72 +1,25 @@
 "use client";
 
-import { useState } from "react";
-import { api } from "@/src/services/api";
-import { useAuthStore } from "@/src/store/authStore";
-import { useRouter } from "next/navigation";
-import { handleError } from "@/src/utils/errors/ErrorHandler";
-import { useNotificationStore } from "@/src/store/notificationStore";
-// 🟢 Importamos el Sistema de Diseño
+import { useLoginForm } from "@/src/features/auth/hooks/useLoginForm";
+
 import { FormField } from "@/src/system/molecules/FormField";
 import { Button } from "@/src/system/atoms/Button";
 import { GoogleAuthButton } from "@/src/features/auth/GoogleAuthButton";
+import { FormDivider } from "../../atoms/Login/FormDivider";
+import { FormHeader } from "../../atoms/Login/FormHeader";
 
 export function LoginForm() {
-  const { checkAuth } = useAuthStore();
-  const router = useRouter();
-  const notify = useNotificationStore((state) => state.notify);
-
-  const [isLoading, setIsLoading] = useState(false);
-  // 🟢 Centralizamos el estado en un objeto para evitar los errores de "Cannot find name"
-  const [formData, setFormData] = useState({
-    username: "",
-    password: "",
-  });
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-
-    try {
-      await api.login(formData);
-      await checkAuth();
-      notify("Sistemas en línea", `Bienvenido de nuevo, ${formData.username}`, "success");
-      router.push("/");
-    } catch (err: unknown) {
-      const msg = handleError(err, "LoginForm");
-      notify("Error de Acceso", msg, "error");
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const { formData, isLoading, handleChange, handleSubmit } = useLoginForm();
 
   return (
     <div className="w-full max-w-md mx-auto p-8 bg-(--bg-secondary) neo-border neo-shadow">
-      <div className="mb-8 text-center">
-        <h2 className="text-2xl font-black uppercase font-mono tracking-tighter">
-          Acceso al <span className="text-(--accent-color)">Búnker</span>
-        </h2>
-        <p className="text-xs font-mono text-(--text-secondary) mt-2 uppercase">
-          Identifícate para gestionar tus prompts
-        </p>
-      </div>
+      <FormHeader />
 
       <div className="mt-6">
         <GoogleAuthButton />
       </div>
-      
-      <div className="relative flex items-center py-4">
-        <div className="grow border-t border-border"></div>
-        <span className="shrink-0 px-4 text-xs font-mono text-muted-foreground uppercase tracking-widest">
-          o
-        </span>
-        <div className="grow border-t border-border"></div>
-      </div>
+
+      <FormDivider />
 
       <form onSubmit={handleSubmit} className="space-y-6">
         <FormField
@@ -76,7 +29,7 @@ export function LoginForm() {
           value={formData.username}
           onChange={handleChange}
           placeholder="Tu alias..."
-          autoComplete="email"
+          autoComplete="username"
           required
         />
 
