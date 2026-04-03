@@ -1,16 +1,17 @@
 "use client";
 
-import { use, useEffect, useState } from "react";
-import dynamic from "next/dynamic";
-import { useSearch } from "@/src/features/search/hooks/useSearch";
-import { api } from "@/src/services/api";
-import { useHomeInteraction } from "@/src/features/home/hooks/useHomeInteraction";
-import Link from "next/link";
 import { IconStack2, IconUser } from "@tabler/icons-react";
 
-import { HeroSearch } from "@/src/system/organisms/Search/HeroSearch";
-import { SearchResults } from "@/src/system/organisms/Search/SearchResults/SearchResults";
+import Link from "next/link";
+import dynamic from "next/dynamic";
+import { use, useEffect, useState } from "react";
+import { useSearch } from "@/src/features/search/hooks/useSearch";
+
+import { api } from "@/src/services/api";
+import { Hero } from "@/src/system/organisms/Search/Hero";
 import { FeedState } from "@/src/system/molecules/Feedback/FeedState";
+import { useHomeInteraction } from "@/src/features/home/hooks/useHomeInteraction";
+import { SearchResults } from "@/src/system/organisms/Search/SearchResults/SearchResults";
 
 const ImageViewerModal = dynamic(
   () =>
@@ -50,7 +51,7 @@ export default function Home({ params }: { params: Promise<{ lang: string }> }) 
 
   return (
     <main className="min-h-screen bg-background text-foreground font-sans">
-      <HeroSearch />
+      <Hero />
 
       {error && <FeedState type="error" message={error} />}
 

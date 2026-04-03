@@ -2,7 +2,7 @@
 
 import { Heading } from "@/src/system/atoms/Heading";
 
-export function HeroSearch() {
+export function Hero() {
   return (
     <div className="w-full py-12 md:py-20 flex flex-col items-center justify-center text-center px-4 animate-in fade-in duration-700">
       <Heading level="h1" className="mb-4">
