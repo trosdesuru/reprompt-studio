@@ -16,13 +16,11 @@ export default function PromptDetailPage({
 }) {
   const { lang, username, prompt_id } = use(params);
 
-  const { data, isLoading, error } = usePublicPrompt(username, prompt_id);
+  const { data: prompt, isLoading, error } = usePublicPrompt(prompt_id);
 
   if (isLoading) {
     return <PageLoader text="Desencriptando datos..." />;
   }
-
-  const prompt = data?.prompt ? data.prompt : data;
 
   if (error || !prompt) {
     return (
