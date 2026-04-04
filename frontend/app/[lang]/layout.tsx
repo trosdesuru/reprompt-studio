@@ -3,6 +3,7 @@ import { Prompt, JetBrains_Mono } from "next/font/google";
 import "../globals.css";
 
 import { AuthProvider } from "@/src/features/auth/AuthProvider";
+import { ThemeProvider } from "@/src/dictionaries/ThemeProvider";
 import { AppToaster } from "@/src/system/organisms/Layout/AppToaster";
 import { GlobalProgress } from "@/src/system/organisms/Layout/GlobalProgress";
 import { cn } from "@/lib/utils";
@@ -43,15 +44,22 @@ export default async function RootLayout({
       suppressHydrationWarning
     >
       <body className="antialiased selection:bg-(--accent-color) selection:text-white">
-        <GoogleOAuthProvider clientId={googleClientId}>
-          <I18nProvider dictionary={dictionary}>
-            <AuthProvider>
-              <GlobalProgress />
-              {children}
-              <AppToaster />
-            </AuthProvider>
-          </I18nProvider>
-        </GoogleOAuthProvider>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
+          <GoogleOAuthProvider clientId={googleClientId}>
+            <I18nProvider dictionary={dictionary}>
+              <AuthProvider>
+                <GlobalProgress />
+                {children}
+                <AppToaster />
+              </AuthProvider>
+            </I18nProvider>
+          </GoogleOAuthProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

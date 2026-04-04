@@ -43,25 +43,27 @@ The content is organized as follows:
 app/
   [lang]/
     (auth)/
-      admin/
+      join/
         page.tsx
       login/
         page.tsx
-    [username]/
-      [collection_slug]/
-        page.tsx
-      p/
-        [prompt_id]/
+    (main)/
+      [username]/
+        [collection_slug]/
           page.tsx
-      page.tsx
-    join/
-      page.tsx
-    reprompt/
-      page.tsx
-    studio/
+        p/
+          [prompt_id]/
+            page.tsx
+        page.tsx
+      admin/
+        page.tsx
+      reprompt/
+        page.tsx
+      studio/
+        page.tsx
+      layout.tsx
       page.tsx
     layout.tsx
-    page.tsx
   favicon.ico
   globals.css
 components/
@@ -88,6 +90,7 @@ src/
     es.json
     getDictionary.ts
     I18nProvider.tsx
+    ThemeProvider.tsx
   features/
     admin/
       hooks/
@@ -144,7 +147,6 @@ src/
       env.ts
     api.ts
   store/
-    authStore_.ts
     authStore.ts
     notificationStore.tsx
     progressStore.ts
@@ -277,89 +279,46 @@ tsconfig.json
 <files>
 This section contains the contents of the repository's files.
 
-<file path="app/[lang]/(auth)/admin/page.tsx">
-// frontend/app/admin/page.tsx
+<file path="app/[lang]/(auth)/join/page.tsx">
 "use client";
 
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { useAuthStore } from "@/src/store/authStore";
-import { useAdminDashboard } from "@/src/features/admin/hooks/useAdminDashboard";
-import { InviteManager } from "@/src/system/organisms/Admin/InviteManager";
-import { SecurityModule } from "@/src/system/organisms/Admin/SecurityModule";
-import { AuditTable } from "@/src/system/organisms/Admin/AuditTable";
+import { use } from "react"; // 🟢 Importamos el nuevo hook de React
+import Link from "next/link";
+import { RegisterForm } from "@/src/system/organisms/Auth/RegisterForm";
+import { useRedirectIfAuthenticated } from "@/src/features/auth/hooks/useRedirectIfAuthenticated";
 
-export default function AdminDashboard() {
-  const { user, isLoadingAuth } = useAuthStore();
-  const router = useRouter();
+// 🟢 Cambiamos el tipo para decirle a TypeScript que params es una Promesa
+export default function JoinPage(props: { params: Promise<{ lang: string }> }) {
+  // 🟢 Desempaquetamos la promesa con React.use()
+  const params = use(props.params);
+  const lang = params.lang;
 
-  const {
-    logs,
-    isLoadingLogs,
-    inviteCode,
-    isLoadingInvite,
-    fetchLogs,
-    handleGenerateInvite,
-    handleRevokeAll,
-  } = useAdminDashboard();
+  // Ahora 'lang' ya es un string seguro (ej: "es" o "en")
+  const { isChecking, isAuthenticated } = useRedirectIfAuthenticated(`/${lang}`);
 
-  // 🛡️ Protección de ruta: Solo admins pasan de aquí
-  useEffect(() => {
-    if (!isLoadingAuth && (!user || user.role !== "admin")) {
-      router.push("/");
-    }
-  }, [user, isLoadingAuth, router]);
-
-  // Cargar datos al entrar
-  useEffect(() => {
-    if (user?.role === "admin") {
-      fetchLogs();
-    }
-  }, [user, fetchLogs]);
-
-  // Pantalla de carga mientras verificamos identidad
-  if (isLoadingAuth || !user || user.role !== "admin") {
+  if (isChecking || isAuthenticated) {
     return (
-      <div className="min-h-screen flex items-center justify-center font-mono text-foreground bg-background">
-        <span className="animate-pulse">CARGANDO PROTOCOLOS DE MANDO...</span>
-      </div>
+      <main className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
+        <span className="animate-pulse text-(--accent-color) font-mono font-bold uppercase tracking-widest text-sm">
+          Comprobando credenciales...
+        </span>
+      </main>
     );
   }
 
-  // 🎨 La Interfaz Declarativa (Orquestación)
   return (
-    <main className="min-h-screen bg-background text-foreground p-4 md:p-8 font-sans pb-20">
-      <div className="max-w-7xl mx-auto">
-        <header className="mb-12 border-b-4 border-(--border-color) pb-6">
-          <h1 className="text-4xl md:text-6xl font-black font-mono uppercase italic">
-            Admin<span className="text-(--accent-color)">_</span>Terminal
-          </h1>
-          <p className="text-(--text-secondary) font-mono text-sm mt-2">
-            Acceso concedido a: {user.username} [ROOT_ACCESS]
-          </p>
-        </header>
+    <main className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
+      <RegisterForm lang={lang} />
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12">
-          <InviteManager
-            onGenerate={handleGenerateInvite}
-            isLoading={isLoadingInvite}
-            inviteCode={inviteCode}
-          />
-
-          <SecurityModule onRevokeAll={handleRevokeAll} />
-
-          <section className="bg-(--bg-secondary) p-6 neo-border neo-shadow flex flex-col items-center justify-center text-center">
-            <span className="text-7xl font-black font-mono text-(--accent-color)">
-              {logs.length}
-            </span>
-            <span className="text-[10px] font-bold uppercase tracking-widest mt-2 opacity-60">
-              Eventos en Auditoría
-            </span>
-          </section>
-        </div>
-
-        <AuditTable logs={logs} isLoading={isLoadingLogs} onRefresh={fetchLogs} />
-      </div>
+      <p className="mt-8 text-center text-sm font-mono text-(--text-secondary)">
+        ¿Ya tienes cuenta?{" "}
+        <Link
+          href={`/${lang}/login`}
+          className="text-(--accent-color) font-black hover:underline underline-offset-4"
+        >
+          Iniciar sesión
+        </Link>
+      </p>
     </main>
   );
 }
@@ -387,13 +346,6 @@ export default function LoginPage() {
 
   return (
     <main className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
-      <Link
-        href="/"
-        className="fixed top-8 left-8 text-sm font-bold font-mono text-(--text-secondary) hover:text-(--accent-color) transition-colors uppercase"
-      >
-        ← Volver
-      </Link>
-
       <LoginForm />
 
       <p className="mt-8 text-center text-sm font-mono text-(--text-secondary)">
@@ -410,7 +362,7 @@ export default function LoginPage() {
 }
 </file>
 
-<file path="app/[lang]/[username]/[collection_slug]/page.tsx">
+<file path="app/[lang]/(main)/[username]/[collection_slug]/page.tsx">
 "use client";
 
 import { IconArrowLeft, IconPhotoOff, IconLock } from "@tabler/icons-react";
@@ -507,7 +459,7 @@ export default function PublicCollectionPage({
 }
 </file>
 
-<file path="app/[lang]/[username]/p/[prompt_id]/page.tsx">
+<file path="app/[lang]/(main)/[username]/p/[prompt_id]/page.tsx">
 "use client";
 
 import { IconArrowLeft, IconCopy, IconCheck, IconWand, IconUser } from "@tabler/icons-react";
@@ -731,7 +683,7 @@ export default function PromptDetailPage({
 }
 </file>
 
-<file path="app/[lang]/[username]/page.tsx">
+<file path="app/[lang]/(main)/[username]/page.tsx">
 "use client";
 
 import { use, useEffect, useState } from "react";
@@ -837,60 +789,95 @@ export default function PublicProfilePage({
 }
 </file>
 
-<file path="app/[lang]/join/page.tsx">
+<file path="app/[lang]/(main)/admin/page.tsx">
+// frontend/app/admin/page.tsx
 "use client";
 
-import { use } from "react"; // 🟢 Importamos el nuevo hook de React
-import Link from "next/link";
-import { RegisterForm } from "@/src/system/organisms/Auth/RegisterForm";
-import { useRedirectIfAuthenticated } from "@/src/features/auth/hooks/useRedirectIfAuthenticated";
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useAuthStore } from "@/src/store/authStore";
+import { useAdminDashboard } from "@/src/features/admin/hooks/useAdminDashboard";
+import { InviteManager } from "@/src/system/organisms/Admin/InviteManager";
+import { SecurityModule } from "@/src/system/organisms/Admin/SecurityModule";
+import { AuditTable } from "@/src/system/organisms/Admin/AuditTable";
 
-// 🟢 Cambiamos el tipo para decirle a TypeScript que params es una Promesa
-export default function JoinPage(props: { params: Promise<{ lang: string }> }) {
-  // 🟢 Desempaquetamos la promesa con React.use()
-  const params = use(props.params);
-  const lang = params.lang;
+export default function AdminDashboard() {
+  const { user, isLoadingAuth } = useAuthStore();
+  const router = useRouter();
 
-  // Ahora 'lang' ya es un string seguro (ej: "es" o "en")
-  const { isChecking, isAuthenticated } = useRedirectIfAuthenticated(`/${lang}`);
+  const {
+    logs,
+    isLoadingLogs,
+    inviteCode,
+    isLoadingInvite,
+    fetchLogs,
+    handleGenerateInvite,
+    handleRevokeAll,
+  } = useAdminDashboard();
 
-  if (isChecking || isAuthenticated) {
+  // 🛡️ Protección de ruta: Solo admins pasan de aquí
+  useEffect(() => {
+    if (!isLoadingAuth && (!user || user.role !== "admin")) {
+      router.push("/");
+    }
+  }, [user, isLoadingAuth, router]);
+
+  // Cargar datos al entrar
+  useEffect(() => {
+    if (user?.role === "admin") {
+      fetchLogs();
+    }
+  }, [user, fetchLogs]);
+
+  // Pantalla de carga mientras verificamos identidad
+  if (isLoadingAuth || !user || user.role !== "admin") {
     return (
-      <main className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
-        <span className="animate-pulse text-(--accent-color) font-mono font-bold uppercase tracking-widest text-sm">
-          Comprobando credenciales...
-        </span>
-      </main>
+      <div className="min-h-screen flex items-center justify-center font-mono text-foreground bg-background">
+        <span className="animate-pulse">CARGANDO PROTOCOLOS DE MANDO...</span>
+      </div>
     );
   }
 
+  // 🎨 La Interfaz Declarativa (Orquestación)
   return (
-    <main className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
-      <Link
-        href="/"
-        className="fixed top-8 left-8 text-sm font-bold font-mono text-(--text-secondary) hover:text-(--accent-color) transition-colors uppercase"
-      >
-        ← Volver al inicio
-      </Link>
+    <main className="min-h-screen bg-background text-foreground p-4 md:p-8 font-sans pb-20">
+      <div className="max-w-7xl mx-auto">
+        <header className="mb-12 border-b-4 border-(--border-color) pb-6">
+          <h1 className="text-4xl md:text-6xl font-black font-mono uppercase italic">
+            Admin<span className="text-(--accent-color)">_</span>Terminal
+          </h1>
+          <p className="text-(--text-secondary) font-mono text-sm mt-2">
+            Acceso concedido a: {user.username} [ROOT_ACCESS]
+          </p>
+        </header>
 
-      {/* Aquí inyectamos el formulario pasándole el idioma seguro */}
-      <RegisterForm lang={lang} />
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12">
+          <InviteManager
+            onGenerate={handleGenerateInvite}
+            isLoading={isLoadingInvite}
+            inviteCode={inviteCode}
+          />
 
-      <p className="mt-8 text-center text-sm font-mono text-(--text-secondary)">
-        ¿Ya tienes cuenta?{" "}
-        <Link
-          href={`/${lang}/login`}
-          className="text-(--accent-color) font-black hover:underline underline-offset-4"
-        >
-          Iniciar sesión
-        </Link>
-      </p>
+          <SecurityModule onRevokeAll={handleRevokeAll} />
+
+          <section className="bg-(--bg-secondary) p-6 neo-border neo-shadow flex flex-col items-center justify-center text-center">
+            <span className="text-7xl font-black font-mono text-(--accent-color)">
+              {logs.length}
+            </span>
+            <span className="text-[10px] font-bold uppercase tracking-widest mt-2 opacity-60">
+              Eventos en Auditoría
+            </span>
+          </section>
+        </div>
+
+        <AuditTable logs={logs} isLoading={isLoadingLogs} onRefresh={fetchLogs} />
+      </div>
     </main>
   );
 }
 </file>
 
-<file path="app/[lang]/reprompt/page.tsx">
+<file path="app/[lang]/(main)/reprompt/page.tsx">
 "use client";
 
 import { use } from "react";
@@ -951,7 +938,7 @@ export default function RepromptPage({ params }: { params: Promise<{ lang: strin
 }
 </file>
 
-<file path="app/[lang]/studio/page.tsx">
+<file path="app/[lang]/(main)/studio/page.tsx">
 "use client";
 
 import { use, useState } from "react";
@@ -1081,66 +1068,20 @@ export default function StudioPage({ params }: { params: Promise<{ lang: string 
 }
 </file>
 
-<file path="app/[lang]/layout.tsx">
-import type { Metadata } from "next";
-import { Prompt, JetBrains_Mono } from "next/font/google";
-import "../globals.css";
-import { AuthProvider } from "@/src/features/auth/AuthProvider";
+<file path="app/[lang]/(main)/layout.tsx">
 import { Navbar } from "@/src/system/organisms/Layout/Navbar/Navbar";
-import { AppToaster } from "@/src/system/organisms/Layout/AppToaster";
-import { GlobalProgress } from "@/src/system/organisms/Layout/GlobalProgress";
-import { cn } from "@/lib/utils";
 
-import { getDictionary, Locale } from "@/src/dictionaries/getDictionary";
-import { I18nProvider } from "@/src/dictionaries/I18nProvider";
-
-import { GoogleOAuthProvider } from "@react-oauth/google";
-
-const prompt = Prompt({
-  weight: ["400", "700", "900"],
-  subsets: ["latin"],
-  variable: "--font-prompt",
-});
-
-const jetbrainsMono = JetBrains_Mono({ subsets: ["latin"], variable: "--font-mono" });
-
-export const metadata: Metadata = {
-  title: "reprompt",
-  description: "Wallet para guardar tus imágenes y prompts",
-};
-
-export default async function RootLayout({
-  children,
-  params,
-}: {
-  children: React.ReactNode;
-  params: Promise<{ lang: string }>;
-}) {
-  const { lang } = await params;
-  const dictionary = await getDictionary(lang as Locale);
-
-  const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "";
-
+export default function MainLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang={lang} className={cn(prompt.variable, "font-mono", jetbrainsMono.variable)}>
-      <body className="antialiased selection:bg-(--accent-color) selection:text-white">
-        <GoogleOAuthProvider clientId={googleClientId}>
-          <I18nProvider dictionary={dictionary}>
-            <AuthProvider>
-              <GlobalProgress />
-              <Navbar />
-              {children}
-              <AppToaster />
-            </AuthProvider>
-          </I18nProvider>
-        </GoogleOAuthProvider>
-      </body>
-    </html>
+    <>
+      <Navbar />
+      {children}
+    </>
   );
 }
 </file>
 
-<file path="app/[lang]/page.tsx">
+<file path="app/[lang]/(main)/page.tsx">
 "use client";
 
 import { use } from "react";
@@ -1217,6 +1158,75 @@ export default function Home({ params }: { params: Promise<{ lang: string }> }) 
         )}
       </div>
     </main>
+  );
+}
+</file>
+
+<file path="app/[lang]/layout.tsx">
+import type { Metadata } from "next";
+import { Prompt, JetBrains_Mono } from "next/font/google";
+import "../globals.css";
+
+import { AuthProvider } from "@/src/features/auth/AuthProvider";
+import { ThemeProvider } from "@/src/dictionaries/ThemeProvider";
+import { AppToaster } from "@/src/system/organisms/Layout/AppToaster";
+import { GlobalProgress } from "@/src/system/organisms/Layout/GlobalProgress";
+import { cn } from "@/lib/utils";
+
+import { getDictionary, Locale } from "@/src/dictionaries/getDictionary";
+import { I18nProvider } from "@/src/dictionaries/I18nProvider";
+import { GoogleOAuthProvider } from "@react-oauth/google";
+
+const prompt = Prompt({
+  weight: ["400", "700", "900"],
+  subsets: ["latin"],
+  variable: "--font-prompt",
+});
+
+const jetbrainsMono = JetBrains_Mono({ subsets: ["latin"], variable: "--font-mono" });
+
+export const metadata: Metadata = {
+  title: "reprompt",
+  description: "Wallet para guardar tus imágenes y prompts",
+};
+
+export default async function RootLayout({
+  children,
+  params,
+}: {
+  children: React.ReactNode;
+  params: Promise<{ lang: string }>;
+}) {
+  const { lang } = await params;
+  const dictionary = await getDictionary(lang as Locale);
+
+  const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "";
+
+  return (
+    <html
+      lang={lang}
+      className={cn(prompt.variable, "font-mono", jetbrainsMono.variable)}
+      suppressHydrationWarning
+    >
+      <body className="antialiased selection:bg-(--accent-color) selection:text-white">
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
+          <GoogleOAuthProvider clientId={googleClientId}>
+            <I18nProvider dictionary={dictionary}>
+              <AuthProvider>
+                <GlobalProgress />
+                {children}
+                <AppToaster />
+              </AuthProvider>
+            </I18nProvider>
+          </GoogleOAuthProvider>
+        </ThemeProvider>
+      </body>
+    </html>
   );
 }
 </file>
@@ -2405,6 +2415,20 @@ export const useTranslation = () => {
 
   return { t };
 };
+</file>
+
+<file path="src/dictionaries/ThemeProvider.tsx">
+"use client";
+
+import * as React from "react";
+import { ThemeProvider as NextThemesProvider } from "next-themes";
+
+export function ThemeProvider({
+  children,
+  ...props
+}: React.ComponentProps<typeof NextThemesProvider>) {
+  return <NextThemesProvider {...props}>{children}</NextThemesProvider>;
+}
 </file>
 
 <file path="src/features/admin/hooks/useAdminDashboard.ts">
@@ -4141,99 +4165,6 @@ export const api = {
 };
 </file>
 
-<file path="src/store/authStore_.ts">
-import { create } from "zustand";
-import { api } from "@/src/services/api";
-import { handleError } from "../utils/errors/ErrorHandler";
-
-interface User {
-  username: string;
-  role: string;
-}
-
-interface AuthState {
-  user: User | null;
-  isLoadingAuth: boolean;
-  login: (userData: User) => void;
-  logout: () => Promise<void>;
-  checkAuth: () => Promise<void>;
-  logoutSilencioso: () => void;
-}
-
-export const useAuthStore = create<AuthState>((set) => ({
-  user: null,
-  isLoadingAuth: true,
-
-  login: (userData) => set({ user: userData, isLoadingAuth: false }),
-
-  logoutSilencioso: () => {
-    console.log("🤫 [AUTH_STORE] Ejecutando limpieza de estado en memoria.");
-    set({ user: null, isLoadingAuth: false });
-  },
-
-  logout: async () => {
-    try {
-      await api.logout();
-    } catch (error) {
-      console.error("Error logout:", error);
-    } finally {
-      set({ user: null });
-      if (typeof window !== "undefined") {
-        const currentPath = window.location.pathname;
-        const localeMatch = currentPath.match(/^\/([a-z]{2})(?:\/|$)/);
-        const localePrefix = localeMatch ? `/${localeMatch[1]}` : "";
-
-        window.location.href = `${localePrefix}/login`;
-      }
-    }
-  },
-
-  checkAuth: async () => {
-    set({ isLoadingAuth: true });
-    try {
-      const res = await api.obtenerPerfil();
-
-      const username = res?.username || res?.data?.username || res?.user?.username;
-      const role = res?.role || res?.data?.role || res?.user?.role || "user";
-
-      if (username) {
-        set({ user: { username, role } });
-      } else {
-        console.warn("⚠️ QA [authStore] 200 OK pero JSON no tiene 'username':", res);
-        set({ user: null });
-      }
-    } catch (error: unknown) {
-      console.warn("🛑 [AUTH_STORE] CheckAuth falló (Probable 401).");
-      try {
-        handleError(error, "AuthStore");
-      } catch (e) {
-        console.error("Error interno en handleError:", e);
-      }
-      set({ user: null });
-    } finally {
-      set({ isLoadingAuth: false });
-    }
-  },
-}));
-
-if (typeof window !== "undefined") {
-  window.addEventListener("auth:unauthorized", () => {
-    const state = useAuthStore.getState();
-
-    if (state.user || state.isLoadingAuth) {
-      state.logoutSilencioso();
-
-      if (!window.location.pathname.includes("/login")) {
-        console.warn("🚷 [SECURITY_ACTION] Interceptado 401. Expulsando a /login...");
-        const localeMatch = window.location.pathname.match(/^\/([a-z]{2})(?:\/|$)/);
-        const localePrefix = localeMatch ? `/${localeMatch[1]}` : "";
-        window.location.href = `${localePrefix}/login`;
-      }
-    }
-  });
-}
-</file>
-
 <file path="src/store/authStore.ts">
 import { create } from "zustand";
 import { api } from "@/src/services/api";
@@ -4253,53 +4184,54 @@ interface AuthState {
   logoutSilencioso: () => void;
 }
 
+const redirectToLogin = () => {
+  if (typeof window === "undefined") return;
+
+  const currentPath = window.location.pathname;
+  if (currentPath.includes("/login")) return;
+
+  const localeMatch = currentPath.match(/^\/([a-z]{2})(?:\/|$)/);
+  const localePrefix = localeMatch ? `/${localeMatch[1]}` : "";
+
+  console.warn(`🚷 [AUTH_ROUTER] Redirigiendo al usuario a: ${localePrefix}/login`);
+  window.location.href = `${localePrefix}/login`;
+};
+
 export const useAuthStore = create<AuthState>((set) => ({
   user: null,
   isLoadingAuth: true,
 
   login: (userData) => {
-    console.log(`🟢 [AUTH_STORE] Sesión iniciada en estado local para: @${userData.username}`);
+    console.log(`[AUTH_STORE] Sesión iniciada localmente: @${userData.username}`);
     set({ user: userData, isLoadingAuth: false });
   },
 
   logoutSilencioso: () => {
-    console.log(
-      "🤫 [AUTH_STORE] Ejecutando limpieza de estado local en memoria (Sin avisar al backend).",
-    );
+    console.log("🤫 [AUTH_STORE] Limpieza de estado local (Silenciosa).");
     set({ user: null, isLoadingAuth: false });
   },
 
   checkAuth: async () => {
-    console.log("🛡️ [AUTH_STORE] Iniciando checkAuth(). Consultando estado real al servidor...");
+    console.log("🛡️ [AUTH_STORE] Consultando estado real al servidor...");
     set({ isLoadingAuth: true });
 
     try {
       const res = await api.obtenerPerfil();
-
       const username = res?.username || res?.data?.username || res?.user?.username;
       const role = res?.role || res?.data?.role || res?.user?.role || "user";
 
       if (username) {
-        console.log(
-          `✅ [AUTH_STORE] checkAuth exitoso. Usuario validado por el backend: @${username}`,
-        );
+        console.log(`✅ [AUTH_STORE] checkAuth exitoso: @${username}`);
         set({ user: { username, role } });
       } else {
-        console.warn(
-          "⚠️ [AUTH_STORE] checkAuth devolvió OK, pero el JSON no contiene el 'username'.",
-          res,
-        );
+        console.warn("⚠️ [AUTH_STORE] checkAuth OK, pero sin 'username'.");
         set({ user: null });
       }
     } catch (error: unknown) {
-      console.warn(
-        "🛑 [AUTH_STORE] checkAuth falló. Esto es normal si no hay sesión o si el Access Token expiró.",
-      );
+      console.warn("🛑 [AUTH_STORE] checkAuth falló (No hay sesión activa).");
       try {
         handleError(error, "AuthStore");
-      } catch (e) {
-        // Silenciamos este error interno para no ensuciar los logs
-      }
+      } catch (e) {}
       set({ user: null });
     } finally {
       set({ isLoadingAuth: false });
@@ -4307,51 +4239,30 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
 
   logout: async () => {
-    console.log("🧹 [AUTH_STORE] Ejecutando orden de desconexión completa (Logout API)...");
+    console.log("🧹 [AUTH_STORE] Ejecutando orden de desconexión API...");
     try {
       await api.logout();
-      console.log("🧹 [AUTH_STORE] El backend ha confirmado la destrucción de cookies y sesión.");
+      console.log("🧹 [AUTH_STORE] Backend confirmó destrucción de sesión.");
     } catch (error) {
-      console.error("❌ [AUTH_STORE] Falló la llamada al backend para hacer logout:", error);
+      console.error("❌ [AUTH_STORE] Falló llamada al backend para logout:", error);
     } finally {
       set({ user: null, isLoadingAuth: false });
-
-      if (typeof window !== "undefined") {
-        const currentPath = window.location.pathname;
-        const localeMatch = currentPath.match(/^\/([a-z]{2})(?:\/|$)/);
-        const localePrefix = localeMatch ? `/${localeMatch[1]}` : "";
-
-        console.log(`🧹 [AUTH_STORE] Redirigiendo al usuario a: ${localePrefix}/login`);
-        window.location.href = `${localePrefix}/login`;
-      }
+      redirectToLogin();
     }
   },
 }));
 
-// ==============================================================================
-// 🛡️ GUARDIÁN GLOBAL: LISTENER DE EVENTOS (Ahora sí funciona 24/7)
-// ==============================================================================
 if (typeof window !== "undefined") {
-  console.log("🎧 [AUTH_STORE] Guardián de seguridad (Listener 'auth:unauthorized') montado.");
+  console.log("🎧 [AUTH_STORE] Guardián de seguridad montado.");
 
   window.addEventListener("auth:unauthorized", () => {
-    console.warn(
-      "🚨 [AUTH_STORE] ALERTA DE SISTEMA: Recibido evento 'auth:unauthorized'. La sesión ha muerto irrecuperablemente.",
-    );
+    console.warn("🚨 [AUTH_STORE] ALERTA: Recibido evento 'auth:unauthorized'.");
 
     const state = useAuthStore.getState();
 
     if (state.user || state.isLoadingAuth) {
-      // Limpiamos la memoria
       state.logoutSilencioso();
-
-      if (!window.location.pathname.includes("/login")) {
-        console.warn("🚷 [AUTH_STORE] Expulsando al usuario a /login...");
-        const localeMatch = window.location.pathname.match(/^\/([a-z]{2})(?:\/|$)/);
-        const localePrefix = localeMatch ? `/${localeMatch[1]}` : "";
-
-        window.location.href = `${localePrefix}/login`;
-      }
+      redirectToLogin();
     }
   });
 }
@@ -8944,6 +8855,7 @@ export default nextConfig;
     "exifr": "^7.1.3",
     "jszip": "^3.10.1",
     "next": "16.2.1",
+    "next-themes": "^0.4.6",
     "png-chunk-text": "^1.0.0",
     "png-chunks-extract": "^1.0.0",
     "radix-ui": "^1.4.3",
