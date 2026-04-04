@@ -1,10 +1,11 @@
 import { Navbar } from "@/src/system/organisms/Layout/Navbar/Navbar";
+import { FadeIn } from "@/src/system/atoms/FadeIn";
 
 export default function MainLayout({ children }: { children: React.ReactNode }) {
   return (
     <>
       <Navbar />
-      {children}
+      <FadeIn>{children}</FadeIn>
     </>
   );
 }
