@@ -1,17 +1,11 @@
 "use client";
 
-import { use, useEffect, useState } from "react";
-import { api } from "@/src/services/api";
-import { PromptCard } from "@/src/system/organisms/Studio/PromptCard";
-import { SavedPrompt } from "@/src/features/studio/hooks/useStudio";
+import { use } from "react";
 import Link from "next/link";
 import { IconPhotoOff, IconFolder } from "@tabler/icons-react";
 
-interface ProfileData {
-  user: { username: string; role: string };
-  collections: any[];
-  recent_prompts: SavedPrompt[];
-}
+import { PromptCard } from "@/src/system/organisms/Studio/PromptCard";
+import { usePublicProfile } from "@/src/features/studio/hooks/usePublicProfile";
 
 export default function PublicProfilePage({
   params,
@@ -19,34 +13,28 @@ export default function PublicProfilePage({
   params: Promise<{ lang: string; username: string }>;
 }) {
   const { lang, username } = use(params);
-  const [data, setData] = useState<ProfileData | null>(null);
-  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    api
-      .getPublicProfile(username)
-      .then((res) => setData(res))
-      .catch(() => setData(null))
-      .finally(() => setLoading(false));
-  }, [username]);
+  const { data, isLoading, error } = usePublicProfile(username);
 
-  if (loading)
+  if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center font-mono animate-pulse">
         Cargando señales...
       </div>
     );
-  if (!data)
+  }
+
+  if (error || !data) {
     return (
       <div className="min-h-screen flex items-center justify-center font-mono text-red-500">
-        Este usuario no existe o se ha perdido en el vacío.
+        {error || "Este usuario no existe o se ha perdido en el vacío."}
       </div>
     );
+  }
 
   return (
     <main className="min-h-screen bg-background p-4 md:p-8">
       <div className="max-w-7xl mx-auto space-y-12">
-        {/* Cabecera del Perfil */}
         <header className="flex flex-col gap-2 border-b border-border pb-8">
           <h1 className="text-4xl font-black tracking-tighter">@{data.user.username}</h1>
           <p className="text-muted-foreground font-mono text-sm uppercase tracking-widest">
@@ -54,7 +42,6 @@ export default function PublicProfilePage({
           </p>
         </header>
 
-        {/* Colecciones Públicas */}
         {data.collections.length > 0 && (
           <section className="space-y-4">
             <h2 className="text-sm font-mono font-bold uppercase tracking-widest flex items-center gap-2">
@@ -79,7 +66,6 @@ export default function PublicProfilePage({
           </section>
         )}
 
-        {/* Últimas Generaciones */}
         <section className="space-y-4">
           <h2 className="text-sm font-mono font-bold uppercase tracking-widest">
             Últimas Generaciones
