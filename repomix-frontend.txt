@@ -134,6 +134,9 @@ src/
         useSearch.ts
     studio/
       hooks/
+        usePublicCollection.ts
+        usePublicProfile.ts
+        usePublicPrompt.ts
         useStudio.ts
   services/
     api/
@@ -231,6 +234,8 @@ src/
       Studio/
         CreateCollectionModal.tsx
         PromptCard.tsx
+        PromptImageViewer.tsx
+        PromptMetadataPanel.tsx
       Viewer/
         ImageViewerModal/
           components/
@@ -365,20 +370,12 @@ export default function LoginPage() {
 <file path="app/[lang]/(main)/[username]/[collection_slug]/page.tsx">
 "use client";
 
-import { IconArrowLeft, IconPhotoOff, IconLock } from "@tabler/icons-react";
-import { use, useEffect, useState } from "react";
+import { use } from "react";
 import Link from "next/link";
+import { IconArrowLeft, IconFolder, IconPhotoOff } from "@tabler/icons-react";
 
 import { PromptCard } from "@/src/system/organisms/Studio/PromptCard";
-import { SavedPrompt } from "@/src/features/studio/hooks/useStudio";
-import { DownloadButton } from "@/src/system/molecules/DownloadButton";
-import { api } from "@/src/services/api";
-
-interface CollectionData {
-  user: { username: string };
-  collection: { id: string; name: string; description: string; is_private: boolean };
-  prompts: SavedPrompt[];
-}
+import { usePublicCollection } from "@/src/features/studio/hooks/usePublicCollection";
 
 export default function PublicCollectionPage({
   params,
@@ -386,73 +383,69 @@ export default function PublicCollectionPage({
   params: Promise<{ lang: string; username: string; collection_slug: string }>;
 }) {
   const { lang, username, collection_slug } = use(params);
-  const [data, setData] = useState<CollectionData | null>(null);
-  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    api
-      .getPublicCollection(username, collection_slug)
-      .then((res) => setData(res))
-      .catch(() => setData(null))
-      .finally(() => setLoading(false));
-  }, [username, collection_slug]);
+  const { data, isLoading, error } = usePublicCollection(username, collection_slug);
 
-  if (loading)
+  if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center font-mono animate-pulse">
-        Cargando colección...
+        Descifrando la colección...
       </div>
     );
-  if (!data)
+  }
+
+  if (error || !data) {
     return (
-      <div className="min-h-screen flex items-center justify-center font-mono text-red-500">
-        Colección no encontrada o privada.
+      <div className="min-h-screen flex flex-col items-center justify-center font-mono gap-4">
+        <p className="text-red-500">{error || "Colección no encontrada."}</p>
+        <Link
+          href={`/${lang}/${username}`}
+          className="text-(--accent-color) hover:underline uppercase text-xs tracking-widest"
+        >
+          ← Volver al perfil
+        </Link>
       </div>
     );
+  }
 
   return (
     <main className="min-h-screen bg-background p-4 md:p-8">
       <div className="max-w-7xl mx-auto space-y-8">
         <Link
           href={`/${lang}/${username}`}
-          className="inline-flex items-center gap-2 text-xs font-mono text-muted-foreground hover:text-foreground transition-colors uppercase tracking-widest"
+          className="inline-flex items-center gap-2 text-sm font-mono text-muted-foreground hover:text-(--accent-color) transition-colors uppercase tracking-widest"
         >
-          <IconArrowLeft size={16} /> Volver a @{data.user.username}
+          <IconArrowLeft size={16} /> Perfil de @{username}
         </Link>
 
-        <header className="flex flex-col gap-4 border-b border-border pb-8">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="flex items-center gap-4">
-              <h1 className="text-4xl font-black tracking-tighter text-(--accent-color)">
-                {data.collection.name}
-              </h1>
-              {data.collection.is_private && (
-                <span className="bg-red-500/10 text-red-500 border border-red-500/20 text-[10px] font-bold px-2 py-1 flex items-center gap-1 uppercase tracking-widest rounded-md">
-                  <IconLock size={12} /> Privada
-                </span>
-              )}
-            </div>
-
-            {data.prompts.length > 0 && <DownloadButton collectionId={data.collection.id} />}
+        <header className="flex flex-col gap-2 border-b border-border pb-8">
+          <div className="flex items-center gap-3">
+            <IconFolder size={32} className="text-(--accent-color)" />
+            <h1 className="text-3xl md:text-4xl font-black tracking-tighter uppercase">
+              {data.collection.name}
+            </h1>
           </div>
-
-          <p className="text-muted-foreground text-sm max-w-2xl">
-            {data.collection.description || "Colección sin descripción."}
-          </p>
+          {data.collection.description && (
+            <p className="text-muted-foreground font-mono mt-2">{data.collection.description}</p>
+          )}
         </header>
 
-        {data.prompts.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-20 text-muted-foreground/50 bg-muted/5 rounded-xl border border-dashed border-border/50">
-            <IconPhotoOff size={48} stroke={1} className="mb-4" />
-            <p className="font-mono text-xs uppercase tracking-widest">Esta colección está vacía</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-6">
-            {data.prompts.map((prompt) => (
-              <PromptCard key={prompt.id} item={prompt} />
-            ))}
-          </div>
-        )}
+        <section>
+          {data.prompts.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-20 text-muted-foreground/50 bg-muted/5 rounded-xl border border-dashed border-border/50">
+              <IconPhotoOff size={48} stroke={1} className="mb-4" />
+              <p className="font-mono text-xs uppercase tracking-widest">
+                Esta colección está vacía
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+              {data.prompts.map((prompt) => (
+                <PromptCard key={prompt.id} item={prompt} />
+              ))}
+            </div>
+          )}
+        </section>
       </div>
     </main>
   );
@@ -462,20 +455,13 @@ export default function PublicCollectionPage({
 <file path="app/[lang]/(main)/[username]/p/[prompt_id]/page.tsx">
 "use client";
 
-import { IconArrowLeft, IconCopy, IconCheck, IconWand, IconUser } from "@tabler/icons-react";
-import { use, useEffect, useState } from "react";
-import { api } from "@/src/services/api";
-
-import dynamic from "next/dynamic";
+import { use } from "react";
 import Link from "next/link";
+import { IconArrowLeft } from "@tabler/icons-react";
 
-const ImageViewerModal = dynamic(
-  () =>
-    import("@/src/system/organisms/Viewer/ImageViewerModal/ImageViewerModal").then(
-      (mod) => mod.ImageViewerModal,
-    ),
-  { ssr: false },
-);
+import { usePublicPrompt } from "@/src/features/studio/hooks/usePublicPrompt";
+import { PromptImageViewer } from "@/src/system/organisms/Studio/PromptImageViewer";
+import { PromptMetadataPanel } from "@/src/system/organisms/Studio/PromptMetadataPanel";
 
 export default function PromptDetailPage({
   params,
@@ -483,201 +469,65 @@ export default function PromptDetailPage({
   params: Promise<{ lang: string; username: string; prompt_id: string }>;
 }) {
   const { lang, username, prompt_id } = use(params);
-  const [data, setData] = useState<any>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [copied, setCopied] = useState(false);
-  const [isViewerOpen, setIsViewerOpen] = useState(false);
 
-  useEffect(() => {
-    api
-      .getPublicPromptDetail(prompt_id)
-      .then((res) => setData(res))
-      .catch((err) => console.error(err))
-      .finally(() => setIsLoading(false));
-  }, [prompt_id]);
+  const { data, isLoading, error } = usePublicPrompt(username, prompt_id);
 
-  const handleCopy = () => {
-    if (data?.prompt?.prompt) {
-      navigator.clipboard.writeText(data.prompt.prompt);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    }
-  };
-
-  if (isLoading)
+  if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center font-mono animate-pulse">
-        Cargando datos IA...
+        Decodificando prompt...
       </div>
     );
-  if (!data)
-    return (
-      <div className="min-h-screen flex items-center justify-center font-mono text-red-500">
-        Imagen no encontrada.
-      </div>
-    );
+  }
 
-  const { prompt, user, collection, related_collection, related_user } = data;
+  const prompt = data?.prompt ? data.prompt : data;
+
+  if (error || !prompt) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center font-mono gap-4">
+        <p className="text-red-500">{error || "No se pudo cargar el prompt."}</p>
+        <Link
+          href={`/${lang}/${username}`}
+          className="text-(--accent-color) hover:underline uppercase text-xs tracking-widest"
+        >
+          ← Volver al perfil
+        </Link>
+      </div>
+    );
+  }
 
   return (
     <main className="min-h-screen bg-background p-4 md:p-8">
-      <div className="max-w-7xl mx-auto">
+      <div className="max-w-6xl mx-auto space-y-8">
         <Link
-          href={`/${lang}`}
-          className="inline-flex items-center gap-2 text-xs font-mono text-muted-foreground hover:text-foreground transition-colors uppercase tracking-widest mb-6"
+          href={`/${lang}/${username}`}
+          className="inline-flex items-center gap-2 text-sm font-mono text-muted-foreground hover:text-(--accent-color) transition-colors uppercase tracking-widest"
         >
-          <IconArrowLeft size={16} /> Volver al Feed
+          <IconArrowLeft size={16} /> Volver a @{username}
         </Link>
 
-        <div className="flex flex-col lg:flex-row gap-8">
-          <div className="flex-1 space-y-12">
-            <div
-              onClick={() => setIsViewerOpen(true)}
-              className="bg-muted/10 neo-border rounded-xl overflow-hidden cursor-zoom-in relative group"
-            >
-              <img
-                src={prompt.image_url}
-                alt={prompt.title}
-                className="w-full h-auto object-contain max-h-[70vh]"
-              />
-              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
-                <span className="bg-black/70 text-white font-mono text-xs uppercase tracking-widest px-4 py-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity backdrop-blur-sm">
-                  Ampliar
-                </span>
-              </div>
-            </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-start">
+          <section className="sticky top-24">
+            <PromptImageViewer
+              imageUrl={prompt.image_url || null}
+              altText={`Generación por @${username}`}
+            />
+          </section>
 
-            {related_user?.length > 0 && (
-              <section className="space-y-4 pt-8 border-t border-border">
-                <h3 className="text-sm font-mono font-bold uppercase tracking-widest flex items-center gap-2">
-                  <IconUser size={18} /> Más de @{user.username}
-                </h3>
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                  {related_user.map((rp: any) => (
-                    <Link
-                      key={rp.id}
-                      href={`/${lang}/${user.username}/p/${rp.id}`}
-                      className="bg-muted/10 neo-border rounded-lg overflow-hidden aspect-4/5 hover:neo-shadow-accent transition-all"
-                    >
-                      <img
-                        src={rp.image_url}
-                        alt={rp.title}
-                        className="w-full h-full object-cover"
-                      />
-                    </Link>
-                  ))}
-                </div>
-              </section>
-            )}
-          </div>
+          <section className="space-y-6">
+            <header>
+              <h1 className="text-3xl font-black uppercase tracking-tighter mb-2">
+                {prompt.title || "Prompt Sin Título"}
+              </h1>
+              <p className="text-sm font-mono text-muted-foreground">
+                Creado el {new Date(prompt.created_at).toLocaleDateString()}
+              </p>
+            </header>
 
-          <div className="w-full lg:w-400px flex flex-col gap-6">
-            <div className="flex items-center gap-3 p-4 bg-muted/10 neo-border rounded-xl">
-              <div className="w-10 h-10 bg-(--accent-color) rounded-full flex items-center justify-center text-white font-bold font-mono">
-                {user.username.charAt(0).toUpperCase()}
-              </div>
-              <div>
-                <Link href={`/${lang}/${user.username}`} className="font-bold hover:underline">
-                  @{user.username}
-                </Link>
-                <p className="text-xs text-muted-foreground font-mono uppercase">{user.role}</p>
-              </div>
-            </div>
-
-            <div className="bg-background neo-border rounded-xl overflow-hidden flex flex-col">
-              <div className="bg-muted/30 p-3 border-b border-border flex justify-between items-center">
-                <span className="text-xs font-mono font-bold uppercase tracking-widest text-(--accent-color) flex items-center gap-2">
-                  <IconWand size={16} /> Prompt
-                </span>
-                <button
-                  onClick={handleCopy}
-                  className="text-muted-foreground hover:text-foreground transition-colors p-1"
-                  title="Copiar Prompt"
-                >
-                  {copied ? (
-                    <IconCheck size={18} className="text-green-500" />
-                  ) : (
-                    <IconCopy size={18} />
-                  )}
-                </button>
-              </div>
-              <div className="p-4 bg-muted/5 max-h-300px overflow-y-auto custom-scrollbar">
-                <p className="text-sm font-mono leading-relaxed">{prompt.prompt}</p>
-              </div>
-            </div>
-
-            <div className="bg-background neo-border rounded-xl p-4 flex flex-col gap-3">
-              {prompt.model && (
-                <div className="flex justify-between text-xs font-mono">
-                  <span className="text-muted-foreground">Modelo</span>
-                  <span className="font-bold">{prompt.model}</span>
-                </div>
-              )}
-              {prompt.sampler && (
-                <div className="flex justify-between text-xs font-mono">
-                  <span className="text-muted-foreground">Sampler</span>
-                  <span className="font-bold">{prompt.sampler}</span>
-                </div>
-              )}
-              {prompt.resolution && (
-                <div className="flex justify-between text-xs font-mono">
-                  <span className="text-muted-foreground">Resolución</span>
-                  <span className="font-bold">{prompt.resolution}</span>
-                </div>
-              )}
-              {prompt.software && (
-                <div className="flex justify-between text-xs font-mono">
-                  <span className="text-muted-foreground">Software</span>
-                  <span className="font-bold">{prompt.software}</span>
-                </div>
-              )}
-            </div>
-
-            {collection && related_collection?.length > 0 && (
-              <section className="space-y-4 mt-4">
-                <div className="flex justify-between items-center">
-                  <h3 className="text-sm font-mono font-bold uppercase tracking-widest">
-                    De la colección:{" "}
-                    <Link
-                      href={`/${lang}/${user.username}/${collection.slug}`}
-                      className="text-(--accent-color) hover:underline"
-                    >
-                      {collection.name}
-                    </Link>
-                  </h3>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  {related_collection.map((rc: any) => (
-                    <Link
-                      key={rc.id}
-                      href={`/${lang}/${user.username}/p/${rc.id}`}
-                      className="bg-muted/10 neo-border rounded-lg overflow-hidden aspect-square hover:neo-shadow-accent transition-all"
-                    >
-                      <img
-                        src={rc.image_url}
-                        alt={rc.title}
-                        className="w-full h-full object-cover"
-                      />
-                    </Link>
-                  ))}
-                </div>
-              </section>
-            )}
-          </div>
+            <PromptMetadataPanel prompt={prompt} />
+          </section>
         </div>
       </div>
-
-      {isViewerOpen && (
-        <ImageViewerModal
-          title={prompt.title}
-          pages={[{ image_url: prompt.image_url, name: prompt.title, prompt: prompt.prompt }]}
-          isLoading={false}
-          isLoadingMore={false}
-          hasMorePages={false}
-          onLoadMore={() => {}}
-          onClose={() => setIsViewerOpen(false)}
-        />
-      )}
     </main>
   );
 }
@@ -686,18 +536,12 @@ export default function PromptDetailPage({
 <file path="app/[lang]/(main)/[username]/page.tsx">
 "use client";
 
-import { use, useEffect, useState } from "react";
-import { api } from "@/src/services/api";
-import { PromptCard } from "@/src/system/organisms/Studio/PromptCard";
-import { SavedPrompt } from "@/src/features/studio/hooks/useStudio";
+import { use } from "react";
 import Link from "next/link";
 import { IconPhotoOff, IconFolder } from "@tabler/icons-react";
 
-interface ProfileData {
-  user: { username: string; role: string };
-  collections: any[];
-  recent_prompts: SavedPrompt[];
-}
+import { PromptCard } from "@/src/system/organisms/Studio/PromptCard";
+import { usePublicProfile } from "@/src/features/studio/hooks/usePublicProfile";
 
 export default function PublicProfilePage({
   params,
@@ -705,34 +549,28 @@ export default function PublicProfilePage({
   params: Promise<{ lang: string; username: string }>;
 }) {
   const { lang, username } = use(params);
-  const [data, setData] = useState<ProfileData | null>(null);
-  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    api
-      .getPublicProfile(username)
-      .then((res) => setData(res))
-      .catch(() => setData(null))
-      .finally(() => setLoading(false));
-  }, [username]);
+  const { data, isLoading, error } = usePublicProfile(username);
 
-  if (loading)
+  if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center font-mono animate-pulse">
         Cargando señales...
       </div>
     );
-  if (!data)
+  }
+
+  if (error || !data) {
     return (
       <div className="min-h-screen flex items-center justify-center font-mono text-red-500">
-        Este usuario no existe o se ha perdido en el vacío.
+        {error || "Este usuario no existe o se ha perdido en el vacío."}
       </div>
     );
+  }
 
   return (
     <main className="min-h-screen bg-background p-4 md:p-8">
       <div className="max-w-7xl mx-auto space-y-12">
-        {/* Cabecera del Perfil */}
         <header className="flex flex-col gap-2 border-b border-border pb-8">
           <h1 className="text-4xl font-black tracking-tighter">@{data.user.username}</h1>
           <p className="text-muted-foreground font-mono text-sm uppercase tracking-widest">
@@ -740,7 +578,6 @@ export default function PublicProfilePage({
           </p>
         </header>
 
-        {/* Colecciones Públicas */}
         {data.collections.length > 0 && (
           <section className="space-y-4">
             <h2 className="text-sm font-mono font-bold uppercase tracking-widest flex items-center gap-2">
@@ -765,7 +602,6 @@ export default function PublicProfilePage({
           </section>
         )}
 
-        {/* Últimas Generaciones */}
         <section className="space-y-4">
           <h2 className="text-sm font-mono font-bold uppercase tracking-widest">
             Últimas Generaciones
@@ -3690,6 +3526,105 @@ export function useSearch() {
     handleSearch,
     loadMore: store.loadMore,
   };
+}
+</file>
+
+<file path="src/features/studio/hooks/usePublicCollection.ts">
+import { useState, useEffect } from "react";
+import { api } from "@/src/services/api";
+import { SavedPrompt } from "@/src/features/studio/hooks/useStudio";
+
+export interface CollectionDetail {
+  collection: {
+    id: number;
+    name: string;
+    description: string;
+    slug: string;
+    created_at: string;
+  };
+  prompts: SavedPrompt[];
+}
+
+export function usePublicCollection(username: string, collection_slug: string) {
+  const [data, setData] = useState<CollectionDetail | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setIsLoading(true);
+    api
+      .getPublicCollection(username, collection_slug)
+      .then((res) => setData(res))
+      .catch((err) => {
+        console.error("Error fetching collection:", err);
+        setError("Colección no encontrada, eliminada o privada.");
+        setData(null);
+      })
+      .finally(() => setIsLoading(false));
+  }, [username, collection_slug]);
+
+  return { data, isLoading, error };
+}
+</file>
+
+<file path="src/features/studio/hooks/usePublicProfile.ts">
+import { useState, useEffect } from "react"; 
+import { api } from "@/src/services/api";
+import { SavedPrompt } from "@/src/features/studio/hooks/useStudio";
+
+export interface ProfileData {
+  user: { username: string; role: string };
+  collections: any[];
+  recent_prompts: SavedPrompt[];
+}
+
+export function usePublicProfile(username: string) {
+  const [data, setData] = useState<ProfileData | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setIsLoading(true);
+    api
+      .getPublicProfile(username)
+      .then((res) => setData(res))
+      .catch((err) => {
+        console.error("Error fetching profile:", err);
+        setError("Este usuario no existe o se ha perdido en el vacío.");
+        setData(null);
+      })
+      .finally(() => setIsLoading(false));
+  }, [username]);
+
+  return { data, isLoading, error };
+}
+</file>
+
+<file path="src/features/studio/hooks/usePublicPrompt.ts">
+import { useState, useEffect } from "react";
+import { api } from "@/src/services/api";
+import { SavedPrompt } from "@/src/features/studio/hooks/useStudio";
+
+export function usePublicPrompt(username: string, promptId: string) {
+  const [data, setData] = useState<SavedPrompt | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setIsLoading(true);
+
+    api
+      .getPublicPromptDetail(promptId)
+      .then((res: SavedPrompt) => setData(res))
+      .catch((err: any) => {
+        console.error("Error fetching prompt:", err);
+        setError("El prompt no existe o es privado.");
+        setData(null);
+      })
+      .finally(() => setIsLoading(false));
+  }, [promptId]);
+
+  return { data, isLoading, error };
 }
 </file>
 
@@ -7996,6 +7931,85 @@ export function PromptCard({ item, collections = [], onAssign, onDelete }: Promp
           <span>{new Date(item.created_at).toLocaleDateString()}</span>
           {item.resolution && <span>{item.resolution}</span>}
         </div>
+      </div>
+    </div>
+  );
+}
+</file>
+
+<file path="src/system/organisms/Studio/PromptImageViewer.tsx">
+import { IconPhotoOff } from "@tabler/icons-react";
+
+interface PromptImageViewerProps {
+  imageUrl: string | null;
+  altText: string;
+}
+
+export function PromptImageViewer({ imageUrl, altText }: PromptImageViewerProps) {
+  if (!imageUrl) {
+    return (
+      <div className="w-full aspect-square bg-muted/20 flex flex-col items-center justify-center neo-border rounded-xl">
+        <IconPhotoOff size={48} className="text-muted-foreground/50" />
+        <span className="text-xs font-mono text-muted-foreground mt-2 uppercase tracking-widest">
+          Sin imagen adjunta
+        </span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="w-full overflow-hidden neo-border neo-shadow rounded-xl bg-muted/10">
+      <img
+        src={imageUrl}
+        alt={altText}
+        className="w-full h-auto object-cover hover:scale-[1.02] transition-transform duration-500"
+      />
+    </div>
+  );
+}
+</file>
+
+<file path="src/system/organisms/Studio/PromptMetadataPanel.tsx">
+import { useState } from "react";
+import { IconCopy, IconCheck } from "@tabler/icons-react";
+import { SavedPrompt } from "@/src/features/studio/hooks/useStudio";
+
+export function PromptMetadataPanel({ prompt }: { prompt: SavedPrompt }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(prompt.prompt);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <div className="flex flex-col gap-6">
+      <div className="bg-muted/10 p-6 rounded-xl neo-border relative group">
+        <div className="flex justify-between items-start mb-4">
+          <h3 className="text-sm font-mono font-bold uppercase tracking-widest text-(--accent-color)">
+            Prompt Principal
+          </h3>
+          <button
+            onClick={handleCopy}
+            className="p-2 bg-background neo-border rounded-md hover:bg-muted transition-colors"
+            title="Copiar prompt"
+          >
+            {copied ? <IconCheck size={18} className="text-green-500" /> : <IconCopy size={18} />}
+          </button>
+        </div>
+        <p className="font-mono text-sm leading-relaxed text-foreground">{prompt.prompt}</p>
+      </div>
+
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+        {prompt.model && (
+          <div className="p-4 bg-background neo-border rounded-lg">
+            <span className="block text-[10px] font-mono uppercase text-muted-foreground mb-1">
+              Modelo
+            </span>
+            <span className="font-bold text-sm truncate">{prompt.model}</span>
+          </div>
+        )}
       </div>
     </div>
   );

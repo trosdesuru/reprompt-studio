@@ -2,6 +2,7 @@
 
 import { use } from "react";
 import Link from "next/link";
+import { PageLoader } from "@/src/system/atoms/PageLoader";
 import { IconPhotoOff, IconFolder } from "@tabler/icons-react";
 
 import { PromptCard } from "@/src/system/organisms/Studio/PromptCard";
@@ -17,11 +18,7 @@ export default function PublicProfilePage({
   const { data, isLoading, error } = usePublicProfile(username);
 
   if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center font-mono animate-pulse">
-        Cargando señales...
-      </div>
-    );
+    return <PageLoader text="Sincronizando perfil..." />;
   }
 
   if (error || !data) {

@@ -7,6 +7,7 @@ import { IconArrowLeft } from "@tabler/icons-react";
 import { usePublicPrompt } from "@/src/features/studio/hooks/usePublicPrompt";
 import { PromptImageViewer } from "@/src/system/organisms/Studio/PromptImageViewer";
 import { PromptMetadataPanel } from "@/src/system/organisms/Studio/PromptMetadataPanel";
+import { PageLoader } from "@/src/system/atoms/PageLoader";
 
 export default function PromptDetailPage({
   params,
@@ -18,11 +19,7 @@ export default function PromptDetailPage({
   const { data, isLoading, error } = usePublicPrompt(username, prompt_id);
 
   if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center font-mono animate-pulse">
-        Decodificando prompt...
-      </div>
-    );
+    return <PageLoader text="Desencriptando datos..." />;
   }
 
   const prompt = data?.prompt ? data.prompt : data;
