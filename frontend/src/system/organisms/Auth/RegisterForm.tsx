@@ -1,87 +1,88 @@
-// frontend/features/auth/components/RegisterForm.tsx
-import { useState } from "react";
-import { api } from "@/src/services/api";
-import { Button } from "@/src/system/atoms/Button";
+"use client";
 
-export default function RegisterForm() {
+import { useState } from "react";
+import { useRegister } from "@/src/features/auth/hooks/useRegister";
+
+import { FormField } from "@/src/system/molecules/FormField";
+import { Button } from "@/src/system/atoms/Button";
+import { FormHeader } from "../../atoms/Login/FormHeader";
+
+interface RegisterFormProps {
+  lang: string;
+}
+
+export function RegisterForm({ lang }: RegisterFormProps) {
+  // 🟢 Lógica inyectada sin alterar
+  const { handleRegister, isLoading, error } = useRegister(lang);
+
   const [formData, setFormData] = useState({
     username: "",
     password: "",
     invite_code: "",
   });
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
-    setError(null);
-    setSuccess(null);
-
-    try {
-      const data = await api.registrar(formData);
-      setSuccess(`¡Bienvenido, ${data.user.username}! Rol asignado: ${data.user.role.toUpperCase()}`);
-      // Aquí en el futuro redirigiremos al Dashboard
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setIsLoading(false);
-    }
+    await handleRegister(formData);
   };
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-6 bg-(--bg-secondary) p-8 neo-border neo-shadow max-w-md mx-auto w-full">
-      <div className="text-center mb-4">
-        <h2 className="text-3xl font-black font-mono uppercase tracking-tighter text-foreground">
-          Join<span className="text-(--accent-color)">_</span>Platform
-        </h2>
-        <p className="text-(--text-secondary) text-sm font-mono mt-2">Acceso restringido por invitación</p>
+    <div className="w-full max-w-md mx-auto p-8 bg-(--bg-secondary) neo-border neo-shadow">
+      <div className="animate-in fade-in zoom-in-95 duration-300">
+        
+        {/* Cabecera idéntica al Login */}
+        <FormHeader />
+
+        {error && (
+          <div className="bg-red-500 text-white p-3 mb-6 font-bold neo-border text-xs font-mono uppercase text-center animate-in slide-in-from-top-2">
+            {error}
+          </div>
+        )}
+
+        <form onSubmit={onSubmit} className="space-y-6">
+          
+          <FormField
+            label="email"
+            name="username"
+            type="text"
+            value={formData.username}
+            onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+            placeholder="reprompt@mail.com"
+            autoComplete="username"
+            required
+          />
+
+          <FormField
+            label="Password"
+            name="password"
+            type="password"
+            value={formData.password}
+            onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+            autoComplete="new-password"
+            placeholder="••••••••"
+            required
+          />
+
+          <FormField
+            label="Código de invitación"
+            name="invite_code"
+            type="text"
+            value={formData.invite_code}
+            onChange={(e) => setFormData({ ...formData, invite_code: e.target.value.toUpperCase() })}
+            placeholder="ej. TROYA-A1234B56"
+            className="uppercase"
+            required
+          />
+
+          <Button
+            type="submit"
+            isLoading={isLoading}
+            className="w-full justify-center h-12 text-sm font-black uppercase tracking-widest"
+          >
+            {isLoading ? "Verificando..." : "Confirmar Acceso"}
+          </Button>
+        </form>
       </div>
-
-      {error && <div className="bg-red-500 text-white p-3 font-bold neo-border text-sm font-mono uppercase text-center">{error}</div>}
-      {success && <div className="bg-green-500 text-white p-3 font-bold neo-border text-sm font-mono uppercase text-center">{success}</div>}
-
-      <div className="flex flex-col gap-2">
-        <label className="font-bold text-sm uppercase tracking-wide text-foreground">Usuario</label>
-        <input
-          type="text"
-          required
-          className="bg-background text-foreground neo-border p-3 focus:outline-none focus:neo-shadow-accent transition-all font-mono"
-          value={formData.username}
-          onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-        />
-      </div>
-
-      <div className="flex flex-col gap-2">
-        <label className="font-bold text-sm uppercase tracking-wide text-foreground">Contraseña</label>
-        <input
-          type="password"
-          required
-          className="bg-background text-foreground neo-border p-3 focus:outline-none focus:neo-shadow-accent transition-all font-mono"
-          value={formData.password}
-          onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-        />
-      </div>
-
-      <div className="flex flex-col gap-2">
-        <label className="font-bold text-sm uppercase tracking-wide text-foreground flex justify-between">
-          <span>Código Maestro</span>
-          <span className="text-(--accent-color)">🔑</span>
-        </label>
-        <input
-          type="text"
-          required
-          placeholder="TROYA-XXXXXXX"
-          className="bg-background text-foreground neo-border p-3 focus:outline-none focus:neo-shadow-accent transition-all font-mono uppercase placeholder:text-gray-500"
-          value={formData.invite_code}
-          onChange={(e) => setFormData({ ...formData, invite_code: e.target.value.toUpperCase() })}
-        />
-      </div>
-
-      <Button type="submit" variant="primary" size="lg" isLoading={isLoading} className="mt-4 w-full">
-        {isLoading ? "Verificando..." : "Reclamar Acceso"}
-      </Button>
-    </form>
+    </div>
   );
 }

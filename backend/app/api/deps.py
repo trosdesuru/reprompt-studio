@@ -1,11 +1,14 @@
 # backend/app/api/deps.py
 import os
 import redis
+import logging
 from fastapi import Depends, HTTPException, status, Request
 from jose import jwt, JWTError
 from sqlmodel import Session, select
 from app.core.db import get_session
 from app.models.user import User
+
+logger = logging.getLogger("deps")
 
 SECRET_KEY = os.getenv("SECRET_KEY", "super_clave_secreta_de_respaldo")
 ALGORITHM = "HS256"
@@ -78,24 +81,42 @@ class GlobalRateLimiter:
 def get_current_user(request: Request, session: Session = Depends(get_session)):
     """Verifica el JWT leyéndolo directamente desde la Cookie HttpOnly."""
     token = request.cookies.get("access_token")
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED, detail="No autenticado"
-    )
 
     if not token:
-        raise credentials_exception
+        logger.debug(
+            f"🛡️ [DEPS] Rechazado: Ruta {request.url.path} sin cookie 'access_token'."
+        )
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="No autenticado"
+        )
 
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         username: str = payload.get("sub")
         if username is None:
-            raise credentials_exception
-    except JWTError:
-        raise credentials_exception
+            logger.warning("🛡️ [DEPS] Rechazado: Token válido pero sin campo 'sub'.")
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED, detail="No autenticado"
+            )
+    except jwt.ExpiredSignatureError:
+        logger.debug(
+            f"⏱️ [DEPS] Access Token expirado en ruta {request.url.path}. El frontend debería pedir /refresh."
+        )
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Token expirado"
+        )
+    except JWTError as e:
+        logger.warning(f"🛡️ [DEPS] Rechazado: Error decodificando JWT: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="No autenticado"
+        )
 
     user = session.exec(select(User).where(User.username == username)).first()
     if user is None:
-        raise credentials_exception
+        logger.error(f"🛡️ [DEPS] Rechazado: Usuario {username} en token pero no en DB.")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="No autenticado"
+        )
 
     return user
 

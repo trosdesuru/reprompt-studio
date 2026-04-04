@@ -1,4 +1,5 @@
 import os
+import logging
 from google.oauth2 import id_token
 from google.auth.transport import requests as google_requests
 
@@ -23,6 +24,18 @@ class AuthService:
     @staticmethod
     def register_user(user_data, session: Session):
         """Lógica de negocio pura para registrar un usuario."""
+        import logging
+
+        logger = logging.getLogger("auth_service")
+
+        logger.info(
+            f"📝 [AUTH_SERVICE] Intento de registro manual. Username: @{user_data.username}"
+        )
+
+        # 1. Validación de código
+        logger.info(
+            f"🔑 [AUTH_SERVICE] Verificando código de invitación: {user_data.invite_code}"
+        )
         statement = (
             select(InviteCode)
             .where(InviteCode.code == user_data.invite_code)
@@ -31,19 +44,31 @@ class AuthService:
         invite = session.exec(statement).first()
 
         if not invite:
+            logger.warning(
+                f"🚫 [AUTH_SERVICE] Registro fallido: Código '{user_data.invite_code}' es inválido o ya fue usado."
+            )
             raise HTTPException(
                 status_code=400, detail="Código de invitación inválido o ya usado"
             )
 
+        # 2. Validación de usuario existente
         user_exists = session.exec(
             select(User).where(User.username == user_data.username)
         ).first()
+
         if user_exists:
+            logger.warning(
+                f"🚫 [AUTH_SERVICE] Registro fallido: El username '@{user_data.username}' ya está ocupado."
+            )
             raise HTTPException(
                 status_code=400, detail="El nombre de usuario ya está en uso"
             )
 
+        # 3. Asignación de rol y creación
         assigned_role = "admin" if invite.code.startswith("TROYA-") else "voyager"
+        logger.info(
+            f"✅ [AUTH_SERVICE] Validaciones pasadas. Creando usuario con rol: {assigned_role}"
+        )
 
         new_user = User(
             username=user_data.username,
@@ -54,11 +79,15 @@ class AuthService:
         session.commit()
         session.refresh(new_user)
 
+        # 4. Quema de código
         invite.is_used = True
         invite.used_by_id = new_user.id
         session.add(invite)
         session.commit()
 
+        logger.info(
+            f"✨ [AUTH_SERVICE] ¡Usuario @{new_user.username} registrado exitosamente y código quemado!"
+        )
         return new_user
 
     @staticmethod
@@ -117,8 +146,13 @@ class AuthService:
 
     @staticmethod
     def rotate_tokens(refresh_token: str, session: Session, redis_client):
-        # ... (Mantén el código original de rotate_tokens que ya tenías) ...
+        logger = logging.getLogger("auth_service")
+        logger.info("🔄 [AUTH_SERVICE] Iniciando secuencia de rotación de tokens...")
+
         if not refresh_token:
+            logger.warning(
+                "🚫 [AUTH_SERVICE] Rotación fallida: No se recibió token de refresco."
+            )
             raise HTTPException(status_code=401, detail="No hay token de refresco")
 
         try:
@@ -129,7 +163,14 @@ class AuthService:
                 payload.get("family"),
             )
 
+            logger.info(
+                f"🔍 [AUTH_SERVICE] Token decodificado -> User: {username} | JTI: {jti} | Family: {family_id}"
+            )
+
             if not all([username, jti, family_id]) or payload.get("type") != "refresh":
+                logger.error(
+                    "❌ [AUTH_SERVICE] Rotación fallida: Estructura del token inválida o no es tipo 'refresh'."
+                )
                 raise HTTPException(
                     status_code=401, detail="Estructura de token inválida"
                 )
@@ -137,21 +178,40 @@ class AuthService:
             redis_key = f"session:{username}:{family_id}"
             active_jti = redis_client.get(redis_key)
 
+            logger.info(
+                f"📡 [AUTH_SERVICE] Consultando Redis -> Clave: {redis_key} | JTI Guardado: {active_jti}"
+            )
+
             if active_jti and active_jti != jti:
+                logger.warning(
+                    f"🚨 [AUTH_SERVICE] ALERTA DE SEGURIDAD (Posible Robo o Doble Petición)."
+                )
+                logger.warning(f"   -> JTI Recibido: {jti}")
+                logger.warning(f"   -> JTI en Redis: {active_jti}")
                 redis_client.delete(redis_key)
+                logger.info(
+                    f"🧹 [AUTH_SERVICE] Sesión {family_id} destruida en Redis por seguridad."
+                )
                 raise HTTPException(
                     status_code=403, detail="ALERTA: Robo de sesión detectado."
                 )
 
             if not active_jti:
+                logger.warning(
+                    f"⚠️ [AUTH_SERVICE] Rotación rechazada: La sesión {family_id} ya expiró o fue cerrada remotamente."
+                )
                 raise HTTPException(
                     status_code=401, detail="Sesión expirada o cerrada remotamente."
                 )
 
             user = session.exec(select(User).where(User.username == username)).first()
             if not user:
+                logger.error(
+                    f"❌ [AUTH_SERVICE] El usuario {username} existe en el token pero no en la Base de Datos."
+                )
                 raise HTTPException(status_code=401, detail="Usuario no encontrado")
 
+            # Generación de nuevos tokens
             new_access_token = create_access_token(
                 data={"sub": username, "role": user.role}
             )
@@ -159,29 +219,41 @@ class AuthService:
                 data={"sub": username}, family_id=family_id
             )
 
+            # Actualizamos Redis
             redis_client.setex(redis_key, 60 * 60 * 24 * 7, new_refresh_data["jti"])
+
+            logger.info(
+                f"✅ [AUTH_SERVICE] Rotación EXITOSA. Nuevo JTI asignado: {new_refresh_data['jti']}"
+            )
 
             return new_access_token, new_refresh_data["token"]
 
         except jwt.ExpiredSignatureError:
+            logger.warning("⏱️ [AUTH_SERVICE] El Refresh Token ha caducado por tiempo.")
             raise HTTPException(
                 status_code=401, detail="Token expirado. Inicia sesión."
             )
-        except jwt.JWTError:
+        except jwt.JWTError as e:
+            logger.error(f"❌ [AUTH_SERVICE] Error de firma JWT: {str(e)}")
             raise HTTPException(status_code=401, detail="Firma inválida.")
 
     @staticmethod
     def verify_google_token(token: str):
         """Verifica criptográficamente el JWT contra los servidores de Google"""
         if not GOOGLE_CLIENT_ID:
-            raise HTTPException(status_code=500, detail="Falta configurar GOOGLE_CLIENT_ID en el servidor")
+            raise HTTPException(
+                status_code=500,
+                detail="Falta configurar GOOGLE_CLIENT_ID en el servidor",
+            )
         try:
             idinfo = id_token.verify_oauth2_token(
                 token, google_requests.Request(), GOOGLE_CLIENT_ID
             )
             return idinfo
         except ValueError:
-            raise HTTPException(status_code=401, detail="Token de Google inválido o expirado")
+            raise HTTPException(
+                status_code=401, detail="Token de Google inválido o expirado"
+            )
 
     @staticmethod
     def authenticate_google_user(token: str, session: Session, redis_client):
@@ -195,25 +267,27 @@ class AuthService:
 
         if user:
             # ESCENARIO A: Ya existe. Generamos sesión silenciosamente.
-            access_token = create_access_token(data={"sub": user.username, "role": user.role})
+            access_token = create_access_token(
+                data={"sub": user.username, "role": user.role}
+            )
             refresh_data = create_refresh_token(data={"sub": user.username})
 
             redis_key = f"session:{user.username}:{refresh_data['family_id']}"
             redis_client.setex(redis_key, 60 * 60 * 24 * 7, refresh_data["jti"])
 
             return {
-                "status": "success", 
-                "access_token": access_token, 
-                "refresh_token": refresh_data["token"], 
-                "username": user.username
+                "status": "success",
+                "access_token": access_token,
+                "refresh_token": refresh_data["token"],
+                "username": user.username,
             }
         else:
             # ESCENARIO B: Es nuevo. Cortamos el flujo y pedimos invitación.
             # Sugerimos un nombre de usuario basado en su nombre de Google
             return {
-                "status": "needs_invite", 
-                "email": email, 
-                "suggested_username": name
+                "status": "needs_invite",
+                "email": email,
+                "suggested_username": name,
             }
 
     @staticmethod
@@ -225,16 +299,28 @@ class AuthService:
         provider_id = idinfo.get("sub")
 
         # 2. Verificamos que el Alias que eligió no esté cogido
-        user_exists = session.exec(select(User).where(User.username == join_data.username)).first()
+        user_exists = session.exec(
+            select(User).where(User.username == join_data.username)
+        ).first()
         if user_exists:
-            raise HTTPException(status_code=400, detail="El nombre de usuario ya está en uso. Elige otro.")
+            raise HTTPException(
+                status_code=400,
+                detail="El nombre de usuario ya está en uso. Elige otro.",
+            )
 
         # 3. Validar código de invitación (El Muro Físico)
-        statement = select(InviteCode).where(InviteCode.code == join_data.invite_code).where(InviteCode.is_used == False)
+        statement = (
+            select(InviteCode)
+            .where(InviteCode.code == join_data.invite_code)
+            .where(InviteCode.is_used == False)
+        )
         invite = session.exec(statement).first()
 
         if not invite:
-            raise HTTPException(status_code=400, detail="Código de invitación inválido o ya fue utilizado")
+            raise HTTPException(
+                status_code=400,
+                detail="Código de invitación inválido o ya fue utilizado",
+            )
 
         assigned_role = "admin" if invite.code.startswith("TROYA-") else "voyager"
 
@@ -257,10 +343,12 @@ class AuthService:
         session.commit()
 
         # 6. Crear la sesión en Redis
-        access_token = create_access_token(data={"sub": new_user.username, "role": new_user.role})
+        access_token = create_access_token(
+            data={"sub": new_user.username, "role": new_user.role}
+        )
         refresh_data = create_refresh_token(data={"sub": new_user.username})
 
         redis_key = f"session:{new_user.username}:{refresh_data['family_id']}"
         redis_client.setex(redis_key, 60 * 60 * 24 * 7, refresh_data["jti"])
-        
+
         return access_token, refresh_data["token"], new_user.username

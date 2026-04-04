@@ -4,21 +4,28 @@ let isRefreshing = false;
 let refreshPromise: Promise<boolean> | null = null;
 
 export const API_URL = ENV.API_URL;
+
 export async function fetchSeguro(endpoint: string, options: RequestInit = {}) {
+  const headers = new Headers(options.headers || {});
+  if (!headers.has("Content-Type") && !(options.body instanceof FormData)) {
+    headers.set("Content-Type", "application/json");
+  }
+
   let response = await fetch(endpoint, {
     ...options,
+    headers,
     credentials: "include",
   });
 
   if (
     response.status === 401 &&
     !endpoint.includes("/auth/login") &&
-    !endpoint.includes("/auth/refresh")
+    !endpoint.includes("/auth/refresh") &&
+    !endpoint.includes("/auth/logout")
   ) {
-    console.warn(
-      `🔄 [SECURITY] Access Token expirado en ${endpoint}. Intentando rotación transparente...`,
-    );
-
+    console.warn(`[API_CLIENT] 🔴 401 Unauthorized detectado en ${endpoint}`);
+    console.warn(`[API_CLIENT] 🚑 Iniciando protocolo de rescate (Refresh Token)...`);
+    
     if (!isRefreshing) {
       isRefreshing = true;
       refreshPromise = (async () => {
@@ -42,6 +49,7 @@ export async function fetchSeguro(endpoint: string, options: RequestInit = {}) {
       console.log(`✅ [SECURITY] Rotación exitosa. Reintentando petición original a ${endpoint}`);
       response = await fetch(endpoint, {
         ...options,
+        headers, 
         credentials: "include",
       });
     } else {

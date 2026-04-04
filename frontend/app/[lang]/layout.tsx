@@ -1,15 +1,14 @@
 import type { Metadata } from "next";
 import { Prompt, JetBrains_Mono } from "next/font/google";
 import "../globals.css";
+
 import { AuthProvider } from "@/src/features/auth/AuthProvider";
-import { Navbar } from "@/src/system/organisms/Layout/Navbar/Navbar";
 import { AppToaster } from "@/src/system/organisms/Layout/AppToaster";
 import { GlobalProgress } from "@/src/system/organisms/Layout/GlobalProgress";
 import { cn } from "@/lib/utils";
 
 import { getDictionary, Locale } from "@/src/dictionaries/getDictionary";
 import { I18nProvider } from "@/src/dictionaries/I18nProvider";
-
 import { GoogleOAuthProvider } from "@react-oauth/google";
 
 const prompt = Prompt({
@@ -38,13 +37,16 @@ export default async function RootLayout({
   const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "";
 
   return (
-    <html lang={lang} className={cn(prompt.variable, "font-mono", jetbrainsMono.variable)}>
+    <html
+      lang={lang}
+      className={cn(prompt.variable, "font-mono", jetbrainsMono.variable)}
+      suppressHydrationWarning
+    >
       <body className="antialiased selection:bg-(--accent-color) selection:text-white">
         <GoogleOAuthProvider clientId={googleClientId}>
           <I18nProvider dictionary={dictionary}>
             <AuthProvider>
               <GlobalProgress />
-              <Navbar />
               {children}
               <AppToaster />
             </AuthProvider>

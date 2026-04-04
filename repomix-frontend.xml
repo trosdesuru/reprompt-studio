@@ -98,6 +98,7 @@ src/
         useGoogleAuth.ts
         useLoginForm.tsx
         useRedirectIfAuthenticated.ts
+        useRegister.ts
       AuthProvider.tsx
       GoogleAuthButton.tsx
     extractor/
@@ -134,6 +135,7 @@ src/
   services/
     api/
       auth.ts
+      client_.ts
       client.ts
       downloads.ts
       prompts.ts
@@ -142,6 +144,7 @@ src/
       env.ts
     api.ts
   store/
+    authStore_.ts
     authStore.ts
     notificationStore.tsx
     progressStore.ts
@@ -265,6 +268,7 @@ jest.setup.js
 next.config.ts
 package.json
 postcss.config.mjs
+proxy_.ts
 proxy.ts
 README.md
 tsconfig.json
@@ -393,12 +397,12 @@ export default function LoginPage() {
       <LoginForm />
 
       <p className="mt-8 text-center text-sm font-mono text-(--text-secondary)">
-        ¿No tienes acceso?{" "}
+        ¿No tienes cuenta?{" "}
         <Link
           href="/join"
           className="text-(--accent-color) font-black hover:underline underline-offset-4"
         >
-          REGISTRARSE AQUÍ
+          Registrarte aquí
         </Link>
       </p>
     </main>
@@ -836,19 +840,51 @@ export default function PublicProfilePage({
 <file path="app/[lang]/join/page.tsx">
 "use client";
 
+import { use } from "react"; // 🟢 Importamos el nuevo hook de React
 import Link from "next/link";
-import RegisterForm from "@/src/system/organisms/Auth/RegisterForm";
+import { RegisterForm } from "@/src/system/organisms/Auth/RegisterForm";
+import { useRedirectIfAuthenticated } from "@/src/features/auth/hooks/useRedirectIfAuthenticated";
 
-export default function JoinPage() {
+// 🟢 Cambiamos el tipo para decirle a TypeScript que params es una Promesa
+export default function JoinPage(props: { params: Promise<{ lang: string }> }) {
+  // 🟢 Desempaquetamos la promesa con React.use()
+  const params = use(props.params);
+  const lang = params.lang;
+
+  // Ahora 'lang' ya es un string seguro (ej: "es" o "en")
+  const { isChecking, isAuthenticated } = useRedirectIfAuthenticated(`/${lang}`);
+
+  if (isChecking || isAuthenticated) {
+    return (
+      <main className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
+        <span className="animate-pulse text-(--accent-color) font-mono font-bold uppercase tracking-widest text-sm">
+          Comprobando credenciales...
+        </span>
+      </main>
+    );
+  }
+
   return (
-    <main className="min-h-screen bg-background text-foreground flex flex-col items-center justify-center p-4">
+    <main className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
       <Link
         href="/"
-        className="absolute top-8 left-8 text-sm font-bold font-mono hover:text-(--accent-color) uppercase"
+        className="fixed top-8 left-8 text-sm font-bold font-mono text-(--text-secondary) hover:text-(--accent-color) transition-colors uppercase"
       >
-        ← Volver
+        ← Volver al inicio
       </Link>
-      <RegisterForm />
+
+      {/* Aquí inyectamos el formulario pasándole el idioma seguro */}
+      <RegisterForm lang={lang} />
+
+      <p className="mt-8 text-center text-sm font-mono text-(--text-secondary)">
+        ¿Ya tienes cuenta?{" "}
+        <Link
+          href={`/${lang}/login`}
+          className="text-(--accent-color) font-black hover:underline underline-offset-4"
+        >
+          Iniciar sesión
+        </Link>
+      </p>
     </main>
   );
 }
@@ -2637,6 +2673,42 @@ export function useRedirectIfAuthenticated(redirectTo: string = "/") {
 }
 </file>
 
+<file path="src/features/auth/hooks/useRegister.ts">
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { api } from "@/src/services/api";
+
+interface RegisterFormData {
+  username: string;
+  password: string;
+  invite_code: string;
+}
+
+export const useRegister = (lang: string) => {
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const router = useRouter();
+
+  const handleRegister = async (formData: RegisterFormData) => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      await api.registrar(formData);
+
+      router.push(`/${lang}/login?registered=true`);
+    } catch (err: any) {
+      const errorMsg = err.response?.data?.detail || err.message || "Error crítico al registrarse";
+      setError(errorMsg);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return { handleRegister, isLoading, error };
+};
+</file>
+
 <file path="src/features/auth/AuthProvider.tsx">
 "use client";
 
@@ -2792,7 +2864,7 @@ export function GoogleAuthButton() {
           value={inviteCode}
           onChange={(e) => setInviteCode(e.target.value)}
           className="px-3 py-2 text-sm bg-background border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-primary uppercase"
-          placeholder="ej. TROYA-123"
+          placeholder="ej. VY-123"
           disabled={isLoading}
         />
       </div>
@@ -3733,7 +3805,7 @@ export const authApi = {
 };
 </file>
 
-<file path="src/services/api/client.ts">
+<file path="src/services/api/client_.ts">
 import { ENV } from "@/src/services/config/env";
 
 let isRefreshing = false;
@@ -3778,6 +3850,79 @@ export async function fetchSeguro(endpoint: string, options: RequestInit = {}) {
       console.log(`✅ [SECURITY] Rotación exitosa. Reintentando petición original a ${endpoint}`);
       response = await fetch(endpoint, {
         ...options,
+        credentials: "include",
+      });
+    } else {
+      console.error("🚷 [SECURITY] Refresh Token inválido. Sesión terminada.");
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new Event("auth:unauthorized"));
+      }
+      throw new Error("Sesión expirada completamente");
+    }
+  }
+
+  if (!response.ok) {
+    console.error(`❌ [API_ERROR] Fallo en ${endpoint}: ${response.status} ${response.statusText}`);
+    throw new Error(`Error ${response.status}: ${response.statusText}`);
+  }
+
+  return response.json();
+}
+</file>
+
+<file path="src/services/api/client.ts">
+import { ENV } from "@/src/services/config/env";
+
+let isRefreshing = false;
+let refreshPromise: Promise<boolean> | null = null;
+
+export const API_URL = ENV.API_URL;
+
+export async function fetchSeguro(endpoint: string, options: RequestInit = {}) {
+  const headers = new Headers(options.headers || {});
+  if (!headers.has("Content-Type") && !(options.body instanceof FormData)) {
+    headers.set("Content-Type", "application/json");
+  }
+
+  let response = await fetch(endpoint, {
+    ...options,
+    headers,
+    credentials: "include",
+  });
+
+  if (
+    response.status === 401 &&
+    !endpoint.includes("/auth/login") &&
+    !endpoint.includes("/auth/refresh") &&
+    !endpoint.includes("/auth/logout")
+  ) {
+    console.warn(`[API_CLIENT] 🔴 401 Unauthorized detectado en ${endpoint}`);
+    console.warn(`[API_CLIENT] 🚑 Iniciando protocolo de rescate (Refresh Token)...`);
+    
+    if (!isRefreshing) {
+      isRefreshing = true;
+      refreshPromise = (async () => {
+        try {
+          const refreshRes = await fetch(`${API_URL}/auth/refresh`, {
+            method: "POST",
+            credentials: "include",
+          });
+          return refreshRes.ok;
+        } catch (error) {
+          return false;
+        } finally {
+          isRefreshing = false;
+        }
+      })();
+    }
+
+    const refreshSuccessful = await refreshPromise;
+
+    if (refreshSuccessful) {
+      console.log(`✅ [SECURITY] Rotación exitosa. Reintentando petición original a ${endpoint}`);
+      response = await fetch(endpoint, {
+        ...options,
+        headers, 
         credentials: "include",
       });
     } else {
@@ -3996,7 +4141,7 @@ export const api = {
 };
 </file>
 
-<file path="src/store/authStore.ts">
+<file path="src/store/authStore_.ts">
 import { create } from "zustand";
 import { api } from "@/src/services/api";
 import { handleError } from "../utils/errors/ErrorHandler";
@@ -4082,6 +4227,129 @@ if (typeof window !== "undefined") {
         console.warn("🚷 [SECURITY_ACTION] Interceptado 401. Expulsando a /login...");
         const localeMatch = window.location.pathname.match(/^\/([a-z]{2})(?:\/|$)/);
         const localePrefix = localeMatch ? `/${localeMatch[1]}` : "";
+        window.location.href = `${localePrefix}/login`;
+      }
+    }
+  });
+}
+</file>
+
+<file path="src/store/authStore.ts">
+import { create } from "zustand";
+import { api } from "@/src/services/api";
+import { handleError } from "../utils/errors/ErrorHandler";
+
+interface User {
+  username: string;
+  role: string;
+}
+
+interface AuthState {
+  user: User | null;
+  isLoadingAuth: boolean;
+  login: (userData: User) => void;
+  logout: () => Promise<void>;
+  checkAuth: () => Promise<void>;
+  logoutSilencioso: () => void;
+}
+
+export const useAuthStore = create<AuthState>((set) => ({
+  user: null,
+  isLoadingAuth: true,
+
+  login: (userData) => {
+    console.log(`🟢 [AUTH_STORE] Sesión iniciada en estado local para: @${userData.username}`);
+    set({ user: userData, isLoadingAuth: false });
+  },
+
+  logoutSilencioso: () => {
+    console.log(
+      "🤫 [AUTH_STORE] Ejecutando limpieza de estado local en memoria (Sin avisar al backend).",
+    );
+    set({ user: null, isLoadingAuth: false });
+  },
+
+  checkAuth: async () => {
+    console.log("🛡️ [AUTH_STORE] Iniciando checkAuth(). Consultando estado real al servidor...");
+    set({ isLoadingAuth: true });
+
+    try {
+      const res = await api.obtenerPerfil();
+
+      const username = res?.username || res?.data?.username || res?.user?.username;
+      const role = res?.role || res?.data?.role || res?.user?.role || "user";
+
+      if (username) {
+        console.log(
+          `✅ [AUTH_STORE] checkAuth exitoso. Usuario validado por el backend: @${username}`,
+        );
+        set({ user: { username, role } });
+      } else {
+        console.warn(
+          "⚠️ [AUTH_STORE] checkAuth devolvió OK, pero el JSON no contiene el 'username'.",
+          res,
+        );
+        set({ user: null });
+      }
+    } catch (error: unknown) {
+      console.warn(
+        "🛑 [AUTH_STORE] checkAuth falló. Esto es normal si no hay sesión o si el Access Token expiró.",
+      );
+      try {
+        handleError(error, "AuthStore");
+      } catch (e) {
+        // Silenciamos este error interno para no ensuciar los logs
+      }
+      set({ user: null });
+    } finally {
+      set({ isLoadingAuth: false });
+    }
+  },
+
+  logout: async () => {
+    console.log("🧹 [AUTH_STORE] Ejecutando orden de desconexión completa (Logout API)...");
+    try {
+      await api.logout();
+      console.log("🧹 [AUTH_STORE] El backend ha confirmado la destrucción de cookies y sesión.");
+    } catch (error) {
+      console.error("❌ [AUTH_STORE] Falló la llamada al backend para hacer logout:", error);
+    } finally {
+      set({ user: null, isLoadingAuth: false });
+
+      if (typeof window !== "undefined") {
+        const currentPath = window.location.pathname;
+        const localeMatch = currentPath.match(/^\/([a-z]{2})(?:\/|$)/);
+        const localePrefix = localeMatch ? `/${localeMatch[1]}` : "";
+
+        console.log(`🧹 [AUTH_STORE] Redirigiendo al usuario a: ${localePrefix}/login`);
+        window.location.href = `${localePrefix}/login`;
+      }
+    }
+  },
+}));
+
+// ==============================================================================
+// 🛡️ GUARDIÁN GLOBAL: LISTENER DE EVENTOS (Ahora sí funciona 24/7)
+// ==============================================================================
+if (typeof window !== "undefined") {
+  console.log("🎧 [AUTH_STORE] Guardián de seguridad (Listener 'auth:unauthorized') montado.");
+
+  window.addEventListener("auth:unauthorized", () => {
+    console.warn(
+      "🚨 [AUTH_STORE] ALERTA DE SISTEMA: Recibido evento 'auth:unauthorized'. La sesión ha muerto irrecuperablemente.",
+    );
+
+    const state = useAuthStore.getState();
+
+    if (state.user || state.isLoadingAuth) {
+      // Limpiamos la memoria
+      state.logoutSilencioso();
+
+      if (!window.location.pathname.includes("/login")) {
+        console.warn("🚷 [AUTH_STORE] Expulsando al usuario a /login...");
+        const localeMatch = window.location.pathname.match(/^\/([a-z]{2})(?:\/|$)/);
+        const localePrefix = localeMatch ? `/${localeMatch[1]}` : "";
+
         window.location.href = `${localePrefix}/login`;
       }
     }
@@ -4471,11 +4739,21 @@ export function FormDivider() {
 <file path="src/system/atoms/Login/FormHeader.tsx">
 export function FormHeader() {
   return (
-    <div className="mb-8 text-center">
-      <h2 className="text-2xl font-black uppercase font-mono tracking-tighter">
-        Acceso al <span className="text-(--accent-color)">Búnker</span>
-      </h2>
-      <p className="text-xs font-mono text-(--text-secondary) mt-2 uppercase">
+    <div className="mb-8 flex flex-col items-center text-center">
+      <div className="mb-6 relative flex justify-center items-center">
+        <img
+          src="/logo-brand-black.svg"
+          alt="Logotipo de la plataforma"
+          className="h-12 w-auto object-contain block dark:hidden"
+        />
+
+        <img
+          src="/logo-brand-white.svg"
+          alt="Logotipo de la plataforma"
+          className="h-12 w-auto object-contain hidden dark:block"
+        />
+      </div>
+      <p className="text-xs font-mono text-(--text-secondary) uppercase">
         Identifícate para gestionar tus prompts
       </p>
     </div>
@@ -4890,11 +5168,11 @@ export function FeedItemCard({ item, lang }: FeedItemCardProps) {
         </div>
       )}
 
-      <div className="absolute inset-0 bg-linear-to-t from-black/90 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-4">
+      <div className="absolute inset-0 z-20 bg-linear-to-t from-black/90 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-4">
         <div className="absolute top-3 left-3 flex gap-2">
           {item.type === "collection" && (
-            <span className="bg-background/90 text-foreground text-[10px] font-bold px-2 py-1 flex items-center gap-1 neo-border rounded-md shadow-sm">
-              <IconStack2 size={12} stroke={2} /> {item.items_count}
+            <span className="bg-foreground-600/60 text-blue-200 text-[10px] font-bold px-2 py-1 flex items-center gap-1 neo-border rounded-md shadow-sm">
+              <IconStack2 size={12} stroke={2} /> {item.title}
             </span>
           )}
         </div>
@@ -5660,12 +5938,12 @@ export function LoginForm() {
 
           <form onSubmit={googleAuth.handleJoinSubmit} className="space-y-6">
             <FormField
-              label="Tu alias (Público)"
-              name="username"
+              label="Tu email"
+              name="email"
               type="text"
               value={googleAuth.username}
               onChange={(e) => googleAuth.setUsername(e.target.value)}
-              placeholder="ej. cyberpunk_artist"
+              placeholder="reprompt@mail.com"
               required
             />
 
@@ -5675,7 +5953,7 @@ export function LoginForm() {
               type="text"
               value={googleAuth.inviteCode}
               onChange={(e) => googleAuth.setInviteCode(e.target.value)}
-              placeholder="ej. TROYA-123"
+              placeholder="ej. VGR-A1234B56"
               className="uppercase"
               required
             />
@@ -5720,18 +5998,18 @@ export function LoginForm() {
 
           <form onSubmit={standardAuth.handleSubmit} className="space-y-6">
             <FormField
-              label="Usuario"
+              label="email"
               name="username"
               type="text"
               value={standardAuth.formData.username}
               onChange={standardAuth.handleChange}
-              placeholder="Tu alias..."
+              placeholder="reprompt@mail.com"
               autoComplete="username"
               required
             />
 
             <FormField
-              label="Contraseña"
+              label="Password"
               name="password"
               type="password"
               value={standardAuth.formData.password}
@@ -5746,7 +6024,7 @@ export function LoginForm() {
               isLoading={standardAuth.isLoading}
               className="w-full justify-center h-12 text-sm font-black uppercase tracking-widest"
             >
-              Iniciar Secuencia
+              Entrar
             </Button>
           </form>
         </div>
@@ -5757,91 +6035,92 @@ export function LoginForm() {
 </file>
 
 <file path="src/system/organisms/Auth/RegisterForm.tsx">
-// frontend/features/auth/components/RegisterForm.tsx
-import { useState } from "react";
-import { api } from "@/src/services/api";
-import { Button } from "@/src/system/atoms/Button";
+"use client";
 
-export default function RegisterForm() {
+import { useState } from "react";
+import { useRegister } from "@/src/features/auth/hooks/useRegister";
+
+import { FormField } from "@/src/system/molecules/FormField";
+import { Button } from "@/src/system/atoms/Button";
+import { FormHeader } from "../../atoms/Login/FormHeader";
+
+interface RegisterFormProps {
+  lang: string;
+}
+
+export function RegisterForm({ lang }: RegisterFormProps) {
+  // 🟢 Lógica inyectada sin alterar
+  const { handleRegister, isLoading, error } = useRegister(lang);
+
   const [formData, setFormData] = useState({
     username: "",
     password: "",
     invite_code: "",
   });
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
-    setError(null);
-    setSuccess(null);
-
-    try {
-      const data = await api.registrar(formData);
-      setSuccess(`¡Bienvenido, ${data.user.username}! Rol asignado: ${data.user.role.toUpperCase()}`);
-      // Aquí en el futuro redirigiremos al Dashboard
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setIsLoading(false);
-    }
+    await handleRegister(formData);
   };
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-6 bg-(--bg-secondary) p-8 neo-border neo-shadow max-w-md mx-auto w-full">
-      <div className="text-center mb-4">
-        <h2 className="text-3xl font-black font-mono uppercase tracking-tighter text-foreground">
-          Join<span className="text-(--accent-color)">_</span>Platform
-        </h2>
-        <p className="text-(--text-secondary) text-sm font-mono mt-2">Acceso restringido por invitación</p>
+    <div className="w-full max-w-md mx-auto p-8 bg-(--bg-secondary) neo-border neo-shadow">
+      <div className="animate-in fade-in zoom-in-95 duration-300">
+        
+        {/* Cabecera idéntica al Login */}
+        <FormHeader />
+
+        {error && (
+          <div className="bg-red-500 text-white p-3 mb-6 font-bold neo-border text-xs font-mono uppercase text-center animate-in slide-in-from-top-2">
+            {error}
+          </div>
+        )}
+
+        <form onSubmit={onSubmit} className="space-y-6">
+          
+          <FormField
+            label="email"
+            name="username"
+            type="text"
+            value={formData.username}
+            onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+            placeholder="reprompt@mail.com"
+            autoComplete="username"
+            required
+          />
+
+          <FormField
+            label="Password"
+            name="password"
+            type="password"
+            value={formData.password}
+            onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+            autoComplete="new-password"
+            placeholder="••••••••"
+            required
+          />
+
+          <FormField
+            label="Código de invitación"
+            name="invite_code"
+            type="text"
+            value={formData.invite_code}
+            onChange={(e) => setFormData({ ...formData, invite_code: e.target.value.toUpperCase() })}
+            placeholder="ej. TROYA-A1234B56"
+            className="uppercase"
+            required
+          />
+
+          <Button
+            type="submit"
+            isLoading={isLoading}
+            className="w-full justify-center h-12 text-sm font-black uppercase tracking-widest"
+          >
+            {isLoading ? "Verificando..." : "Confirmar Acceso"}
+          </Button>
+        </form>
       </div>
-
-      {error && <div className="bg-red-500 text-white p-3 font-bold neo-border text-sm font-mono uppercase text-center">{error}</div>}
-      {success && <div className="bg-green-500 text-white p-3 font-bold neo-border text-sm font-mono uppercase text-center">{success}</div>}
-
-      <div className="flex flex-col gap-2">
-        <label className="font-bold text-sm uppercase tracking-wide text-foreground">Usuario</label>
-        <input
-          type="text"
-          required
-          className="bg-background text-foreground neo-border p-3 focus:outline-none focus:neo-shadow-accent transition-all font-mono"
-          value={formData.username}
-          onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-        />
-      </div>
-
-      <div className="flex flex-col gap-2">
-        <label className="font-bold text-sm uppercase tracking-wide text-foreground">Contraseña</label>
-        <input
-          type="password"
-          required
-          className="bg-background text-foreground neo-border p-3 focus:outline-none focus:neo-shadow-accent transition-all font-mono"
-          value={formData.password}
-          onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-        />
-      </div>
-
-      <div className="flex flex-col gap-2">
-        <label className="font-bold text-sm uppercase tracking-wide text-foreground flex justify-between">
-          <span>Código Maestro</span>
-          <span className="text-(--accent-color)">🔑</span>
-        </label>
-        <input
-          type="text"
-          required
-          placeholder="TROYA-XXXXXXX"
-          className="bg-background text-foreground neo-border p-3 focus:outline-none focus:neo-shadow-accent transition-all font-mono uppercase placeholder:text-gray-500"
-          value={formData.invite_code}
-          onChange={(e) => setFormData({ ...formData, invite_code: e.target.value.toUpperCase() })}
-        />
-      </div>
-
-      <Button type="submit" variant="primary" size="lg" isLoading={isLoading} className="mt-4 w-full">
-        {isLoading ? "Verificando..." : "Reclamar Acceso"}
-      </Button>
-    </form>
+    </div>
   );
 }
 </file>
@@ -8712,7 +8991,7 @@ const config = {
 export default config;
 </file>
 
-<file path="proxy.ts">
+<file path="proxy_.ts">
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
@@ -8748,6 +9027,63 @@ export function proxy(request: NextRequest) {
     return NextResponse.redirect(new URL(`/${currentLocale}`, request.url));
   }
 
+  return NextResponse.next();
+}
+
+export const config = {
+  matcher: [
+    "/((?!api|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+  ],
+};
+</file>
+
+<file path="proxy.ts">
+import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
+
+const locales = ["es", "en"];
+const defaultLocale = "es";
+
+export function proxy(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+
+  const pathnameHasLocale = locales.some(
+    (locale) => pathname.startsWith(`/${locale}/`) || pathname === `/${locale}`,
+  );
+
+  if (!pathnameHasLocale) {
+    return NextResponse.redirect(new URL(`/${defaultLocale}${pathname}`, request.url));
+  }
+
+  // ==============================================================
+  // 🕵️‍♂️ INICIO TELEMETRÍA MIDDLEWARE
+  // ==============================================================
+  const accessToken = request.cookies.get("access_token")?.value;
+  const refreshToken = request.cookies.get("refresh_token")?.value;
+
+  console.log(`\n🚦 [MIDDLEWARE] Interceptando navegación hacia: ${pathname}`);
+  console.log(`   👉 Access Token (15m) presente:  ${accessToken ? "✅ SÍ" : "❌ NO"}`);
+  console.log(`   👉 Refresh Token (7d) presente: ${refreshToken ? "✅ SÍ" : "❌ NO"}`);
+  // ==============================================================
+
+  const currentLocale =
+    locales.find((locale) => pathname.startsWith(`/${locale}/`) || pathname === `/${locale}`) ||
+    defaultLocale;
+
+  const pathWithoutLocale = pathname.replace(`/${currentLocale}`, "") || "/";
+  const isPublicPath = pathWithoutLocale === "/login" || pathWithoutLocale === "/join";
+
+  if (!accessToken && !isPublicPath) {
+    console.log(`   🛑 [MIDDLEWARE] Bloqueado. Redirigiendo a /login (Falta Access Token)`);
+    return NextResponse.redirect(new URL(`/${currentLocale}/login`, request.url));
+  }
+
+  if (accessToken && isPublicPath) {
+    console.log(`   ♻️ [MIDDLEWARE] Usuario ya logueado. Redirigiendo a la Home.`);
+    return NextResponse.redirect(new URL(`/${currentLocale}`, request.url));
+  }
+
+  console.log(`   ✅ [MIDDLEWARE] Paso permitido.`);
   return NextResponse.next();
 }
 

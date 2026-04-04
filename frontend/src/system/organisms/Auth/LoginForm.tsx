@@ -29,12 +29,12 @@ export function LoginForm() {
 
           <form onSubmit={googleAuth.handleJoinSubmit} className="space-y-6">
             <FormField
-              label="Tu alias (Público)"
-              name="username"
+              label="Tu email"
+              name="email"
               type="text"
               value={googleAuth.username}
               onChange={(e) => googleAuth.setUsername(e.target.value)}
-              placeholder="ej. cyberpunk_artist"
+              placeholder="reprompt@mail.com"
               required
             />
 
@@ -89,18 +89,18 @@ export function LoginForm() {
 
           <form onSubmit={standardAuth.handleSubmit} className="space-y-6">
             <FormField
-              label="Usuario"
+              label="email"
               name="username"
               type="text"
               value={standardAuth.formData.username}
               onChange={standardAuth.handleChange}
-              placeholder="Tu alias..."
+              placeholder="reprompt@mail.com"
               autoComplete="username"
               required
             />
 
             <FormField
-              label="Contraseña"
+              label="Password"
               name="password"
               type="password"
               value={standardAuth.formData.password}
@@ -115,7 +115,7 @@ export function LoginForm() {
               isLoading={standardAuth.isLoading}
               className="w-full justify-center h-12 text-sm font-black uppercase tracking-widest"
             >
-              Iniciar Secuencia
+              Entrar
             </Button>
           </form>
         </div>

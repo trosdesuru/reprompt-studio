@@ -1,7 +1,8 @@
-# backend/app/api/routes_auth.py
 import secrets
 import redis
+import logging
 from fastapi import APIRouter, Depends, Response, Cookie, HTTPException
+from fastapi.responses import JSONResponse
 from sqlmodel import Session, select
 
 from app.services.auth_service import AuthService
@@ -20,7 +21,7 @@ from app.schemas.user import (
     GoogleJoinRequest,
 )
 
-# FIX: Inyección de dependencias
+logger = logging.getLogger("routes_auth")
 redis_client = redis.Redis(host="redis", port=6379, db=0, decode_responses=True)
 router = APIRouter()
 
@@ -41,12 +42,11 @@ def register_user(user_data: UserRegister, session: Session = Depends(get_sessio
 def login_user(
     user_data: UserLogin, response: Response, session: Session = Depends(get_session)
 ):
-    # DEFENSA ANTI-BOTNET: Límite por cuenta de usuario
     user_key = f"brute_force_user:{user_data.username}"
 
     attempts = redis_client.incr(user_key)
     if attempts == 1:
-        redis_client.expire(user_key, 300)  # Bloqueo de 5 minutos
+        redis_client.expire(user_key, 300)
 
     if attempts > 5:
         raise HTTPException(
@@ -54,7 +54,6 @@ def login_user(
             detail=f"La cuenta '{user_data.username}' está bloqueada temporalmente por seguridad. Inténtalo en 5 minutos.",
         )
 
-    # Autenticación normal
     try:
         access_token, refresh_token, username = AuthService.authenticate_user(
             user_data, session, redis_client
@@ -62,10 +61,8 @@ def login_user(
     except HTTPException as e:
         raise e
 
-    # SI ENTRA CON ÉXITO: Reseteamos el contador
     redis_client.delete(user_key)
 
-    # FIX CRÍTICO: Restaurada la entrega de cookies que se había borrado
     response.set_cookie(
         key="access_token",
         value=access_token,
@@ -80,7 +77,7 @@ def login_user(
         httponly=True,
         max_age=60 * 60 * 24 * 7,
         samesite="lax",
-        path="/api/auth/refresh",
+        path="/",
     )
 
     AuditService.log_action(session, username, "LOGIN", "Inicio de sesión exitoso")
@@ -93,12 +90,10 @@ def google_auth(
 ):
     result = AuthService.authenticate_google_user(data.token, session, redis_client)
 
-    # 🛡️ INTERCEPCIÓN HÍBRIDA: Si es nuevo, le decimos al frontend que pare
     if result["status"] == "needs_invite":
         response.status_code = status.HTTP_202_ACCEPTED
         return result
 
-    # Si ya existía, inyectamos las cookies de seguridad
     response.set_cookie(
         key="access_token",
         value=result["access_token"],
@@ -113,7 +108,7 @@ def google_auth(
         httponly=True,
         max_age=60 * 60 * 24 * 7,
         samesite="lax",
-        path="/api/auth/refresh",
+        path="/",
     )
 
     AuditService.log_action(
@@ -129,7 +124,6 @@ def google_auth(
 def google_join(
     data: GoogleJoinRequest, response: Response, session: Session = Depends(get_session)
 ):
-    # El usuario envía su token de google + el código de invitación + su alias
     access_token, refresh_token, username = AuthService.register_google_user(
         data, session, redis_client
     )
@@ -148,7 +142,7 @@ def google_join(
         httponly=True,
         max_age=60 * 60 * 24 * 7,
         samesite="lax",
-        path="/api/auth/refresh",
+        path="/",
     )
 
     AuditService.log_action(
@@ -162,13 +156,9 @@ def google_join(
 
 @router.post("/logout")
 def logout_user(response: Response, refresh_token: str | None = Cookie(None)):
-    # 1. Destruimos la cookie del Access Token
     response.delete_cookie("access_token", path="/")
+    response.delete_cookie("refresh_token", path="/")
 
-    # 2. FIX CRÍTICO: Destruimos la cookie del Refresh Token (Hay que especificar su path exacto)
-    response.delete_cookie("refresh_token", path="/api/auth/refresh")
-
-    # 3. CIBERSEGURIDAD: Destruimos la sesión en Redis para que el token quede inservible
     if refresh_token:
         try:
             from jose import jwt
@@ -182,7 +172,6 @@ def logout_user(response: Response, refresh_token: str | None = Cookie(None)):
                 redis_key = f"session:{username}:{family_id}"
                 redis_client.delete(redis_key)
         except Exception:
-            # Si el token ya era inválido o caducó, simplemente lo ignoramos
             pass
 
     return {"status": "success", "message": "Sesión cerrada y destruida por completo"}
@@ -216,9 +205,24 @@ def refresh_access_token(
     refresh_token: str | None = Cookie(None),
     session: Session = Depends(get_session),
 ):
+    logger.info("🌐 [API_AUTH] Petición POST recibida en /api/auth/refresh")
+
+    if refresh_token:
+        logger.info(
+            f"🍪 [API_AUTH] Cookie 'refresh_token' detectada (Termina en: ...{refresh_token[-6:]})"
+        )
+    else:
+        logger.warning(
+            "🍪 [API_AUTH] NO SE DETECTÓ cookie 'refresh_token' en la petición."
+        )
+
     try:
         new_access, new_refresh = AuthService.rotate_tokens(
             refresh_token, session, redis_client
+        )
+
+        logger.info(
+            "📦 [API_AUTH] Inyectando nuevos tokens en las cookies de respuesta..."
         )
         response.set_cookie(
             key="access_token",
@@ -234,17 +238,66 @@ def refresh_access_token(
             httponly=True,
             max_age=60 * 60 * 24 * 7,
             samesite="lax",
-            path="/api/auth/refresh",
+            path="/",
         )
+        logger.info("✅ [API_AUTH] Ciclo de /refresh completado y enviado al cliente.")
         return {"status": "success", "message": "Tokens rotados"}
+
     except HTTPException as e:
-        if e.status_code == 403:
-            response.delete_cookie("access_token", path="/")
-            response.delete_cookie("refresh_token", path="/api/auth/refresh")
+        logger.warning(
+            f"🛑 [API_AUTH] /refresh abortado con código {e.status_code}: {e.detail}"
+        )
+
+        # 🟢 FIX LEGENDARIO: Capturamos tanto el 401 (caducado) como el 403 (robo)
+        if e.status_code in [401, 403]:
+            logger.info(
+                "🧹 [API_AUTH] Limpiando cookies del navegador (Sesión muerta)..."
+            )
+
+            # 1. Creamos la respuesta de error manualmente para que FastAPI no la descarte
+            error_response = JSONResponse(
+                status_code=e.status_code,
+                content={"status": "error", "detail": e.detail},
+            )
+            # 2. Inyectamos la orden de destrucción total de cookies
+            error_response.delete_cookie(
+                "access_token", path="/", httponly=True, samesite="lax"
+            )
+            error_response.delete_cookie(
+                "refresh_token", path="/", httponly=True, samesite="lax"
+            )
+
+            return error_response
+
+    # Si el error es otro (ej. un 500), lo dejamos pasar normal
+    except HTTPException as e:
+        logger.warning(
+            f"🛑 [API_AUTH] /refresh abortado con código {e.status_code}: {e.detail}"
+        )
+
+        # 🟢 FIX LEGENDARIO: Capturamos tanto el 401 (caducado) como el 403 (robo)
+        if e.status_code in [401, 403]:
+            logger.info(
+                "🧹 [API_AUTH] Limpiando cookies del navegador (Sesión muerta)..."
+            )
+
+            # 1. Creamos la respuesta de error manualmente para que FastAPI no la descarte
+            error_response = JSONResponse(
+                status_code=e.status_code,
+                content={"status": "error", "detail": e.detail},
+            )
+            # 2. Inyectamos la orden de destrucción total de cookies
+            error_response.delete_cookie(
+                "access_token", path="/", httponly=True, samesite="lax"
+            )
+            error_response.delete_cookie(
+                "refresh_token", path="/", httponly=True, samesite="lax"
+            )
+
+            return error_response
+
+        # Si el error es otro (ej. un 500), lo dejamos pasar normal
         raise e
-
-
-# --- RUTAS ADMIN ---
 
 
 @router.get("/admin/logs")
