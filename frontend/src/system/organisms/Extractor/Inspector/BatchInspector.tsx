@@ -6,6 +6,7 @@ import { IconTrash, IconDeviceFloppy, IconAlertTriangle, IconX } from "@tabler/i
 import { api } from "@/src/services/api";
 import { handleError } from "@/src/utils/errors/ErrorHandler";
 import { useNotificationStore } from "@/src/store/notificationStore";
+import { fetchSeguro } from "@/src/services/api/client";
 
 interface Props {
   batch: BatchItem[];
@@ -41,7 +42,7 @@ export function BatchInspector({
         const blob = await response.blob();
 
         const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-        const ticketRes = await fetch(`${API_URL}/api/prompts/generate-upload-url`, {
+        const ticketRes = await fetchSeguro(`${API_URL}/api/prompts/generate-upload-url`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           credentials: "include",

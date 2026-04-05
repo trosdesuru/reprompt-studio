@@ -24,79 +24,46 @@ export const api = {
 
   getPublicProfile: async (username: string) => {
     if (RESERVED_ROUTES.has(username.toLowerCase())) {
-      return Promise.reject(new Error("Ruta reeservada deel sistema"));
+      return Promise.reject(new Error("Ruta reservada del sistema"));
     }
-
-    const res = await fetch(`${API_URL}/public/profile/${username}`);
-    if (!res.ok) throw new Error("Perfil no encontrado");
-    return res.json();
+    return fetchSeguro(`${API_URL}/public/profile/${username}`);
   },
+
   getPublicCollection: async (username: string, slug: string) => {
     if (RESERVED_ROUTES.has(username.toLowerCase())) {
       return Promise.reject(new Error("Ruta reservada del sistema"));
     }
-
-    const res = await fetch(`${API_URL}/public/profile/${username}/${slug}`);
-    if (!res.ok) throw new Error("Colección no encontrada");
-    return res.json();
-  },
-
-  createCollection: async (data: { name: string; description?: string; is_private: boolean }) => {
-    const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-    const res = await fetch(`${API_URL}/api/collections`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify(data),
-    });
-    if (!res.ok) throw new Error("Error creando colección");
-    return res.json();
-  },
-
-  getMyCollections: async () => {
-    const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-    const res = await fetch(`${API_URL}/api/collections/`, { credentials: "include" });
-    if (!res.ok) throw new Error("Error obteniendo colecciones");
-    return res.json();
-  },
-
-  assignPromptToCollection: async (promptId: number, collectionId: number | null) => {
-    const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-    const res = await fetch(`${API_URL}/api/collections/assign/${promptId}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify({ collection_id: collectionId }),
-    });
-    if (!res.ok) throw new Error("Error asignando imagen");
-    return res.json();
+    return fetchSeguro(`${API_URL}/public/profile/${username}/${slug}`);
   },
 
   getPublicPromptDetail: async (promptId: string) => {
-    const res = await fetch(`${API_URL}/public/prompt/${promptId}`);
-    if (!res.ok) throw new Error("Imagen no encontrada o privada");
-    return res.json();
+    return fetchSeguro(`${API_URL}/public/prompt/${promptId}`);
   },
 
   getPublicFeed: async (options?: { include_self?: boolean }) => {
-    const res = await fetch(
-      `${API_URL}/public/feed${options?.include_self ? "?include_self=true" : ""}`,
-    );
-    const text = await res.text();
+    const queryString = options?.include_self ? "?include_self=true" : "";
+    return fetchSeguro(`${API_URL}/public/feed${queryString}`);
+  },
 
-    try {
-      const data = JSON.parse(text);
-      if (!res.ok) throw new Error(data.detail || "Error del servidor");
+  createCollection: async (data: { name: string; description?: string; is_private: boolean }) => {
+    return fetchSeguro(`${API_URL}/collections`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  },
 
-      return data;
-    } catch (e) {
-      console.error("El servidor ha devuelto HTML o ha crasheado:", text);
-      throw new Error("Error de conexión al cargar el feed público");
-    }
+  getMyCollections: async () => {
+    return fetchSeguro(`${API_URL}/collections/`);
+  },
+
+  assignPromptToCollection: async (promptId: number, collectionId: number | null) => {
+    return fetchSeguro(`${API_URL}/collections/assign/${promptId}`, {
+      method: "PUT",
+      body: JSON.stringify({ collection_id: collectionId }),
+    });
   },
 
   verifyGoogleCode: async (data: { code: string }) => {
-    // Hace un POST enviando el código para que el backend lo valide y devuelva las cookies
     return fetchSeguro(`${API_URL}/auth/google/join`, {
       method: "POST",
       body: JSON.stringify(data),
@@ -105,7 +72,7 @@ export const api = {
 
   getGoogleAuthUrl: async () => {
     return fetchSeguro(`${API_URL}/auth/google`, {
-      method: "POST"
+      method: "POST",
     });
   },
 };

@@ -13,6 +13,33 @@ router = APIRouter()
 downloads_queue = Queue("downloads", connection=conn)
 
 
+@router.get("/single/{image_key}")
+def descargar_una_imagen(
+    image_key: str, current_user: User = Depends(get_current_user)
+):
+    """Resolución sincrónica instantánea para archivos únicos."""
+    try:
+        url = ejecutar_descarga_individual(image_key)
+        return {"download_url": url}
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail="Error al generar el acceso directo en R2"
+        ) @ router.get("/single/{image_key}")
+
+
+def descargar_una_imagen(
+    image_key: str, current_user: User = Depends(get_current_user)
+):
+    """Resolución sincrónica instantánea para archivos únicos."""
+    try:
+        url = ejecutar_descarga_individual(image_key)
+        return {"download_url": url}
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail="Error al generar el acceso directo en R2"
+        )
+
+
 @router.post("/collection/{collection_id}")
 def descargar_coleccion_completa(
     collection_id: str, current_user: User = Depends(get_current_user)
@@ -33,20 +60,6 @@ def descargar_coleccion_completa(
     except Exception as e:
         raise HTTPException(
             status_code=500, detail="Error al encolar la descarga masiva"
-        )
-
-
-@router.get("/single/{image_key}")
-def descargar_una_imagen(
-    image_key: str, current_user: User = Depends(get_current_user)
-):
-    """Resolución sincrónica instantánea para archivos únicos."""
-    try:
-        url = ejecutar_descarga_individual(image_key)
-        return {"download_url": url}
-    except Exception as e:
-        raise HTTPException(
-            status_code=500, detail="Error al generar el acceso directo en R2"
         )
 
 
