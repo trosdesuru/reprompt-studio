@@ -36,7 +36,7 @@ export function PromptCard({ item, collections = [], onAssign, onDelete }: Promp
             src={item.image_url}
             alt={item.title}
             loading="lazy"
-            className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
+            className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-101"
           />
         ) : (
           <div className="w-full h-full flex flex-col items-center justify-center text-muted-foreground/50">

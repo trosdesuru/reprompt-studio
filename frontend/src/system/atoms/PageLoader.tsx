@@ -1,15 +1,19 @@
-import { IconLoader2 } from "@tabler/icons-react";
-
 interface PageLoaderProps {
   text?: string;
 }
 
-export function PageLoader({ text = "Cargando datos..." }: PageLoaderProps) {
+export function PageLoader({ text = "Procesando petición..." }: PageLoaderProps) {
   return (
-    <div className="min-h-[60vh] flex flex-col items-center justify-center gap-4 text-muted-foreground w-full">
-      <IconLoader2 size={32} className="animate-spin text-(--accent-color)" />
-
-      <p className="font-mono text-sm uppercase tracking-widest animate-pulse">{text}</p>
+    <div className="min-h-[60vh] flex items-center justify-center w-full bg-background">
+      <p
+        className="font-mono text-sm uppercase tracking-widest
+                   bg-gradient-to-r from-zinc-600/40 via-zinc-100 to-zinc-600/40
+                   bg-[length:250%_auto] 
+                   bg-clip-text text-transparent 
+                   animate-ai-shimmer"
+      >
+        {text}
+      </p>
     </div>
   );
 }

@@ -7,6 +7,7 @@ import { CreateCollectionModal } from "@/src/system/organisms/Studio/CreateColle
 import { IconWand, IconDatabase, IconPlus, IconLock } from "@tabler/icons-react";
 import { useAuthStore } from "@/src/store/authStore";
 import Link from "next/link";
+import { PageLoader } from "@/src/system/atoms/PageLoader";
 
 export default function StudioPage({ params }: { params: Promise<{ lang: string }> }) {
   const { lang } = use(params);
@@ -15,16 +16,11 @@ export default function StudioPage({ params }: { params: Promise<{ lang: string 
     useStudio();
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  if (isLoading)
-    return (
-      <div className="min-h-screen flex items-center justify-center font-mono">
-        Cargando Studio...
-      </div>
-    );
-  if (error)
-    return (
-      <div className="min-h-screen flex items-center justify-center text-red-500">{error}</div>
-    );
+  if (isLoading) return <PageLoader text="Cargando Metadata ..." />;
+
+  if (error) {
+    throw new Error(error);
+  }
 
   return (
     <main className="min-h-screen bg-background p-4 md:p-8">

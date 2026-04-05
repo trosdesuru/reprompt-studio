@@ -1,8 +1,8 @@
-import { ViewerPageItem } from "@/src/types/gallery";
+import { GalleryItem } from "@/src/types/gallery";
 
 export interface ImageViewerModalProps {
   title: string;
-  pages: ViewerPageItem[];
+  pages: GalleryItem;
   isLoading: boolean;
   isLoadingMore?: boolean;
   hasMorePages?: boolean;

@@ -20,7 +20,6 @@ export default function GlobalError({
   const handleReport = async () => {
     setIsSending(true);
     try {
-      // Enviamos la telemetría completa a tu backend usando tu cliente API
       await api.reportBug({
         message: error.message,
         stack: error.stack,
@@ -47,7 +46,6 @@ export default function GlobalError({
           Haz clic en el botón de abajo para enviar los registros directamente al administrador (<strong>@trosdesuru</strong>).
         </p>
 
-        {/* MODO DESARROLLO: Mostramos la traza técnica del error en pantalla */}
         {process.env.NODE_ENV === "development" && (
           <div className="bg-black/80 p-4 rounded-md text-left overflow-auto text-xs text-red-400 font-mono mt-4 max-h-40 custom-scrollbar neo-border">
             {error.message}

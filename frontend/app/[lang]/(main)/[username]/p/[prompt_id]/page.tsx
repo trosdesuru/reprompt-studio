@@ -46,7 +46,7 @@ export default function PromptDetailPage({
           <IconArrowLeft size={16} /> Volver a @{username}
         </Link>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-start">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 lg:gap-12 items-start">
           <section className="sticky top-24">
             <PromptImageViewer
               imageUrl={prompt.image_url || null}
@@ -56,7 +56,7 @@ export default function PromptDetailPage({
 
           <section className="space-y-6">
             <header>
-              <h1 className="text-3xl font-black uppercase tracking-tighter mb-2">
+              <h1 className="text-2xl font-black uppercase tracking-tighter mb-2">
                 {prompt.title || "Prompt Sin Título"}
               </h1>
               <p className="text-sm font-mono text-muted-foreground">

@@ -1,4 +1,5 @@
-import { IconDatabaseOff, IconLoader2, IconAlertTriangle } from "@tabler/icons-react";
+import { IconDatabaseOff, IconAlertTriangle } from "@tabler/icons-react";
+import { PageLoader } from "../../atoms/PageLoader";
 
 interface FeedStateProps {
   type: "loading" | "empty" | "error";
@@ -9,9 +10,8 @@ interface FeedStateProps {
 export function FeedState({ type, message, highlight }: FeedStateProps) {
   if (type === "loading") {
     return (
-      <div className="flex flex-col items-center justify-center py-24 text-muted-foreground animate-pulse">
-        <IconLoader2 size={48} className="animate-spin mb-4 text-var(--accent-color)" />
-        <p className="font-mono text-sm tracking-widest uppercase">Decodificando galerías...</p>
+      <div className="flex flex-col items-center justify-center py-12">
+        <PageLoader text="decodificando metadata ..."/>
       </div>
     );
   }

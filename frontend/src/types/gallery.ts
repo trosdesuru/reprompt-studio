@@ -12,11 +12,11 @@ export interface MediaCardData {
 }
 
 export interface GalleryItem {
-  url: string;        // <-- CRÍTICO: Requerido por la API de interacciones
+  url: string;
   title: string;
   thumb: string;
-  gid?: string;       // Opcional, por si el scraper antiguo lo usa
-  token?: string;     // Opcional
+  gid?: string;
+  token?: string;
   tags?: string[];
   [key: string]: any;
 }

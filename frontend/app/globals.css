@@ -58,16 +58,6 @@
   }
 }
 
-@keyframes progress-stripes {
-  from {
-    background-position: 1rem 0;
-  }
-
-  to {
-    background-position: 0 0;
-  }
-}
-
 .dark {
   --bg-primary: #0a0a0a;
   --bg-secondary: #171717;
@@ -195,13 +185,40 @@ body {
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
+/* FLASHLIGHT SHIMMER */
+@theme {
+  --animate-ai-shimmer: ai-shimmer 2.5s ease-in-out infinite;
+}
+
+@keyframes ai-shimmer {
+  0% {
+    background-position: -200% center;
+  }
+  100% {
+    background-position: 200% center;
+  }
+}
+
+/* PROGRESS BAR EFFECT */
+@keyframes progress-stripes {
+  from {
+    background-position: 1rem 0;
+  }
+
+  to {
+    background-position: 0 0;
+  }
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
   }
+
   body {
     @apply bg-background text-foreground;
   }
+
   html {
     @apply font-mono;
   }

@@ -30,7 +30,7 @@ export function ViewerGrid({ pages, currentIndex, onSelect, hasMorePages, isLoad
             <div
               key={page.page_url || page.image_url || `grid-${index}`}
               onClick={() => onSelect(index)}
-              className={`cursor-pointer neo-border aspect-[3/4] relative overflow-hidden transition-all bg-zinc-900 group ${
+              className={`cursor-pointer neo-border aspect-3/4 relative overflow-hidden transition-all bg-zinc-900 group ${
                 currentIndex === index && pages.length > 1 ? "ring-4 ring-(--accent-color) scale-95" : "hover:scale-105"
               }`}
             >

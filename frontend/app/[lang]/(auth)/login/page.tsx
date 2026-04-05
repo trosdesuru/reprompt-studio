@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { LoginForm } from "@/src/system/organisms/Auth/LoginForm";
 import { useRedirectIfAuthenticated } from "@/src/features/auth/hooks/useRedirectIfAuthenticated";
+import { PageLoader } from "@/src/system/atoms/PageLoader";
 
 export default function LoginPage() {
   const { isChecking, isAuthenticated } = useRedirectIfAuthenticated("/");
@@ -10,9 +11,7 @@ export default function LoginPage() {
   if (isChecking || isAuthenticated) {
     return (
       <main className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
-        <span className="animate-pulse text-(--accent-color) font-mono font-bold uppercase tracking-widest text-sm">
-          Sincronizando acceso...
-        </span>
+        <PageLoader text = "Sincronizando acceso" />
       </main>
     );
   }
