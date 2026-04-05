@@ -41,8 +41,6 @@ export default function Home({ params }: { params: Promise<{ lang: string }> }) 
             feed={publicFeed.feed}
             isLoading={publicFeed.isFeedLoading}
             lang={lang}
-            showMyArt={publicFeed.showMyArt}
-            onToggleMyArt={() => publicFeed.setShowMyArt(!publicFeed.showMyArt)}
           />
         ) : search.isLoading && search.results.length === 0 ? (
           <FeedState type="loading" />

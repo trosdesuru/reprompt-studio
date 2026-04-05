@@ -1,32 +1,21 @@
 import { FeedItemCard } from "@/src/system/molecules/Cards/FeedItemCard";
 import { FeedState } from "@/src/system/molecules/Feedback/FeedState";
 import { FeedItem } from "@/src/features/home/hooks/usePublicFeed";
-import { FeedFilters } from "../../molecules/Filters/FeedFilters";
 import { FadeIn } from "../../atoms/FadeIn";
 
 interface PublicFeedGridProps {
   feed: FeedItem[];
   isLoading: boolean;
   lang: string;
-  showMyArt: boolean;
-  onToggleMyArt: () => void;
 }
 
-export function PublicFeedGrid({
-  feed,
-  isLoading,
-  lang,
-  showMyArt,
-  onToggleMyArt,
-}: PublicFeedGridProps) {
+export function PublicFeedGrid({ feed, isLoading, lang }: PublicFeedGridProps) {
   return (
     <div className="pt-8">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <h2 className="text-xl font-black font-mono uppercase tracking-widest text-(--accent-color)">
           Explora la Comunidad
         </h2>
-
-        <FeedFilters showMyArt={showMyArt} onToggleMyArt={onToggleMyArt} />
       </div>
       {isLoading ? (
         <FeedState type="loading" />
