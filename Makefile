@@ -82,7 +82,7 @@ clean-docker:
 
 repofront:
 	@echo "🧠 Extrayendo código del Frontend..."
-	npx repomix frontend -o repomix-frontend.txt
+	npx repomix frontend -o repomix-frontend.xml
 
 repoback:
 	@echo "🧠 Extrayendo código del Backend..."

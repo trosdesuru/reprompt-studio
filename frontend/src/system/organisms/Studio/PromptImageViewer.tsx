@@ -1,4 +1,6 @@
 import { IconPhotoOff } from "@tabler/icons-react";
+import { LazyImage } from "../../molecules/Media/LazyImage";
+import Image from "next/image";
 
 interface PromptImageViewerProps {
   imageUrl: string | null;
@@ -18,10 +20,12 @@ export function PromptImageViewer({ imageUrl, altText }: PromptImageViewerProps)
   }
 
   return (
-    <div className="w-full overflow-hidden neo-border neo-shadow rounded-xl bg-muted/10">
-      <img
+    <div className="w-120px h-fit overflow-hidden neo-border neo-shadow rounded-xl bg-muted/10">
+      <Image
         src={imageUrl}
         alt={altText}
+        fill
+        quality={75}
         className="w-full h-auto object-cover hover:scale-[1.02] transition-transform duration-500"
       />
     </div>

@@ -6,9 +6,10 @@ import { LazyImage } from "../Media/LazyImage";
 interface FeedItemCardProps {
   item: FeedItem;
   lang: string;
+  isPriority: boolean;
 }
 
-export function FeedItemCard({ item, lang }: FeedItemCardProps) {
+export function FeedItemCard({ item, lang, isPriority }: FeedItemCardProps) {
   const href =
     item.type === "prompt"
       ? `/${lang}/${item.username}/p/${item.raw_id}`
@@ -24,6 +25,7 @@ export function FeedItemCard({ item, lang }: FeedItemCardProps) {
           src={item.image_url}
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
           alt={item.title}
+          priority={isPriority}
         />
       ) : (
         <div className="w-full h-full group-hover:scale-105 transition-transform duration-500">

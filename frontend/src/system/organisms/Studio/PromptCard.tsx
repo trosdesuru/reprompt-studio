@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { IconCopy, IconTrash, IconCheck, IconPhoto, IconFolderPlus } from "@tabler/icons-react";
 import { Collection, SavedPrompt } from "@/src/features/studio/hooks/useStudio";
+import { LazyImage } from "../../molecules/Media/LazyImage";
 
 interface PromptCardProps {
   item: SavedPrompt;
@@ -32,10 +33,9 @@ export function PromptCard({ item, collections = [], onAssign, onDelete }: Promp
     >
       <div className="relative aspect-square sm:aspect-4/5 bg-muted/10 overflow-hidden">
         {item.image_url ? (
-          <img
+          <LazyImage
             src={item.image_url}
             alt={item.title}
-            loading="lazy"
             className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-101"
           />
         ) : (

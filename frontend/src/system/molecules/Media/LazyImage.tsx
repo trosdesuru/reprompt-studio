@@ -1,14 +1,23 @@
 "use client";
 
+import Image from "next/image";
 import { useState } from "react";
 
 interface LazyImageProps {
   src: string;
   alt: string;
   className?: string;
+  sizes?: string;
+  priority?: boolean;
 }
 
-export function LazyImage({ src, alt, className = "" }: LazyImageProps) {
+export function LazyImage({
+  src,
+  alt,
+  className = "",
+  priority = false,
+  sizes = "(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw",
+}: LazyImageProps) {
   const [isLoaded, setIsLoaded] = useState(false);
 
   return (
@@ -30,10 +39,14 @@ export function LazyImage({ src, alt, className = "" }: LazyImageProps) {
         />
       </div>
 
-      <img
+      <Image
         src={src}
         alt={alt}
         loading="lazy"
+        sizes={sizes}
+        fill
+        priority={priority}
+        quality={75}
         onLoad={() => setIsLoaded(true)}
         className={`
           absolute inset-0 w-full h-full object-cover z-10
