@@ -165,6 +165,7 @@ src/
         FormHeader.tsx
       Badge.tsx
       Button.tsx
+      FadeIn.tsx
       FilterChip.tsx
       Heading.tsx
       MediaCover.tsx
@@ -379,6 +380,7 @@ import { IconArrowLeft, IconFolder, IconPhotoOff } from "@tabler/icons-react";
 
 import { PromptCard } from "@/src/system/organisms/Studio/PromptCard";
 import { usePublicCollection } from "@/src/features/studio/hooks/usePublicCollection";
+import { FadeIn } from "@/src/system/atoms/FadeIn";
 
 export default function PublicCollectionPage({
   params,
@@ -412,45 +414,48 @@ export default function PublicCollectionPage({
   }
 
   return (
-    <main className="min-h-screen bg-background p-4 md:p-8">
-      <div className="max-w-7xl mx-auto space-y-8">
-        <Link
-          href={`/${lang}/${username}`}
-          className="inline-flex items-center gap-2 text-sm font-mono text-muted-foreground hover:text-(--accent-color) transition-colors uppercase tracking-widest"
-        >
-          <IconArrowLeft size={16} /> Perfil de @{username}
-        </Link>
+    <FadeIn duration={0.8}>
+      <main className="min-h-screen bg-background p-4 md:p-8">
+        <div className="max-w-7xl mx-auto space-y-8">
+          <Link
+            href={`/${lang}/${username}`}
+            className="inline-flex items-center gap-2 text-sm font-mono text-muted-foreground hover:text-(--accent-color) transition-colors uppercase tracking-widest"
+          >
+            <IconArrowLeft size={16} /> Perfil de @{username}
+          </Link>
 
-        <header className="flex flex-col gap-2 border-b border-border pb-8">
-          <div className="flex items-center gap-3">
-            <IconFolder size={32} className="text-(--accent-color)" />
-            <h1 className="text-3xl md:text-4xl font-black tracking-tighter uppercase">
-              {data.collection.name}
-            </h1>
-          </div>
-          {data.collection.description && (
-            <p className="text-muted-foreground font-mono mt-2">{data.collection.description}</p>
-          )}
-        </header>
-
-        <section>
-          {data.prompts.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-20 text-muted-foreground/50 bg-muted/5 rounded-xl border border-dashed border-border/50">
-              <IconPhotoOff size={48} stroke={1} className="mb-4" />
-              <p className="font-mono text-xs uppercase tracking-widest">
-                Esta colección está vacía
-              </p>
+          <header className="flex flex-col gap-2 border-b border-border pb-8">
+            <div className="flex items-center gap-3">
+              <IconFolder size={32} className="text-(--accent-color)" />
+              <h1 className="text-3xl md:text-4xl font-black tracking-tighter uppercase">
+                {data.collection.name}
+              </h1>
             </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-6">
-              {data.prompts.map((prompt) => (
-                <PromptCard key={prompt.id} item={prompt} />
-              ))}
-            </div>
-          )}
-        </section>
-      </div>
-    </main>
+            {data.collection.description && (
+              <p className="text-muted-foreground font-mono mt-2">{data.collection.description}</p>
+            )}
+          </header>
+          <section>
+            {data.prompts.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-20 text-muted-foreground/50 bg-muted/5 rounded-xl border border-dashed border-border/50">
+                <IconPhotoOff size={48} stroke={1} className="mb-4" />
+                <p className="font-mono text-xs uppercase tracking-widest">
+                  Esta colección está vacía
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+                {data.prompts.map((prompt, index) => (
+                  <FadeIn key={prompt.id} delay={0.3 + index * 0.05} y={15}>
+                    <PromptCard key={prompt.id} item={prompt} />
+                  </FadeIn>
+                ))}
+              </div>
+            )}
+          </section>
+        </div>
+      </main>
+    </FadeIn>
   );
 }
 </file>
@@ -482,13 +487,11 @@ export default function PromptDetailPage({
 }) {
   const { lang, username, prompt_id } = use(params);
 
-  const { data, isLoading, error } = usePublicPrompt(username, prompt_id);
+  const { data: prompt, isLoading, error } = usePublicPrompt(prompt_id);
 
   if (isLoading) {
     return <PageLoader text="Desencriptando datos..." />;
   }
-
-  const prompt = data?.prompt ? data.prompt : data;
 
   if (error || !prompt) {
     return (
@@ -545,7 +548,7 @@ export default function PromptDetailPage({
 import { PageLoader } from "@/src/system/atoms/PageLoader";
 
 export default function ProfileLoading() {
-  return <PageLoader text="Conectando con el búnker..." />;
+  return <PageLoader text="Conectando con el studio..." />;
 }
 </file>
 
@@ -808,7 +811,7 @@ export default function StudioPage({ params }: { params: Promise<{ lang: string 
   if (isLoading)
     return (
       <div className="min-h-screen flex items-center justify-center font-mono">
-        Cargando Búnker...
+        Cargando Studio...
       </div>
     );
   if (error)
@@ -823,7 +826,7 @@ export default function StudioPage({ params }: { params: Promise<{ lang: string 
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-border pb-8">
           <div>
             <h1 className="text-3xl font-black tracking-tighter flex items-center gap-3">
-              <IconDatabase className="text-(--accent-color)" size={32} /> Mi Búnker
+              <IconDatabase className="text-(--accent-color)" size={32} /> Mi Studio
             </h1>
             <p className="text-muted-foreground mt-1">Gestiona tus prompts y galerías.</p>
           </div>
@@ -919,12 +922,13 @@ export default function StudioPage({ params }: { params: Promise<{ lang: string 
 
 <file path="app/[lang]/(main)/layout.tsx">
 import { Navbar } from "@/src/system/organisms/Layout/Navbar/Navbar";
+import { FadeIn } from "@/src/system/atoms/FadeIn";
 
 export default function MainLayout({ children }: { children: React.ReactNode }) {
   return (
     <>
       <Navbar />
-      {children}
+      <FadeIn>{children}</FadeIn>
     </>
   );
 }
@@ -1093,8 +1097,8 @@ export default async function RootLayout({
   --text-primary: #1d1f21;
   --text-secondary: #4b5563;
   --border-color: #1d1f21;
-  --accent-color: #128a93;
-  --shadow-color: #1d1f21;
+  --accent-color: #084c51;
+  --shadow-color: #dc3b6e;
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
@@ -3618,7 +3622,7 @@ import { useState, useEffect } from "react";
 import { api } from "@/src/services/api";
 import { SavedPrompt } from "@/src/features/studio/hooks/useStudio";
 
-export function usePublicPrompt(username: string, promptId: string) {
+export function usePublicPrompt(promptId: string) {
   const [data, setData] = useState<SavedPrompt | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -3628,7 +3632,10 @@ export function usePublicPrompt(username: string, promptId: string) {
 
     api
       .getPublicPromptDetail(promptId)
-      .then((res: SavedPrompt) => setData(res))
+      .then((res: any) => {
+        const promptReal = res.prompt && typeof res.prompt === "object" ? res.prompt : res;
+        setData(promptReal);
+      })
       .catch((err: any) => {
         console.error("Error fetching prompt:", err);
         setError("El prompt no existe o es privado.");
@@ -4026,79 +4033,46 @@ export const api = {
 
   getPublicProfile: async (username: string) => {
     if (RESERVED_ROUTES.has(username.toLowerCase())) {
-      return Promise.reject(new Error("Ruta reeservada deel sistema"));
+      return Promise.reject(new Error("Ruta reservada del sistema"));
     }
-
-    const res = await fetch(`${API_URL}/public/profile/${username}`);
-    if (!res.ok) throw new Error("Perfil no encontrado");
-    return res.json();
+    return fetchSeguro(`${API_URL}/public/profile/${username}`);
   },
+
   getPublicCollection: async (username: string, slug: string) => {
     if (RESERVED_ROUTES.has(username.toLowerCase())) {
       return Promise.reject(new Error("Ruta reservada del sistema"));
     }
-
-    const res = await fetch(`${API_URL}/public/profile/${username}/${slug}`);
-    if (!res.ok) throw new Error("Colección no encontrada");
-    return res.json();
-  },
-
-  createCollection: async (data: { name: string; description?: string; is_private: boolean }) => {
-    const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-    const res = await fetch(`${API_URL}/api/collections`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify(data),
-    });
-    if (!res.ok) throw new Error("Error creando colección");
-    return res.json();
-  },
-
-  getMyCollections: async () => {
-    const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-    const res = await fetch(`${API_URL}/api/collections/`, { credentials: "include" });
-    if (!res.ok) throw new Error("Error obteniendo colecciones");
-    return res.json();
-  },
-
-  assignPromptToCollection: async (promptId: number, collectionId: number | null) => {
-    const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-    const res = await fetch(`${API_URL}/api/collections/assign/${promptId}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify({ collection_id: collectionId }),
-    });
-    if (!res.ok) throw new Error("Error asignando imagen");
-    return res.json();
+    return fetchSeguro(`${API_URL}/public/profile/${username}/${slug}`);
   },
 
   getPublicPromptDetail: async (promptId: string) => {
-    const res = await fetch(`${API_URL}/public/prompt/${promptId}`);
-    if (!res.ok) throw new Error("Imagen no encontrada o privada");
-    return res.json();
+    return fetchSeguro(`${API_URL}/public/prompt/${promptId}`);
   },
 
   getPublicFeed: async (options?: { include_self?: boolean }) => {
-    const res = await fetch(
-      `${API_URL}/public/feed${options?.include_self ? "?include_self=true" : ""}`,
-    );
-    const text = await res.text();
+    const queryString = options?.include_self ? "?include_self=true" : "";
+    return fetchSeguro(`${API_URL}/public/feed${queryString}`);
+  },
 
-    try {
-      const data = JSON.parse(text);
-      if (!res.ok) throw new Error(data.detail || "Error del servidor");
+  createCollection: async (data: { name: string; description?: string; is_private: boolean }) => {
+    return fetchSeguro(`${API_URL}/collections`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  },
 
-      return data;
-    } catch (e) {
-      console.error("El servidor ha devuelto HTML o ha crasheado:", text);
-      throw new Error("Error de conexión al cargar el feed público");
-    }
+  getMyCollections: async () => {
+    return fetchSeguro(`${API_URL}/collections/`);
+  },
+
+  assignPromptToCollection: async (promptId: number, collectionId: number | null) => {
+    return fetchSeguro(`${API_URL}/collections/assign/${promptId}`, {
+      method: "PUT",
+      body: JSON.stringify({ collection_id: collectionId }),
+    });
   },
 
   verifyGoogleCode: async (data: { code: string }) => {
-    // Hace un POST enviando el código para que el backend lo valide y devuelva las cookies
     return fetchSeguro(`${API_URL}/auth/google/join`, {
       method: "POST",
       body: JSON.stringify(data),
@@ -4107,7 +4081,7 @@ export const api = {
 
   getGoogleAuthUrl: async () => {
     return fetchSeguro(`${API_URL}/auth/google`, {
-      method: "POST"
+      method: "POST",
     });
   },
 };
@@ -4639,7 +4613,6 @@ export function Badge({ text, color = "bg-blue-500", className = "" }: BadgeProp
 </file>
 
 <file path="src/system/atoms/Button.tsx">
-// frontend/src/components/ui/Button.tsx
 import { ButtonHTMLAttributes, forwardRef } from "react";
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -4653,7 +4626,6 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     { className = "", variant = "primary", size = "md", isLoading, children, disabled, ...props },
     ref,
   ) => {
-    // Mapeo de variantes de color (Neo-brutalismo)
     const variants = {
       primary: "bg-[var(--accent-color)] text-white hover:brightness-110",
       secondary:
@@ -4663,14 +4635,12 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         "bg-transparent border-transparent shadow-none hover:bg-gray-200 dark:hover:bg-gray-800 text-[var(--text-secondary)]",
     };
 
-    // Mapeo de tamaños
     const sizes = {
       sm: "px-4 py-2 text-sm",
       md: "px-6 py-3 text-base",
       lg: "px-10 py-4 text-lg font-bold",
     };
 
-    // Si es "ghost", le quitamos el borde duro y la sombra brutalista
     const brutalistClasses = variant === "ghost" ? "" : "neo-border neo-shadow";
 
     return (
@@ -4716,6 +4686,36 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
 );
 
 Button.displayName = "Button";
+</file>
+
+<file path="src/system/atoms/FadeIn.tsx">
+"use client";
+
+import { motion } from "framer-motion";
+import { ReactNode } from "react";
+
+interface FadeInProps {
+  children: ReactNode;
+  duration?: number;
+  delay?: number;
+  y?: number;
+}
+
+export function FadeIn({ children, duration = 0.5, delay = 0, y = 10 }: FadeInProps) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: y }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{
+        duration: duration,
+        delay: delay,
+        ease: [0.21, 0.47, 0.32, 0.98],
+      }}
+    >
+      {children}
+    </motion.div>
+  );
+}
 </file>
 
 <file path="src/system/atoms/FilterChip.tsx">
@@ -6135,6 +6135,7 @@ import { IconTrash, IconDeviceFloppy, IconAlertTriangle, IconX } from "@tabler/i
 import { api } from "@/src/services/api";
 import { handleError } from "@/src/utils/errors/ErrorHandler";
 import { useNotificationStore } from "@/src/store/notificationStore";
+import { fetchSeguro } from "@/src/services/api/client";
 
 interface Props {
   batch: BatchItem[];
@@ -6170,7 +6171,7 @@ export function BatchInspector({
         const blob = await response.blob();
 
         const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-        const ticketRes = await fetch(`${API_URL}/api/prompts/generate-upload-url`, {
+        const ticketRes = await fetchSeguro(`${API_URL}/api/prompts/generate-upload-url`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           credentials: "include",
@@ -6217,7 +6218,7 @@ export function BatchInspector({
       await api.savePrompt(payload);
       onUpdateStatus(item.id, "success");
 
-      notify("Búnker", "Prompt guardado correctamente", "success");
+      notify("Studio", "Prompt guardado correctamente", "success");
 
       setTimeout(() => {
         onRemoveItem(item.id);
@@ -6268,7 +6269,7 @@ export function BatchInspector({
       {/* 🎛️ CONTROLES GLOBALES */}
       <div className="flex flex-col sm:flex-row justify-between items-center bg-(--bg-secondary) p-4 neo-border gap-4">
         <div className="font-mono text-sm font-bold uppercase">
-          <span className="text-(--accent-color)">{batch.length}</span> listos para búnker
+          <span className="text-(--accent-color)">{batch.length}</span> listos para studio
         </div>
         <div className="flex w-full sm:w-auto gap-3">
           <Button
@@ -6378,7 +6379,7 @@ export function BatchInspector({
                       ? "¡Guardado!"
                       : item.status === "error"
                         ? "Reintentar"
-                        : "Guardar en Búnker"}
+                        : "Guardar en Mi Studio"}
                 </button>
                 <button
                   onClick={() => onRemoveItem(item.id)}
@@ -6524,7 +6525,7 @@ export function ExtractorInspector({ data, previewUrl, onReset }: Props) {
               "✅ ¡GUARDADO!"
             ) : (
               <>
-                <IconDeviceFloppy size={18} /> Guardar en Búnker
+                <IconDeviceFloppy size={18} /> Guardar en Mi Studio
               </>
             )}
           </Button>
@@ -6675,6 +6676,7 @@ import { FeedItemCard } from "@/src/system/molecules/Cards/FeedItemCard";
 import { FeedState } from "@/src/system/molecules/Feedback/FeedState";
 import { FeedItem } from "@/src/features/home/hooks/usePublicFeed";
 import { FeedFilters } from "../../molecules/Filters/FeedFilters";
+import { FadeIn } from "../../atoms/FadeIn";
 
 interface PublicFeedGridProps {
   feed: FeedItem[];
@@ -6703,13 +6705,17 @@ export function PublicFeedGrid({
       {isLoading ? (
         <FeedState type="loading" />
       ) : feed.length === 0 ? (
-        <div className="text-center py-20 text-muted-foreground font-mono neo-border bg-muted/5">
-          Aún no hay arte público en la plataforma con estos filtros.
-        </div>
+        <FadeIn>
+          <div className="text-center py-20 text-muted-foreground font-mono neo-border bg-muted/5">
+            Aún no hay arte público en la plataforma con estos filtros.
+          </div>
+        </FadeIn>
       ) : (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-          {feed.map((item) => (
-            <FeedItemCard key={item.id} item={item} lang={lang} />
+          {feed.map((item, index) => (
+            <FadeIn key={item.id} delay={index * 0.05} y={20}>
+              <FeedItemCard key={item.id} item={item} lang={lang} />
+            </FadeIn>
           ))}
         </div>
       )}
@@ -7902,7 +7908,7 @@ export function PromptCard({ item, collections = [], onAssign, onDelete }: Promp
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                if (window.confirm("¿Seguro que deseas eliminar este prompt del búnker?")) {
+                if (window.confirm("¿Seguro que deseas eliminar este prompt de Mi Studio?")) {
                   onDelete(item.id);
                 }
               }}
@@ -8018,9 +8024,11 @@ export function PromptMetadataPanel({ prompt }: { prompt: SavedPrompt }) {
     <div className="flex flex-col gap-6">
       <div className="bg-muted/10 p-6 rounded-xl neo-border relative group">
         <div className="flex justify-between items-start mb-4">
+
           <h3 className="text-sm font-mono font-bold uppercase tracking-widest text-(--accent-color)">
-            Prompt Principal
+            Prompt
           </h3>
+
           <button
             onClick={handleCopy}
             className="p-2 bg-background neo-border rounded-md hover:bg-muted transition-colors"
@@ -8028,6 +8036,7 @@ export function PromptMetadataPanel({ prompt }: { prompt: SavedPrompt }) {
           >
             {copied ? <IconCheck size={18} className="text-green-500" /> : <IconCopy size={18} />}
           </button>
+          
         </div>
         <p className="font-mono text-sm leading-relaxed text-foreground">{prompt.prompt}</p>
       </div>
@@ -8846,6 +8855,7 @@ import '@testing-library/jest-dom'
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  transpilePackages: ["framer-motion"],
   images: {
     remotePatterns: [
       {
@@ -8898,6 +8908,7 @@ export default nextConfig;
     "clsx": "^2.1.1",
     "embla-carousel-react": "^8.6.0",
     "exifr": "^7.1.3",
+    "framer-motion": "^12.38.0",
     "jszip": "^3.10.1",
     "next": "16.2.1",
     "next-themes": "^0.4.6",
@@ -9012,9 +9023,6 @@ export function proxy(request: NextRequest) {
     return NextResponse.redirect(new URL(`/${defaultLocale}${pathname}`, request.url));
   }
 
-  // ==============================================================
-  // 🕵️‍♂️ INICIO TELEMETRÍA MIDDLEWARE
-  // ==============================================================
   const accessToken = request.cookies.get("access_token")?.value;
   const refreshToken = request.cookies.get("refresh_token")?.value;
 
@@ -9030,14 +9038,25 @@ export function proxy(request: NextRequest) {
   const pathWithoutLocale = pathname.replace(`/${currentLocale}`, "") || "/";
   const isPublicPath = pathWithoutLocale === "/login" || pathWithoutLocale === "/join";
 
-  if (!accessToken && !isPublicPath) {
-    console.log(`   🛑 [MIDDLEWARE] Bloqueado. Redirigiendo a /login (Falta Access Token)`);
+  const hasAnyAuth = !!accessToken || !!refreshToken;
+
+  if (!hasAnyAuth && !isPublicPath) {
+    console.log(`   🛑 [MIDDLEWARE] Bloqueado. Redirigiendo a /login (Sin sesión)`);
     return NextResponse.redirect(new URL(`/${currentLocale}/login`, request.url));
   }
 
-  if (accessToken && isPublicPath) {
-    console.log(`   ♻️ [MIDDLEWARE] Usuario ya logueado. Redirigiendo a la Home.`);
+  if (hasAnyAuth && isPublicPath) {
+    console.log(
+      `   ♻️ [MIDDLEWARE] Usuario ya logueado o con Refresh vivo. Redirigiendo a la Home.`,
+    );
     return NextResponse.redirect(new URL(`/${currentLocale}`, request.url));
+  }
+
+  if (!accessToken && refreshToken && !isPublicPath) {
+    console.log(
+      `   🔄 [MIDDLEWARE] Access Token caducado. Permitimos paso para que el cliente haga Silent Refresh.`,
+    );
+    return NextResponse.next();
   }
 
   console.log(`   ✅ [MIDDLEWARE] Paso permitido.`);

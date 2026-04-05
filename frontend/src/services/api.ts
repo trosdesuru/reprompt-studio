@@ -75,4 +75,17 @@ export const api = {
       method: "POST",
     });
   },
+  
+  reportBug: async (data: {
+    message: string;
+    stack?: string;
+    digest?: string;
+    url: string;
+    timestamp: string;
+  }) => {
+    return fetchSeguro(`${API_URL}/api/admin/bugs`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  },
 };

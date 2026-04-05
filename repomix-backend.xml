@@ -102,11 +102,14 @@ This section contains the contents of the repository's files.
 # backend/app/api/deps.py
 import os
 import redis
+import logging
 from fastapi import Depends, HTTPException, status, Request
 from jose import jwt, JWTError
 from sqlmodel import Session, select
 from app.core.db import get_session
 from app.models.user import User
+
+logger = logging.getLogger("deps")
 
 SECRET_KEY = os.getenv("SECRET_KEY", "super_clave_secreta_de_respaldo")
 ALGORITHM = "HS256"
@@ -179,24 +182,42 @@ class GlobalRateLimiter:
 def get_current_user(request: Request, session: Session = Depends(get_session)):
     """Verifica el JWT leyéndolo directamente desde la Cookie HttpOnly."""
     token = request.cookies.get("access_token")
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED, detail="No autenticado"
-    )
 
     if not token:
-        raise credentials_exception
+        logger.debug(
+            f"🛡️ [DEPS] Rechazado: Ruta {request.url.path} sin cookie 'access_token'."
+        )
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="No autenticado"
+        )
 
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         username: str = payload.get("sub")
         if username is None:
-            raise credentials_exception
-    except JWTError:
-        raise credentials_exception
+            logger.warning("🛡️ [DEPS] Rechazado: Token válido pero sin campo 'sub'.")
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED, detail="No autenticado"
+            )
+    except jwt.ExpiredSignatureError:
+        logger.debug(
+            f"⏱️ [DEPS] Access Token expirado en ruta {request.url.path}. El frontend debería pedir /refresh."
+        )
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Token expirado"
+        )
+    except JWTError as e:
+        logger.warning(f"🛡️ [DEPS] Rechazado: Error decodificando JWT: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="No autenticado"
+        )
 
     user = session.exec(select(User).where(User.username == username)).first()
     if user is None:
-        raise credentials_exception
+        logger.error(f"🛡️ [DEPS] Rechazado: Usuario {username} en token pero no en DB.")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="No autenticado"
+        )
 
     return user
 
@@ -227,10 +248,11 @@ def get_optional_user(request: Request, session: Session = Depends(get_session))
 </file>
 
 <file path="app/api/routes_auth.py">
-# backend/app/api/routes_auth.py
 import secrets
 import redis
+import logging
 from fastapi import APIRouter, Depends, Response, Cookie, HTTPException
+from fastapi.responses import JSONResponse
 from sqlmodel import Session, select
 
 from app.services.auth_service import AuthService
@@ -249,7 +271,7 @@ from app.schemas.user import (
     GoogleJoinRequest,
 )
 
-# FIX: Inyección de dependencias
+logger = logging.getLogger("routes_auth")
 redis_client = redis.Redis(host="redis", port=6379, db=0, decode_responses=True)
 router = APIRouter()
 
@@ -270,12 +292,11 @@ def register_user(user_data: UserRegister, session: Session = Depends(get_sessio
 def login_user(
     user_data: UserLogin, response: Response, session: Session = Depends(get_session)
 ):
-    # DEFENSA ANTI-BOTNET: Límite por cuenta de usuario
     user_key = f"brute_force_user:{user_data.username}"
 
     attempts = redis_client.incr(user_key)
     if attempts == 1:
-        redis_client.expire(user_key, 300)  # Bloqueo de 5 minutos
+        redis_client.expire(user_key, 300)
 
     if attempts > 5:
         raise HTTPException(
@@ -283,7 +304,6 @@ def login_user(
             detail=f"La cuenta '{user_data.username}' está bloqueada temporalmente por seguridad. Inténtalo en 5 minutos.",
         )
 
-    # Autenticación normal
     try:
         access_token, refresh_token, username = AuthService.authenticate_user(
             user_data, session, redis_client
@@ -291,10 +311,8 @@ def login_user(
     except HTTPException as e:
         raise e
 
-    # SI ENTRA CON ÉXITO: Reseteamos el contador
     redis_client.delete(user_key)
 
-    # FIX CRÍTICO: Restaurada la entrega de cookies que se había borrado
     response.set_cookie(
         key="access_token",
         value=access_token,
@@ -309,7 +327,7 @@ def login_user(
         httponly=True,
         max_age=60 * 60 * 24 * 7,
         samesite="lax",
-        path="/api/auth/refresh",
+        path="/",
     )
 
     AuditService.log_action(session, username, "LOGIN", "Inicio de sesión exitoso")
@@ -322,12 +340,10 @@ def google_auth(
 ):
     result = AuthService.authenticate_google_user(data.token, session, redis_client)
 
-    # 🛡️ INTERCEPCIÓN HÍBRIDA: Si es nuevo, le decimos al frontend que pare
     if result["status"] == "needs_invite":
         response.status_code = status.HTTP_202_ACCEPTED
         return result
 
-    # Si ya existía, inyectamos las cookies de seguridad
     response.set_cookie(
         key="access_token",
         value=result["access_token"],
@@ -342,7 +358,7 @@ def google_auth(
         httponly=True,
         max_age=60 * 60 * 24 * 7,
         samesite="lax",
-        path="/api/auth/refresh",
+        path="/",
     )
 
     AuditService.log_action(
@@ -358,7 +374,6 @@ def google_auth(
 def google_join(
     data: GoogleJoinRequest, response: Response, session: Session = Depends(get_session)
 ):
-    # El usuario envía su token de google + el código de invitación + su alias
     access_token, refresh_token, username = AuthService.register_google_user(
         data, session, redis_client
     )
@@ -377,7 +392,7 @@ def google_join(
         httponly=True,
         max_age=60 * 60 * 24 * 7,
         samesite="lax",
-        path="/api/auth/refresh",
+        path="/",
     )
 
     AuditService.log_action(
@@ -391,13 +406,9 @@ def google_join(
 
 @router.post("/logout")
 def logout_user(response: Response, refresh_token: str | None = Cookie(None)):
-    # 1. Destruimos la cookie del Access Token
     response.delete_cookie("access_token", path="/")
+    response.delete_cookie("refresh_token", path="/")
 
-    # 2. FIX CRÍTICO: Destruimos la cookie del Refresh Token (Hay que especificar su path exacto)
-    response.delete_cookie("refresh_token", path="/api/auth/refresh")
-
-    # 3. CIBERSEGURIDAD: Destruimos la sesión en Redis para que el token quede inservible
     if refresh_token:
         try:
             from jose import jwt
@@ -411,7 +422,6 @@ def logout_user(response: Response, refresh_token: str | None = Cookie(None)):
                 redis_key = f"session:{username}:{family_id}"
                 redis_client.delete(redis_key)
         except Exception:
-            # Si el token ya era inválido o caducó, simplemente lo ignoramos
             pass
 
     return {"status": "success", "message": "Sesión cerrada y destruida por completo"}
@@ -445,9 +455,24 @@ def refresh_access_token(
     refresh_token: str | None = Cookie(None),
     session: Session = Depends(get_session),
 ):
+    logger.info("🌐 [API_AUTH] Petición POST recibida en /api/auth/refresh")
+
+    if refresh_token:
+        logger.info(
+            f"🍪 [API_AUTH] Cookie 'refresh_token' detectada (Termina en: ...{refresh_token[-6:]})"
+        )
+    else:
+        logger.warning(
+            "🍪 [API_AUTH] NO SE DETECTÓ cookie 'refresh_token' en la petición."
+        )
+
     try:
         new_access, new_refresh = AuthService.rotate_tokens(
             refresh_token, session, redis_client
+        )
+
+        logger.info(
+            "📦 [API_AUTH] Inyectando nuevos tokens en las cookies de respuesta..."
         )
         response.set_cookie(
             key="access_token",
@@ -463,17 +488,66 @@ def refresh_access_token(
             httponly=True,
             max_age=60 * 60 * 24 * 7,
             samesite="lax",
-            path="/api/auth/refresh",
+            path="/",
         )
+        logger.info("✅ [API_AUTH] Ciclo de /refresh completado y enviado al cliente.")
         return {"status": "success", "message": "Tokens rotados"}
+
     except HTTPException as e:
-        if e.status_code == 403:
-            response.delete_cookie("access_token", path="/")
-            response.delete_cookie("refresh_token", path="/api/auth/refresh")
+        logger.warning(
+            f"🛑 [API_AUTH] /refresh abortado con código {e.status_code}: {e.detail}"
+        )
+
+        # 🟢 FIX LEGENDARIO: Capturamos tanto el 401 (caducado) como el 403 (robo)
+        if e.status_code in [401, 403]:
+            logger.info(
+                "🧹 [API_AUTH] Limpiando cookies del navegador (Sesión muerta)..."
+            )
+
+            # 1. Creamos la respuesta de error manualmente para que FastAPI no la descarte
+            error_response = JSONResponse(
+                status_code=e.status_code,
+                content={"status": "error", "detail": e.detail},
+            )
+            # 2. Inyectamos la orden de destrucción total de cookies
+            error_response.delete_cookie(
+                "access_token", path="/", httponly=True, samesite="lax"
+            )
+            error_response.delete_cookie(
+                "refresh_token", path="/", httponly=True, samesite="lax"
+            )
+
+            return error_response
+
+    # Si el error es otro (ej. un 500), lo dejamos pasar normal
+    except HTTPException as e:
+        logger.warning(
+            f"🛑 [API_AUTH] /refresh abortado con código {e.status_code}: {e.detail}"
+        )
+
+        # 🟢 FIX LEGENDARIO: Capturamos tanto el 401 (caducado) como el 403 (robo)
+        if e.status_code in [401, 403]:
+            logger.info(
+                "🧹 [API_AUTH] Limpiando cookies del navegador (Sesión muerta)..."
+            )
+
+            # 1. Creamos la respuesta de error manualmente para que FastAPI no la descarte
+            error_response = JSONResponse(
+                status_code=e.status_code,
+                content={"status": "error", "detail": e.detail},
+            )
+            # 2. Inyectamos la orden de destrucción total de cookies
+            error_response.delete_cookie(
+                "access_token", path="/", httponly=True, samesite="lax"
+            )
+            error_response.delete_cookie(
+                "refresh_token", path="/", httponly=True, samesite="lax"
+            )
+
+            return error_response
+
+        # Si el error es otro (ej. un 500), lo dejamos pasar normal
         raise e
-
-
-# --- RUTAS ADMIN ---
 
 
 @router.get("/admin/logs")
@@ -653,6 +727,33 @@ router = APIRouter()
 downloads_queue = Queue("downloads", connection=conn)
 
 
+@router.get("/single/{image_key}")
+def descargar_una_imagen(
+    image_key: str, current_user: User = Depends(get_current_user)
+):
+    """Resolución sincrónica instantánea para archivos únicos."""
+    try:
+        url = ejecutar_descarga_individual(image_key)
+        return {"download_url": url}
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail="Error al generar el acceso directo en R2"
+        ) @ router.get("/single/{image_key}")
+
+
+def descargar_una_imagen(
+    image_key: str, current_user: User = Depends(get_current_user)
+):
+    """Resolución sincrónica instantánea para archivos únicos."""
+    try:
+        url = ejecutar_descarga_individual(image_key)
+        return {"download_url": url}
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail="Error al generar el acceso directo en R2"
+        )
+
+
 @router.post("/collection/{collection_id}")
 def descargar_coleccion_completa(
     collection_id: str, current_user: User = Depends(get_current_user)
@@ -673,20 +774,6 @@ def descargar_coleccion_completa(
     except Exception as e:
         raise HTTPException(
             status_code=500, detail="Error al encolar la descarga masiva"
-        )
-
-
-@router.get("/single/{image_key}")
-def descargar_una_imagen(
-    image_key: str, current_user: User = Depends(get_current_user)
-):
-    """Resolución sincrónica instantánea para archivos únicos."""
-    try:
-        url = ejecutar_descarga_individual(image_key)
-        return {"download_url": url}
-    except Exception as e:
-        raise HTTPException(
-            status_code=500, detail="Error al generar el acceso directo en R2"
         )
 
 
@@ -891,7 +978,7 @@ def eliminar_prompt(
     session.commit()
     return {
         "status": "success",
-        "message": "Prompt y archivo eliminados correctamente del búnker",
+        "message": "Prompt y archivo eliminados correctamente del studio",
     }
 </file>
 
@@ -1280,6 +1367,7 @@ settings = Settings()
 
 <file path="app/core/db.py">
 import os
+import logging
 from sqlmodel import create_engine, Session
 from dotenv import load_dotenv
 
@@ -1292,26 +1380,34 @@ if not raw_url:
         "🚨 CRÍTICO: No se encontró DATABASE_URL en las variables de entorno."
     )
 
-if raw_url.startswith("postgres://"):
-    clean_url = raw_url.replace("postgres://", "postgresql://", 1)
-else:
-    clean_url = raw_url
+clean_url = (
+    raw_url.replace("postgres://", "postgresql://", 1)
+    if raw_url.startswith("postgres://")
+    else raw_url
+)
 
-clean_url = clean_url.replace("-pooler", "")
+clean_url = clean_url.replace("&channel_binding=require", "").replace(
+    "?channel_binding=require", ""
+)
 
-if "?" in clean_url:
-    clean_url = clean_url.split("?")[0]
+if "sslmode=require" not in clean_url:
+    separator = "&" if "?" in clean_url else "?"
+    clean_url += f"{separator}sslmode=require"
+
+safe_log_url = clean_url.split("@")[-1] if "@" in clean_url else "URL_OCULTA"
+print(f"🔗 [DEBUG DB] Conectando a Neon (Directo al hierro): {safe_log_url}")
 
 engine = create_engine(
     clean_url,
-    connect_args={
-        "sslmode": "require"
-    },
     echo=False,
     pool_pre_ping=True,
     pool_recycle=300,
-    pool_size=5,
-    max_overflow=10,
+    connect_args={
+        "keepalives": 1,
+        "keepalives_idle": 30,
+        "keepalives_interval": 10,
+        "keepalives_count": 5,
+    },
 )
 
 
@@ -1819,6 +1915,7 @@ class AuditService:
 
 <file path="app/services/auth_service.py">
 import os
+import logging
 from google.oauth2 import id_token
 from google.auth.transport import requests as google_requests
 
@@ -1843,6 +1940,18 @@ class AuthService:
     @staticmethod
     def register_user(user_data, session: Session):
         """Lógica de negocio pura para registrar un usuario."""
+        import logging
+
+        logger = logging.getLogger("auth_service")
+
+        logger.info(
+            f"📝 [AUTH_SERVICE] Intento de registro manual. Username: @{user_data.username}"
+        )
+
+        # 1. Validación de código
+        logger.info(
+            f"🔑 [AUTH_SERVICE] Verificando código de invitación: {user_data.invite_code}"
+        )
         statement = (
             select(InviteCode)
             .where(InviteCode.code == user_data.invite_code)
@@ -1851,19 +1960,31 @@ class AuthService:
         invite = session.exec(statement).first()
 
         if not invite:
+            logger.warning(
+                f"🚫 [AUTH_SERVICE] Registro fallido: Código '{user_data.invite_code}' es inválido o ya fue usado."
+            )
             raise HTTPException(
                 status_code=400, detail="Código de invitación inválido o ya usado"
             )
 
+        # 2. Validación de usuario existente
         user_exists = session.exec(
             select(User).where(User.username == user_data.username)
         ).first()
+
         if user_exists:
+            logger.warning(
+                f"🚫 [AUTH_SERVICE] Registro fallido: El username '@{user_data.username}' ya está ocupado."
+            )
             raise HTTPException(
                 status_code=400, detail="El nombre de usuario ya está en uso"
             )
 
+        # 3. Asignación de rol y creación
         assigned_role = "admin" if invite.code.startswith("TROYA-") else "voyager"
+        logger.info(
+            f"✅ [AUTH_SERVICE] Validaciones pasadas. Creando usuario con rol: {assigned_role}"
+        )
 
         new_user = User(
             username=user_data.username,
@@ -1874,11 +1995,15 @@ class AuthService:
         session.commit()
         session.refresh(new_user)
 
+        # 4. Quema de código
         invite.is_used = True
         invite.used_by_id = new_user.id
         session.add(invite)
         session.commit()
 
+        logger.info(
+            f"✨ [AUTH_SERVICE] ¡Usuario @{new_user.username} registrado exitosamente y código quemado!"
+        )
         return new_user
 
     @staticmethod
@@ -1937,8 +2062,13 @@ class AuthService:
 
     @staticmethod
     def rotate_tokens(refresh_token: str, session: Session, redis_client):
-        # ... (Mantén el código original de rotate_tokens que ya tenías) ...
+        logger = logging.getLogger("auth_service")
+        logger.info("🔄 [AUTH_SERVICE] Iniciando secuencia de rotación de tokens...")
+
         if not refresh_token:
+            logger.warning(
+                "🚫 [AUTH_SERVICE] Rotación fallida: No se recibió token de refresco."
+            )
             raise HTTPException(status_code=401, detail="No hay token de refresco")
 
         try:
@@ -1949,7 +2079,14 @@ class AuthService:
                 payload.get("family"),
             )
 
+            logger.info(
+                f"🔍 [AUTH_SERVICE] Token decodificado -> User: {username} | JTI: {jti} | Family: {family_id}"
+            )
+
             if not all([username, jti, family_id]) or payload.get("type") != "refresh":
+                logger.error(
+                    "❌ [AUTH_SERVICE] Rotación fallida: Estructura del token inválida o no es tipo 'refresh'."
+                )
                 raise HTTPException(
                     status_code=401, detail="Estructura de token inválida"
                 )
@@ -1957,21 +2094,40 @@ class AuthService:
             redis_key = f"session:{username}:{family_id}"
             active_jti = redis_client.get(redis_key)
 
+            logger.info(
+                f"📡 [AUTH_SERVICE] Consultando Redis -> Clave: {redis_key} | JTI Guardado: {active_jti}"
+            )
+
             if active_jti and active_jti != jti:
+                logger.warning(
+                    f"🚨 [AUTH_SERVICE] ALERTA DE SEGURIDAD (Posible Robo o Doble Petición)."
+                )
+                logger.warning(f"   -> JTI Recibido: {jti}")
+                logger.warning(f"   -> JTI en Redis: {active_jti}")
                 redis_client.delete(redis_key)
+                logger.info(
+                    f"🧹 [AUTH_SERVICE] Sesión {family_id} destruida en Redis por seguridad."
+                )
                 raise HTTPException(
                     status_code=403, detail="ALERTA: Robo de sesión detectado."
                 )
 
             if not active_jti:
+                logger.warning(
+                    f"⚠️ [AUTH_SERVICE] Rotación rechazada: La sesión {family_id} ya expiró o fue cerrada remotamente."
+                )
                 raise HTTPException(
                     status_code=401, detail="Sesión expirada o cerrada remotamente."
                 )
 
             user = session.exec(select(User).where(User.username == username)).first()
             if not user:
+                logger.error(
+                    f"❌ [AUTH_SERVICE] El usuario {username} existe en el token pero no en la Base de Datos."
+                )
                 raise HTTPException(status_code=401, detail="Usuario no encontrado")
 
+            # Generación de nuevos tokens
             new_access_token = create_access_token(
                 data={"sub": username, "role": user.role}
             )
@@ -1979,29 +2135,41 @@ class AuthService:
                 data={"sub": username}, family_id=family_id
             )
 
+            # Actualizamos Redis
             redis_client.setex(redis_key, 60 * 60 * 24 * 7, new_refresh_data["jti"])
+
+            logger.info(
+                f"✅ [AUTH_SERVICE] Rotación EXITOSA. Nuevo JTI asignado: {new_refresh_data['jti']}"
+            )
 
             return new_access_token, new_refresh_data["token"]
 
         except jwt.ExpiredSignatureError:
+            logger.warning("⏱️ [AUTH_SERVICE] El Refresh Token ha caducado por tiempo.")
             raise HTTPException(
                 status_code=401, detail="Token expirado. Inicia sesión."
             )
-        except jwt.JWTError:
+        except jwt.JWTError as e:
+            logger.error(f"❌ [AUTH_SERVICE] Error de firma JWT: {str(e)}")
             raise HTTPException(status_code=401, detail="Firma inválida.")
 
     @staticmethod
     def verify_google_token(token: str):
         """Verifica criptográficamente el JWT contra los servidores de Google"""
         if not GOOGLE_CLIENT_ID:
-            raise HTTPException(status_code=500, detail="Falta configurar GOOGLE_CLIENT_ID en el servidor")
+            raise HTTPException(
+                status_code=500,
+                detail="Falta configurar GOOGLE_CLIENT_ID en el servidor",
+            )
         try:
             idinfo = id_token.verify_oauth2_token(
                 token, google_requests.Request(), GOOGLE_CLIENT_ID
             )
             return idinfo
         except ValueError:
-            raise HTTPException(status_code=401, detail="Token de Google inválido o expirado")
+            raise HTTPException(
+                status_code=401, detail="Token de Google inválido o expirado"
+            )
 
     @staticmethod
     def authenticate_google_user(token: str, session: Session, redis_client):
@@ -2015,25 +2183,27 @@ class AuthService:
 
         if user:
             # ESCENARIO A: Ya existe. Generamos sesión silenciosamente.
-            access_token = create_access_token(data={"sub": user.username, "role": user.role})
+            access_token = create_access_token(
+                data={"sub": user.username, "role": user.role}
+            )
             refresh_data = create_refresh_token(data={"sub": user.username})
 
             redis_key = f"session:{user.username}:{refresh_data['family_id']}"
             redis_client.setex(redis_key, 60 * 60 * 24 * 7, refresh_data["jti"])
 
             return {
-                "status": "success", 
-                "access_token": access_token, 
-                "refresh_token": refresh_data["token"], 
-                "username": user.username
+                "status": "success",
+                "access_token": access_token,
+                "refresh_token": refresh_data["token"],
+                "username": user.username,
             }
         else:
             # ESCENARIO B: Es nuevo. Cortamos el flujo y pedimos invitación.
             # Sugerimos un nombre de usuario basado en su nombre de Google
             return {
-                "status": "needs_invite", 
-                "email": email, 
-                "suggested_username": name
+                "status": "needs_invite",
+                "email": email,
+                "suggested_username": name,
             }
 
     @staticmethod
@@ -2045,16 +2215,28 @@ class AuthService:
         provider_id = idinfo.get("sub")
 
         # 2. Verificamos que el Alias que eligió no esté cogido
-        user_exists = session.exec(select(User).where(User.username == join_data.username)).first()
+        user_exists = session.exec(
+            select(User).where(User.username == join_data.username)
+        ).first()
         if user_exists:
-            raise HTTPException(status_code=400, detail="El nombre de usuario ya está en uso. Elige otro.")
+            raise HTTPException(
+                status_code=400,
+                detail="El nombre de usuario ya está en uso. Elige otro.",
+            )
 
         # 3. Validar código de invitación (El Muro Físico)
-        statement = select(InviteCode).where(InviteCode.code == join_data.invite_code).where(InviteCode.is_used == False)
+        statement = (
+            select(InviteCode)
+            .where(InviteCode.code == join_data.invite_code)
+            .where(InviteCode.is_used == False)
+        )
         invite = session.exec(statement).first()
 
         if not invite:
-            raise HTTPException(status_code=400, detail="Código de invitación inválido o ya fue utilizado")
+            raise HTTPException(
+                status_code=400,
+                detail="Código de invitación inválido o ya fue utilizado",
+            )
 
         assigned_role = "admin" if invite.code.startswith("TROYA-") else "voyager"
 
@@ -2077,12 +2259,14 @@ class AuthService:
         session.commit()
 
         # 6. Crear la sesión en Redis
-        access_token = create_access_token(data={"sub": new_user.username, "role": new_user.role})
+        access_token = create_access_token(
+            data={"sub": new_user.username, "role": new_user.role}
+        )
         refresh_data = create_refresh_token(data={"sub": new_user.username})
 
         redis_key = f"session:{new_user.username}:{refresh_data['family_id']}"
         redis_client.setex(redis_key, 60 * 60 * 24 * 7, refresh_data["jti"])
-        
+
         return access_token, refresh_data["token"], new_user.username
 </file>
 
@@ -2726,10 +2910,13 @@ def guardar_json(ruta_directorio: str, nombre_archivo: str, datos: list | dict) 
 import time
 import secrets
 import logging
+import socket
+import psycopg2
+from urllib.parse import urlparse
 from sqlalchemy.exc import OperationalError
 from sqlmodel import SQLModel, Session, select
 
-from app.core.db import engine
+from app.core.db import engine, clean_url
 from app.models.user import InviteCode, User, AuditLog
 from app.models.gallery import GalleryMetric
 from app.models.prompt import ImagePrompt
@@ -2738,70 +2925,102 @@ from app.models.collection import Collection
 logger = logging.getLogger("init_db")
 
 
+def run_network_diagnostics():
+    logger.info("============== 🕵️ INICIANDO DIAGNÓSTICO DE RED ==============")
+    parsed = urlparse(clean_url)
+    host = parsed.hostname
+    port = parsed.port or 5432
+
+    # 1. Prueba de DNS
+    logger.info(f"📡 [PROBE 1/3] Resolviendo DNS para: {host}")
+    try:
+        ip = socket.gethostbyname(host)
+        logger.info(f"✅ [PROBE 1/3] IP Resuelta: {ip}")
+    except Exception as e:
+        logger.error(f"❌ [PROBE 1/3] Fallo de resolución DNS: {e}")
+        return False
+
+    # 2. Prueba de Socket TCP (Ver si el puerto 5432 está abierto y accesible)
+    logger.info(f"🚪 [PROBE 2/3] Probando puerto TCP {ip}:{port}...")
+    try:
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.settimeout(5.0)  # 5 segundos de timeout
+        sock.connect((ip, port))
+        logger.info("✅ [PROBE 2/3] Puerto TCP abierto y accesible.")
+        sock.close()
+    except Exception as e:
+        logger.error(f"❌ [PROBE 2/3] El puerto está bloqueado o inaccesible: {e}")
+        return False
+
+    # 3. Prueba de Autenticación Cruda y SSL (psycopg2 directo, sin SQLAlchemy)
+    logger.info("🔐 [PROBE 3/3] Probando Handshake SSL y Autenticación directa...")
+    try:
+        start_time = time.time()
+        # Usamos un timeout corto de 10s para no esperar los famosos 19.5s
+        conn = psycopg2.connect(clean_url, connect_timeout=10)
+        elapsed = round(time.time() - start_time, 2)
+        logger.info(f"✅ [PROBE 3/3] ¡Autenticación SSL exitosa en {elapsed}s!")
+
+        # Test de lectura básica
+        cur = conn.cursor()
+        cur.execute("SELECT version();")
+        version = cur.fetchone()
+        logger.info(f"🐘 [PROBE] Versión de DB: {version[0][:30]}...")
+        cur.close()
+        conn.close()
+        logger.info("============== 🕵️ DIAGNÓSTICO COMPLETADO ==============\n")
+        return True
+    except Exception as e:
+        elapsed = round(time.time() - start_time, 2)
+        logger.error(f"❌ [PROBE 3/3] Falló la negociación SSL/Auth tras {elapsed}s.")
+        logger.error(f"Detalle exacto: {e}")
+        logger.info("============== 🕵️ DIAGNÓSTICO COMPLETADO ==============\n")
+        return False
+
+
 def init_db():
-    max_retries = 5
+    logger.info("🔌 [DB] Verificando infraestructura antes de iniciar...")
+
+    # 🟢 EJECUTAMOS EL DIAGNÓSTICO ANTES DE NADA
+    run_network_diagnostics()
+
+    max_retries = 3
     retry_delay = 5
 
-    logger.info("🔌 [DB] Iniciando secuencia de conexión a la Base de Datos...")
-
+    logger.info(
+        "🔌 [DB] Iniciando secuencia de sincronización de tablas (SQLAlchemy)..."
+    )
     connection_successful = False
 
     for attempt in range(max_retries):
         try:
             logger.info(
-                f"⏳ [DB] [Intento {attempt + 1}/{max_retries}] Contactando con el servidor de Neon.tech..."
+                f"⏳ [DB] [Intento {attempt + 1}/{max_retries}] Sincronizando metadata..."
             )
-
-            # Intentamos crear/sincronizar las tablas
             SQLModel.metadata.create_all(engine)
-
-            logger.info(
-                "✅ [DB] ¡Conexión establecida con éxito y tablas sincronizadas!"
-            )
+            logger.info("✅ [DB] ¡Metadata sincronizada correctamente!")
             connection_successful = True
-            break  # Salimos del bucle mágico porque hemos tenido éxito
-
-        except OperationalError as e:
-            # Capturamos específicamente el error de desconexión / timeout
-            logger.warning(
-                f"⚠️ [DB] Falló el intento {attempt + 1}. Servidor inalcanzable (posible Cold Start)."
-            )
-
+            break
+        except Exception as e:
+            logger.warning(f"⚠️ [DB] Falló el intento {attempt + 1}. Detalle: {e}")
             if attempt < max_retries - 1:
-                logger.info(
-                    f"💤 [DB] Esperando {retry_delay} segundos para que Neon.tech despierte..."
-                )
                 time.sleep(retry_delay)
             else:
-                logger.error(
-                    "❌ [DB] ERROR CRÍTICO: Imposible conectar tras múltiples intentos."
-                )
-                logger.error(f"Detalle técnico: {str(e)}")
+                logger.error("❌ [DB] Imposible sincronizar tablas.")
                 raise e
-        except Exception as e:
-            # Cualquier otro error (ej. credenciales inválidas) explota directamente
-            logger.error(f"❌ [DB] Error inesperado sincronizando tablas: {e}")
-            raise e
 
     if connection_successful:
         with Session(engine) as session:
             existing_code = session.exec(select(InviteCode)).first()
-
             if not existing_code:
-                # Base de datos virgen, creamos el código maestro
                 master_code = f"TROYA-{secrets.token_hex(4).upper()}"
                 new_invite = InviteCode(code=master_code)
-
                 session.add(new_invite)
                 session.commit()
-
                 logger.info("✨ Base de Datos inicializada por primera vez.")
-                logger.warning("=" * 40)
                 logger.warning(f"🔑 TU CÓDIGO MAESTRO ES: {master_code}")
-                logger.warning("⚠️ Cópialo ahora. Úsalo para crear tu cuenta Admin.")
-                logger.warning("=" * 40)
             else:
-                logger.info("✅ Las tablas ya existían y la base de datos está lista.")
+                logger.info("✅ Base de datos lista para operar.")
 
 
 if __name__ == "__main__":
@@ -2810,11 +3029,16 @@ if __name__ == "__main__":
 </file>
 
 <file path="app/main.py">
+import os
 import logging
+import secrets
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
-from app.init_db import init_db
+from fastapi.openapi.docs import get_swagger_ui_html
+from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.middleware.cors import CORSMiddleware
+
+from app.init_db import init_db
 
 from app.api.routes_download import router as download_router
 from app.api.routes_search import router as search_router
@@ -2829,6 +3053,27 @@ logging.basicConfig(
     handlers=[logging.StreamHandler()],
 )
 logger = logging.getLogger("backend")
+
+security = HTTPBasic()
+
+
+def get_current_username(credentials: HTTPBasicCredentials = Depends(security)):
+    # Usamos secrets.compare_digest para evitar "Timing Attacks" (Ataques de tiempo)
+    correct_username = secrets.compare_digest(
+        credentials.username.encode("utf8"),
+        os.getenv("DOCS_USERNAME", "admin").encode("utf8"),
+    )
+    correct_password = secrets.compare_digest(
+        credentials.password.encode("utf8"),
+        os.getenv("DOCS_PASSWORD", "admin").encode("utf8"),
+    )
+    if not (correct_username and correct_password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Acceso denegado a la documentación",
+            headers={"WWW-Authenticate": "Basic"},
+        )
+    return credentials.username
 
 
 @asynccontextmanager
@@ -2845,7 +3090,13 @@ async def lifespan(app: FastAPI):
     logger.info("🛑 Apagando API Backend limpiamente...")
 
 
-app = FastAPI(title="reprompt FastAPI", lifespan=lifespan)
+app = FastAPI(
+    title="reprompt FastAPI",
+    lifespan=lifespan,
+    docs_url=None,
+    redoc_url=None,
+    openapi_url=None,
+)
 
 app.add_middleware(
     CORSMiddleware,
@@ -2855,11 +3106,22 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
+@app.get("/docs", include_in_schema=False)
+async def get_swagger_documentation(username: str = Depends(get_current_username)):
+    return get_swagger_ui_html(openapi_url="/openapi.json", title="reprompt FastAPI")
+
+
+@app.get("/openapi.json", include_in_schema=False)
+async def openapi(username: str = Depends(get_current_username)):
+    return app.openapi()
+
+
 app.include_router(search_router, prefix="/api")
-app.include_router(download_router, prefix="/api/download", tags=["Descargas"])
 app.include_router(auth_router, prefix="/api/auth", tags=["Autenticación"])
+app.include_router(public_router, prefix="/api/public", tags=["Feed Público"])
 app.include_router(prompt_router, prefix="/api/prompts", tags=["Reprompt Studio"])
-app.include_router(public_router, prefix="/api/public", tags=["Escaparate Público"])
+app.include_router(download_router, prefix="/api/download", tags=["Descargas"])
 app.include_router(collections_router, prefix="/api/collections", tags=["Colecciones"])
 </file>
 

@@ -1,4 +1,5 @@
-# backend/app/api/routes_prompt.py
+import logging
+
 import uuid
 from pydantic import BaseModel
 from fastapi import APIRouter, Depends, HTTPException
@@ -16,6 +17,7 @@ from app.services.storage import move_to_permanent, delete_file
 from app.services.security import validate_magic_bytes
 from app.services.storage import s3_client
 
+logger = logging.getLogger("routes_prompt")
 router = APIRouter()
 
 
@@ -36,11 +38,10 @@ class PresignedUrlRequest(BaseModel):
 def get_upload_url(
     data: PresignedUrlRequest, current_user: User = Depends(get_current_user)
 ):
-    file_extension = data.filename.split(".")[-1].lower()
+    file_extension = data.file_name.split(".")[-1].lower()
     if file_extension not in ["png", "jpg", "jpeg", "webp"]:
         raise HTTPException(status_code=400, detail="Extensión no permitida.")
 
-    # 2. REGLA DE CUARENTENA: Destruimos el nombre original y forzamos la ruta /temp
     safe_filename = f"{uuid.uuid4().hex}.{file_extension}"
     s3_key = f"temp/{current_user.id}/{safe_filename}"
 
@@ -48,19 +49,23 @@ def get_upload_url(
         presigned_url = s3_client.generate_presigned_url(
             "put_object",
             Params={
-                "Bucket": settings.R2_BUCKET__NAME,
+                "Bucket": settings.R2_BUCKET_NAME,
                 "Key": s3_key,
                 "ContentType": f"image/{'jpeg' if file_extension == 'jpg' else file_extension}",
             },
             ExpiresIn=300,
         )
 
+        base_url = settings.R2_PUBLIC_URL.rstrip("/")
+
         return {
             "status": "success",
             "upload_url": presigned_url,
             "key": s3_key,
+            "file_url": f"{base_url}/{s3_key}",
         }
     except Exception as e:
+        logger.error(f"Error AWS/R2: {e}")
         raise HTTPException(
             status_code=500, detail="Error generando acceso seguro al servidor."
         )
@@ -96,7 +101,6 @@ def guardar_prompt(
     final_image_url = f"{base_url}{new_key}"
     data.image_url = final_image_url
     try:
-        # El frontend ya subió la imagen y solo nos manda la URL pública. ¡FastAPI no sufre!
         nuevo_prompt = ImagePrompt(
             user_id=current_user.id,
             title=data.title,

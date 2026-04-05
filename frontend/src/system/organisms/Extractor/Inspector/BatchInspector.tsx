@@ -6,7 +6,6 @@ import { IconTrash, IconDeviceFloppy, IconAlertTriangle, IconX } from "@tabler/i
 import { api } from "@/src/services/api";
 import { handleError } from "@/src/utils/errors/ErrorHandler";
 import { useNotificationStore } from "@/src/store/notificationStore";
-import { fetchSeguro } from "@/src/services/api/client";
 
 interface Props {
   batch: BatchItem[];
@@ -42,16 +41,22 @@ export function BatchInspector({
         const blob = await response.blob();
 
         const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-        const ticketRes = await fetchSeguro(`${API_URL}/api/prompts/generate-upload-url`, {
+        const ticketRes = await fetch(`${API_URL}/api/prompts/generate-upload-url`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           credentials: "include",
-          body: JSON.stringify({ file_name: item.file.name, content_type: blob.type }),
+          body: JSON.stringify({
+            file_name: item.file.name,
+            content_type: blob.type,
+          }),
         });
 
         if (!ticketRes.ok) throw new Error("No se pudo obtener el ticket de subida de R2");
-        const { data: ticketData } = await ticketRes.json();
 
+        // ✅ MINA 3 DESACTIVADA: Parseamos el JSON plano
+        const ticketData = await ticketRes.json();
+
+        // Subida directa a Cloudflare
         const uploadRes = await fetch(ticketData.upload_url, {
           method: "PUT",
           headers: { "Content-Type": blob.type },
@@ -60,11 +65,7 @@ export function BatchInspector({
 
         if (!uploadRes.ok) throw new Error("Fallo la subida física a Cloudflare R2");
 
-        // 4. Asignar la URL pública final
-        finalImageUrl = ticketData.file_url;
-        if (!uploadRes.ok) throw new Error("Fallo la subida física a Cloudflare R2");
-
-        // 4. Asignar la URL pública final
+        // ✅ MINA 4 DESACTIVADA: Ahora el backend sí nos entrega file_url
         finalImageUrl = ticketData.file_url;
       }
 
@@ -94,7 +95,6 @@ export function BatchInspector({
       setTimeout(() => {
         onRemoveItem(item.id);
       }, 1000);
-      
     } catch (err: unknown) {
       handleError(err, "SaveBatchItem");
       onUpdateStatus(item.id, "error");

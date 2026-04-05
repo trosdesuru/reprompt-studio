@@ -15,6 +15,7 @@ from app.api.routes_auth import router as auth_router
 from app.api.routes_prompt import router as prompt_router
 from app.api.routes_public import router as public_router
 from app.api.routes_collections import router as collections_router
+from app.api.routes_admin import router as admin_router
 
 logging.basicConfig(
     level=logging.INFO,
@@ -87,6 +88,7 @@ async def openapi(username: str = Depends(get_current_username)):
 
 
 app.include_router(search_router, prefix="/api")
+app.include_router(admin_router, prefix="/api/admin", tags=["Admin"])
 app.include_router(auth_router, prefix="/api/auth", tags=["Autenticación"])
 app.include_router(public_router, prefix="/api/public", tags=["Feed Público"])
 app.include_router(prompt_router, prefix="/api/prompts", tags=["Reprompt Studio"])
