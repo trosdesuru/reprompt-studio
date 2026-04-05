@@ -2,6 +2,7 @@ import { FeedItemCard } from "@/src/system/molecules/Cards/FeedItemCard";
 import { FeedState } from "@/src/system/molecules/Feedback/FeedState";
 import { FeedItem } from "@/src/features/home/hooks/usePublicFeed";
 import { FeedFilters } from "../../molecules/Filters/FeedFilters";
+import { FadeIn } from "../../atoms/FadeIn";
 
 interface PublicFeedGridProps {
   feed: FeedItem[];
@@ -30,13 +31,17 @@ export function PublicFeedGrid({
       {isLoading ? (
         <FeedState type="loading" />
       ) : feed.length === 0 ? (
-        <div className="text-center py-20 text-muted-foreground font-mono neo-border bg-muted/5">
-          Aún no hay arte público en la plataforma con estos filtros.
-        </div>
+        <FadeIn>
+          <div className="text-center py-20 text-muted-foreground font-mono neo-border bg-muted/5">
+            Aún no hay arte público en la plataforma con estos filtros.
+          </div>
+        </FadeIn>
       ) : (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-          {feed.map((item) => (
-            <FeedItemCard key={item.id} item={item} lang={lang} />
+          {feed.map((item, index) => (
+            <FadeIn key={item.id} delay={index * 0.05} y={20}>
+              <FeedItemCard key={item.id} item={item} lang={lang} />
+            </FadeIn>
           ))}
         </div>
       )}

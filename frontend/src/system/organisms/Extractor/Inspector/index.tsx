@@ -124,7 +124,7 @@ export function ExtractorInspector({ data, previewUrl, onReset }: Props) {
               "✅ ¡GUARDADO!"
             ) : (
               <>
-                <IconDeviceFloppy size={18} /> Guardar en Búnker
+                <IconDeviceFloppy size={18} /> Guardar en Mi Studio
               </>
             )}
           </Button>

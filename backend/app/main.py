@@ -1,8 +1,13 @@
+import os
 import logging
+import secrets
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
-from app.init_db import init_db
+from fastapi.openapi.docs import get_swagger_ui_html
+from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.middleware.cors import CORSMiddleware
+
+from app.init_db import init_db
 
 from app.api.routes_download import router as download_router
 from app.api.routes_search import router as search_router
@@ -17,6 +22,27 @@ logging.basicConfig(
     handlers=[logging.StreamHandler()],
 )
 logger = logging.getLogger("backend")
+
+security = HTTPBasic()
+
+
+def get_current_username(credentials: HTTPBasicCredentials = Depends(security)):
+    # Usamos secrets.compare_digest para evitar "Timing Attacks" (Ataques de tiempo)
+    correct_username = secrets.compare_digest(
+        credentials.username.encode("utf8"),
+        os.getenv("DOCS_USERNAME", "admin").encode("utf8"),
+    )
+    correct_password = secrets.compare_digest(
+        credentials.password.encode("utf8"),
+        os.getenv("DOCS_PASSWORD", "admin").encode("utf8"),
+    )
+    if not (correct_username and correct_password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Acceso denegado a la documentación",
+            headers={"WWW-Authenticate": "Basic"},
+        )
+    return credentials.username
 
 
 @asynccontextmanager
@@ -33,7 +59,13 @@ async def lifespan(app: FastAPI):
     logger.info("🛑 Apagando API Backend limpiamente...")
 
 
-app = FastAPI(title="reprompt FastAPI", lifespan=lifespan)
+app = FastAPI(
+    title="reprompt FastAPI",
+    lifespan=lifespan,
+    docs_url=None,
+    redoc_url=None,
+    openapi_url=None,
+)
 
 app.add_middleware(
     CORSMiddleware,
@@ -42,6 +74,17 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.get("/docs", include_in_schema=False)
+async def get_swagger_documentation(username: str = Depends(get_current_username)):
+    return get_swagger_ui_html(openapi_url="/openapi.json", title="reprompt FastAPI")
+
+
+@app.get("/openapi.json", include_in_schema=False)
+async def openapi(username: str = Depends(get_current_username)):
+    return app.openapi()
+
 
 app.include_router(search_router, prefix="/api")
 app.include_router(download_router, prefix="/api/download", tags=["Descargas"])

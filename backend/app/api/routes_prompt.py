@@ -172,5 +172,5 @@ def eliminar_prompt(
     session.commit()
     return {
         "status": "success",
-        "message": "Prompt y archivo eliminados correctamente del búnker",
+        "message": "Prompt y archivo eliminados correctamente del studio",
     }

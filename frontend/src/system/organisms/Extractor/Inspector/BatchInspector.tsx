@@ -88,7 +88,7 @@ export function BatchInspector({
       await api.savePrompt(payload);
       onUpdateStatus(item.id, "success");
 
-      notify("Búnker", "Prompt guardado correctamente", "success");
+      notify("Studio", "Prompt guardado correctamente", "success");
 
       setTimeout(() => {
         onRemoveItem(item.id);
@@ -139,7 +139,7 @@ export function BatchInspector({
       {/* 🎛️ CONTROLES GLOBALES */}
       <div className="flex flex-col sm:flex-row justify-between items-center bg-(--bg-secondary) p-4 neo-border gap-4">
         <div className="font-mono text-sm font-bold uppercase">
-          <span className="text-(--accent-color)">{batch.length}</span> listos para búnker
+          <span className="text-(--accent-color)">{batch.length}</span> listos para studio
         </div>
         <div className="flex w-full sm:w-auto gap-3">
           <Button
@@ -249,7 +249,7 @@ export function BatchInspector({
                       ? "¡Guardado!"
                       : item.status === "error"
                         ? "Reintentar"
-                        : "Guardar en Búnker"}
+                        : "Guardar en Mi Studio"}
                 </button>
                 <button
                   onClick={() => onRemoveItem(item.id)}

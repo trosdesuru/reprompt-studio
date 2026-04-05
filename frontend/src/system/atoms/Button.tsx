@@ -1,4 +1,3 @@
-// frontend/src/components/ui/Button.tsx
 import { ButtonHTMLAttributes, forwardRef } from "react";
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -12,7 +11,6 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     { className = "", variant = "primary", size = "md", isLoading, children, disabled, ...props },
     ref,
   ) => {
-    // Mapeo de variantes de color (Neo-brutalismo)
     const variants = {
       primary: "bg-[var(--accent-color)] text-white hover:brightness-110",
       secondary:
@@ -22,14 +20,12 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         "bg-transparent border-transparent shadow-none hover:bg-gray-200 dark:hover:bg-gray-800 text-[var(--text-secondary)]",
     };
 
-    // Mapeo de tamaños
     const sizes = {
       sm: "px-4 py-2 text-sm",
       md: "px-6 py-3 text-base",
       lg: "px-10 py-4 text-lg font-bold",
     };
 
-    // Si es "ghost", le quitamos el borde duro y la sombra brutalista
     const brutalistClasses = variant === "ghost" ? "" : "neo-border neo-shadow";
 
     return (

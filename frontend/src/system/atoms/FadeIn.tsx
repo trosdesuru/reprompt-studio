@@ -7,7 +7,7 @@ interface FadeInProps {
   children: ReactNode;
   duration?: number;
   delay?: number;
-  y?: number; // Desplazamiento vertical sutil
+  y?: number;
 }
 
 export function FadeIn({ children, duration = 0.5, delay = 0, y = 10 }: FadeInProps) {
@@ -18,7 +18,7 @@ export function FadeIn({ children, duration = 0.5, delay = 0, y = 10 }: FadeInPr
       transition={{
         duration: duration,
         delay: delay,
-        ease: [0.21, 0.47, 0.32, 0.98], // Ease-out profesional
+        ease: [0.21, 0.47, 0.32, 0.98],
       }}
     >
       {children}

@@ -93,7 +93,7 @@ export function PromptCard({ item, collections = [], onAssign, onDelete }: Promp
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                if (window.confirm("¿Seguro que deseas eliminar este prompt del búnker?")) {
+                if (window.confirm("¿Seguro que deseas eliminar este prompt de Mi Studio?")) {
                   onDelete(item.id);
                 }
               }}

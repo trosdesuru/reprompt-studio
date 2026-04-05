@@ -15,9 +15,11 @@ export function PromptMetadataPanel({ prompt }: { prompt: SavedPrompt }) {
     <div className="flex flex-col gap-6">
       <div className="bg-muted/10 p-6 rounded-xl neo-border relative group">
         <div className="flex justify-between items-start mb-4">
+
           <h3 className="text-sm font-mono font-bold uppercase tracking-widest text-(--accent-color)">
-            Prompt Principal
+            Prompt
           </h3>
+
           <button
             onClick={handleCopy}
             className="p-2 bg-background neo-border rounded-md hover:bg-muted transition-colors"
@@ -25,6 +27,7 @@ export function PromptMetadataPanel({ prompt }: { prompt: SavedPrompt }) {
           >
             {copied ? <IconCheck size={18} className="text-green-500" /> : <IconCopy size={18} />}
           </button>
+          
         </div>
         <p className="font-mono text-sm leading-relaxed text-foreground">{prompt.prompt}</p>
       </div>
