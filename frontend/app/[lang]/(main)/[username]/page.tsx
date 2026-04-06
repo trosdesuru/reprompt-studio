@@ -5,8 +5,9 @@ import Link from "next/link";
 import { PageLoader } from "@/src/system/atoms/PageLoader";
 import { IconPhotoOff, IconFolder } from "@tabler/icons-react";
 
-import { PromptCard } from "@/src/system/molecules/Cards/PromptCard";
+import { PromptCard } from "@/src/system/organisms/Studio/PromptCard";
 import { usePublicProfile } from "@/src/features/studio/hooks/usePublicProfile";
+import { Breadcrumbs } from "@/src/system/organisms/Navigation/Breadcrumbs";
 
 export default function PublicProfilePage({
   params,
@@ -23,15 +24,29 @@ export default function PublicProfilePage({
 
   if (error || !data) {
     return (
-      <div className="min-h-screen flex items-center justify-center font-mono text-red-500">
-        {error || "Este usuario no existe o se ha perdido en el vacío."}
+      <div className="min-h-screen flex flex-col items-center justify-center font-mono gap-4">
+        <p className="text-red-500">
+          {error || "Este usuario no existe o se ha perdido en el vacío."}
+        </p>
+        <Link
+          href={`/${lang}`}
+          className="text-(--accent-color) hover:underline uppercase text-xs tracking-widest"
+        >
+          ← Volver al inicio
+        </Link>
       </div>
     );
   }
 
+  const breadcrumbItems = [{ label: `@${data.user.username}` }];
+
   return (
     <main className="min-h-screen bg-background p-4 md:p-8">
-      <div className="max-w-7xl mx-auto space-y-12">
+      <div className="max-w-7xl mx-auto space-y-8">
+        <div>
+          <Breadcrumbs items={breadcrumbItems} />
+        </div>
+
         <header className="flex flex-col gap-2 border-b border-border pb-8">
           <h1 className="text-4xl font-black tracking-tighter">@{data.user.username}</h1>
           <p className="text-muted-foreground font-mono text-sm uppercase tracking-widest">
@@ -75,7 +90,14 @@ export default function PublicProfilePage({
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-6">
               {data.recent_prompts.map((prompt, index) => (
-                <PromptCard key={prompt.id} item={prompt} index={index} isPriority={index < 6} />
+                <PromptCard
+                  key={prompt.id}
+                  item={prompt}
+                  index={index}
+                  isPriority={index < 6}
+                  lang={lang}
+                  authorUsername={username}
+                />
               ))}
             </div>
           )}

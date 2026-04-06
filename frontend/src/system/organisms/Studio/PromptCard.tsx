@@ -1,7 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { IconCopy, IconTrash, IconCheck, IconPhoto, IconFolderPlus } from "@tabler/icons-react";
+import Link from "next/link";
+import {
+  IconCopy,
+  IconTrash,
+  IconCheck,
+  IconPhoto,
+  IconFolderPlus,
+  IconExternalLink,
+} from "@tabler/icons-react";
 import { SavedPrompt, Collection } from "@/src/types/models";
 import { LazyImage } from "../../molecules/Media/LazyImage";
 
@@ -12,6 +20,9 @@ interface PromptCardProps {
   onAssign?: (promptId: number, collectionId: number | null) => void;
   isPriority: boolean;
   index: number;
+  lang?: string;
+  isStudio?: boolean;
+  authorUsername?: string;
 }
 
 export function PromptCard({
@@ -21,11 +32,18 @@ export function PromptCard({
   onDelete,
   index = 0,
   isPriority = false,
+  lang = "es",
+  isStudio = false,
+  authorUsername = "unknown",
 }: PromptCardProps) {
   const [copied, setCopied] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
 
+  const queryParam = isStudio ? "?from=studio" : "";
+  const href = `/${lang}/${authorUsername}/p/${item.id}${queryParam}`;
+
   const handleCopy = (e: React.MouseEvent) => {
+    e.preventDefault();
     e.stopPropagation();
     if (item.prompt) {
       navigator.clipboard.writeText(item.prompt);
@@ -36,11 +54,15 @@ export function PromptCard({
 
   return (
     <div
-      className="group flex flex-col bg-background rounded-xl border border-border shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden"
+      className="group relative flex flex-col bg-background rounded-xl border border-border shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      <div className="relative aspect-square sm:aspect-4/5 bg-muted/10 overflow-hidden">
+      <Link href={href} className="absolute inset-0 z-0">
+        <span className="sr-only">Ver detalles del prompt {item.title}</span>
+      </Link>
+
+      <div className="relative aspect-square sm:aspect-4/5 bg-muted/10 overflow-hidden z-10 pointer-events-none">
         {item.image_url ? (
           <LazyImage
             src={item.image_url}
@@ -56,14 +78,13 @@ export function PromptCard({
           </div>
         )}
 
-        {/* Capa de oscurecimiento on hover para que resalten los botones */}
         <div
           className={`absolute inset-0 bg-black/20 transition-opacity duration-300 ${isHovered ? "opacity-100" : "opacity-0"}`}
         />
 
         {onAssign && collections.length > 0 && (
           <div
-            className={`absolute top-3 left-3 transition-opacity duration-300 ${isHovered ? "opacity-100" : "opacity-0"}`}
+            className={`absolute top-3 left-3 transition-opacity duration-300 pointer-events-auto z-20 ${isHovered ? "opacity-100" : "opacity-0"}`}
           >
             <div className="relative flex items-center bg-background/90 backdrop-blur-sm border border-border/50 rounded-md overflow-hidden shadow-sm">
               <div className="pl-2 text-muted-foreground">
@@ -86,10 +107,9 @@ export function PromptCard({
           </div>
         )}
 
-        {/* 🏷️ Badge de Software */}
         {item.software && (
           <div
-            className={`absolute top-3 left-3 transition-opacity duration-300 ${isHovered ? "opacity-100" : "opacity-0"}`}
+            className={`absolute top-3 left-3 transition-opacity duration-300 z-20 ${isHovered ? "opacity-100" : "opacity-0"}`}
           >
             <span className="bg-background/90 backdrop-blur-sm text-foreground text-[10px] font-bold px-2.5 py-1 rounded-md border border-border/50 uppercase tracking-widest shadow-sm">
               {item.software}
@@ -97,12 +117,24 @@ export function PromptCard({
           </div>
         )}
 
+        <div
+          className={`absolute bottom-3 right-3 transition-opacity duration-300 z-20 ${isHovered ? "opacity-100" : "opacity-0"}`}
+        >
+          <Link
+            href={href}
+            className="bg-background/90 backdrop-blur-sm text-foreground p-2 rounded-full border border-border/50 transition-colors shadow-sm pointer-events-auto hover:bg-accent"
+          >
+            <IconExternalLink size={16} stroke={1.5} />
+          </Link>
+        </div>
+
         {onDelete && (
           <div
-            className={`absolute top-3 right-3 transition-opacity duration-300 ${isHovered ? "opacity-100" : "opacity-0"}`}
+            className={`absolute top-3 right-3 transition-opacity duration-300 pointer-events-auto z-20 ${isHovered ? "opacity-100" : "opacity-0"}`}
           >
             <button
               onClick={(e) => {
+                e.preventDefault();
                 e.stopPropagation();
                 if (window.confirm("¿Seguro que deseas eliminar este prompt de Mi Studio?")) {
                   onDelete(item.id);
@@ -117,9 +149,7 @@ export function PromptCard({
         )}
       </div>
 
-      {/* 📝 ÁREA DE CONTENIDO */}
-      <div className="p-5 flex flex-col grow gap-4">
-        {/* Cabecera: Título y Modelo */}
+      <div className="p-5 flex flex-col grow gap-4 z-10 pointer-events-none">
         <div>
           <h3 className="font-bold text-base tracking-tight truncate" title={item.title}>
             {item.title}
@@ -137,13 +167,11 @@ export function PromptCard({
           </div>
         </div>
 
-        {/* Caja del Prompt */}
-        <div className="relative group/prompt bg-muted/30 rounded-lg p-3 border border-border/50 mt-auto">
+        <div className="relative group/prompt bg-muted/30 rounded-lg p-3 border border-border/50 mt-auto pointer-events-auto">
           <p className="text-xs font-mono text-foreground/80 line-clamp-3 leading-relaxed">
             {item.prompt || <span className="italic opacity-50">Sin prompt</span>}
           </p>
 
-          {/* Botón de Copiar (Aparece al hacer hover en la caja del prompt) */}
           {item.prompt && (
             <button
               onClick={handleCopy}
@@ -159,8 +187,7 @@ export function PromptCard({
           )}
         </div>
 
-        {/* Pie de tarjeta (Fecha y dimensiones) */}
-        <div className="flex justify-between items-center text-[10px] text-muted-foreground font-mono uppercase tracking-widest pt-1">
+        <div className="flex justify-between items-center text-[10px] text-muted-foreground font-mono uppercase tracking-widest pt-1 pointer-events-auto">
           <span>{new Date(item.created_at).toLocaleDateString()}</span>
           {item.resolution && <span>{item.resolution}</span>}
         </div>

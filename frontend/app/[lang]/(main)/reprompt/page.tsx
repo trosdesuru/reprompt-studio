@@ -4,10 +4,11 @@ import { use } from "react";
 import { usePromptExtractor } from "@/src/features/extractor/hooks/usePromptExtractor";
 import { ExtractorDropzone } from "@/src/system/organisms/Extractor/Dropzone";
 import { BatchInspector } from "@/src/system/organisms/Extractor/Inspector/BatchInspector";
+import { Breadcrumbs } from "@/src/system/organisms/Navigation/Breadcrumbs";
 
 export default function RepromptPage({ params }: { params: Promise<{ lang: string }> }) {
   const { lang } = use(params);
-  
+
   const {
     processFiles,
     isExtracting,
@@ -21,10 +22,19 @@ export default function RepromptPage({ params }: { params: Promise<{ lang: strin
     clearSkipped,
   } = usePromptExtractor();
 
+  const breadcrumbItems = [
+    { label: "Mi Studio", href: `/${lang}/studio` },
+    { label: "Rerompts extractor" },
+  ];
+
   return (
     <main className="min-h-screen bg-background p-4 md:p-8">
-      <div className="max-w-7xl mx-auto space-y-12">
-        <section className="text-center space-y-6 pt-10 pb-6">
+      <div className="max-w-7xl mx-auto space-y-8">
+        <div>
+          <Breadcrumbs items={breadcrumbItems} />
+        </div>
+
+        <section className="text-center space-y-6 pt-4 pb-6">
           <h1 className="text-5xl md:text-7xl font-black uppercase font-mono tracking-tighter text-foreground">
             Estudio <span className="text-(--accent-color)">REPROMPT</span>
           </h1>

@@ -2,21 +2,35 @@
 
 import { use } from "react";
 import Link from "next/link";
-import { IconArrowLeft } from "@tabler/icons-react";
-
 import { usePublicPrompt } from "@/src/features/studio/hooks/usePublicPrompt";
-import { PromptImageViewer } from "@/src/system/organisms/Studio/PromptImageViewer";
-import { PromptMetadataPanel } from "@/src/system/organisms/Studio/PromptMetadataPanel";
+import { PromptImageViewer } from "@/src/system/molecules/Cards/PromptImageViewer";
+import { PromptMetadataPanel } from "@/src/system/molecules/Cards/PromptMetadataPanel";
+import { Breadcrumbs } from "@/src/system/organisms/Navigation/Breadcrumbs";
 import { PageLoader } from "@/src/system/atoms/PageLoader";
 
-export default function PromptDetailPage({
-  params,
-}: {
+interface PromptDetailPageProps {
   params: Promise<{ lang: string; username: string; prompt_id: string }>;
-}) {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}
+
+export default function PromptDetailPage({ params, searchParams }: PromptDetailPageProps) {
   const { lang, username, prompt_id } = use(params);
+  const resolvedSearchParams = use(searchParams);
+
+  const from = resolvedSearchParams?.from;
 
   const { data: prompt, isLoading, error } = usePublicPrompt(prompt_id);
+
+  const isFromStudio = from === "studio";
+  const backUrl = isFromStudio ? `/${lang}/studio` : `/${lang}/${username}`;
+  const backText = isFromStudio ? "Volver a Mi Studio" : `Volver a @${username}`;
+
+  const breadcrumbItems = isFromStudio
+    ? [{ label: "Mi Studio", href: `/${lang}/studio` }, { label: prompt?.title || "Detalle" }]
+    : [
+        { label: `@${username}`, href: `/${lang}/${username}` },
+        { label: prompt?.title || "Detalle" },
+      ];
 
   if (isLoading) {
     return <PageLoader text="Desencriptando datos..." />;
@@ -27,10 +41,10 @@ export default function PromptDetailPage({
       <div className="min-h-screen flex flex-col items-center justify-center font-mono gap-4">
         <p className="text-red-500">{error || "No se pudo cargar el prompt."}</p>
         <Link
-          href={`/${lang}/${username}`}
+          href={backUrl}
           className="text-(--accent-color) hover:underline uppercase text-xs tracking-widest"
         >
-          ← Volver al perfil
+          ← {backText}
         </Link>
       </div>
     );
@@ -39,12 +53,9 @@ export default function PromptDetailPage({
   return (
     <main className="min-h-screen bg-background p-4 md:p-8">
       <div className="max-w-6xl mx-auto space-y-8">
-        <Link
-          href={`/${lang}/${username}`}
-          className="inline-flex items-center gap-2 text-sm font-mono text-muted-foreground hover:text-(--accent-color) transition-colors uppercase tracking-widest"
-        >
-          <IconArrowLeft size={16} /> Volver a @{username}
-        </Link>
+        <div className="mb-4">
+          <Breadcrumbs items={breadcrumbItems} />
+        </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 lg:gap-12 items-start">
           <section className="sticky top-24">

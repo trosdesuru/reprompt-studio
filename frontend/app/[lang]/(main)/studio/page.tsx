@@ -2,12 +2,13 @@
 
 import { use, useState } from "react";
 import { useStudio } from "@/src/features/studio/hooks/useStudio";
-import { PromptCard } from "@/src/system/molecules/Cards/PromptCard";
-import { CreateCollectionModal } from "@/src/system/organisms/Studio/CreateCollectionModal";
+import { PromptCard } from "@/src/system/organisms/Studio/PromptCard";
+import { CreateCollectionModal } from "@/src/system/molecules/Cards/CreateCollectionModal";
 import { IconWand, IconDatabase, IconPlus, IconLock } from "@tabler/icons-react";
 import { useAuthStore } from "@/src/store/authStore";
 import Link from "next/link";
 import { PageLoader } from "@/src/system/atoms/PageLoader";
+import { Breadcrumbs } from "@/src/system/organisms/Navigation/Breadcrumbs";
 
 export default function StudioPage({ params }: { params: Promise<{ lang: string }> }) {
   const { lang } = use(params);
@@ -15,6 +16,11 @@ export default function StudioPage({ params }: { params: Promise<{ lang: string 
   const { prompts, collections, isLoading, error, deletePrompt, assignToCollection, refetch } =
     useStudio();
   const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // 🧠 Lógica del Breadcrumb
+  const breadcrumbItems = [
+    { label: "Mi Studio" },
+  ];
 
   if (isLoading) return <PageLoader text="Cargando Metadata ..." />;
 
@@ -24,9 +30,12 @@ export default function StudioPage({ params }: { params: Promise<{ lang: string 
 
   return (
     <main className="min-h-screen bg-background p-4 md:p-8">
-      <div className="max-w-7xl mx-auto space-y-12">
-        {/* Cabecera y Controles */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-border pb-8">
+      <div className="max-w-7xl mx-auto space-y-8">
+        {" "}
+        <div>
+          <Breadcrumbs items={breadcrumbItems} />
+        </div>
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-border pb-8 mt-4">
           <div>
             <h1 className="text-3xl font-black tracking-tighter flex items-center gap-3">
               <IconDatabase className="text-(--accent-color)" size={32} /> Mi Studio
@@ -48,8 +57,6 @@ export default function StudioPage({ params }: { params: Promise<{ lang: string 
             </button>
           </div>
         </div>
-
-        {/* 📁 Sección de Colecciones */}
         {collections.length > 0 && (
           <section className="space-y-4">
             <h2 className="text-sm font-mono font-bold uppercase tracking-widest text-muted-foreground">
@@ -87,8 +94,6 @@ export default function StudioPage({ params }: { params: Promise<{ lang: string 
             </div>
           </section>
         )}
-
-        {/* 🖼️ Grid Principal de Prompts */}
         <section className="space-y-4">
           <h2 className="text-sm font-mono font-bold uppercase tracking-widest text-muted-foreground">
             Todos tus Prompts
@@ -108,6 +113,9 @@ export default function StudioPage({ params }: { params: Promise<{ lang: string 
                   isPriority={index < 6}
                   onDelete={deletePrompt}
                   onAssign={assignToCollection}
+                  lang={lang}
+                  isStudio={true}
+                  authorUsername={user?.username}
                 />
               ))}
             </div>
