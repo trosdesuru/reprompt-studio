@@ -133,6 +133,9 @@ body {
    6. CONFIGURACIÓN DE TAILWIND
    ============================ */
 @theme inline {
+
+  --font-prompt: var(--font-prompt);
+
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);

@@ -5,6 +5,7 @@ import { usePromptExtractor } from "@/src/features/extractor/hooks/usePromptExtr
 import { ExtractorDropzone } from "@/src/system/organisms/Extractor/Dropzone";
 import { BatchInspector } from "@/src/system/organisms/Extractor/Inspector/BatchInspector";
 import { Breadcrumbs } from "@/src/system/organisms/Navigation/Breadcrumbs";
+import { IconCpu } from "@tabler/icons-react";
 
 export default function RepromptPage({ params }: { params: Promise<{ lang: string }> }) {
   const { lang } = use(params);
@@ -24,7 +25,7 @@ export default function RepromptPage({ params }: { params: Promise<{ lang: strin
 
   const breadcrumbItems = [
     { label: "Mi Studio", href: `/${lang}/studio` },
-    { label: "Rerompts extractor" },
+    { label: "Extractor Reprompt" },
   ];
 
   return (
@@ -34,14 +35,17 @@ export default function RepromptPage({ params }: { params: Promise<{ lang: strin
           <Breadcrumbs items={breadcrumbItems} />
         </div>
 
-        <section className="text-center space-y-6 pt-4 pb-6">
-          <h1 className="text-5xl md:text-7xl font-black uppercase font-mono tracking-tighter text-foreground">
-            Estudio <span className="text-(--accent-color)">REPROMPT</span>
-          </h1>
-          <p className="text-xl md:text-2xl text-(--text-secondary) font-mono max-w-3xl mx-auto leading-relaxed">
-            Arrastra múltiples imágenes o archivos ZIP para extraer metadatos en lote.
-          </p>
-        </section>
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-border pb-8 mt-4">
+          <div>
+            <h1 className="text-3xl font-black tracking-tighter flex items-center gap-3">
+              <IconCpu className="text-(--accent-color)" size={32} />
+              Extractor <span className="font-mono font-regular">reprompt</span>
+            </h1>
+            <p className="text-muted-foreground mt-1">
+              Arrastra múltiples imágenes o archivos ZIP para extraer metadatos en lote.
+            </p>
+          </div>
+        </div>
 
         <section className="w-full max-w-7xl mx-auto">
           {batch.length === 0 ? (

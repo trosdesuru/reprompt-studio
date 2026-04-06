@@ -4,7 +4,7 @@ import { use, useState } from "react";
 import { useStudio } from "@/src/features/studio/hooks/useStudio";
 import { PromptCard } from "@/src/system/organisms/Studio/PromptCard";
 import { CreateCollectionModal } from "@/src/system/molecules/Cards/CreateCollectionModal";
-import { IconWand, IconPlus, IconLock, IconAlbum } from "@tabler/icons-react";
+import { IconPlus, IconLock, IconAlbum, IconCpu } from "@tabler/icons-react";
 import { useAuthStore } from "@/src/store/authStore";
 import Link from "next/link";
 import { PageLoader } from "@/src/system/atoms/PageLoader";
@@ -30,11 +30,9 @@ export default function StudioPage({ params }: { params: Promise<{ lang: string 
     <main className="min-h-screen bg-background p-4 md:p-8">
       <div className="max-w-7xl mx-auto space-y-8">
         {" "}
-
         <div>
           <Breadcrumbs items={breadcrumbItems} />
         </div>
-
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-border pb-8 mt-4">
           <div>
             <h1 className="text-3xl font-black tracking-tighter flex items-center gap-3">
@@ -42,13 +40,13 @@ export default function StudioPage({ params }: { params: Promise<{ lang: string 
             </h1>
             <p className="text-muted-foreground mt-1">Gestiona tus prompts y galerías.</p>
           </div>
-          
+
           <div className="flex gap-3">
             <Link
               href={`/${lang}/reprompt`}
               className="bg-background border border-border hover:bg-muted/30 text-foreground px-4 py-2 rounded-md font-mono text-sm font-bold uppercase tracking-widest transition-colors flex items-center gap-2"
             >
-              <IconWand size={18} /> Extraer Más
+              <IconCpu size={18} /> Extraer Más
             </Link>
             <button
               onClick={() => setIsModalOpen(true)}

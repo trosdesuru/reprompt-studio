@@ -17,9 +17,9 @@ export function Heading({ level = "h2", children, className, ...props }: Heading
 
   // Jerarquía tipográfica minimalista
   const sizeStyles = {
-    h1: "text-4xl md:text-5xl font-extrabold tracking-tighter",
+    h1: "text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tighter",
     h2: "text-3xl md:text-4xl font-bold",
-    h3: "text-2xl md:text-3xl font-semibold",
+    h3: "text-xl sm:tex-xl md:text-2xl font-semibold",
     h4: "text-xl md:text-2xl font-semibold",
     h5: "text-lg md:text-xl font-medium",
     h6: "text-base md:text-lg font-medium",

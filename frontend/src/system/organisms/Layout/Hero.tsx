@@ -8,7 +8,7 @@ export function Hero() {
       <Heading level="h1" className="mb-4">
         Inspírate. Extrae. Crea.
       </Heading>
-      <Heading level="h3" className="text-muted-foreground font-normal max-w-2xl text-balance">
+      <Heading level="h3" className="text-muted-foreground font-normal max-w-3xl text-balance">
         Explora miles de imágenes y descubre los prompts exactos que las generaron. Sin ruido,
         directo a la fuente.
       </Heading>

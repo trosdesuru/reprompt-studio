@@ -26,10 +26,16 @@ export function PublicFeedGrid({ feed, isLoading, lang }: PublicFeedGridProps) {
           </div>
         </FadeIn>
       ) : (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {feed.map((item, index) => (
             <FadeIn key={item.id} delay={index * 0.05} y={20}>
-              <FeedItemCard key={item.id} item={item} lang={lang} isPriority={index < 6} index={index}/>
+              <FeedItemCard
+                key={item.id}
+                item={item}
+                lang={lang}
+                isPriority={index < 6}
+                index={index}
+              />
             </FadeIn>
           ))}
         </div>

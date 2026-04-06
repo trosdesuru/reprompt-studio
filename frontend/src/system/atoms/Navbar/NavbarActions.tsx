@@ -5,7 +5,7 @@ import { useAuthStore } from "@/src/store/authStore";
 import { useTheme } from "@/src/utils/hooks/useTheme";
 import { UserDropdown } from "../../molecules/Navbar/UserDropdown";
 import { NotificationDropdown } from "../../molecules/Navbar/NotificationDropdown";
-import { IconWand, IconAlbum, IconSun, IconMoon } from "@tabler/icons-react";
+import { IconAlbum, IconSun, IconMoon, IconCpu } from "@tabler/icons-react";
 
 export function NavbarActions() {
   const { user } = useAuthStore();
@@ -28,7 +28,7 @@ export function NavbarActions() {
               className="p-2 rounded-md text-muted-foreground hover:text-foreground transition-colors hover:bg-(--bg-secondary) cursor-pointer"
               title="Mi Estudio"
             >
-              <IconWand size={22} />
+              <IconCpu size={22} />
             </Link>
           </div>
           <NotificationDropdown />
