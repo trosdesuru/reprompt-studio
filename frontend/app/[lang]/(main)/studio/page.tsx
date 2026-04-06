@@ -4,7 +4,7 @@ import { use, useState } from "react";
 import { useStudio } from "@/src/features/studio/hooks/useStudio";
 import { PromptCard } from "@/src/system/organisms/Studio/PromptCard";
 import { CreateCollectionModal } from "@/src/system/molecules/Cards/CreateCollectionModal";
-import { IconWand, IconDatabase, IconPlus, IconLock } from "@tabler/icons-react";
+import { IconWand, IconPlus, IconLock, IconAlbum } from "@tabler/icons-react";
 import { useAuthStore } from "@/src/store/authStore";
 import Link from "next/link";
 import { PageLoader } from "@/src/system/atoms/PageLoader";
@@ -18,9 +18,7 @@ export default function StudioPage({ params }: { params: Promise<{ lang: string 
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   // 🧠 Lógica del Breadcrumb
-  const breadcrumbItems = [
-    { label: "Mi Studio" },
-  ];
+  const breadcrumbItems = [{ label: "Mi Studio" }];
 
   if (isLoading) return <PageLoader text="Cargando Metadata ..." />;
 
@@ -32,16 +30,19 @@ export default function StudioPage({ params }: { params: Promise<{ lang: string 
     <main className="min-h-screen bg-background p-4 md:p-8">
       <div className="max-w-7xl mx-auto space-y-8">
         {" "}
+
         <div>
           <Breadcrumbs items={breadcrumbItems} />
         </div>
+
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-border pb-8 mt-4">
           <div>
             <h1 className="text-3xl font-black tracking-tighter flex items-center gap-3">
-              <IconDatabase className="text-(--accent-color)" size={32} /> Mi Studio
+              <IconAlbum className="text-(--accent-color)" size={32} /> Mi Studio
             </h1>
             <p className="text-muted-foreground mt-1">Gestiona tus prompts y galerías.</p>
           </div>
+          
           <div className="flex gap-3">
             <Link
               href={`/${lang}/reprompt`}
