@@ -25,11 +25,20 @@ export interface FeedItem {
   id: string;
   raw_id: string;
   slug?: string;
-  type: "prompt" | "collection" | "studio"
+  type: "prompt" | "collection" | "studio";
   title: string;
   username: string;
   image_url?: string;
   items_count: number;
+}
+
+export interface Collection {
+  id: number;
+  name: string;
+  slug: string;
+  description: string | null;
+  is_private: boolean;
+  created_at: string;
 }
 
 export interface SavedPrompt {
@@ -44,3 +53,4 @@ export interface SavedPrompt {
   collection_id?: number | null;
   created_at: string;
 }
+

@@ -7,9 +7,10 @@ interface FeedItemCardProps {
   item: FeedItem;
   lang: string;
   isPriority?: boolean;
+  index?: number;
 }
 
-export function FeedItemCard({ item, lang, isPriority = false }: FeedItemCardProps) {
+export function FeedItemCard({ item, lang, isPriority = false, index = 0 }: FeedItemCardProps) {
   const href =
     item.type === "prompt"
       ? `/${lang}/${item.username}/p/${item.raw_id || item.id}`
@@ -26,15 +27,16 @@ export function FeedItemCard({ item, lang, isPriority = false }: FeedItemCardPro
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
           alt={item.title}
           priority={isPriority}
+          index={index}
         />
       ) : (
         <div className="w-full h-full group-hover:scale-105 transition-transform duration-500">
-          <LazyImage
+          <img
             src="/logo-black.png"
             className="w-full h-full object-cover block dark:hidden opacity-80"
             alt="Portada por defecto"
           />
-          <LazyImage
+          <img
             src="/logo-white.png"
             className="w-full h-full object-cover hidden dark:block opacity-80"
             alt="Portada por defecto"

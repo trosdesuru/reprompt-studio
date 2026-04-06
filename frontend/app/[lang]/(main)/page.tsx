@@ -9,7 +9,7 @@ import { useHomeInteraction } from "@/src/features/home/hooks/useHomeInteraction
 
 import { Hero } from "@/src/system/organisms/Layout/Hero";
 import { FeedState } from "@/src/system/molecules/Feedback/FeedState";
-import { PublicFeedGrid } from "@/src/system/organisms/Feed/PublicFeedGrid";
+import { PublicFeedGrid } from "@/src/system/pages/Feed/PublicFeedGrid";
 import { SearchResults } from "@/src/system/organisms/Search/SearchResults/SearchResults";
 
 const ImageViewerModal = dynamic(

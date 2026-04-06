@@ -2,7 +2,7 @@
 
 import { use, useState } from "react";
 import { useStudio } from "@/src/features/studio/hooks/useStudio";
-import { PromptCard } from "@/src/system/organisms/Studio/PromptCard";
+import { PromptCard } from "@/src/system/molecules/Cards/PromptCard";
 import { CreateCollectionModal } from "@/src/system/organisms/Studio/CreateCollectionModal";
 import { IconWand, IconDatabase, IconPlus, IconLock } from "@tabler/icons-react";
 import { useAuthStore } from "@/src/store/authStore";
@@ -98,12 +98,14 @@ export default function StudioPage({ params }: { params: Promise<{ lang: string 
               <p className="text-muted-foreground font-mono">Aún no hay prompts guardados.</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-6">
-              {prompts.map((prompt) => (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              {prompts.map((prompt, index) => (
                 <PromptCard
                   key={prompt.id}
                   item={prompt}
                   collections={collections}
+                  index={index}
+                  isPriority={index < 6}
                   onDelete={deletePrompt}
                   onAssign={assignToCollection}
                 />

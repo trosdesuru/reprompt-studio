@@ -4,7 +4,7 @@ import { use } from "react";
 import Link from "next/link";
 import { IconArrowLeft, IconFolder, IconPhotoOff } from "@tabler/icons-react";
 
-import { PromptCard } from "@/src/system/organisms/Studio/PromptCard";
+import { PromptCard } from "@/src/system/molecules/Cards/PromptCard";
 import { usePublicCollection } from "@/src/features/studio/hooks/usePublicCollection";
 import { FadeIn } from "@/src/system/atoms/FadeIn";
 
@@ -73,7 +73,12 @@ export default function PublicCollectionPage({
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-6">
                 {data.prompts.map((prompt, index) => (
                   <FadeIn key={prompt.id} delay={0.3 + index * 0.05} y={15}>
-                    <PromptCard key={prompt.id} item={prompt} />
+                    <PromptCard
+                      key={prompt.id}
+                      item={prompt}
+                      index={index}
+                      isPriority={index < 6}
+                    />
                   </FadeIn>
                 ))}
               </div>

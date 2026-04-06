@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { IconCopy, IconTrash, IconCheck, IconPhoto, IconFolderPlus } from "@tabler/icons-react";
-import { Collection, SavedPrompt } from "@/src/features/studio/hooks/useStudio";
+import { SavedPrompt, Collection } from "@/src/types/models";
 import { LazyImage } from "../../molecules/Media/LazyImage";
 
 interface PromptCardProps {
@@ -10,9 +10,18 @@ interface PromptCardProps {
   collections?: Collection[];
   onDelete?: (id: number) => void;
   onAssign?: (promptId: number, collectionId: number | null) => void;
+  isPriority: boolean;
+  index: number;
 }
 
-export function PromptCard({ item, collections = [], onAssign, onDelete }: PromptCardProps) {
+export function PromptCard({
+  item,
+  collections = [],
+  onAssign,
+  onDelete,
+  index = 0,
+  isPriority = false,
+}: PromptCardProps) {
   const [copied, setCopied] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
 
@@ -37,6 +46,8 @@ export function PromptCard({ item, collections = [], onAssign, onDelete }: Promp
             src={item.image_url}
             alt={item.title}
             className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-101"
+            index={index}
+            priority={isPriority}
           />
         ) : (
           <div className="w-full h-full flex flex-col items-center justify-center text-muted-foreground/50">

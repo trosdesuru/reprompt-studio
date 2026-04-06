@@ -253,7 +253,7 @@ src/
         StandardImageCard.tsx
   types/
     auth.types.ts
-    gallery.ts
+    models.ts
   utils/
     adapters/
       mediaAdapters.ts
@@ -3383,7 +3383,7 @@ import { useState, useCallback } from "react";
 import { api } from "@/src/services/api";
 import { useNotificationStore } from "@/src/store/notificationStore";
 import { useViewerSync } from "@/src/features/image-viewer/hooks/useViewerSync";
-import { GalleryItem } from "@/src/types/gallery";
+import { GalleryItem } from "@/src/types/models";
 
 export function useHomeInteraction() {
   const { notify } = useNotificationStore();
@@ -3424,19 +3424,9 @@ export function useHomeInteraction() {
 </file>
 
 <file path="src/features/home/hooks/usePublicFeed.ts">
+import { FeedItem } from "@/src/types/models";
 import { useState, useEffect } from "react";
 import { api } from "@/src/services/api";
-
-export interface FeedItem {
-  id: string;
-  raw_id: string;
-  slug: string;
-  type: "prompt" | "collection";
-  title: string;
-  username: string;
-  image_url?: string;
-  items_count?: number;
-}
 
 export function usePublicFeed(query: string) {
   const [feed, setFeed] = useState<FeedItem[]>([]);
@@ -3508,7 +3498,7 @@ export function useViewerNavigation(pages: any[]) {
 // frontend/features/image-viewer/hooks/useViewerSync.ts
 import { useState, useCallback } from "react";
 import { api } from "@/src/services/api";
-import { ViewerPageItem } from "@/src/types/gallery";
+import { ViewerPageItem } from "@/src/types/models";
 
 export function useViewerSync(activeUrl: string) {
   const [isViewerOpen, setIsViewerOpen] = useState(false);
@@ -4431,7 +4421,7 @@ export const useProgressStore = create<ProgressState>((set) => {
 import { useProgressStore } from "./progressStore";
 import { create } from "zustand";
 import { api } from "@/src/services/api";
-import { GalleryItem } from "@/src/types/gallery";
+import { GalleryItem } from "@/src/types/models";
 import { handleError } from "../utils/errors/ErrorHandler";
 
 interface SearchState {
@@ -5116,19 +5106,19 @@ export function Skeleton({ className = "" }: { className?: string }) {
 <file path="src/system/molecules/Cards/FeedItemCard.tsx">
 import Link from "next/link";
 import { IconStack2, IconUser } from "@tabler/icons-react";
-import { FeedItem } from "@/src/features/home/hooks/usePublicFeed";
 import { LazyImage } from "../Media/LazyImage";
+import { FeedItem } from "@/src/types/models";
 
 interface FeedItemCardProps {
   item: FeedItem;
   lang: string;
-  isPriority: boolean;
+  isPriority?: boolean;
 }
 
-export function FeedItemCard({ item, lang, isPriority }: FeedItemCardProps) {
+export function FeedItemCard({ item, lang, isPriority = false }: FeedItemCardProps) {
   const href =
     item.type === "prompt"
-      ? `/${lang}/${item.username}/p/${item.raw_id}`
+      ? `/${lang}/${item.username}/p/${item.raw_id || item.id}`
       : `/${lang}/${item.username}/${item.slug}`;
 
   return (
@@ -5288,9 +5278,9 @@ export function LazyImage({
       <Image
         src={src}
         alt={alt}
-        loading="lazy"
         sizes={sizes}
         fill
+        loading={priority ? undefined : "lazy"}
         priority={priority}
         quality={75}
         onLoad={() => setIsLoaded(true)}
@@ -5424,7 +5414,7 @@ export function FormField({ label, error, ...props }: Props) {
 
 import React from "react";
 import { IconWand, IconDownload } from "@tabler/icons-react";
-import { MediaVariant } from "@/src/types/gallery";
+import { MediaVariant } from "@/src/types/models";
 
 interface MediaOverlayProps {
   title: string;
@@ -6800,7 +6790,7 @@ export function InspectorResources({ data }: { data: ExtractedPromptData }) {
 <file path="src/system/organisms/Feed/PublicFeedGrid.tsx">
 import { FeedItemCard } from "@/src/system/molecules/Cards/FeedItemCard";
 import { FeedState } from "@/src/system/molecules/Feedback/FeedState";
-import { FeedItem } from "@/src/features/home/hooks/usePublicFeed";
+import { FeedItem } from "@/src/types/models";
 import { FadeIn } from "../../atoms/FadeIn";
 
 interface PublicFeedGridProps {
@@ -7609,7 +7599,7 @@ export function Hero() {
 "use client";
 
 import React from "react";
-import { MediaCardData, MediaVariant } from "@/src/types/gallery";
+import { MediaCardData, MediaVariant } from "@/src/types/models";
 import { MediaCover } from "@/src/system/atoms/MediaCover";
 import { MediaOverlay } from "@/src/system/molecules/MediaOverlay";
 import { cn } from "@/src/utils/lib/cn";
@@ -7668,7 +7658,7 @@ import { useInView } from "react-intersection-observer";
 import { IconLoader2, IconRefresh } from "@tabler/icons-react";
 import { UniversalMediaCard } from "@/src/system/organisms/Media/UniversalMediaCard";
 import { mapSearchToMediaCard } from "@/src/utils/adapters/mediaAdapters";
-import { GalleryItem } from "@/src/types/gallery";
+import { GalleryItem } from "@/src/types/models";
 
 interface SearchResultsProps {
   results: GalleryItem[];
@@ -7769,7 +7759,7 @@ export * from "./TrendingSection.types";
 
 import { UniversalMediaCard } from "@/src/system/organisms/Media/UniversalMediaCard";
 import { mapSearchToMediaCard } from "@/src/utils/adapters/mediaAdapters";
-import { GalleryItem } from "@/src/types/gallery";
+import { GalleryItem } from "@/src/types/models";
 
 interface TrendingSectionProps {
   trending: GalleryItem[];
@@ -7967,7 +7957,6 @@ export function PromptCard({ item, collections = [], onAssign, onDelete }: Promp
             src={item.image_url}
             alt={item.title}
             className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-101"
-            priority
           />
         ) : (
           <div className="w-full h-full flex flex-col items-center justify-center text-muted-foreground/50">
@@ -8296,7 +8285,7 @@ export function ViewerGrid({ pages, currentIndex, onSelect, hasMorePages, isLoad
 <file path="src/system/organisms/Viewer/ImageViewerModal/components/ViewerLightbox.tsx">
 // frontend/features/image-viewer/ImageViewerModal/components/ViewerLightbox.tsx
 import { useEffect, useState, useRef } from "react";
-import { ViewerPageItem } from "@/src/types/gallery";
+import { ViewerPageItem } from "@/src/types/models";
 import { api } from "@/src/services/api";
 import { Button } from "@/src/system/atoms/Button";
 
@@ -8582,7 +8571,7 @@ export function ImageViewerModal({
 </file>
 
 <file path="src/system/organisms/Viewer/ImageViewerModal/ImageViewerModal.types.ts">
-import { GalleryItem } from "@/src/types/gallery";
+import { GalleryItem } from "@/src/types/models";
 
 export interface ImageViewerModalProps {
   title: string;
@@ -8651,7 +8640,7 @@ export interface UserRegister {
 }
 </file>
 
-<file path="src/types/gallery.ts">
+<file path="src/types/models.ts">
 export type MediaVariant = "gallery" | "viewer" | "search";
 export type AspectRatio = "portrait" | "landscape" | "square" | "auto";
 
@@ -8674,10 +8663,34 @@ export interface GalleryItem {
   tags?: string[];
   [key: string]: any;
 }
+
+export interface FeedItem {
+  id: string;
+  raw_id: string;
+  slug?: string;
+  type: "prompt" | "collection" | "studio"
+  title: string;
+  username: string;
+  image_url?: string;
+  items_count: number;
+}
+
+export interface SavedPrompt {
+  id: number;
+  title: string;
+  prompt: string;
+  model: string;
+  resolution?: string;
+  sampler?: string;
+  image_url?: string;
+  software?: string;
+  collection_id?: number | null;
+  created_at: string;
+}
 </file>
 
 <file path="src/utils/adapters/mediaAdapters.ts">
-import { MediaCardData, GalleryItem } from "@/src/types/gallery";
+import { MediaCardData, GalleryItem } from "@/src/types/models";
 
 export const mapSearchToMediaCard = (item: GalleryItem): MediaCardData => {
   // 🚨 SENSOR DE TRANSFORMACIÓN

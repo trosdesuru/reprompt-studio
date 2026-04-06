@@ -9,6 +9,7 @@ interface LazyImageProps {
   className?: string;
   sizes?: string;
   priority?: boolean;
+  index?: number;
 }
 
 export function LazyImage({
@@ -44,10 +45,12 @@ export function LazyImage({
         alt={alt}
         sizes={sizes}
         fill
-        loading={priority ? undefined : "lazy"}
         priority={priority}
         quality={75}
-        onLoad={() => setIsLoaded(true)}
+        loading={priority ? undefined : "lazy"}
+        onLoad={() => {
+          setIsLoaded(true);
+        }}
         className={`
           absolute inset-0 w-full h-full object-cover z-10
           transition-all duration-700 ease-in-out

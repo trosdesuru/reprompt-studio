@@ -1,4 +1,5 @@
 "use client";
+
 import React, { useCallback, useEffect, useRef } from "react";
 import { useSearch } from "@/src/features/search/hooks/useSearch";
 import { SearchCategorySelector } from "./SearchCategorySelector";

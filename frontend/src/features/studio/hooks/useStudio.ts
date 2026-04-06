@@ -1,31 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { api } from "@/src/services/api";
+import { SavedPrompt, Collection } from "@/src/types/models";
 import { handleError } from "@/src/utils/errors/ErrorHandler";
 import { toast } from "react-hot-toast/headless";
-
-export interface SavedPrompt {
-  id: number;
-  title: string;
-  prompt: string;
-  negative_prompt?: string;
-  software?: string;
-  model?: string;
-  sampler?: string;
-  created_at: string;
-  image_url?: string;
-  extra_data: { loras?: any[]; triggerWords?: string[] };
-  resolution?: string;
-  collection_id: number | null;
-}
-
-export interface Collection {
-  id: number;
-  name: string;
-  slug: string;
-  description: string | null;
-  is_private: boolean;
-  created_at: string;
-}
 
 export function useStudio() {
   const [prompts, setPrompts] = useState<SavedPrompt[]>([]);

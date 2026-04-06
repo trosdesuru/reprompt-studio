@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { NavbarSearch } from "./NavbarSearch";
-import { NavbarActions } from "./NavbarActions";
-import { NavbarMobile } from "./NavbarMobile";
+import { NavbarSearch } from "../../molecules/Navbar/NavbarSearch";
+import { NavbarActions } from "../../atoms/Navbar/NavbarActions";
+import { NavbarMobile } from "../../molecules/Navbar/NavbarMobile";
 import Image from "next/image";
 
 export function Navbar() {

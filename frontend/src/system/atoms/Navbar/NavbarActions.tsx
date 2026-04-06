@@ -3,8 +3,8 @@
 import Link from "next/link";
 import { useAuthStore } from "@/src/store/authStore";
 import { useTheme } from "@/src/utils/hooks/useTheme";
-import { UserDropdown } from "./UserDropdown";
-import { NotificationDropdown } from "./NotificationDropdown";
+import { UserDropdown } from "../../molecules/Navbar/UserDropdown";
+import { NotificationDropdown } from "../../molecules/Navbar/NotificationDropdown";
 import { IconWand, IconAlbum, IconSun, IconMoon } from "@tabler/icons-react";
 
 export function NavbarActions() {

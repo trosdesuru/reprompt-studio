@@ -5,13 +5,13 @@ import Link from "next/link";
 import { PageLoader } from "@/src/system/atoms/PageLoader";
 import { IconPhotoOff, IconFolder } from "@tabler/icons-react";
 
-import { PromptCard } from "@/src/system/organisms/Studio/PromptCard";
+import { PromptCard } from "@/src/system/molecules/Cards/PromptCard";
 import { usePublicProfile } from "@/src/features/studio/hooks/usePublicProfile";
 
 export default function PublicProfilePage({
   params,
 }: {
-  params: Promise<{ lang: string; username: string }>;
+  params: Promise<{ lang: string; username: string; index: number }>;
 }) {
   const { lang, username } = use(params);
 
@@ -74,8 +74,8 @@ export default function PublicProfilePage({
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-6">
-              {data.recent_prompts.map((prompt) => (
-                <PromptCard key={prompt.id} item={prompt} />
+              {data.recent_prompts.map((prompt, index) => (
+                <PromptCard key={prompt.id} item={prompt} index={index} isPriority={index < 6} />
               ))}
             </div>
           )}
