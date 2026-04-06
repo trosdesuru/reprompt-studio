@@ -1,16 +1,6 @@
+import { FeedItem } from "@/src/types/models";
 import { useState, useEffect } from "react";
 import { api } from "@/src/services/api";
-
-export interface FeedItem {
-  id: string;
-  raw_id: string;
-  slug: string;
-  type: "prompt" | "collection";
-  title: string;
-  username: string;
-  image_url?: string;
-  items_count?: number;
-}
 
 export function usePublicFeed(query: string) {
   const [feed, setFeed] = useState<FeedItem[]>([]);

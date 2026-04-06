@@ -1,7 +1,7 @@
 import { useProgressStore } from "./progressStore";
 import { create } from "zustand";
 import { api } from "@/src/services/api";
-import { GalleryItem } from "@/src/types/gallery";
+import { GalleryItem } from "@/src/types/models";
 import { handleError } from "../utils/errors/ErrorHandler";
 
 interface SearchState {

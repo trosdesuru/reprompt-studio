@@ -42,9 +42,9 @@ export function LazyImage({
       <Image
         src={src}
         alt={alt}
-        loading="lazy"
         sizes={sizes}
         fill
+        loading={priority ? undefined : "lazy"}
         priority={priority}
         quality={75}
         onLoad={() => setIsLoaded(true)}

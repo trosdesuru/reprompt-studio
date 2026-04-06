@@ -1,6 +1,6 @@
 import { FeedItemCard } from "@/src/system/molecules/Cards/FeedItemCard";
 import { FeedState } from "@/src/system/molecules/Feedback/FeedState";
-import { FeedItem } from "@/src/features/home/hooks/usePublicFeed";
+import { FeedItem } from "@/src/types/models";
 import { FadeIn } from "../../atoms/FadeIn";
 
 interface PublicFeedGridProps {

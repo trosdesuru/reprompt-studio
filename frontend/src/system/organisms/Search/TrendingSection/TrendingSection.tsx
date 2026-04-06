@@ -2,7 +2,7 @@
 
 import { UniversalMediaCard } from "@/src/system/organisms/Media/UniversalMediaCard";
 import { mapSearchToMediaCard } from "@/src/utils/adapters/mediaAdapters";
-import { GalleryItem } from "@/src/types/gallery";
+import { GalleryItem } from "@/src/types/models";
 
 interface TrendingSectionProps {
   trending: GalleryItem[];

@@ -4,7 +4,7 @@ import { useInView } from "react-intersection-observer";
 import { IconLoader2, IconRefresh } from "@tabler/icons-react";
 import { UniversalMediaCard } from "@/src/system/organisms/Media/UniversalMediaCard";
 import { mapSearchToMediaCard } from "@/src/utils/adapters/mediaAdapters";
-import { GalleryItem } from "@/src/types/gallery";
+import { GalleryItem } from "@/src/types/models";
 
 interface SearchResultsProps {
   results: GalleryItem[];

@@ -1,18 +1,18 @@
 import Link from "next/link";
 import { IconStack2, IconUser } from "@tabler/icons-react";
-import { FeedItem } from "@/src/features/home/hooks/usePublicFeed";
 import { LazyImage } from "../Media/LazyImage";
+import { FeedItem } from "@/src/types/models";
 
 interface FeedItemCardProps {
   item: FeedItem;
   lang: string;
-  isPriority: boolean;
+  isPriority?: boolean;
 }
 
-export function FeedItemCard({ item, lang, isPriority }: FeedItemCardProps) {
+export function FeedItemCard({ item, lang, isPriority = false }: FeedItemCardProps) {
   const href =
     item.type === "prompt"
-      ? `/${lang}/${item.username}/p/${item.raw_id}`
+      ? `/${lang}/${item.username}/p/${item.raw_id || item.id}`
       : `/${lang}/${item.username}/${item.slug}`;
 
   return (

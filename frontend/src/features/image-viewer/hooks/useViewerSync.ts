@@ -1,7 +1,7 @@
 // frontend/features/image-viewer/hooks/useViewerSync.ts
 import { useState, useCallback } from "react";
 import { api } from "@/src/services/api";
-import { ViewerPageItem } from "@/src/types/gallery";
+import { ViewerPageItem } from "@/src/types/models";
 
 export function useViewerSync(activeUrl: string) {
   const [isViewerOpen, setIsViewerOpen] = useState(false);

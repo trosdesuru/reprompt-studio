@@ -1,4 +1,4 @@
-import { MediaCardData, GalleryItem } from "@/src/types/gallery";
+import { MediaCardData, GalleryItem } from "@/src/types/models";
 
 export const mapSearchToMediaCard = (item: GalleryItem): MediaCardData => {
   // 🚨 SENSOR DE TRANSFORMACIÓN

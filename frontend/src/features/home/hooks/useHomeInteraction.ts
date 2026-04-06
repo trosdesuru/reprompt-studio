@@ -2,7 +2,7 @@ import { useState, useCallback } from "react";
 import { api } from "@/src/services/api";
 import { useNotificationStore } from "@/src/store/notificationStore";
 import { useViewerSync } from "@/src/features/image-viewer/hooks/useViewerSync";
-import { GalleryItem } from "@/src/types/gallery";
+import { GalleryItem } from "@/src/types/models";
 
 export function useHomeInteraction() {
   const { notify } = useNotificationStore();

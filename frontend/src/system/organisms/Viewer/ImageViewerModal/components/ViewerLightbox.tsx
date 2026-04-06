@@ -1,6 +1,6 @@
 // frontend/features/image-viewer/ImageViewerModal/components/ViewerLightbox.tsx
 import { useEffect, useState, useRef } from "react";
-import { ViewerPageItem } from "@/src/types/gallery";
+import { ViewerPageItem } from "@/src/types/models";
 import { api } from "@/src/services/api";
 import { Button } from "@/src/system/atoms/Button";
 

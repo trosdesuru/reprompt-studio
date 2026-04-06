@@ -1,4 +1,4 @@
-import { GalleryItem } from "@/src/types/gallery";
+import { GalleryItem } from "@/src/types/models";
 
 export interface ImageViewerModalProps {
   title: string;

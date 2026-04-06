@@ -2,7 +2,7 @@
 
 import React from "react";
 import { IconWand, IconDownload } from "@tabler/icons-react";
-import { MediaVariant } from "@/src/types/gallery";
+import { MediaVariant } from "@/src/types/models";
 
 interface MediaOverlayProps {
   title: string;
