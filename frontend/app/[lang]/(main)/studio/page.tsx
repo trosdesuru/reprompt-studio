@@ -76,21 +76,23 @@ export default function StudioPage({ params }: { params: Promise<{ lang: string 
             <h1 className="text-3xl font-black tracking-tighter flex items-center gap-3">
               <IconAlbum className="text-(--accent-color)" size={32} /> Mi Studio
             </h1>
-            <p className="text-muted-foreground mt-1">Gestiona tus prompts y galerías.</p>
+            <p className="text-muted-foreground mt-1">
+              Gestiona tus <span className="font-mono font-medium text-accent">reprompt</span>.
+            </p>
           </div>
 
           <div className="flex gap-3">
             <Link
               href={`/${lang}/reprompt`}
-              className="bg-background border border-border hover:bg-muted/30 text-foreground px-4 py-2 rounded-md font-mono text-sm font-bold uppercase tracking-widest transition-colors flex items-center gap-2"
+              className="bg-background border border-accent hover:bg-accent/20 text-accent px-4 py-2 rounded-md font-mono text-sm font-bold uppercase tracking-widest transition-colors flex items-center gap-2"
             >
-              <IconScanTraces size={18} /> Extraer Más
+              <IconScanTraces className="text-accent" size={18} /> reprompt
             </Link>
             <button
               onClick={() => setIsModalOpen(true)}
-              className="bg-(--accent-color) text-white px-4 py-2 rounded-md font-mono text-sm font-bold uppercase tracking-widest hover:bg-opacity-90 transition-colors flex items-center gap-2"
+              className="bg-(--accent-color) text-foreground px-4 py-2 rounded-md font-mono text-sm font-bold uppercase tracking-widest hover:bg-opacity-90 hover:text-popover transition-colors flex items-center gap-2 cursor-pointer"
             >
-              <IconPlus size={18} /> Nueva Colección
+              <IconPlus size={18} /> Crear Colección
             </button>
           </div>
         </div>
@@ -117,7 +119,6 @@ export default function StudioPage({ params }: { params: Promise<{ lang: string 
                   lang={lang}
                   isStudio={true}
                   authorUsername={user?.username}
-                  // 🟢 4. Conectamos los props con el estado real
                   isSelected={selectedIds.includes(prompt.id)}
                   onToggleSelect={() => handleToggleSelect(prompt.id)}
                   selectionModeActive={selectedIds.length > 0}

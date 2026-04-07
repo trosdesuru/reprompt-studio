@@ -79,7 +79,7 @@ export default function PublicProfilePage({
         )}
 
         <section className="space-y-4">
-          <h2 className="text-sm font-mono font-bold uppercase tracking-widest">
+          <h2 className="text-sm text-accent font-mono font-bold uppercase tracking-widest">
             Últimas Generaciones
           </h2>
           {data.recent_prompts.length === 0 ? (

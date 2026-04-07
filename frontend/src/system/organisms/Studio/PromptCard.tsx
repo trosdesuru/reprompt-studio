@@ -175,7 +175,6 @@ export function PromptCard({
         </div>
       )}
 
-      {/* 🟢 CORRECCIÓN 2b: Movemos el overflow-hidden y rounded-t-xl AQUÍ para que la imagen no rompa los bordes */}
       <div className="relative aspect-square sm:aspect-4/5 bg-muted/10 z-10 pointer-events-none rounded-t-xl overflow-hidden">
         {item.image_url ? (
           <LazyImage
@@ -195,16 +194,6 @@ export function PromptCard({
         <div
           className={`absolute inset-0 bg-black/20 transition-opacity duration-300 ${isHovered || isMenuOpen ? "opacity-100" : "opacity-0"}`}
         />
-
-        {item.software && (
-          <div
-            className={`absolute bottom-3 left-3 transition-opacity duration-300 z-20 ${isHovered ? "opacity-100" : "opacity-0"}`}
-          >
-            <span className="bg-background/90 backdrop-blur-sm text-foreground text-[10px] font-bold px-2.5 py-1 rounded-md border border-border/50 uppercase tracking-widest shadow-sm">
-              {item.software}
-            </span>
-          </div>
-        )}
       </div>
 
       <div className="p-5 flex flex-col grow gap-4 z-10 pointer-events-none">
