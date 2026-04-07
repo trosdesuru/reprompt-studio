@@ -1,7 +1,8 @@
+import os
 import secrets
 import redis
 import logging
-from fastapi import APIRouter, Depends, Response, Cookie, HTTPException
+from fastapi import APIRouter, Depends, Response, Cookie, HTTPException, status
 from fastapi.responses import JSONResponse
 from sqlmodel import Session, select
 
@@ -10,9 +11,7 @@ from app.services.audit_service import AuditService
 from app.core.db import get_session
 from app.api.deps import get_current_user, get_current_admin, RateLimiter
 from app.models.user import User, InviteCode, AuditLog
-from app.schemas.user import UserRegister, UserLogin, PasswordChange
 
-from fastapi import APIRouter, Depends, Response, Cookie, HTTPException, status
 from app.schemas.user import (
     UserRegister,
     UserLogin,
@@ -20,6 +19,8 @@ from app.schemas.user import (
     GoogleAuthRequest,
     GoogleJoinRequest,
 )
+
+IS_PRODUCTION = os.getenv("ENVIRONMENT") == "production"
 
 logger = logging.getLogger("routes_auth")
 redis_client = redis.Redis(host="redis", port=6379, db=0, decode_responses=True)
@@ -67,6 +68,7 @@ def login_user(
         key="access_token",
         value=access_token,
         httponly=True,
+        secure=IS_PRODUCTION,
         max_age=60 * 15,
         samesite="lax",
         path="/",
@@ -75,6 +77,7 @@ def login_user(
         key="refresh_token",
         value=refresh_token,
         httponly=True,
+        secure=IS_PRODUCTION,
         max_age=60 * 60 * 24 * 7,
         samesite="lax",
         path="/",
@@ -98,6 +101,7 @@ def google_auth(
         key="access_token",
         value=result["access_token"],
         httponly=True,
+        secure=IS_PRODUCTION,
         max_age=60 * 15,
         samesite="lax",
         path="/",
@@ -106,6 +110,7 @@ def google_auth(
         key="refresh_token",
         value=result["refresh_token"],
         httponly=True,
+        secure=IS_PRODUCTION,
         max_age=60 * 60 * 24 * 7,
         samesite="lax",
         path="/",
@@ -132,6 +137,7 @@ def google_join(
         key="access_token",
         value=access_token,
         httponly=True,
+        secure=IS_PRODUCTION,
         max_age=60 * 15,
         samesite="lax",
         path="/",
@@ -140,6 +146,7 @@ def google_join(
         key="refresh_token",
         value=refresh_token,
         httponly=True,
+        secure=IS_PRODUCTION,
         max_age=60 * 60 * 24 * 7,
         samesite="lax",
         path="/",
@@ -156,8 +163,12 @@ def google_join(
 
 @router.post("/logout")
 def logout_user(response: Response, refresh_token: str | None = Cookie(None)):
-    response.delete_cookie("access_token", path="/")
-    response.delete_cookie("refresh_token", path="/")
+    response.delete_cookie(
+        "access_token", path="/", httponly=True, samesite="lax", secure=IS_PRODUCTION
+    )
+    response.delete_cookie(
+        "refresh_token", path="/", httponly=True, samesite="lax", secure=IS_PRODUCTION
+    )
 
     if refresh_token:
         try:
@@ -228,6 +239,7 @@ def refresh_access_token(
             key="access_token",
             value=new_access,
             httponly=True,
+            secure=IS_PRODUCTION,
             max_age=60 * 15,
             samesite="lax",
             path="/",
@@ -236,6 +248,7 @@ def refresh_access_token(
             key="refresh_token",
             value=new_refresh,
             httponly=True,
+            secure=IS_PRODUCTION,
             max_age=60 * 60 * 24 * 7,
             samesite="lax",
             path="/",
@@ -248,55 +261,32 @@ def refresh_access_token(
             f"🛑 [API_AUTH] /refresh abortado con código {e.status_code}: {e.detail}"
         )
 
-        # 🟢 FIX LEGENDARIO: Capturamos tanto el 401 (caducado) como el 403 (robo)
         if e.status_code in [401, 403]:
             logger.info(
                 "🧹 [API_AUTH] Limpiando cookies del navegador (Sesión muerta)..."
             )
 
-            # 1. Creamos la respuesta de error manualmente para que FastAPI no la descarte
             error_response = JSONResponse(
                 status_code=e.status_code,
                 content={"status": "error", "detail": e.detail},
             )
-            # 2. Inyectamos la orden de destrucción total de cookies
             error_response.delete_cookie(
-                "access_token", path="/", httponly=True, samesite="lax"
+                "access_token",
+                path="/",
+                httponly=True,
+                samesite="lax",
+                secure=IS_PRODUCTION,
             )
             error_response.delete_cookie(
-                "refresh_token", path="/", httponly=True, samesite="lax"
+                "refresh_token",
+                path="/",
+                httponly=True,
+                samesite="lax",
+                secure=IS_PRODUCTION,
             )
 
             return error_response
 
-    # Si el error es otro (ej. un 500), lo dejamos pasar normal
-    except HTTPException as e:
-        logger.warning(
-            f"🛑 [API_AUTH] /refresh abortado con código {e.status_code}: {e.detail}"
-        )
-
-        # 🟢 FIX LEGENDARIO: Capturamos tanto el 401 (caducado) como el 403 (robo)
-        if e.status_code in [401, 403]:
-            logger.info(
-                "🧹 [API_AUTH] Limpiando cookies del navegador (Sesión muerta)..."
-            )
-
-            # 1. Creamos la respuesta de error manualmente para que FastAPI no la descarte
-            error_response = JSONResponse(
-                status_code=e.status_code,
-                content={"status": "error", "detail": e.detail},
-            )
-            # 2. Inyectamos la orden de destrucción total de cookies
-            error_response.delete_cookie(
-                "access_token", path="/", httponly=True, samesite="lax"
-            )
-            error_response.delete_cookie(
-                "refresh_token", path="/", httponly=True, samesite="lax"
-            )
-
-            return error_response
-
-        # Si el error es otro (ej. un 500), lo dejamos pasar normal
         raise e
 
 

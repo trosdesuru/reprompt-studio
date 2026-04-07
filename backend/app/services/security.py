@@ -1,6 +1,6 @@
 import logging
 import requests
-import urllib.request
+from app.core.config import settings
 from urllib.error import URLError, HTTPError
 
 logger = logging.getLogger(__name__)
@@ -27,6 +27,12 @@ def validate_magic_bytes(file_url: str) -> bool:
     Programación Defensiva: Asume falsedad por defecto.
     """
     if not file_url:
+        return False
+
+    if not file_url.startswith(settings.R2_PUBLIC_URL):
+        logger.error(
+            f"[SECURITY] Intento de SSRF bloqueado: {file_url}"
+        )
         return False
 
     try:

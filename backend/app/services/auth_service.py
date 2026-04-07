@@ -24,7 +24,6 @@ class AuthService:
     @staticmethod
     def register_user(user_data, session: Session):
         """Lógica de negocio pura para registrar un usuario."""
-        import logging
 
         logger = logging.getLogger("auth_service")
 

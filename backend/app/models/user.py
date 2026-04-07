@@ -1,6 +1,13 @@
 from typing import Optional
 from sqlmodel import Field, SQLModel
 from datetime import datetime, timezone
+from enum import Enum
+
+
+class UserRole(str, Enum):
+    VOYAGER = "voyager"
+    ARTIST = "artist"
+    ADMIN = "admin"
 
 
 class InviteCode(SQLModel, table=True):
@@ -9,7 +16,9 @@ class InviteCode(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     code: str = Field(index=True, unique=True, nullable=False)
     is_used: bool = Field(default=False)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
     used_by_id: Optional[int] = Field(default=None, foreign_key="user.id")
 
 
@@ -18,26 +27,26 @@ class User(SQLModel, table=True):
 
     id: Optional[int] = Field(default=None, primary_key=True)
     username: str = Field(index=True, unique=True, nullable=False)
+    role: UserRole = Field(default=UserRole.VOYAGER)
 
-    # 🟢 NUEVO: Soporte para Google Auth
+    # Soporte para Google Auth
     email: Optional[str] = Field(default=None, index=True, unique=True)
-    auth_provider: str = Field(default="local")  # Puede ser "local" o "google"
+    auth_provider: str = Field(default="local")
     provider_id: Optional[str] = Field(default=None, index=True)
 
-    # 🟢 MODIFICADO: Es opcional porque los usuarios de Google no tendrán contraseña
     hashed_password: Optional[str] = Field(default=None)
 
-    # 🟢 NUEVO: Preparación para monetización
-    tier: str = Field(default="free")  # "free" o "pro"
+    role: str = Field(default="voyager")
 
-    role: str = Field(default="voyager")  # voyager, artist, admin
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     is_active: bool = Field(default=True)
 
 
 class AuditLog(SQLModel, table=True):
-    id: int | None = Field(default=None, primary_key=True)
+    """Registro inmutable de auditoría del sistema"""
+
+    id: Optional[int] = Field(default=None, primary_key=True)
     username: str = Field(index=True)
     action: str
-    details: str | None = None
+    details: Optional[str] = None
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))

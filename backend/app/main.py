@@ -28,7 +28,6 @@ security = HTTPBasic()
 
 
 def get_current_username(credentials: HTTPBasicCredentials = Depends(security)):
-    # Usamos secrets.compare_digest para evitar "Timing Attacks" (Ataques de tiempo)
     correct_username = secrets.compare_digest(
         credentials.username.encode("utf8"),
         os.getenv("DOCS_USERNAME", "admin").encode("utf8"),
@@ -68,9 +67,18 @@ app = FastAPI(
     openapi_url=None,
 )
 
+ALLOWED_ORIGINS = [
+    "http://localhost:3000",
+    "https://reprompt.studio",
+    "https://www.reprompt.studio",
+]
+
+if os.getenv("ENVIRONMENT") != "production":
+    ALLOWED_ORIGINS.append("http://127.0.0.1:3000")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origin_regex=r"https?://.*",
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -90,7 +98,7 @@ async def openapi(username: str = Depends(get_current_username)):
 app.include_router(search_router, prefix="/api")
 app.include_router(admin_router, prefix="/api/admin", tags=["Admin"])
 app.include_router(auth_router, prefix="/api/auth", tags=["Autenticación"])
-app.include_router(public_router, prefix="/api/public", tags=["Feed Público"])
+app.include_router(public_router, prefix="/api/public", tags=["Feed"])
 app.include_router(prompt_router, prefix="/api/prompts", tags=["Reprompt Studio"])
 app.include_router(download_router, prefix="/api/download", tags=["Descargas"])
 app.include_router(collections_router, prefix="/api/collections", tags=["Colecciones"])

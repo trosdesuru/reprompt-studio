@@ -4,11 +4,13 @@ import { ENV } from "@/src/services/config/env";
 export const API_URL = ENV.API_URL;
 export const downloadApi = {
   solicitarZipColeccion: (collectionId: string) =>
-    fetchSeguro(`${API_URL}/download/collection/${collectionId}`, { method: "POST" }),
+    fetchSeguro(`${API_URL}/download/collection/${encodeURIComponent(collectionId)}`, {
+      method: "POST",
+    }),
 
   verificarEstado: (jobId: string) =>
-    fetchSeguro(`${API_URL}/download/status/${jobId}`),
+    fetchSeguro(`${API_URL}/download/status/${encodeURIComponent(jobId)}`),
 
   descargarImagenUnica: (imageKey: string) =>
-    fetchSeguro(`${API_URL}/download/single/${imageKey}`),
+    fetchSeguro(`${API_URL}/download/single/${encodeURIComponent(imageKey)}`),
 };

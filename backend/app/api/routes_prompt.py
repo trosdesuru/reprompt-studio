@@ -85,6 +85,11 @@ def guardar_prompt(
     base_url = settings.R2_PUBLIC_URL.rstrip("/") + "/"
     old_key = data.image_url.replace(base_url, "")
 
+    if not old_key.startswith(f"temp/{current_user.id}/"):
+        raise HTTPException(
+            status_code=403, detail="No se puede guardar archivo"
+        )
+
     if not is_valid:
         delete_file(old_key)
         raise HTTPException(
