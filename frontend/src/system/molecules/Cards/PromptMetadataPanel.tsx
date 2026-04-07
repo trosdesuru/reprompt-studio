@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { IconCopy, IconCheck, IconCpu, IconWand } from "@tabler/icons-react";
+import { IconCopy, IconCheck, IconScanTraces, IconWand } from "@tabler/icons-react";
 import { SavedPrompt } from "@/src/types/models";
 import { FadeIn } from "@/src/system/atoms/FadeIn";
 
@@ -63,7 +63,7 @@ export function PromptMetadataPanel({ prompt }: PromptMetadataPanelProps) {
       {techSpecs.length > 0 && (
         <div className="space-y-4">
           <h3 className="font-mono text-xs font-black uppercase tracking-widest flex items-center gap-2 text-muted-foreground">
-            <IconCpu size={16} /> Datos de Generación
+            <IconScanTraces size={16} /> Datos de Generación
           </h3>
           <div className="grid grid-cols-2 gap-3">
             {techSpecs.map((spec, idx) => (

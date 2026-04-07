@@ -4,7 +4,7 @@ import {
   IconPhoto,
   IconAlertCircle,
   IconFileZip,
-  IconCpu,
+  IconScanTraces,
   IconFolderStar,
   IconCloudUpload,
 } from "@tabler/icons-react";
@@ -72,36 +72,36 @@ export function DropzoneContent({ isDragActive, isDragReject }: DropzoneContentP
       >
         {/* Paso 1: Antes */}
         <div className="flex flex-col items-center text-center gap-2">
-          <div className="p-2 bg-muted/10 rounded-lg neo-border mb-1 text-muted-foreground">
-            <IconCloudUpload size={20} />
+          <div className="p-2 bg-muted/10 rounded-lg neo-border mb-1 text-muted-foreground border-accent!">
+            <IconCloudUpload className="text-accent!" size={20} />
           </div>
           <h4 className="font-bold text-xs uppercase tracking-widest text-foreground">1. Sube</h4>
           <p className="text-xs font-mono text-muted-foreground leading-relaxed">
-            Arrastra tus imágenes generadas (Midjourney, SD) o un ZIP entero.
+            Arrastra tus imágenes generadas cono Midjourney, a1111 o ComiFy o un ZIP.
           </p>
         </div>
 
         {/* Paso 2: Durante */}
         <div className="flex flex-col items-center text-center gap-2">
-          <div className="p-2 bg-muted/10 rounded-lg neo-border mb-1 text-(--accent-color)">
-            <IconCpu size={20} />
+          <div className="p-2 bg-muted/10 rounded-lg neo-border mb-1 border-accent!">
+            <IconScanTraces className="text-accent!" size={20} />
           </div>
           <h4 className="font-bold text-xs uppercase tracking-widest text-foreground">2. Extrae</h4>
           <p className="text-xs font-mono text-muted-foreground leading-relaxed">
-            Nuestra IA lee la Metadata oculta (Prompt, Seed, Sampler).
+            Nuestra IA lee la Metadata oculta een la imagen.
           </p>
         </div>
 
         {/* Paso 3: Después */}
         <div className="flex flex-col items-center text-center gap-2">
-          <div className="p-2 bg-muted/10 rounded-lg neo-border mb-1 text-muted-foreground">
-            <IconFolderStar size={20} />
+          <div className="p-2 bg-muted/10 rounded-lg neo-border mb-1 border-accent!">
+            <IconFolderStar className="text-accent!" size={20} />
           </div>
           <h4 className="font-bold text-xs uppercase tracking-widest text-foreground">
             3. Colecciona
           </h4>
           <p className="text-xs font-mono text-muted-foreground leading-relaxed">
-            Guarda en tu Studio privado, reutiliza e inspírate de nuevo.
+            Guarda los prompts en tu Studio, reutiliza y gestiona.
           </p>
         </div>
       </div>

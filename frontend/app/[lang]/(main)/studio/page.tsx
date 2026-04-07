@@ -4,7 +4,7 @@ import { use, useState } from "react";
 import { useStudio } from "@/src/features/studio/hooks/useStudio";
 import { PromptCard } from "@/src/system/organisms/Studio/PromptCard";
 import { CreateCollectionModal } from "@/src/system/molecules/Cards/CreateCollectionModal";
-import { IconPlus, IconLock, IconAlbum, IconCpu } from "@tabler/icons-react";
+import { IconPlus, IconLock, IconAlbum, IconScanTraces } from "@tabler/icons-react";
 import { useAuthStore } from "@/src/store/authStore";
 import Link from "next/link";
 import { PageLoader } from "@/src/system/atoms/PageLoader";
@@ -45,7 +45,7 @@ export default function StudioPage({ params }: { params: Promise<{ lang: string 
               href={`/${lang}/reprompt`}
               className="bg-background border border-border hover:bg-muted/30 text-foreground px-4 py-2 rounded-md font-mono text-sm font-bold uppercase tracking-widest transition-colors flex items-center gap-2"
             >
-              <IconCpu size={18} /> Extraer Más
+              <IconScanTraces size={18} /> Extraer Más
             </Link>
             <button
               onClick={() => setIsModalOpen(true)}

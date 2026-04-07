@@ -6,7 +6,7 @@ import { ExtractorDropzone } from "@/src/system/organisms/Extractor/Dropzone";
 import { BatchInspector } from "@/src/system/organisms/Extractor/Inspector/BatchInspector";
 import { Breadcrumbs } from "@/src/system/organisms/Navigation/Breadcrumbs";
 import { UpgradeModal } from "@/src/system/organisms/Modal/UpgradeModal";
-import { IconCpu } from "@tabler/icons-react";
+import { IconScanTraces } from "@tabler/icons-react";
 
 export default function RepromptPage({ params }: { params: Promise<{ lang: string }> }) {
   const { lang } = use(params);
@@ -42,7 +42,7 @@ export default function RepromptPage({ params }: { params: Promise<{ lang: strin
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-border pb-8 mt-4">
           <div>
             <h1 className="text-3xl font-black tracking-tighter flex items-center gap-3">
-              <IconCpu className="text-(--accent-color)" size={32} />
+              <IconScanTraces className="text-(--accent-color)" size={32} />
               Extractor <span className="font-mono font-regular">reprompt</span>
             </h1>
             <p className="text-muted-foreground mt-1">

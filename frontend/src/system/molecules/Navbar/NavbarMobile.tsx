@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useAuthStore } from '@/src/store/authStore';
 import { useTheme } from '@/src/utils/hooks/useTheme';
 import { NavbarSearch } from './NavbarSearch';
-import { IconMenu2, IconX, IconWand, IconArchive, IconSun, IconMoon } from '@tabler/icons-react';
+import { IconMenu2, IconX, IconArchive, IconSun, IconMoon, IconScanTraces } from '@tabler/icons-react';
 
 export function NavbarMobile() {
   const [isOpen, setIsOpen] = useState(false);
@@ -29,7 +29,7 @@ export function NavbarMobile() {
             {user ? (
               <>
                 <Link href="/reprompt" onClick={() => setIsOpen(false)} className="flex items-center gap-3 p-3 rounded-md hover:bg-muted font-bold text-sm text-foreground transition-colors">
-                  <IconWand size={20} /> Reprompt Studio
+                  <IconScanTraces size={20} /> Reprompt Studio
                 </Link>
                 <Link href="/studio" onClick={() => setIsOpen(false)} className="flex items-center gap-3 p-3 rounded-md hover:bg-muted font-bold text-sm text-foreground transition-colors">
                   <IconArchive size={20} /> Mi Estudio
