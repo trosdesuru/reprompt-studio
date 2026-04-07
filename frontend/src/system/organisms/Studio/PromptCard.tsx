@@ -19,6 +19,9 @@ interface PromptCardProps {
   onDelete?: (id: number) => void;
   onAssign?: (promptId: number, collectionId: number | null) => void;
   isPriority: boolean;
+  isSelected?: boolean;
+  onToggleSelect?: () => void;
+  selectionModeActive?: boolean;
   index: number;
   lang?: string;
   isStudio?: boolean;
@@ -32,6 +35,9 @@ export function PromptCard({
   onDelete,
   index = 0,
   isPriority = false,
+  isSelected = false,
+  onToggleSelect,
+  selectionModeActive = false,
   lang = "es",
   isStudio = false,
   authorUsername = "unknown",
@@ -62,6 +68,27 @@ export function PromptCard({
         <span className="sr-only">Ver detalles del prompt {item.title}</span>
       </Link>
 
+      {(selectionModeActive || isSelected) && (
+        <div
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onToggleSelect?.();
+          }}
+          className="absolute top-2 left-2 z-30 cursor-pointer p-2 pointer-events-auto"
+        >
+          <div
+            className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all shadow-md ${
+              isSelected
+                ? "bg-(--accent-color) border-(--accent-color)"
+                : "bg-black/50 border-white/70 hover:border-white hover:bg-black/70"
+            }`}
+          >
+            {isSelected && <IconCheck size={16} className="text-white" stroke={3} />}
+          </div>
+        </div>
+      )}
+
       <div className="relative aspect-square sm:aspect-4/5 bg-muted/10 overflow-hidden z-10 pointer-events-none">
         {item.image_url ? (
           <LazyImage
@@ -82,7 +109,7 @@ export function PromptCard({
           className={`absolute inset-0 bg-black/20 transition-opacity duration-300 ${isHovered ? "opacity-100" : "opacity-0"}`}
         />
 
-        {onAssign && collections.length > 0 && (
+        {onAssign && collections.length > 0 && !selectionModeActive && (
           <div
             className={`absolute top-3 left-3 transition-opacity duration-300 pointer-events-auto z-20 ${isHovered ? "opacity-100" : "opacity-0"}`}
           >
@@ -109,7 +136,7 @@ export function PromptCard({
 
         {item.software && (
           <div
-            className={`absolute top-3 left-3 transition-opacity duration-300 z-20 ${isHovered ? "opacity-100" : "opacity-0"}`}
+            className={`absolute bottom-3 left-3 transition-opacity duration-300 z-20 ${isHovered ? "opacity-100" : "opacity-0"}`}
           >
             <span className="bg-background/90 backdrop-blur-sm text-foreground text-[10px] font-bold px-2.5 py-1 rounded-md border border-border/50 uppercase tracking-widest shadow-sm">
               {item.software}
@@ -149,6 +176,7 @@ export function PromptCard({
         )}
       </div>
 
+      {/* ================= CAJA DE TEXTOS ================= */}
       <div className="p-5 flex flex-col grow gap-4 z-10 pointer-events-none">
         <div>
           <h3 className="font-bold text-base tracking-tight truncate" title={item.title}>
@@ -188,7 +216,7 @@ export function PromptCard({
         </div>
 
         <div className="flex justify-between items-center text-[10px] text-muted-foreground font-mono uppercase tracking-widest pt-1 pointer-events-auto">
-          <span>{new Date(item.created_at).toLocaleDateString()}</span>
+          <span>{new Date(item.created_at).toLocaleDateString(lang === "es" ? "es-ES" : "en-US")}</span>
           {item.resolution && <span>{item.resolution}</span>}
         </div>
       </div>

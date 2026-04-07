@@ -9,6 +9,7 @@ import { useAuthStore } from "@/src/store/authStore";
 import Link from "next/link";
 import { PageLoader } from "@/src/system/atoms/PageLoader";
 import { Breadcrumbs } from "@/src/system/organisms/Navigation/Breadcrumbs";
+import { BulkActionBar } from "@/src/system/organisms/Studio/BulkActionBar";
 
 export default function StudioPage({ params }: { params: Promise<{ lang: string }> }) {
   const { lang } = use(params);
@@ -17,21 +18,36 @@ export default function StudioPage({ params }: { params: Promise<{ lang: string 
     useStudio();
   const [isModalOpen, setIsModalOpen] = useState(false);
 
+  const [selectedIds, setSelectedIds] = useState<number[]>([]);
+
   const breadcrumbItems = [{ label: "Mi Studio" }];
 
   if (isLoading) return <PageLoader text="Cargando Metadata ..." />;
+  if (error) throw new Error(error);
 
-  if (error) {
-    throw new Error(error);
-  }
+  const handleToggleSelect = (id: number) => {
+    setSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((pId) => pId !== id) : [...prev, id],
+    );
+  };
+
+  const handleClearSelection = () => setSelectedIds([]);
 
   return (
-    <main className="min-h-screen bg-background p-4 md:p-8">
+    <main className="min-h-screen bg-background p-4 md:p-8 relative pb-24">
+      <BulkActionBar
+        selectedCount={selectedIds.length}
+        onClearSelection={handleClearSelection}
+        onDeleteSelected={() => console.log("Borrando IDs:", selectedIds)}
+        onDownloadSelected={() => console.log("Descargando IDs:", selectedIds)}
+      />
+
       <div className="max-w-7xl mx-auto space-y-8">
-        {" "}
         <div>
           <Breadcrumbs items={breadcrumbItems} />
         </div>
+
+        {/* Cabecera ... (se mantiene igual) ... */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-border pb-8 mt-4">
           <div>
             <h1 className="text-3xl font-black tracking-tighter flex items-center gap-3">
@@ -55,43 +71,8 @@ export default function StudioPage({ params }: { params: Promise<{ lang: string 
             </button>
           </div>
         </div>
-        {collections.length > 0 && (
-          <section className="space-y-4">
-            <h2 className="text-sm font-mono font-bold uppercase tracking-widest text-muted-foreground">
-              Tus Colecciones
-            </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-              {collections.map((col) => (
-                <div
-                  key={col.id}
-                  className="p-4 bg-background border border-border rounded-xl hover:shadow-md transition-shadow relative"
-                >
-                  {col.is_private && (
-                    <IconLock
-                      size={14}
-                      className="absolute top-4 right-4 text-muted-foreground/50"
-                    />
-                  )}
-                  <h3 className="font-bold text-lg">{col.name}</h3>
-                  <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
-                    {col.description || "Sin descripción"}
-                  </p>
-                  <div className="mt-4 pt-4 border-t border-border/50 flex justify-between items-center text-xs font-mono">
-                    <span className="text-muted-foreground">
-                      {prompts.filter((p) => p.collection_id === col.id).length} items
-                    </span>
-                    <Link
-                      href={`/${lang}/${user?.username}/${col.slug}`}
-                      className="text-(--accent-color) hover:underline"
-                    >
-                      Ver Pública &rarr;
-                    </Link>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
+
+
         <section className="space-y-4">
           <h2 className="text-sm font-mono font-bold uppercase tracking-widest text-muted-foreground">
             Todos tus Prompts
@@ -114,6 +95,10 @@ export default function StudioPage({ params }: { params: Promise<{ lang: string 
                   lang={lang}
                   isStudio={true}
                   authorUsername={user?.username}
+                  // 🟢 4. Conectamos los props con el estado real
+                  isSelected={selectedIds.includes(prompt.id)}
+                  onToggleSelect={() => handleToggleSelect(prompt.id)}
+                  selectionModeActive={selectedIds.length > 0}
                 />
               ))}
             </div>
