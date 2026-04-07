@@ -1,3 +1,4 @@
+import uuid
 from typing import Optional
 from sqlmodel import Field, SQLModel
 from sqlalchemy import UniqueConstraint
@@ -13,7 +14,7 @@ class Collection(SQLModel, table=True):
     )
 
     id: Optional[int] = Field(default=None, primary_key=True)
-    user_id: int = Field(foreign_key="user.id", index=True)
+    user_id: uuid.UUID = Field(foreign_key="user.id", index=True)
 
     name: str = Field(nullable=False)
     slug: str = Field(index=True, nullable=False)

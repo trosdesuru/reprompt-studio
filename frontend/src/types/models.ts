@@ -3,6 +3,7 @@ export type AspectRatio = "portrait" | "landscape" | "square" | "auto";
 
 export interface MediaCardData {
   id: string | number;
+  user_id: string;
   imageUrl: string;
   title: string;
   prompt?: string;
@@ -13,6 +14,7 @@ export interface MediaCardData {
 
 export interface GalleryItem {
   url: string;
+  user_id: string;
   title: string;
   thumb: string;
   gid?: string;
@@ -23,6 +25,7 @@ export interface GalleryItem {
 
 export interface FeedItem {
   id: string;
+  user_id: string;
   raw_id: string;
   slug?: string;
   type: "prompt" | "collection" | "studio";
@@ -34,6 +37,7 @@ export interface FeedItem {
 
 export interface Collection {
   id: number;
+  user_id: string;
   name: string;
   slug: string;
   description: string | null;
@@ -43,6 +47,7 @@ export interface Collection {
 
 export interface SavedPrompt {
   id: number;
+  user_id: string;
   title: string;
   prompt: string;
   model: string;
@@ -53,4 +58,3 @@ export interface SavedPrompt {
   collection_id?: number | null;
   created_at: string;
 }
-

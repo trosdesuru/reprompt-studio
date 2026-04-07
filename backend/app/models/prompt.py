@@ -1,3 +1,4 @@
+import uuid
 from sqlmodel import SQLModel, Field, Column, JSON
 from sqlalchemy import Text
 from typing import Optional, Dict, Any
@@ -8,7 +9,8 @@ class ImagePrompt(SQLModel, table=True):
     """Almacenamiento individual de cada generación extraída"""
 
     id: Optional[int] = Field(default=None, primary_key=True)
-    user_id: int = Field(foreign_key="user.id", index=True)
+
+    user_id: uuid.UUID = Field(foreign_key="user.id", index=True)
 
     collection_id: Optional[int] = Field(
         default=None, foreign_key="collection.id", index=True

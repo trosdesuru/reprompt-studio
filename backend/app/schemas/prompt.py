@@ -1,3 +1,4 @@
+import uuid
 from pydantic import BaseModel, Field
 from typing import Optional, Dict, Any
 from datetime import datetime
@@ -22,7 +23,8 @@ class PromptCreate(BaseModel):
 
 class PromptResponse(PromptCreate):
     id: int
-    user_id: int
+    user_id: uuid.UUID
+    prompt: str = Field(..., max_length=20000)
     collection_id: Optional[int] = None
     created_at: datetime
 

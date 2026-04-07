@@ -302,6 +302,7 @@ frontend/
             index.ts
             TrendingSection.tsx
         Studio/
+          BulkActionBar.tsx
           PromptCard.tsx
         Viewer/
           ImageViewerModal/
@@ -3132,6 +3133,73 @@ export function AppToaster() {
 }
 </file>
 
+<file path="frontend/src/system/organisms/Layout/GlobalProgress.tsx">
+"use client";
+
+import { useEffect } from "react";
+import { usePathname, useSearchParams } from "next/navigation";
+import { useProgressStore } from "@/src/store/progressStore";
+
+export function GlobalProgress() {
+  const { isAnimating, progress, start, done } = useProgressStore();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  // 1. Cerrar barra al terminar la navegación de Next.js
+  useEffect(() => {
+    done();
+  }, [pathname, searchParams, done]);
+
+  // 2. Interceptor de enlaces nativos
+  useEffect(() => {
+    const handleAnchorClick = (e: MouseEvent) => {
+      const anchor = (e.target as HTMLElement).closest("a");
+      if (!anchor) return;
+
+      const href = anchor.getAttribute("href");
+      const target = anchor.getAttribute("target");
+
+      if (href && href.startsWith("/") && target !== "_blank" && href !== pathname) {
+        start();
+      }
+    };
+
+    document.addEventListener("click", handleAnchorClick, true);
+    return () => document.removeEventListener("click", handleAnchorClick, true);
+  }, [pathname, start]);
+
+  // 🛡️ FIX ARQUITECTÓNICO: NUNCA DEVOLVEMOS NULL.
+  // Dejamos el elemento en el DOM para que el motor CSS pueda calcular las transiciones de salida (Fade out).
+
+  return (
+    <div className="fixed top-0 left-0 w-full z-99999 pointer-events-none">
+      <div
+        className="relative transition-all ease-out"
+        style={{
+          height: "3px", // El grosor elegante de la industria
+          width: `${progress}%`,
+          opacity: isAnimating ? 1 : 0,
+          // 🛡️ FALLBACK: Si var(--accent-color) no existe, usará un Azul Neón brillante (#0ea5e9)
+          background: "var(--accent-color, #0ea5e9)",
+          boxShadow: "0 0 10px var(--accent-color, #0ea5e9), 0 0 5px var(--accent-color, #0ea5e9)",
+          // Si está desapareciendo, que tarde 500ms en desvanecerse (más suave)
+          transitionDuration: isAnimating ? "300ms" : "500ms",
+        }}
+      >
+        {/* LA PUNTA DE LUZ (Puro CSS, sin imágenes ni SVGs) */}
+        <div
+          className="absolute top-0 right-0 h-full w-70px bg-white shadow-[0_0_15px_white] rounded-full"
+          style={{
+            filter: "blur(2px)",
+            opacity: isAnimating ? 0.8 : 0,
+          }}
+        />
+      </div>
+    </div>
+  );
+}
+</file>
+
 <file path="frontend/src/system/organisms/Search/TrendingSection/index.ts">
 export * from "./TrendingSection";
 export * from "./TrendingSection.types";
@@ -5172,126 +5240,6 @@ export function MediaCover({ src, alt }: MediaCoverProps) {
 }
 </file>
 
-<file path="frontend/src/system/molecules/Cards/CreateCollectionModal.tsx">
-"use client";
-
-import { useState } from "react";
-import { api } from "@/src/services/api";
-import toast from "react-hot-toast";
-import { IconX, IconLock, IconWorld } from "@tabler/icons-react";
-
-interface Props {
-  isOpen: boolean;
-  onClose: () => void;
-  onSuccess: () => void;
-}
-
-export function CreateCollectionModal({ isOpen, onClose, onSuccess }: Props) {
-  const [name, setName] = useState("");
-  const [description, setDescription] = useState("");
-  const [isPrivate, setIsPrivate] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-
-  if (!isOpen) return null;
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!name.trim()) return toast.error("El nombre es obligatorio");
-
-    setIsLoading(true);
-    try {
-      await api.createCollection({ name, description, is_private: isPrivate });
-      toast.success("Colección creada");
-      setName("");
-      setDescription("");
-      setIsPrivate(false);
-      onSuccess(); // Refresca los datos en la página padre
-      onClose();
-    } catch (error) {
-      toast.error("Error al crear la colección");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-4 animate-fade-in">
-      <div className="bg-background w-full max-w-md rounded-xl border border-border shadow-2xl overflow-hidden relative">
-        <button
-          onClick={onClose}
-          className="absolute top-4 right-4 text-muted-foreground hover:text-foreground"
-        >
-          <IconX size={20} />
-        </button>
-
-        <div className="p-6">
-          <h2 className="text-xl font-bold tracking-tight mb-6 text-(--accent-color)">
-            Nueva Colección
-          </h2>
-
-          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-mono uppercase tracking-widest text-muted-foreground">
-                Nombre
-              </label>
-              <input
-                type="text"
-                autoFocus
-                placeholder="Ej. Cyberpunk Portraits"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="w-full bg-muted/10 border border-border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-(--accent-color)"
-                disabled={isLoading}
-              />
-            </div>
-
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-mono uppercase tracking-widest text-muted-foreground">
-                Descripción (Opcional)
-              </label>
-              <textarea
-                placeholder="Un breve resumen de esta galería..."
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                className="w-full bg-muted/10 border border-border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-(--accent-color) resize-none h-20"
-                disabled={isLoading}
-              />
-            </div>
-
-            <div
-              className="flex items-center gap-3 p-3 bg-muted/20 border border-border rounded-md mt-2 cursor-pointer"
-              onClick={() => setIsPrivate(!isPrivate)}
-            >
-              <div
-                className={`p-2 rounded-full ${isPrivate ? "bg-red-500/10 text-red-500" : "bg-green-500/10 text-green-500"}`}
-              >
-                {isPrivate ? <IconLock size={18} /> : <IconWorld size={18} />}
-              </div>
-              <div className="flex flex-col flex-1 select-none">
-                <span className="text-sm font-bold">
-                  {isPrivate ? "Colección Privada" : "Colección Pública"}
-                </span>
-                <span className="text-xs text-muted-foreground">
-                  {isPrivate ? "Solo tú podrás verla." : "Visible en tu perfil para todo el mundo."}
-                </span>
-              </div>
-            </div>
-
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="w-full mt-4 bg-(--accent-color) text-white font-mono font-bold uppercase tracking-widest py-3 rounded-md hover:bg-opacity-90 transition-all disabled:opacity-50"
-            >
-              {isLoading ? "Creando..." : "Crear Colección"}
-            </button>
-          </form>
-        </div>
-      </div>
-    </div>
-  );
-}
-</file>
-
 <file path="frontend/src/system/molecules/Cards/PromptImageViewer.tsx">
 "use client";
 
@@ -6266,197 +6214,6 @@ export function ExtractorDropzone({
       <input {...getInputProps()} />
       <DropzoneContent isDragActive={isDragActive} />
       {externalError && <DropzoneError message={externalError} />}
-    </div>
-  );
-}
-</file>
-
-<file path="frontend/src/system/organisms/Extractor/Dropzone/index.tsx">
-"use client";
-
-import { useCallback } from "react";
-import { useDropzone } from "react-dropzone";
-import { DropzoneLoading } from "./DropzoneLoading";
-import { DropzoneContent } from "./DropzoneContent";
-import { DropzoneError } from "./DropzoneError";
-
-interface ExtractorDropzoneProps {
-  onFileDrop: (acceptedFiles: File[], rejectedFiles: any[]) => void;
-  isExtracting: boolean;
-  error: string | null;
-}
-
-export function ExtractorDropzone({
-  onFileDrop,
-  isExtracting,
-  error: externalError,
-}: ExtractorDropzoneProps) {
-  const onDrop = useCallback(
-    (acceptedFiles: File[], fileRejections: any[]) => {
-      if (acceptedFiles.length > 0 || fileRejections.length > 0) {
-        onFileDrop(acceptedFiles, fileRejections);
-      }
-    },
-    [onFileDrop],
-  );
-
-  // 🟢 Extraemos isDragReject
-  const { getRootProps, getInputProps, isDragActive, isDragReject } = useDropzone({
-    onDrop,
-    accept: {
-      "image/png": [".png"],
-      "image/jpeg": [".jpg", ".jpeg"],
-      "image/webp": [".webp"], // Sugiero añadir webp
-      "text/plain": [".txt"],
-      "application/json": [".json"],
-      "application/zip": [".zip"],
-      "application/x-zip-compressed": [".zip"],
-    },
-    disabled: isExtracting,
-  });
-
-  if (isExtracting) return <DropzoneLoading />;
-
-  return (
-    <div
-      {...getRootProps()}
-      className={`group relative w-full border-4 border-dashed transition-all duration-300 ease-in-out flex flex-col items-center justify-center min-h-[400px] cursor-pointer neo-border overflow-hidden
-        ${
-          isDragReject
-            ? "border-destructive bg-destructive/5"
-            : isDragActive
-              ? "border-(--accent-color) bg-(--accent-color)/5 scale-[1.01] neo-shadow-accent"
-              : "border-border bg-muted/5 hover:bg-muted/10 hover:border-foreground/30"
-        }`}
-    >
-      <input {...getInputProps()} />
-      <DropzoneContent isDragActive={isDragActive} isDragReject={isDragReject} />
-
-      {externalError && <DropzoneError message={externalError} />}
-    </div>
-  );
-}
-</file>
-
-<file path="frontend/src/system/organisms/Layout/GlobalProgress.tsx">
-"use client";
-
-import { useEffect } from "react";
-import { usePathname, useSearchParams } from "next/navigation";
-import { useProgressStore } from "@/src/store/progressStore";
-
-export function GlobalProgress() {
-  const { isAnimating, progress, start, done } = useProgressStore();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
-
-  // 1. Cerrar barra al terminar la navegación de Next.js
-  useEffect(() => {
-    done();
-  }, [pathname, searchParams, done]);
-
-  // 2. Interceptor de enlaces nativos
-  useEffect(() => {
-    const handleAnchorClick = (e: MouseEvent) => {
-      const anchor = (e.target as HTMLElement).closest("a");
-      if (!anchor) return;
-
-      const href = anchor.getAttribute("href");
-      const target = anchor.getAttribute("target");
-
-      if (href && href.startsWith("/") && target !== "_blank" && href !== pathname) {
-        start();
-      }
-    };
-
-    document.addEventListener("click", handleAnchorClick, true);
-    return () => document.removeEventListener("click", handleAnchorClick, true);
-  }, [pathname, start]);
-
-  // 🛡️ FIX ARQUITECTÓNICO: NUNCA DEVOLVEMOS NULL.
-  // Dejamos el elemento en el DOM para que el motor CSS pueda calcular las transiciones de salida (Fade out).
-
-  return (
-    <div className="fixed top-0 left-0 w-full z-99999 pointer-events-none">
-      <div
-        className="relative transition-all ease-out"
-        style={{
-          height: "3px", // El grosor elegante de la industria
-          width: `${progress}%`,
-          opacity: isAnimating ? 1 : 0,
-          // 🛡️ FALLBACK: Si var(--accent-color) no existe, usará un Azul Neón brillante (#0ea5e9)
-          background: "var(--accent-color, #0ea5e9)",
-          boxShadow: "0 0 10px var(--accent-color, #0ea5e9), 0 0 5px var(--accent-color, #0ea5e9)",
-          // Si está desapareciendo, que tarde 500ms en desvanecerse (más suave)
-          transitionDuration: isAnimating ? "300ms" : "500ms",
-        }}
-      >
-        {/* LA PUNTA DE LUZ (Puro CSS, sin imágenes ni SVGs) */}
-        <div
-          className="absolute top-0 right-0 h-full w-70px bg-white shadow-[0_0_15px_white] rounded-full"
-          style={{
-            filter: "blur(2px)",
-            opacity: isAnimating ? 0.8 : 0,
-          }}
-        />
-      </div>
-    </div>
-  );
-}
-</file>
-
-<file path="frontend/src/system/organisms/Modal/UpgradeModal.tsx">
-import { IconSparkles, IconX } from "@tabler/icons-react";
-
-interface UpgradeModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-}
-
-export function UpgradeModal({ isOpen, onClose }: UpgradeModalProps) {
-  if (!isOpen) return null;
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-      <div className="relative w-full max-w-lg bg-background rounded-2xl shadow-2xl border border-border p-8 text-center animate-in fade-in zoom-in-95 duration-200">
-        {/* Botón de cerrar */}
-        <button
-          onClick={onClose}
-          className="absolute top-4 right-4 p-2 text-muted-foreground hover:bg-muted rounded-full transition-colors"
-        >
-          <IconX size={20} />
-        </button>
-
-        <div className="mx-auto w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mb-6">
-          <IconSparkles size={32} className="text-primary" />
-        </div>
-
-        <h2 className="text-2xl font-black text-foreground mb-4">
-          ¡Acelera tu flujo de trabajo! 🚀
-        </h2>
-
-        <p className="text-muted-foreground mb-4">
-          Tu plan <strong>Voyager</strong> te permite extraer metadatos de hasta 10 imágenes por
-          lote. Hemos procesado las primeras, pero se han omitido las demás.
-        </p>
-
-        <p className="text-foreground font-medium mb-8">
-          Pásate al plan <span className="text-primary font-bold">Artist</span> para subir hasta 200
-          archivos de golpe.
-        </p>
-
-        <div className="flex flex-col gap-3">
-          <button className="w-full bg-primary text-primary-foreground py-3 rounded-xl font-bold hover:bg-primary/90 transition-all">
-            Desbloquear Plan Artist
-          </button>
-          <button
-            onClick={onClose}
-            className="w-full text-muted-foreground py-3 font-medium hover:text-foreground transition-colors"
-          >
-            Quizás más tarde
-          </button>
-        </div>
-      </div>
     </div>
   );
 }
@@ -7898,37 +7655,6 @@ export function useHomeInteraction() {
 }
 </file>
 
-<file path="frontend/src/features/studio/hooks/usePublicPrompt.ts">
-import { useState, useEffect } from "react";
-import { api } from "@/src/services/api";
-import { SavedPrompt } from "@/src/features/studio/hooks/useStudio";
-
-export function usePublicPrompt(promptId: string) {
-  const [data, setData] = useState<SavedPrompt | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    setIsLoading(true);
-
-    api
-      .getPublicPromptDetail(promptId)
-      .then((res: any) => {
-        const promptReal = res.prompt && typeof res.prompt === "object" ? res.prompt : res;
-        setData(promptReal);
-      })
-      .catch((err: any) => {
-        console.error("Error fetching prompt:", err);
-        setError("El prompt no existe o es privado.");
-        setData(null);
-      })
-      .finally(() => setIsLoading(false));
-  }, [promptId]);
-
-  return { data, isLoading, error };
-}
-</file>
-
 <file path="frontend/src/services/api/auth.ts">
 import { UserLogin, UserRegister } from "@/src/types/auth.types";
 import { fetchSeguro } from "./client";
@@ -8245,6 +7971,166 @@ export function PageLoader({ text = "Procesando petición..." }: PageLoaderProps
 }
 </file>
 
+<file path="frontend/src/system/molecules/Cards/CreateCollectionModal.tsx">
+"use client";
+
+import { useState } from "react";
+import { api } from "@/src/services/api";
+import toast from "react-hot-toast";
+import { IconX, IconLock, IconWorld } from "@tabler/icons-react";
+import { useAuthStore } from "@/src/store/authStore";
+import { UpgradeModal } from "../../organisms/Modal/UpgradeModal";
+
+interface Props {
+  isOpen: boolean;
+  onClose: () => void;
+  onSuccess: () => void;
+}
+
+export function CreateCollectionModal({ isOpen, onClose, onSuccess }: Props) {
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const [isPrivate, setIsPrivate] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const user = useAuthStore((state: any) => state.user);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+
+  if (!isOpen) return null;
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim()) return toast.error("El nombre es obligatorio");
+
+    setIsLoading(true);
+    try {
+      await api.createCollection({ name, description, is_private: isPrivate });
+      toast.success("Colección creada");
+      setName("");
+      setDescription("");
+      setIsPrivate(false);
+      onSuccess();
+      onClose();
+    } catch (error) {
+      toast.error("Error al crear la colección");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handlePrivacyToggle = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const role = user?.role?.toLowerCase() || "voyager";
+
+    console.log("Rol detectado:", role);
+
+    if (!isPrivate && role === "voyager") {
+      console.log("Bloqueando acción y abriendo Modal de Ventas...");
+      setShowUpgradeModal(true);
+    } else {
+      console.log("Cambiando estado de privacidad...");
+      setIsPrivate(!isPrivate);
+    }
+  };
+
+  return (
+    <>
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-4 animate-fade-in">
+        <div className="bg-background w-full max-w-md rounded-xl border border-border shadow-2xl overflow-hidden relative">
+          <button
+            onClick={onClose}
+            className="absolute top-4 right-4 text-muted-foreground hover:text-foreground"
+          >
+            <IconX size={20} />
+          </button>
+
+          <div className="p-6">
+            <h2 className="text-xl font-mono font-bold tracking-tight mb-6 text-(--accent-color)">
+              Nueva Colección
+            </h2>
+
+            <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-mono uppercase tracking-widest text-muted-foreground">
+                  Nombre
+                </label>
+                <input
+                  type="text"
+                  autoFocus
+                  placeholder="Ej. Cyberpunk Portraits"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="w-full bg-muted/10 border border-border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-(--accent-color)"
+                  disabled={isLoading}
+                />
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-mono uppercase tracking-widest text-muted-foreground">
+                  Descripción (Opcional)
+                </label>
+                <textarea
+                  placeholder="Un breve resumen de esta galería..."
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  className="w-full bg-muted/10 border border-border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-(--accent-color) resize-none h-20"
+                  disabled={isLoading}
+                />
+              </div>
+
+              <div
+                className="flex items-center gap-3 p-3 bg-muted/20 border border-border rounded-md mt-2 cursor-pointer transition-colors hover:bg-muted/30"
+                onClick={handlePrivacyToggle}
+              >
+                <div
+                  className={`p-2 rounded-full transition-colors ${isPrivate ? "bg-red-500/10 text-red-500" : "bg-green-500/10 text-green-500"}`}
+                >
+                  {isPrivate ? <IconLock size={18} /> : <IconWorld size={18} />}
+                </div>
+                <div className="flex flex-col flex-1 select-none">
+                  <span className="text-sm font-bold">
+                    {isPrivate ? "Colección Privada" : "Colección Pública"}
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    {isPrivate
+                      ? "Solo tú podrás verla."
+                      : "Visible en tu perfil para todo el mundo."}
+                  </span>
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="w-full mt-4 bg-accent/20 text-accent font-mono font-bold uppercase tracking-widest py-3 border border-accent rounded-md hover:bg-accent/30 transition-all disabled:opacity-50 cursor-pointer"
+              >
+                {isLoading ? "Creando..." : "Crear Colección"}
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+      <div style={{ position: "relative", zIndex: 99999 }}>
+        <UpgradeModal
+          isOpen={showUpgradeModal}
+          onClose={() => setShowUpgradeModal(false)}
+          title="Mantén tus Prompts en secreto"
+          message={
+            <>
+              Tu plan actual <strong>Voyager</strong> crea colecciones públicas por defecto. Pásate
+              al plan <strong className="text-primary">Artist</strong> para ocultar tus galerías de
+              miradas indiscretas y proteger tus prompts.
+            </>
+          }
+        />
+      </div>
+    </>
+  );
+}
+</file>
+
 <file path="frontend/src/system/molecules/Cards/PromptMetadataPanel.tsx">
 "use client";
 
@@ -8501,6 +8387,73 @@ export function DropzoneContent({ isDragActive, isDragReject }: DropzoneContentP
 }
 </file>
 
+<file path="frontend/src/system/organisms/Extractor/Dropzone/index.tsx">
+"use client";
+
+import { useCallback } from "react";
+import { useDropzone } from "react-dropzone";
+import { DropzoneLoading } from "./DropzoneLoading";
+import { DropzoneContent } from "./DropzoneContent";
+import { DropzoneError } from "./DropzoneError";
+
+interface ExtractorDropzoneProps {
+  onFileDrop: (acceptedFiles: File[], rejectedFiles: any[]) => void;
+  isExtracting: boolean;
+  error: string | null;
+}
+
+export function ExtractorDropzone({
+  onFileDrop,
+  isExtracting,
+  error: externalError,
+}: ExtractorDropzoneProps) {
+  const onDrop = useCallback(
+    (acceptedFiles: File[], fileRejections: any[]) => {
+      if (acceptedFiles.length > 0 || fileRejections.length > 0) {
+        onFileDrop(acceptedFiles, fileRejections);
+      }
+    },
+    [onFileDrop],
+  );
+
+  // 🟢 Extraemos isDragReject
+  const { getRootProps, getInputProps, isDragActive, isDragReject } = useDropzone({
+    onDrop,
+    accept: {
+      "image/png": [".png"],
+      "image/jpeg": [".jpg", ".jpeg"],
+      "image/webp": [".webp"], // Sugiero añadir webp
+      "text/plain": [".txt"],
+      "application/json": [".json"],
+      "application/zip": [".zip"],
+      "application/x-zip-compressed": [".zip"],
+    },
+    disabled: isExtracting,
+  });
+
+  if (isExtracting) return <DropzoneLoading />;
+
+  return (
+    <div
+      {...getRootProps()}
+      className={`group relative w-full border-4 border-dashed transition-all duration-300 ease-in-out flex flex-col items-center justify-center min-h-400px cursor-pointer neo-border overflow-hidden
+        ${
+          isDragReject
+            ? "border-destructive bg-destructive/5"
+            : isDragActive
+              ? "border-(--accent-color) bg-(--accent-color)/5 scale-[1.01] neo-shadow-accent"
+              : "border-border bg-muted/5 hover:bg-muted/10 hover:border-foreground/30"
+        }`}
+    >
+      <input {...getInputProps()} />
+      <DropzoneContent isDragActive={isDragActive} isDragReject={isDragReject} />
+
+      {externalError && <DropzoneError message={externalError} />}
+    </div>
+  );
+}
+</file>
+
 <file path="frontend/src/system/organisms/Extractor/Inspector/index.tsx">
 import { useState } from "react";
 import { ExtractedPromptData } from "@/src/features/extractor/utils/parsers/types";
@@ -8738,6 +8691,64 @@ export function UniversalMediaCard({
 }
 </file>
 
+<file path="frontend/src/system/organisms/Modal/UpgradeModal.tsx">
+import { IconSparkles, IconX } from "@tabler/icons-react";
+
+interface UpgradeModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  title?: string;
+  message?: React.ReactNode;
+}
+
+export function UpgradeModal({ 
+  isOpen, 
+  onClose, 
+  title = "¡Acelera tu flujo de trabajo!", 
+  message = "Pásate al plan Artist para desbloquear funcionalidades premium"
+}: UpgradeModalProps) {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-100 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+      <div className="relative w-full max-w-lg bg-background rounded-2xl shadow-2xl border border-border p-8 text-center animate-in fade-in zoom-in-95 duration-200">
+        
+        <button 
+          onClick={onClose}
+          className="absolute top-4 right-4 p-2 text-muted-foreground hover:bg-muted rounded-full transition-colors"
+        >
+          <IconX size={20} />
+        </button>
+
+        <div className="mx-auto w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mb-6">
+          <IconSparkles size={32} className="text-primary" />
+        </div>
+
+        <h2 className="text-2xl font-black text-foreground mb-4">
+          {title}
+        </h2>
+        
+        <div className="text-muted-foreground mb-8">
+          {message}
+        </div>
+
+        <div className="flex flex-col gap-3">
+          <button className="w-full bg-accent/20 font-mono text-accent py-3 rounded-xl font-bold hover:bg-accent/30 neo-border border-accent! transition-all">
+            Desbloquear Plan Artist
+          </button>
+          <button 
+            onClick={onClose}
+            className="w-full text-muted-foreground py-3 font-medium hover:text-foreground transition-colors"
+          >
+            Quizás más tarde
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+</file>
+
 <file path="frontend/src/system/organisms/Navbar/Navbar.tsx">
 "use client";
 
@@ -8781,6 +8792,68 @@ export function Navbar() {
         <NavbarMobile />
       </div>
     </nav>
+  );
+}
+</file>
+
+<file path="frontend/src/system/organisms/Studio/BulkActionBar.tsx">
+import { IconTrash, IconDownload, IconX } from "@tabler/icons-react";
+import { FadeIn } from "../../atoms/FadeIn"; // Tu atom de animación
+
+interface BulkActionBarProps {
+  selectedCount: number;
+  onClearSelection: () => void;
+  onDeleteSelected: () => void;
+  onDownloadSelected: () => void;
+  isDeleting?: boolean;
+}
+
+export function BulkActionBar({
+  selectedCount,
+  onClearSelection,
+  onDeleteSelected,
+  onDownloadSelected,
+  isDeleting = false,
+}: BulkActionBarProps) {
+  if (selectedCount === 0) return null;
+
+  return (
+    // 🟢 CORRECCIÓN: Usamos tu FadeIn y le pasamos el posicionamiento fixed
+    <FadeIn>
+      <div className="bg-foreground text-background px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-6 border border-border/20">
+        {/* Contador y Cancelar */}
+        <div className="flex items-center gap-3 pr-6 border-r border-background/20">
+          <span className="font-bold whitespace-nowrap">{selectedCount} seleccionadas</span>
+          <button
+            onClick={onClearSelection}
+            className="p-1 hover:bg-background/20 rounded-full transition-colors"
+            title="Cancelar selección"
+          >
+            <IconX size={18} />
+          </button>
+        </div>
+
+        {/* Acciones */}
+        <div className="flex items-center gap-4">
+          <button
+            onClick={onDownloadSelected}
+            className="flex items-center gap-2 text-sm font-medium hover:text-brand-blue transition-colors"
+          >
+            <IconDownload size={20} />
+            Descargar ZIP
+          </button>
+
+          <button
+            onClick={onDeleteSelected}
+            disabled={isDeleting}
+            className="flex items-center gap-2 text-sm font-medium text-red-400 hover:text-red-300 transition-colors disabled:opacity-50"
+          >
+            <IconTrash size={20} />
+            {isDeleting ? "Borrando..." : "Borrar"}
+          </button>
+        </div>
+      </div>
+    </FadeIn>
   );
 }
 </file>
@@ -10285,6 +10358,37 @@ export function GoogleAuthButton() {
 }
 </file>
 
+<file path="frontend/src/features/studio/hooks/usePublicPrompt.ts">
+import { useState, useEffect } from "react";
+import { api } from "@/src/services/api";
+import { SavedPrompt } from "@/src/types/models";
+
+export function usePublicPrompt(promptId: string) {
+  const [data, setData] = useState<SavedPrompt | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setIsLoading(true);
+
+    api
+      .getPublicPromptDetail(promptId)
+      .then((res: any) => {
+        const promptReal = res.prompt && typeof res.prompt === "object" ? res.prompt : res;
+        setData(promptReal);
+      })
+      .catch((err: any) => {
+        console.error("Error fetching prompt:", err);
+        setError("El prompt no existe o es privado.");
+        setData(null);
+      })
+      .finally(() => setIsLoading(false));
+  }, [promptId]);
+
+  return { data, isLoading, error };
+}
+</file>
+
 <file path="frontend/src/system/atoms/Navbar/NavbarActions.tsx">
 "use client";
 
@@ -10779,77 +10883,6 @@ export function usePublicFeed(query: string) {
 }
 </file>
 
-<file path="frontend/src/features/studio/hooks/useStudio.ts">
-import { useState, useEffect, useCallback } from "react";
-import { api } from "@/src/services/api";
-import { SavedPrompt, Collection } from "@/src/types/models";
-import { handleError } from "@/src/utils/errors/ErrorHandler";
-import { toast } from "react-hot-toast/headless";
-
-export function useStudio() {
-  const [prompts, setPrompts] = useState<SavedPrompt[]>([]);
-  const [collections, setCollections] = useState<Collection[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetchPrompts = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const [promptsRes, collectionsRes] = await Promise.all([
-        api.getMyPrompt(),
-        api.getMyCollections(),
-      ]);
-      setPrompts(promptsRes);
-      setCollections(collectionsRes.collections || []);
-
-    } catch (err: unknown) {
-      const msg = handleError(err, "useStudio");
-      setError(msg);
-      
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  const assignToCollection = async (promptId: number, collectionId: number | null) => {
-    try {
-      await api.assignPromptToCollection(promptId, collectionId);
-      setPrompts((prev) =>
-        prev.map((p) => (p.id === promptId ? { ...p, collection_id: collectionId } : p)),
-      );
-      toast.success("Imagen movida correctamente");
-    } catch (error) {
-      toast.error("Error al mover la imagen");
-    }
-  };
-
-  const deletePrompt = async (id: number) => {
-    try {
-      await api.deletePrompt(id);
-      setPrompts((prev) => prev.filter((p) => p.id !== id));
-    } catch (err: unknown) {
-      handleError(err, "BorrarPrompt");
-      alert("No se pudo eliminar el prompt.");
-    }
-  };
-
-  useEffect(() => {
-    fetchPrompts();
-  }, [fetchPrompts]);
-
-  return {
-    prompts,
-    collections,
-    isLoading,
-    error,
-    refetch: fetchPrompts,
-    assignToCollection,
-    deletePrompt,
-  };
-}
-</file>
-
 <file path="frontend/src/services/api/downloads.ts">
 import { fetchSeguro } from "./client";
 import { ENV } from "@/src/services/config/env";
@@ -11034,117 +11067,6 @@ export default function PublicCollectionPage({
 }
 </file>
 
-<file path="frontend/app/[lang]/(main)/[username]/page.tsx">
-"use client";
-
-import { use } from "react";
-import Link from "next/link";
-import { PageLoader } from "@/src/system/atoms/PageLoader";
-import { IconPhotoOff, IconFolder } from "@tabler/icons-react";
-
-import { PromptCard } from "@/src/system/organisms/Studio/PromptCard";
-import { usePublicProfile } from "@/src/features/studio/hooks/usePublicProfile";
-import { Breadcrumbs } from "@/src/system/organisms/Navigation/Breadcrumbs";
-
-export default function PublicProfilePage({
-  params,
-}: {
-  params: Promise<{ lang: string; username: string; index: number }>;
-}) {
-  const { lang, username } = use(params);
-
-  const { data, isLoading, error } = usePublicProfile(username);
-
-  if (isLoading) {
-    return <PageLoader text="Sincronizando perfil..." />;
-  }
-
-  if (error || !data) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center font-mono gap-4">
-        <p className="text-red-500">
-          {error || "Este usuario no existe o se ha perdido en el vacío."}
-        </p>
-        <Link
-          href={`/${lang}`}
-          className="text-(--accent-color) hover:underline uppercase text-xs tracking-widest"
-        >
-          ← Volver al inicio
-        </Link>
-      </div>
-    );
-  }
-
-  const breadcrumbItems = [{ label: `@${data.user.username}` }];
-
-  return (
-    <main className="min-h-screen bg-background p-4 md:p-8">
-      <div className="max-w-7xl mx-auto space-y-8">
-        <div>
-          <Breadcrumbs items={breadcrumbItems} />
-        </div>
-
-        <header className="flex flex-col gap-2 border-b border-border pb-8">
-          <h1 className="text-4xl font-black tracking-tighter">@{data.user.username}</h1>
-          <p className="text-muted-foreground font-mono text-sm uppercase tracking-widest">
-            {data.user.role}
-          </p>
-        </header>
-
-        {data.collections.length > 0 && (
-          <section className="space-y-4">
-            <h2 className="text-sm font-mono font-bold uppercase tracking-widest flex items-center gap-2">
-              <IconFolder size={18} className="text-(--accent-color)" /> Colecciones
-            </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-              {data.collections.map((col) => (
-                <Link
-                  key={col.id}
-                  href={`/${lang}/${username}/${col.slug}`}
-                  className="group p-4 bg-muted/10 neo-border hover:bg-muted/30 transition-colors"
-                >
-                  <h3 className="font-bold text-lg group-hover:text-(--accent-color) transition-colors">
-                    {col.name}
-                  </h3>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {col.description || "Sin descripción"}
-                  </p>
-                </Link>
-              ))}
-            </div>
-          </section>
-        )}
-
-        <section className="space-y-4">
-          <h2 className="text-sm font-mono font-bold uppercase tracking-widest">
-            Últimas Generaciones
-          </h2>
-          {data.recent_prompts.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-20 text-muted-foreground/50 bg-muted/5 rounded-xl border border-dashed border-border/50">
-              <IconPhotoOff size={48} stroke={1} className="mb-4" />
-              <p className="font-mono text-xs uppercase tracking-widest">No hay prompts públicos</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-6">
-              {data.recent_prompts.map((prompt, index) => (
-                <PromptCard
-                  key={prompt.id}
-                  item={prompt}
-                  index={index}
-                  isPriority={index < 6}
-                  lang={lang}
-                  authorUsername={username}
-                />
-              ))}
-            </div>
-          )}
-        </section>
-      </div>
-    </main>
-  );
-}
-</file>
-
 <file path="frontend/app/[lang]/(main)/reprompt/page.tsx">
 "use client";
 
@@ -11221,6 +11143,279 @@ export default function RepromptPage({ params }: { params: Promise<{ lang: strin
       </div>
     </main>
   );
+}
+</file>
+
+<file path="frontend/app/globals.css">
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+/* ============================
+   1. VARIABLES DE TEMA
+   ============================ */
+:root {
+  --brand-bg: #fefdf3;
+  --brand-text: #1d1f21;
+  --brand-muted: #f4f4f5;
+  
+  --brand-muted-text: #4c4c4c;
+  
+  --brand-border: #1d1f21;
+  
+  --brand-accent: #084c51;
+  
+  --brand-shadow: #dc3b6e;
+
+  --background: var(--brand-bg);
+  --foreground: var(--brand-text);
+
+  --card: var(--brand-bg);
+  --card-foreground: var(--brand-text);
+
+  --popover: var(--brand-bg);
+  --popover-foreground: var(--brand-text);
+
+  --primary: var(--brand-accent);
+  --primary-foreground: #ffffff;
+
+  --secondary: var(--brand-muted);
+  --secondary-foreground: var(--brand-text);
+
+  --muted: var(--brand-muted);
+  --muted-foreground: var(--brand-muted-text);
+
+  --accent: var(--brand-accent);
+  --accent-foreground: #ffffff;
+
+  --destructive: #ef4444;
+
+  --border: var(--brand-border);
+  --input: var(--brand-border);
+  --ring: var(--brand-accent);
+
+  --radius: 0.5rem;
+}
+
+/* ================
+   2. MODO OSCURO
+   ================ */
+.dark {
+  --brand-bg: #111111;
+  --brand-text: #e7e7e7;
+  --brand-muted: #171717;
+  
+  --brand-muted-text: #898989;
+  
+  --brand-border: #3f3f46;
+  
+  --brand-accent: #1bccd8;
+  
+  --brand-shadow: #272727;
+
+  --primary-foreground: #000000;
+  --accent-foreground: #000000;
+}
+
+/* =========================================
+   3. ESTILOS BASE Y ACCESIBILIDAD (WCAG)
+   ========================================= */
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans), Arial, Helvetica, sans-serif;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+/* =========================================
+   4. CLASES DE UTILIDAD PERSONALIZADAS
+   ========================================= */
+.neo-border {
+  border: 2px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.neo-shadow {
+  box-shadow: 4px 4px 0px 0px var(--brand-shadow);
+  transition: all 0.2s ease-in-out;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .neo-shadow:hover {
+    transform: translate(2px, 2px);
+    box-shadow: 2px 2px 0px 0px var(--brand-shadow);
+  }
+}
+
+.neo-shadow-accent {
+  box-shadow: 4px 4px 0px 0px var(--brand-accent);
+}
+
+/* ============================
+   5. BARRAS DE DESPLAZAMIENTO
+   ============================ */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--background);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--muted-foreground);
+}
+
+/* ============================
+   6. CONFIGURACIÓN DE TAILWIND
+   ============================ */
+@theme inline {
+
+  --font-prompt: var(--font-prompt);
+
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-destructive: var(--destructive);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+
+  --animate-ai-shimmer: ai-shimmer 2.5s ease-in-out infinite;
+}
+
+@keyframes ai-shimmer {
+  0% {
+    background-position: -200% center;
+  }
+
+  100% {
+    background-position: 200% center;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+}
+</file>
+
+<file path="frontend/src/features/studio/hooks/useStudio.ts">
+import { useState, useEffect, useCallback } from "react";
+import { api } from "@/src/services/api";
+import { SavedPrompt, Collection } from "@/src/types/models";
+import { handleError } from "@/src/utils/errors/ErrorHandler";
+import { toast } from "react-hot-toast"; // o react-hot-toast/headless según tu setup
+
+export function useStudio() {
+  const [prompts, setPrompts] = useState<SavedPrompt[]>([]);
+  const [collections, setCollections] = useState<Collection[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const [isDeletingBatch, setIsDeletingBatch] = useState(false);
+
+  const fetchPrompts = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const [promptsRes, collectionsRes] = await Promise.all([
+        api.getMyPrompt(),
+        api.getMyCollections(),
+      ]);
+      setPrompts(promptsRes);
+      setCollections(collectionsRes.collections || []);
+    } catch (err: unknown) {
+      const msg = handleError(err, "useStudio");
+      setError(msg);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  const assignToCollection = async (promptId: number, collectionId: number | null) => {
+    try {
+      await api.assignPromptToCollection(promptId, collectionId);
+      setPrompts((prev) =>
+        prev.map((p) => (p.id === promptId ? { ...p, collection_id: collectionId } : p)),
+      );
+      toast.success("Imagen movida correctamente");
+    } catch (error) {
+      toast.error("Error al mover la imagen");
+    }
+  };
+
+  const deletePrompt = async (id: number) => {
+    try {
+      await api.deletePrompt(id);
+      setPrompts((prev) => prev.filter((p) => p.id !== id));
+      toast.success("Prompt eliminado");
+    } catch (err: unknown) {
+      handleError(err, "BorrarPrompt");
+      toast.error("No se pudo eliminar el prompt.");
+    }
+  };
+
+  const deletePromptsBatch = async (ids: number[]) => {
+    setIsDeletingBatch(true);
+    try {
+      await api.deletePromptsBatch(ids);
+
+      setPrompts((prev) => prev.filter((p) => !ids.includes(p.id)));
+      toast.success(`${ids.length} imágenes eliminadas`);
+      return true;
+    } catch (err) {
+      handleError(err, "BorrarLote");
+      toast.error("Error al borrar las imágenes");
+      return false;
+    } finally {
+      setIsDeletingBatch(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchPrompts();
+  }, [fetchPrompts]);
+
+  return {
+    prompts,
+    collections,
+    isLoading,
+    error,
+    refetch: fetchPrompts,
+    assignToCollection,
+    deletePrompt,
+    isDeletingBatch,
+    deletePromptsBatch,
+  };
 }
 </file>
 
@@ -11458,243 +11653,6 @@ export const config = {
 };
 </file>
 
-<file path="backend/app/api/routes_public.py">
-# backend/app/api/routes_public.py
-from fastapi import APIRouter, Depends, HTTPException
-from sqlmodel import Session, select, or_, func
-from app.core.db import get_session
-from app.models.user import User
-from app.models.collection import Collection
-from app.models.prompt import ImagePrompt
-from app.api.deps import get_optional_user, get_optional_user
-from typing import Optional
-
-router = APIRouter()
-
-
-@router.get("/profile/{username}")
-def get_public_profile(username: str, session: Session = Depends(get_session)):
-    """Devuelve los datos públicos de un usuario, sus colecciones y sus prompts recientes."""
-    user = session.exec(select(User).where(User.username == username)).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="Usuario no encontrado")
-
-    # 1. Colecciones Públicas
-    collections = session.exec(
-        select(Collection)
-        .where(Collection.user_id == user.id)
-        .where(Collection.is_private == False)
-    ).all()
-
-    # 2. Prompts Públicos (Que no estén en una colección o que su colección sea pública)
-    statement = (
-        select(ImagePrompt)
-        .outerjoin(Collection, ImagePrompt.collection_id == Collection.id)
-        .where(ImagePrompt.user_id == user.id)
-        .where(or_(ImagePrompt.collection_id == None, Collection.is_private == False))
-        .order_by(ImagePrompt.created_at.desc())
-        .limit(50)  # Traemos los últimos 50 para el escaparate
-    )
-    prompts = session.exec(statement).all()
-
-    return {
-        "status": "success",
-        "user": {"username": user.username, "role": user.role, "tier": user.tier},
-        "collections": collections,
-        "recent_prompts": prompts,
-    }
-
-
-@router.get("/profile/{username}/{collection_slug}")
-def get_public_collection(
-    username: str,
-    collection_slug: str,
-    session: Session = Depends(get_session),
-    current_user: User = Depends(get_optional_user),
-):
-    """Devuelve una colección específica siempre y cuando sea pública."""
-    user = session.exec(select(User).where(User.username == username)).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="Usuario no encontrado")
-
-    collection = session.exec(
-        select(Collection)
-        .where(Collection.user_id == user.id)
-        .where(Collection.slug == collection_slug)
-        .where(Collection.is_private == False)
-    ).first()
-
-    if not collection:
-        raise HTTPException(
-            status_code=404, detail="Colección no encontrada o es privada"
-        )
-
-    if collection.is_private:
-        if not current_user or current_user.id != collection.user_id:
-            raise HTTPException(
-                status_code=403, detail="Esta colección es privada o no existe."
-            )
-
-    prompts = session.exec(
-        select(ImagePrompt)
-        .where(ImagePrompt.collection_id == collection.id)
-        .order_by(ImagePrompt.created_at.desc())
-    ).all()
-
-    return {
-        "status": "success",
-        "user": {"username": user.username},
-        "collection": collection,
-        "prompts": prompts,
-    }
-
-
-@router.get("/prompt/{prompt_id}")
-def get_public_prompt_detail(
-    prompt_id: int,
-    session: Session = Depends(get_session),
-    current_user: User = Depends(get_optional_user),
-):
-    """Devuelve el detalle de un prompt, su metadata, y las imágenes relacionadas (Colección y Usuario)"""
-
-    # 1. Buscar la imagen
-    prompt = session.exec(
-        select(ImagePrompt).where(ImagePrompt.id == prompt_id)
-    ).first()
-    if not prompt:
-        raise HTTPException(status_code=404, detail="Imagen no encontrada")
-
-    # 2. Buscar al dueño
-    user = session.exec(select(User).where(User.id == prompt.user_id)).first()
-
-    # 3. Validar privacidad y buscar relacionadas de la Colección
-    collection = None
-    related_collection = []
-
-    if prompt.collection_id:
-        collection = session.exec(
-            select(Collection).where(Collection.id == prompt.collection_id)
-        ).first()
-        if collection and collection.is_private:
-            if not current_user or current_user.id != collection.user_id:
-                raise HTTPException(
-                    status_code=403,
-                    detail="Esta imagen pertenece a una colección privada",
-                )
-
-        # Otras imágenes de esta misma colección
-        related_collection = session.exec(
-            select(ImagePrompt)
-            .where(ImagePrompt.collection_id == prompt.collection_id)
-            .where(ImagePrompt.id != prompt.id)
-            .order_by(ImagePrompt.created_at.desc())
-            .limit(6)
-        ).all()
-
-    # 4. Otras imágenes públicas del mismo Usuario
-    statement = (
-        select(ImagePrompt)
-        .outerjoin(Collection, ImagePrompt.collection_id == Collection.id)
-        .where(ImagePrompt.user_id == user.id)
-        .where(ImagePrompt.id != prompt.id)
-        .where(or_(ImagePrompt.collection_id == None, Collection.is_private == False))
-        .order_by(ImagePrompt.created_at.desc())
-        .limit(12)
-    )
-    related_user = session.exec(statement).all()
-
-    return {
-        "status": "success",
-        "prompt": prompt,
-        "user": {"username": user.username, "role": user.role},
-        "collection": collection,
-        "related_collection": related_collection,
-        "related_user": related_user,
-    }
-
-
-@router.get("/feed")
-def get_public_feed(
-    include_self: bool = False,
-    limit: int = 50,
-    session: Session = Depends(get_session),
-    current_user: Optional[User] = Depends(get_optional_user),
-):
-    """Devuelve un mix de Prompts sueltos y Colecciones para la Home optimizado"""
-
-    query_col = (
-        select(Collection, User)
-        .join(User, Collection.user_id == User.id)
-        .where(Collection.is_private == False)
-    )
-
-    query_prompt = (
-        select(ImagePrompt, User)
-        .join(User, ImagePrompt.user_id == User.id)
-        .where(ImagePrompt.collection_id == None)
-    )
-
-    if current_user and not include_self:
-        query_col = query_col.where(User.id != current_user.id)
-        query_prompt = query_prompt.where(User.id != current_user.id)
-
-    collections = session.exec(
-        query_col.order_by(Collection.created_at.desc()).limit(limit)
-    ).all()
-    prompts = session.exec(
-        query_prompt.order_by(ImagePrompt.created_at.desc()).limit(limit)
-    ).all()
-
-    feed = []
-
-    for col, user in collections:
-        count_statement = select(func.count(ImagePrompt.id)).where(
-            ImagePrompt.collection_id == col.id
-        )
-        items_count = session.exec(count_statement).one()
-
-        cover_url = session.exec(
-            select(ImagePrompt.image_url)
-            .where(ImagePrompt.collection_id == col.id)
-            .order_by(ImagePrompt.created_at.desc())
-            .limit(1)
-        ).first()
-
-        feed.append(
-            {
-                "type": "collection",
-                "id": f"col_{col.id}",
-                "raw_id": col.id,
-                "created_at": str(col.created_at),
-                "title": col.name,
-                "slug": col.slug,
-                "username": user.username,
-                "image_url": cover_url,
-                "items_count": items_count,
-            }
-        )
-
-    for p, user in prompts:
-        feed.append(
-            {
-                "type": "prompt",
-                "id": f"prompt_{p.id}",
-                "raw_id": p.id,
-                "created_at": str(p.created_at),
-                "title": p.title,
-                "prompt": p.prompt,
-                "username": user.username,
-                "image_url": p.image_url,
-                "model": p.model,
-                "resolution": p.resolution,
-            }
-        )
-
-    feed.sort(key=lambda x: x["created_at"], reverse=True)
-
-    return {"status": "success", "feed": feed[:limit]}
-</file>
-
 <file path="frontend/app/[lang]/(main)/[username]/p/[prompt_id]/page.tsx">
 "use client";
 
@@ -11776,6 +11734,117 @@ export default function PromptDetailPage({ params, searchParams }: PromptDetailP
             <PromptMetadataPanel prompt={prompt} />
           </section>
         </div>
+      </div>
+    </main>
+  );
+}
+</file>
+
+<file path="frontend/app/[lang]/(main)/[username]/page.tsx">
+"use client";
+
+import { use } from "react";
+import Link from "next/link";
+import { PageLoader } from "@/src/system/atoms/PageLoader";
+import { IconPhotoOff, IconFolder } from "@tabler/icons-react";
+
+import { PromptCard } from "@/src/system/organisms/Studio/PromptCard";
+import { usePublicProfile } from "@/src/features/studio/hooks/usePublicProfile";
+import { Breadcrumbs } from "@/src/system/organisms/Navigation/Breadcrumbs";
+
+export default function PublicProfilePage({
+  params,
+}: {
+  params: Promise<{ lang: string; username: string; index: number }>;
+}) {
+  const { lang, username } = use(params);
+
+  const { data, isLoading, error } = usePublicProfile(username);
+
+  if (isLoading) {
+    return <PageLoader text="Sincronizando perfil..." />;
+  }
+
+  if (error || !data) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center font-mono gap-4">
+        <p className="text-red-500">
+          {error || "Este usuario no existe o se ha perdido en el vacío."}
+        </p>
+        <Link
+          href={`/${lang}`}
+          className="text-(--accent-color) hover:underline uppercase text-xs tracking-widest"
+        >
+          ← Volver al inicio
+        </Link>
+      </div>
+    );
+  }
+
+  const breadcrumbItems = [{ label: `@${data.user.username}` }];
+
+  return (
+    <main className="min-h-screen bg-background p-4 md:p-8">
+      <div className="max-w-7xl mx-auto space-y-8">
+        <div>
+          <Breadcrumbs items={breadcrumbItems} />
+        </div>
+
+        <header className="flex flex-col gap-2 border-b border-border pb-8">
+          <h1 className="text-4xl font-black tracking-tighter">@{data.user.username}</h1>
+          <p className="text-muted-foreground font-mono text-sm uppercase tracking-widest">
+            {data.user.role}
+          </p>
+        </header>
+
+        {data.collections.length > 0 && (
+          <section className="space-y-4">
+            <h2 className="text-sm font-mono font-bold uppercase tracking-widest flex items-center gap-2">
+              <IconFolder size={18} className="text-(--accent-color)" /> Colecciones
+            </h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+              {data.collections.map((col) => (
+                <Link
+                  key={col.id}
+                  href={`/${lang}/${username}/${col.slug}`}
+                  className="group p-4 bg-muted/10 neo-border hover:bg-muted/30 transition-colors"
+                >
+                  <h3 className="font-bold text-lg group-hover:text-(--accent-color) transition-colors">
+                    {col.name}
+                  </h3>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {col.description || "Sin descripción"}
+                  </p>
+                </Link>
+              ))}
+            </div>
+          </section>
+        )}
+
+        <section className="space-y-4">
+          <h2 className="text-sm text-accent font-mono font-bold uppercase tracking-widest">
+            Últimas Generaciones
+          </h2>
+          {data.recent_prompts.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-20 text-muted-foreground/50 bg-muted/5 rounded-xl border border-dashed border-border/50">
+              <IconPhotoOff size={48} stroke={1} className="mb-4" />
+              <p className="font-mono text-xs uppercase tracking-widest">No hay prompts públicos</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+              {data.recent_prompts.map((prompt, index) => (
+                <PromptCard
+                  key={prompt.id}
+                  item={prompt}
+                  index={index}
+                  isPriority={index < 6}
+                  lang={lang}
+                  authorUsername={username}
+                />
+              ))}
+            </div>
+          )}
+        </section>
       </div>
     </main>
   );
@@ -12153,6 +12222,374 @@ export function BatchInspector({
 }
 </file>
 
+<file path="Makefile">
+# ==========================================
+# 🐳 DOCKER: ORQUESTACIÓN Y RESETEOS
+# ==========================================
+.PHONY: up build stop down restart reset nuke add-backend
+
+up:
+	@echo "🚀 Levantando contenedores (Build normal)..."
+	docker-compose up
+
+add-backend:
+	@if [ -z "$(pkg)" ]; then echo "❌ Error: Falta el paquete. Uso: make add-backend pkg=nombre_paquete"; exit 1; fi
+	docker compose exec backend pip install $(pkg)
+	docker compose exec backend sh -c "pip freeze > requirements.txt"
+
+build:
+	@echo "🔨 Construyendo contenedores sin cache..."
+	docker-compose build --no-cache
+
+stop:
+	@echo "⏸️  Pausando contenedores (Sin borrarlos)..."
+	docker-compose stop
+
+down:
+	@echo "🛑 Deteniendo y eliminando contenedores de la red..."
+	docker-compose down
+
+restart:
+	@echo "⚡ RESETEO RÁPIDO: Reiniciando servicios sin reconstruir..."
+	docker-compose restart
+
+reset:
+	@echo "🔄 Reiniciando el frontend limpiamente..."
+	docker-compose stop frontend
+	docker-compose rm -f frontend
+	docker-compose build --no-cache frontend
+	docker-compose up -d frontend
+
+nuke:
+	@echo "💣 DESTRUCCIÓN TOTAL: Borrando contenedores, volúmenes, redes e imágenes huérfanas..."
+	docker-compose down -v --remove-orphans --rmi local
+	@echo "🏗️ Reconstruyendo desde cero absoluto..."
+	docker-compose build --no-cache
+	docker-compose up -d
+
+# ==========================================
+# 📊 LOGS Y MONITOREO
+# ==========================================
+.PHONY: log-back log-front log-back-30 log-front-30 stats mem-check clean-docker
+
+log-back:
+	@echo "📜 Mostrando logs del Backend en vivo..."
+	docker-compose logs -f backend
+
+log-front:
+	@echo "📜 Mostrando logs del Frontend en vivo..."
+	docker-compose logs -f frontend
+
+log-back-30:
+	@echo "📜 Mostrando los últimos 30 logs del Backend..."b
+	docker-compose logs --tail=30 -f backend
+
+log-front-30:
+	@echo "📜 Mostrando los últimos 30 logs del Frontend..."
+	docker-compose logs --tail=30 -f frontend
+
+stats:
+	@echo "📈 Monitoreando uso de CPU y Memoria en vivo (Presiona CTRL+C para salir)..."
+	docker stats
+
+mem-check:
+	@echo "💾 Inspeccionando espacio ocupado por Docker en el disco duro..."
+	docker system df
+
+clean-docker:
+	@echo "🧹 Realizando limpieza profunda de Docker (Caché, imágenes sin uso, contenedores parados)..."
+	docker system prune -a -f --volumes
+
+# ==========================================
+# 📦 REPOMIX: EXTRACCIÓN DE PROYECTO
+# ==========================================
+.PHONY: repofront repoback repoall
+
+repofront:
+	@echo "🧠 Extrayendo código del Frontend..."
+	npx repomix frontend -o repomix-frontend.xml
+
+repoback:
+	@echo "🧠 Extrayendo código del Backend..."
+	npx repomix backend -o repomix-backend.xml
+
+repoall:
+	@echo "🧠 Extrayendo TODO el proyecto..."
+	npx repomix . -o repomix-full.xml
+
+# ==========================================
+# ⚙️ MANTENIMIENTO E INSTALACIONES
+# ==========================================
+.PHONY: installfront
+
+installfront:
+	@echo "📦 Instalando dependencias del frontend limpiamente..."
+	cd frontend && rm -rf node_modules package-lock.json && npm install
+
+# ==========================================
+# 🐙 GIT: AUTOMATIZACIÓN DE CONTROL DE VERSIONES
+# ==========================================
+.PHONY: git
+
+git:
+	@echo "🔍 Analizando estado del repositorio..."
+	git status -s
+	@echo "📦 Añadiendo cambios al Stage..."
+	git add .
+	@echo "📝 Generando commit dinámico..."
+	@FILES=$$(git diff --cached --name-only | tr '\n' ', ' | sed 's/, $$//'); \
+	if [ -z "$$FILES" ]; then \
+		echo "⚠️ No hay cambios para commitear."; \
+	else \
+		BRANCH=$$(git rev-parse --abbrev-ref HEAD); \
+		echo "🚀 Commiteando en la rama: $$BRANCH"; \
+		git commit -m "auto-refactor: actualiza $$FILES"; \
+		echo "☁️ Subiendo a origin/$$BRANCH..."; \
+		git push origin $$BRANCH; \
+		echo "✅ ¡Sincronización completada con éxito!"; \
+	fi
+</file>
+
+<file path="backend/app/api/routes_public.py">
+# backend/app/api/routes_public.py
+from fastapi import APIRouter, Depends, HTTPException
+from sqlmodel import Session, select, or_, func
+from app.core.db import get_session
+from app.models.user import User
+from app.models.collection import Collection
+from app.models.prompt import ImagePrompt
+from app.api.deps import get_optional_user, get_optional_user
+from typing import Optional
+
+router = APIRouter()
+
+
+@router.get("/profile/{username}")
+def get_public_profile(username: str, session: Session = Depends(get_session)):
+    """Devuelve los datos públicos de un usuario, sus colecciones y sus prompts recientes."""
+    user = session.exec(select(User).where(User.username == username)).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+
+    # 1. Colecciones Públicas
+    collections = session.exec(
+        select(Collection)
+        .where(Collection.user_id == user.id)
+        .where(Collection.is_private == False)
+    ).all()
+
+    # 2. Prompts Públicos (Que no estén en una colección o que su colección sea pública)
+    statement = (
+        select(ImagePrompt)
+        .outerjoin(Collection, ImagePrompt.collection_id == Collection.id)
+        .where(ImagePrompt.user_id == user.id)
+        .where(or_(ImagePrompt.collection_id == None, Collection.is_private == False))
+        .order_by(ImagePrompt.created_at.desc())
+        .limit(50)  # Traemos los últimos 50 para el escaparate
+    )
+    prompts = session.exec(statement).all()
+
+    return {
+        "status": "success",
+        "user": {
+            "username": user.username,
+            "role": user.role.value if hasattr(user.role, "value") else user.role
+        },
+        "collections": collections,
+        "recent_prompts": prompts,
+    }
+
+
+@router.get("/profile/{username}/{collection_slug}")
+def get_public_collection(
+    username: str,
+    collection_slug: str,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_optional_user),
+):
+    """Devuelve una colección específica siempre y cuando sea pública."""
+    user = session.exec(select(User).where(User.username == username)).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+
+    collection = session.exec(
+        select(Collection)
+        .where(Collection.user_id == user.id)
+        .where(Collection.slug == collection_slug)
+        .where(Collection.is_private == False)
+    ).first()
+
+    if not collection:
+        raise HTTPException(
+            status_code=404, detail="Colección no encontrada o es privada"
+        )
+
+    if collection.is_private:
+        if not current_user or current_user.id != collection.user_id:
+            raise HTTPException(
+                status_code=403, detail="Esta colección es privada o no existe."
+            )
+
+    prompts = session.exec(
+        select(ImagePrompt)
+        .where(ImagePrompt.collection_id == collection.id)
+        .order_by(ImagePrompt.created_at.desc())
+    ).all()
+
+    return {
+        "status": "success",
+        "user": {"username": user.username},
+        "collection": collection,
+        "prompts": prompts,
+    }
+
+
+@router.get("/prompt/{prompt_id}")
+def get_public_prompt_detail(
+    prompt_id: int,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_optional_user),
+):
+    """Devuelve el detalle de un prompt, su metadata, y las imágenes relacionadas (Colección y Usuario)"""
+
+    # 1. Buscar la imagen
+    prompt = session.exec(
+        select(ImagePrompt).where(ImagePrompt.id == prompt_id)
+    ).first()
+    if not prompt:
+        raise HTTPException(status_code=404, detail="Imagen no encontrada")
+
+    # 2. Buscar al dueño
+    user = session.exec(select(User).where(User.id == prompt.user_id)).first()
+
+    # 3. Validar privacidad y buscar relacionadas de la Colección
+    collection = None
+    related_collection = []
+
+    if prompt.collection_id:
+        collection = session.exec(
+            select(Collection).where(Collection.id == prompt.collection_id)
+        ).first()
+        if collection and collection.is_private:
+            if not current_user or current_user.id != collection.user_id:
+                raise HTTPException(
+                    status_code=403,
+                    detail="Esta imagen pertenece a una colección privada",
+                )
+
+        # Otras imágenes de esta misma colección
+        related_collection = session.exec(
+            select(ImagePrompt)
+            .where(ImagePrompt.collection_id == prompt.collection_id)
+            .where(ImagePrompt.id != prompt.id)
+            .order_by(ImagePrompt.created_at.desc())
+            .limit(6)
+        ).all()
+
+    # 4. Otras imágenes públicas del mismo Usuario
+    statement = (
+        select(ImagePrompt)
+        .outerjoin(Collection, ImagePrompt.collection_id == Collection.id)
+        .where(ImagePrompt.user_id == user.id)
+        .where(ImagePrompt.id != prompt.id)
+        .where(or_(ImagePrompt.collection_id == None, Collection.is_private == False))
+        .order_by(ImagePrompt.created_at.desc())
+        .limit(12)
+    )
+    related_user = session.exec(statement).all()
+
+    return {
+        "status": "success",
+        "prompt": prompt,
+        "user": {"username": user.username, "role": user.role},
+        "collection": collection,
+        "related_collection": related_collection,
+        "related_user": related_user,
+    }
+
+
+@router.get("/feed")
+def get_public_feed(
+    include_self: bool = False,
+    limit: int = 50,
+    session: Session = Depends(get_session),
+    current_user: Optional[User] = Depends(get_optional_user),
+):
+    """Devuelve un mix de Prompts sueltos y Colecciones para la Home optimizado"""
+
+    query_col = (
+        select(Collection, User)
+        .join(User, Collection.user_id == User.id)
+        .where(Collection.is_private == False)
+    )
+
+    query_prompt = (
+        select(ImagePrompt, User)
+        .join(User, ImagePrompt.user_id == User.id)
+        .where(ImagePrompt.collection_id == None)
+    )
+
+    if current_user and not include_self:
+        query_col = query_col.where(User.id != current_user.id)
+        query_prompt = query_prompt.where(User.id != current_user.id)
+
+    collections = session.exec(
+        query_col.order_by(Collection.created_at.desc()).limit(limit)
+    ).all()
+    prompts = session.exec(
+        query_prompt.order_by(ImagePrompt.created_at.desc()).limit(limit)
+    ).all()
+
+    feed = []
+
+    for col, user in collections:
+        count_statement = select(func.count(ImagePrompt.id)).where(
+            ImagePrompt.collection_id == col.id
+        )
+        items_count = session.exec(count_statement).one()
+
+        cover_url = session.exec(
+            select(ImagePrompt.image_url)
+            .where(ImagePrompt.collection_id == col.id)
+            .order_by(ImagePrompt.created_at.desc())
+            .limit(1)
+        ).first()
+
+        feed.append(
+            {
+                "type": "collection",
+                "id": f"col_{col.id}",
+                "raw_id": col.id,
+                "created_at": str(col.created_at),
+                "title": col.name,
+                "slug": col.slug,
+                "username": user.username,
+                "image_url": cover_url,
+                "items_count": items_count,
+            }
+        )
+
+    for p, user in prompts:
+        feed.append(
+            {
+                "type": "prompt",
+                "id": f"prompt_{p.id}",
+                "raw_id": p.id,
+                "created_at": str(p.created_at),
+                "title": p.title,
+                "prompt": p.prompt,
+                "username": user.username,
+                "image_url": p.image_url,
+                "model": p.model,
+                "resolution": p.resolution,
+            }
+        )
+
+    feed.sort(key=lambda x: x["created_at"], reverse=True)
+
+    return {"status": "success", "feed": feed[:limit]}
+</file>
+
 <file path="backend/app/core/db.py">
 import os
 import logging
@@ -12204,188 +12641,6 @@ engine = create_engine(
 def get_session():
     with Session(engine) as session:
         yield session
-</file>
-
-<file path="frontend/app/globals.css">
-@import "tailwindcss";
-@import "tw-animate-css";
-@import "shadcn/tailwind.css";
-
-@custom-variant dark (&:is(.dark *));
-
-/* ============================
-   1. VARIABLES DE TEMA
-   ============================ */
-:root {
-  --brand-bg: #fefdf3;
-  --brand-text: #1d1f21;
-  --brand-muted: #f4f4f5;
-  
-  --brand-muted-text: #4c4c4c;
-  
-  --brand-border: #1d1f21;
-  
-  --brand-accent: #084c51;
-  
-  --brand-shadow: #dc3b6e;
-
-  --background: var(--brand-bg);
-  --foreground: var(--brand-text);
-
-  --card: var(--brand-bg);
-  --card-foreground: var(--brand-text);
-
-  --popover: var(--brand-bg);
-  --popover-foreground: var(--brand-text);
-
-  --primary: var(--brand-accent);
-  --primary-foreground: #ffffff;
-
-  --secondary: var(--brand-muted);
-  --secondary-foreground: var(--brand-text);
-
-  --muted: var(--brand-muted);
-  --muted-foreground: var(--brand-muted-text);
-
-  --accent: var(--brand-accent);
-  --accent-foreground: #ffffff;
-
-  --destructive: #ef4444;
-
-  --border: var(--brand-border);
-  --input: var(--brand-border);
-  --ring: var(--brand-accent);
-
-  --radius: 0.5rem;
-}
-
-/* ================
-   2. MODO OSCURO
-   ================ */
-.dark {
-  --brand-bg: #111111;
-  --brand-text: #e7e7e7;
-  --brand-muted: #171717;
-  
-  --brand-muted-text: #898989;
-  
-  --brand-border: #3f3f46;
-  
-  --brand-accent: #1bccd8;
-  
-  --brand-shadow: #272727;
-
-  --primary-foreground: #000000;
-  --accent-foreground: #000000;
-}
-
-/* =========================================
-   3. ESTILOS BASE Y ACCESIBILIDAD (WCAG)
-   ========================================= */
-body {
-  background-color: var(--background);
-  color: var(--foreground);
-  font-family: var(--font-sans), Arial, Helvetica, sans-serif;
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  html {
-    scroll-behavior: smooth;
-  }
-}
-
-/* =========================================
-   4. CLASES DE UTILIDAD PERSONALIZADAS
-   ========================================= */
-.neo-border {
-  border: 2px solid var(--border);
-  border-radius: var(--radius);
-}
-
-.neo-shadow {
-  box-shadow: 4px 4px 0px 0px var(--brand-shadow);
-  transition: all 0.2s ease-in-out;
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .neo-shadow:hover {
-    transform: translate(2px, 2px);
-    box-shadow: 2px 2px 0px 0px var(--brand-shadow);
-  }
-}
-
-.neo-shadow-accent {
-  box-shadow: 4px 4px 0px 0px var(--brand-accent);
-}
-
-/* ============================
-   5. BARRAS DE DESPLAZAMIENTO
-   ============================ */
-::-webkit-scrollbar {
-  width: 8px;
-}
-
-::-webkit-scrollbar-track {
-  background: var(--background);
-}
-
-::-webkit-scrollbar-thumb {
-  background: var(--border);
-  border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: var(--muted-foreground);
-}
-
-/* ============================
-   6. CONFIGURACIÓN DE TAILWIND
-   ============================ */
-@theme inline {
-
-  --font-prompt: var(--font-prompt);
-
-  --color-border: var(--border);
-  --color-input: var(--input);
-  --color-ring: var(--ring);
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-primary: var(--primary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-secondary: var(--secondary);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-destructive: var(--destructive);
-  --color-muted: var(--muted);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-accent: var(--accent);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-popover: var(--popover);
-  --color-popover-foreground: var(--popover-foreground);
-  --color-card: var(--card);
-  --color-card-foreground: var(--card-foreground);
-
-  --radius-sm: calc(var(--radius) * 0.6);
-  --radius-md: calc(var(--radius) * 0.8);
-  --radius-lg: var(--radius);
-
-  --animate-ai-shimmer: ai-shimmer 2.5s ease-in-out infinite;
-}
-
-@keyframes ai-shimmer {
-  0% {
-    background-position: -200% center;
-  }
-
-  100% {
-    background-position: 200% center;
-  }
-}
-
-@layer base {
-  * {
-    @apply border-border outline-ring/50;
-  }
-}
 </file>
 
 <file path="frontend/src/system/molecules/Cards/FeedItemCard.tsx">
@@ -12579,134 +12834,6 @@ export function LoginForm() {
     </div>
   );
 }
-</file>
-
-<file path="Makefile">
-# ==========================================
-# 🐳 DOCKER: ORQUESTACIÓN Y RESETEOS
-# ==========================================
-.PHONY: up build stop down restart reset nuke add-backend
-
-up:
-	@echo "🚀 Levantando contenedores (Build normal)..."
-	docker-compose up
-
-add-backend:
-	@if [ -z "$(pkg)" ]; then echo "❌ Error: Falta el paquete. Uso: make add-backend pkg=nombre_paquete"; exit 1; fi
-	docker compose exec backend pip install $(pkg)
-	docker compose exec backend sh -c "pip freeze > requirements.txt"
-
-build:
-	@echo "🔨 Construyendo contenedores sin cache..."
-	docker-compose build --no-cache
-
-stop:
-	@echo "⏸️  Pausando contenedores (Sin borrarlos)..."
-	docker-compose stop
-
-down:
-	@echo "🛑 Deteniendo y eliminando contenedores de la red..."
-	docker-compose down
-
-restart:
-	@echo "⚡ RESETEO RÁPIDO: Reiniciando servicios sin reconstruir..."
-	docker-compose restart
-
-reset:
-	@echo "🔄 Reiniciando el frontend limpiamente..."
-	docker-compose stop frontend
-	docker-compose rm -f frontend
-	docker-compose build --no-cache frontend
-	docker-compose up -d frontend
-
-nuke:
-	@echo "💣 DESTRUCCIÓN TOTAL: Borrando contenedores, volúmenes, redes e imágenes huérfanas..."
-	docker-compose down -v --remove-orphans --rmi local
-	@echo "🏗️ Reconstruyendo desde cero absoluto..."
-	docker-compose build --no-cache
-	docker-compose up -d
-
-# ==========================================
-# 📊 LOGS Y MONITOREO
-# ==========================================
-.PHONY: log-back log-front log-back-30 log-front-30 stats mem-check clean-docker
-
-log-back:
-	@echo "📜 Mostrando logs del Backend en vivo..."
-	docker-compose logs -f backend
-
-log-front:
-	@echo "📜 Mostrando logs del Frontend en vivo..."
-	docker-compose logs -f frontend
-
-log-back-30:
-	@echo "📜 Mostrando los últimos 30 logs del Backend..."b
-	docker-compose logs --tail=30 -f backend
-
-log-front-30:
-	@echo "📜 Mostrando los últimos 30 logs del Frontend..."
-	docker-compose logs --tail=30 -f frontend
-
-stats:
-	@echo "📈 Monitoreando uso de CPU y Memoria en vivo (Presiona CTRL+C para salir)..."
-	docker stats
-
-mem-check:
-	@echo "💾 Inspeccionando espacio ocupado por Docker en el disco duro..."
-	docker system df
-
-clean-docker:
-	@echo "🧹 Realizando limpieza profunda de Docker (Caché, imágenes sin uso, contenedores parados)..."
-	docker system prune -a -f --volumes
-
-# ==========================================
-# 📦 REPOMIX: EXTRACCIÓN DE PROYECTO
-# ==========================================
-.PHONY: repofront repoback repoall
-
-repofront:
-	@echo "🧠 Extrayendo código del Frontend..."
-	npx repomix frontend -o repomix-frontend.xml
-
-repoback:
-	@echo "🧠 Extrayendo código del Backend..."
-	npx repomix backend -o repomix-backend.xml
-
-repoall:
-	@echo "🧠 Extrayendo TODO el proyecto..."
-	npx repomix . -o repomix-full.xml
-
-# ==========================================
-# ⚙️ MANTENIMIENTO E INSTALACIONES
-# ==========================================
-.PHONY: installfront
-
-installfront:
-	@echo "📦 Instalando dependencias del frontend limpiamente..."
-	cd frontend && rm -rf node_modules package-lock.json && npm install
-
-# ==========================================
-# 🐙 GIT: AUTOMATIZACIÓN DE CONTROL DE VERSIONES
-# ==========================================
-.PHONY: git
-
-git:
-	@echo "🔍 Analizando estado del repositorio..."
-	git status -s
-	@echo "📦 Añadiendo cambios al Stage..."
-	git add .
-	@echo "📝 Generando commit dinámico..."
-	@FILES=$$(git diff --cached --name-only | tr '\n' ', ' | sed 's/, $$//'); \
-	if [ -z "$$FILES" ]; then \
-		echo "⚠️ No hay cambios para commitear."; \
-	else \
-		BRANCH=$$(git rev-parse --abbrev-ref HEAD); \
-		echo "🚀 Commiteando en la rama: $$BRANCH"; \
-		git commit -m "auto-refactor: actualiza $$FILES"; \
-		echo "☁️ Subiendo a origin/$$BRANCH..."; \
-		git push origin $$BRANCH; \
-		echo "✅ ¡Sincronización completada con éxito!"; \
-	fi
 </file>
 
 <file path="repomix-frontend.txt">
@@ -22113,434 +22240,6 @@ export default async function RootLayout({
 }
 </file>
 
-<file path="frontend/src/system/organisms/Studio/PromptCard.tsx">
-"use client";
-
-import { useState } from "react";
-import Link from "next/link";
-import {
-  IconCopy,
-  IconTrash,
-  IconCheck,
-  IconPhoto,
-  IconFolderPlus,
-  IconExternalLink,
-} from "@tabler/icons-react";
-import { SavedPrompt, Collection } from "@/src/types/models";
-import { LazyImage } from "../../molecules/Media/LazyImage";
-
-interface PromptCardProps {
-  item: SavedPrompt;
-  collections?: Collection[];
-  onDelete?: (id: number) => void;
-  onAssign?: (promptId: number, collectionId: number | null) => void;
-  isPriority: boolean;
-  index: number;
-  lang?: string;
-  isStudio?: boolean;
-  authorUsername?: string;
-}
-
-export function PromptCard({
-  item,
-  collections = [],
-  onAssign,
-  onDelete,
-  index = 0,
-  isPriority = false,
-  lang = "es",
-  isStudio = false,
-  authorUsername = "unknown",
-}: PromptCardProps) {
-  const [copied, setCopied] = useState(false);
-  const [isHovered, setIsHovered] = useState(false);
-
-  const queryParam = isStudio ? "?from=studio" : "";
-  const href = `/${lang}/${authorUsername}/p/${item.id}${queryParam}`;
-
-  const handleCopy = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (item.prompt) {
-      navigator.clipboard.writeText(item.prompt);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    }
-  };
-
-  return (
-    <div
-      className="group relative flex flex-col bg-background rounded-xl border border-border shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden"
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
-    >
-      <Link href={href} className="absolute inset-0 z-0">
-        <span className="sr-only">Ver detalles del prompt {item.title}</span>
-      </Link>
-
-      <div className="relative aspect-square sm:aspect-4/5 bg-muted/10 overflow-hidden z-10 pointer-events-none">
-        {item.image_url ? (
-          <LazyImage
-            src={item.image_url}
-            alt={item.title}
-            className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-101"
-            index={index}
-            priority={isPriority}
-          />
-        ) : (
-          <div className="w-full h-full flex flex-col items-center justify-center text-muted-foreground/50">
-            <IconPhoto size={48} stroke={1} />
-            <span className="text-xs font-mono mt-2">Sin imagen</span>
-          </div>
-        )}
-
-        <div
-          className={`absolute inset-0 bg-black/20 transition-opacity duration-300 ${isHovered ? "opacity-100" : "opacity-0"}`}
-        />
-
-        {onAssign && collections.length > 0 && (
-          <div
-            className={`absolute top-3 left-3 transition-opacity duration-300 pointer-events-auto z-20 ${isHovered ? "opacity-100" : "opacity-0"}`}
-          >
-            <div className="relative flex items-center bg-background/90 backdrop-blur-sm border border-border/50 rounded-md overflow-hidden shadow-sm">
-              <div className="pl-2 text-muted-foreground">
-                <IconFolderPlus size={14} />
-              </div>
-              <select
-                className="bg-transparent text-[10px] font-bold uppercase tracking-widest text-foreground py-1.5 pl-1 pr-4 focus:outline-none cursor-pointer appearance-none"
-                value={item.collection_id || ""}
-                onChange={(e) => onAssign(item.id, e.target.value ? Number(e.target.value) : null)}
-                onClick={(e) => e.stopPropagation()}
-              >
-                <option value="">Suelto</option>
-                {collections.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-        )}
-
-        {item.software && (
-          <div
-            className={`absolute top-3 left-3 transition-opacity duration-300 z-20 ${isHovered ? "opacity-100" : "opacity-0"}`}
-          >
-            <span className="bg-background/90 backdrop-blur-sm text-foreground text-[10px] font-bold px-2.5 py-1 rounded-md border border-border/50 uppercase tracking-widest shadow-sm">
-              {item.software}
-            </span>
-          </div>
-        )}
-
-        <div
-          className={`absolute bottom-3 right-3 transition-opacity duration-300 z-20 ${isHovered ? "opacity-100" : "opacity-0"}`}
-        >
-          <Link
-            href={href}
-            className="bg-background/90 backdrop-blur-sm text-foreground p-2 rounded-full border border-border/50 transition-colors shadow-sm pointer-events-auto hover:bg-accent"
-          >
-            <IconExternalLink size={16} stroke={1.5} />
-          </Link>
-        </div>
-
-        {onDelete && (
-          <div
-            className={`absolute top-3 right-3 transition-opacity duration-300 pointer-events-auto z-20 ${isHovered ? "opacity-100" : "opacity-0"}`}
-          >
-            <button
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                if (window.confirm("¿Seguro que deseas eliminar este prompt de Mi Studio?")) {
-                  onDelete(item.id);
-                }
-              }}
-              className="bg-background/90 backdrop-blur-sm hover:bg-red-500/10 hover:text-red-500 text-foreground p-2 rounded-full border border-border/50 transition-colors shadow-sm"
-              title="Eliminar"
-            >
-              <IconTrash size={16} stroke={1.5} />
-            </button>
-          </div>
-        )}
-      </div>
-
-      <div className="p-5 flex flex-col grow gap-4 z-10 pointer-events-none">
-        <div>
-          <h3 className="font-bold text-base tracking-tight truncate" title={item.title}>
-            {item.title}
-          </h3>
-          <div className="flex items-center gap-2 mt-1">
-            <span className="text-xs text-muted-foreground truncate">
-              {item.model || "Modelo desconocido"}
-            </span>
-            {item.sampler && (
-              <>
-                <span className="text-muted-foreground/30 text-[10px]">•</span>
-                <span className="text-xs text-muted-foreground truncate">{item.sampler}</span>
-              </>
-            )}
-          </div>
-        </div>
-
-        <div className="relative group/prompt bg-muted/30 rounded-lg p-3 border border-border/50 mt-auto pointer-events-auto">
-          <p className="text-xs font-mono text-foreground/80 line-clamp-3 leading-relaxed">
-            {item.prompt || <span className="italic opacity-50">Sin prompt</span>}
-          </p>
-
-          {item.prompt && (
-            <button
-              onClick={handleCopy}
-              className="absolute top-2 right-2 p-1.5 bg-background border border-border rounded-md shadow-sm opacity-0 group-hover/prompt:opacity-100 hover:bg-accent hover:text-accent-foreground transition-all"
-              title="Copiar Prompt"
-            >
-              {copied ? (
-                <IconCheck size={14} className="text-green-500" stroke={2} />
-              ) : (
-                <IconCopy size={14} stroke={1.5} />
-              )}
-            </button>
-          )}
-        </div>
-
-        <div className="flex justify-between items-center text-[10px] text-muted-foreground font-mono uppercase tracking-widest pt-1 pointer-events-auto">
-          <span>{new Date(item.created_at).toLocaleDateString()}</span>
-          {item.resolution && <span>{item.resolution}</span>}
-        </div>
-      </div>
-    </div>
-  );
-}
-</file>
-
-<file path="frontend/app/[lang]/(main)/studio/page.tsx">
-"use client";
-
-import { use, useState } from "react";
-import { useStudio } from "@/src/features/studio/hooks/useStudio";
-import { PromptCard } from "@/src/system/organisms/Studio/PromptCard";
-import { CreateCollectionModal } from "@/src/system/molecules/Cards/CreateCollectionModal";
-import { IconPlus, IconLock, IconAlbum, IconScanTraces } from "@tabler/icons-react";
-import { useAuthStore } from "@/src/store/authStore";
-import Link from "next/link";
-import { PageLoader } from "@/src/system/atoms/PageLoader";
-import { Breadcrumbs } from "@/src/system/organisms/Navigation/Breadcrumbs";
-
-export default function StudioPage({ params }: { params: Promise<{ lang: string }> }) {
-  const { lang } = use(params);
-  const user = useAuthStore((state: any) => state.user);
-  const { prompts, collections, isLoading, error, deletePrompt, assignToCollection, refetch } =
-    useStudio();
-  const [isModalOpen, setIsModalOpen] = useState(false);
-
-  const breadcrumbItems = [{ label: "Mi Studio" }];
-
-  if (isLoading) return <PageLoader text="Cargando Metadata ..." />;
-
-  if (error) {
-    throw new Error(error);
-  }
-
-  return (
-    <main className="min-h-screen bg-background p-4 md:p-8">
-      <div className="max-w-7xl mx-auto space-y-8">
-        {" "}
-        <div>
-          <Breadcrumbs items={breadcrumbItems} />
-        </div>
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-border pb-8 mt-4">
-          <div>
-            <h1 className="text-3xl font-black tracking-tighter flex items-center gap-3">
-              <IconAlbum className="text-(--accent-color)" size={32} /> Mi Studio
-            </h1>
-            <p className="text-muted-foreground mt-1">Gestiona tus prompts y galerías.</p>
-          </div>
-
-          <div className="flex gap-3">
-            <Link
-              href={`/${lang}/reprompt`}
-              className="bg-background border border-border hover:bg-muted/30 text-foreground px-4 py-2 rounded-md font-mono text-sm font-bold uppercase tracking-widest transition-colors flex items-center gap-2"
-            >
-              <IconScanTraces size={18} /> Extraer Más
-            </Link>
-            <button
-              onClick={() => setIsModalOpen(true)}
-              className="bg-(--accent-color) text-white px-4 py-2 rounded-md font-mono text-sm font-bold uppercase tracking-widest hover:bg-opacity-90 transition-colors flex items-center gap-2"
-            >
-              <IconPlus size={18} /> Nueva Colección
-            </button>
-          </div>
-        </div>
-        {collections.length > 0 && (
-          <section className="space-y-4">
-            <h2 className="text-sm font-mono font-bold uppercase tracking-widest text-muted-foreground">
-              Tus Colecciones
-            </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-              {collections.map((col) => (
-                <div
-                  key={col.id}
-                  className="p-4 bg-background border border-border rounded-xl hover:shadow-md transition-shadow relative"
-                >
-                  {col.is_private && (
-                    <IconLock
-                      size={14}
-                      className="absolute top-4 right-4 text-muted-foreground/50"
-                    />
-                  )}
-                  <h3 className="font-bold text-lg">{col.name}</h3>
-                  <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
-                    {col.description || "Sin descripción"}
-                  </p>
-                  <div className="mt-4 pt-4 border-t border-border/50 flex justify-between items-center text-xs font-mono">
-                    <span className="text-muted-foreground">
-                      {prompts.filter((p) => p.collection_id === col.id).length} items
-                    </span>
-                    <Link
-                      href={`/${lang}/${user?.username}/${col.slug}`}
-                      className="text-(--accent-color) hover:underline"
-                    >
-                      Ver Pública &rarr;
-                    </Link>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
-        <section className="space-y-4">
-          <h2 className="text-sm font-mono font-bold uppercase tracking-widest text-muted-foreground">
-            Todos tus Prompts
-          </h2>
-          {prompts.length === 0 ? (
-            <div className="text-center py-20 bg-muted/10 border border-dashed border-border rounded-xl">
-              <p className="text-muted-foreground font-mono">Aún no hay prompts guardados.</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-              {prompts.map((prompt, index) => (
-                <PromptCard
-                  key={prompt.id}
-                  item={prompt}
-                  collections={collections}
-                  index={index}
-                  isPriority={index < 6}
-                  onDelete={deletePrompt}
-                  onAssign={assignToCollection}
-                  lang={lang}
-                  isStudio={true}
-                  authorUsername={user?.username}
-                />
-              ))}
-            </div>
-          )}
-        </section>
-      </div>
-
-      <CreateCollectionModal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        onSuccess={refetch}
-      />
-    </main>
-  );
-}
-</file>
-
-<file path="frontend/src/services/api.ts">
-import { authApi } from "./api/auth";
-import { searchApi } from "./api/search";
-import { downloadApi } from "./api/downloads";
-import { promptApi } from "./api/prompts";
-import { API_URL, fetchSeguro } from "./api/client";
-
-const RESERVED_ROUTES = new Set([
-  "login",
-  "register",
-  "join",
-  "admin",
-  "studio",
-  "reprompt",
-  "api",
-  "_next",
-  "favicon.ico",
-]);
-
-export const api = {
-  ...authApi,
-  ...searchApi,
-  ...downloadApi,
-  ...promptApi,
-
-  getPublicProfile: async (username: string) => {
-    if (RESERVED_ROUTES.has(username.toLowerCase())) {
-      return Promise.reject(new Error("Ruta reservada del sistema"));
-    }
-    return fetchSeguro(`${API_URL}/public/profile/${username}`);
-  },
-
-  getPublicCollection: async (username: string, slug: string) => {
-    if (RESERVED_ROUTES.has(username.toLowerCase())) {
-      return Promise.reject(new Error("Ruta reservada del sistema"));
-    }
-    return fetchSeguro(`${API_URL}/public/profile/${username}/${slug}`);
-  },
-
-  getPublicPromptDetail: async (promptId: string) => {
-    return fetchSeguro(`${API_URL}/public/prompt/${promptId}`);
-  },
-
-  getPublicFeed: async (options?: { include_self?: boolean }) => {
-    const queryString = options?.include_self ? "?include_self=true" : "";
-    return fetchSeguro(`${API_URL}/public/feed${queryString}`);
-  },
-
-  createCollection: async (data: { name: string; description?: string; is_private: boolean }) => {
-    return fetchSeguro(`${API_URL}/collections`, {
-      method: "POST",
-      body: JSON.stringify(data),
-    });
-  },
-
-  getMyCollections: async () => {
-    return fetchSeguro(`${API_URL}/collections/`);
-  },
-
-  assignPromptToCollection: async (promptId: number, collectionId: number | null) => {
-    return fetchSeguro(`${API_URL}/collections/assign/${promptId}`, {
-      method: "PUT",
-      body: JSON.stringify({ collection_id: collectionId }),
-    });
-  },
-
-  verifyGoogleCode: async (data: { code: string }) => {
-    return fetchSeguro(`${API_URL}/auth/google/join`, {
-      method: "POST",
-      body: JSON.stringify(data),
-    });
-  },
-
-  getGoogleAuthUrl: async () => {
-    return fetchSeguro(`${API_URL}/auth/google`, {
-      method: "POST",
-    });
-  },
-  
-  reportBug: async (data: {
-    message: string;
-    stack?: string;
-    digest?: string;
-    url: string;
-    timestamp: string;
-  }) => {
-    return fetchSeguro(`${API_URL}/api/admin/bugs`, {
-      method: "POST",
-      body: JSON.stringify(data),
-    });
-  },
-};
-</file>
-
 <file path="repomix-backend.xml">
 This file is a merged representation of the entire codebase, combined into a single document by Repomix.
 
@@ -26110,10 +25809,503 @@ app.include_router(download_router, prefix="/api/download", tags=["Descargas"])
 app.include_router(collections_router, prefix="/api/collections", tags=["Colecciones"])
 </file>
 
+<file path="frontend/src/services/api.ts">
+import { authApi } from "./api/auth";
+import { searchApi } from "./api/search";
+import { downloadApi } from "./api/downloads";
+import { promptApi } from "./api/prompts";
+import { API_URL, fetchSeguro } from "./api/client";
+
+const RESERVED_ROUTES = new Set([
+  "login",
+  "register",
+  "join",
+  "admin",
+  "studio",
+  "reprompt",
+  "api",
+  "_next",
+  "favicon.ico",
+]);
+
+export const api = {
+  ...authApi,
+  ...searchApi,
+  ...downloadApi,
+  ...promptApi,
+
+  getPublicProfile: async (username: string) => {
+    if (RESERVED_ROUTES.has(username.toLowerCase())) {
+      return Promise.reject(new Error("Ruta reservada del sistema"));
+    }
+    return fetchSeguro(`${API_URL}/public/profile/${username}`);
+  },
+
+  getPublicCollection: async (username: string, slug: string) => {
+    if (RESERVED_ROUTES.has(username.toLowerCase())) {
+      return Promise.reject(new Error("Ruta reservada del sistema"));
+    }
+    return fetchSeguro(`${API_URL}/public/profile/${username}/${slug}`);
+  },
+
+  getPublicPromptDetail: async (promptId: string) => {
+    return fetchSeguro(`${API_URL}/public/prompt/${promptId}`);
+  },
+
+  getPublicFeed: async (options?: { include_self?: boolean }) => {
+    const queryString = options?.include_self ? "?include_self=true" : "";
+    return fetchSeguro(`${API_URL}/public/feed${queryString}`);
+  },
+
+  createCollection: async (data: { name: string; description?: string; is_private: boolean }) => {
+    return fetchSeguro(`${API_URL}/collections`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  },
+
+  getMyCollections: async () => {
+    return fetchSeguro(`${API_URL}/collections/`);
+  },
+
+  assignPromptToCollection: async (promptId: number, collectionId: number | null) => {
+    return fetchSeguro(`${API_URL}/collections/assign/${promptId}`, {
+      method: "PUT",
+      body: JSON.stringify({ collection_id: collectionId }),
+    });
+  },
+
+  deletePromptsBatch: async (prompt_ids: number[]) => {
+    return fetchSeguro(`${API_URL}/prompts/batch-delete`, {
+      method: "POST",
+      body: JSON.stringify({ prompt_ids }),
+    });
+  },
+
+  verifyGoogleCode: async (data: { code: string }) => {
+    return fetchSeguro(`${API_URL}/auth/google/join`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  },
+
+  getGoogleAuthUrl: async () => {
+    return fetchSeguro(`${API_URL}/auth/google`, {
+      method: "POST",
+    });
+  },
+
+  reportBug: async (data: {
+    message: string;
+    stack?: string;
+    digest?: string;
+    url: string;
+    timestamp: string;
+  }) => {
+    return fetchSeguro(`${API_URL}/admin/bugs`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  },
+};
+</file>
+
+<file path="frontend/src/system/organisms/Studio/PromptCard.tsx">
+"use client";
+
+import { useState } from "react";
+import Link from "next/link";
+import {
+  IconCopy,
+  IconTrash,
+  IconCheck,
+  IconPhoto,
+  IconDotsVertical,
+  IconFolder,
+} from "@tabler/icons-react";
+import { SavedPrompt, Collection } from "@/src/types/models";
+import { LazyImage } from "../../molecules/Media/LazyImage";
+
+interface PromptCardProps {
+  item: SavedPrompt;
+  collections?: Collection[];
+  onDelete?: (id: number) => void;
+  onAssign?: (promptId: number, collectionId: number | null) => void;
+  isPriority: boolean;
+  isSelected?: boolean;
+  onToggleSelect?: () => void;
+  selectionModeActive?: boolean;
+  index: number;
+  lang?: string;
+  isStudio?: boolean;
+  authorUsername?: string;
+}
+
+export function PromptCard({
+  item,
+  collections = [],
+  onAssign,
+  onDelete,
+  index = 0,
+  isPriority = false,
+  isSelected = false,
+  onToggleSelect,
+  selectionModeActive = false,
+  lang = "es",
+  isStudio = false,
+  authorUsername = "unknown",
+}: PromptCardProps) {
+  const [copied, setCopied] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+
+  const queryParam = isStudio ? "?from=studio" : "";
+  const href = `/${lang}/${authorUsername}/p/${item.id}${queryParam}`;
+
+  const handleCopy = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (item.prompt) {
+      navigator.clipboard.writeText(item.prompt);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  return (
+    <div
+      // 🟢 CORRECCIÓN 2: Quitamos "overflow-hidden" del padre para que el menú pueda salirse libremente
+      className="group relative flex flex-col bg-background rounded-xl border border-border shadow-sm hover:shadow-lg transition-all duration-300"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => {
+        setIsHovered(false);
+        setIsMenuOpen(false);
+      }}
+    >
+      <Link href={href} className="absolute inset-0 z-0">
+        <span className="sr-only">Ver detalles del prompt {item.title}</span>
+      </Link>
+
+      {(selectionModeActive || isHovered || isSelected) && (
+        <div
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onToggleSelect?.();
+          }}
+          className="absolute top-3 left-3 z-30 cursor-pointer pointer-events-auto transition-opacity duration-200"
+        >
+          <div
+            className={`w-6 h-6 rounded-full border-[1.5px] flex items-center justify-center transition-all shadow-sm ${
+              isSelected
+                ? "bg-(--accent-color) border-(--accent-color) text-white"
+                : "bg-black/40 border-white/80 hover:bg-black/60 text-white/0 hover:text-white/50"
+            }`}
+          >
+            <IconCheck
+              size={14}
+              stroke={3}
+              className={isSelected ? "opacity-100" : "opacity-0 group-hover:opacity-100"}
+            />
+          </div>
+        </div>
+      )}
+
+      {(onAssign || onDelete) && !selectionModeActive && (
+        <div
+          className={`absolute top-3 right-3 z-40 pointer-events-auto transition-opacity duration-300 ${isHovered || isMenuOpen ? "opacity-100" : "opacity-0"}`}
+        >
+          <button
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setIsMenuOpen(!isMenuOpen);
+            }}
+            className={`p-1.5 rounded-md backdrop-blur-md border shadow-sm transition-colors ${
+              isMenuOpen
+                ? "bg-background border-border text-foreground"
+                : "bg-black/40 border-white/20 text-white hover:bg-black/60"
+            }`}
+          >
+            <IconDotsVertical size={18} />
+          </button>
+
+          {isMenuOpen && (
+            <div
+              className="absolute top-full right-0 mt-2 w-48 bg-background border border-border rounded-xl shadow-xl overflow-hidden flex flex-col py-1 z-50 animate-in fade-in duration-200"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+              }}
+            >
+              {onAssign && collections.length > 0 && (
+                <div className="px-3 py-2 border-b border-border/10">
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1.5 flex items-center gap-1.5">
+                    <IconFolder size={12} /> Colección
+                  </label>
+                  <select
+                    className="w-full bg-muted/50 text-xs text-foreground p-1.5 rounded border border-border focus:outline-none focus:ring-1 focus:ring-(--accent-color) cursor-pointer"
+                    value={item.collection_id || ""}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                    }}
+                    onChange={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      onAssign(item.id, e.target.value ? Number(e.target.value) : null);
+                      setIsMenuOpen(false);
+                    }}
+                  >
+                    <option value="">Ninguna (Suelto)</option>
+                    {collections.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {onDelete && (
+                <button
+                  // 🟢 CORRECCIÓN 1: Devolvemos la protección del evento al botón y forzamos w-full
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (window.confirm("¿Seguro que deseas eliminar este prompt de Mi Studio?")) {
+                      onDelete(item.id);
+                    }
+                    setIsMenuOpen(false);
+                  }}
+                  className="flex w-full items-center gap-2 px-3 py-2.5 text-xs font-medium text-red-500 hover:bg-red-500/10 text-left transition-colors"
+                >
+                  <IconTrash size={14} /> Borrar del Studio
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      <div className="relative aspect-square sm:aspect-4/5 bg-muted/10 z-10 pointer-events-none rounded-t-xl overflow-hidden">
+        {item.image_url ? (
+          <LazyImage
+            src={item.image_url}
+            alt={item.title}
+            className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-101"
+            index={index}
+            priority={isPriority}
+          />
+        ) : (
+          <div className="w-full h-full flex flex-col items-center justify-center text-muted-foreground/50">
+            <IconPhoto size={48} stroke={1} />
+            <span className="text-xs font-mono mt-2">Sin imagen</span>
+          </div>
+        )}
+
+        <div
+          className={`absolute inset-0 bg-black/20 transition-opacity duration-300 ${isHovered || isMenuOpen ? "opacity-100" : "opacity-0"}`}
+        />
+      </div>
+
+      <div className="p-5 flex flex-col grow gap-4 z-10 pointer-events-none">
+        <div>
+          <h3 className="font-bold text-base tracking-tight truncate" title={item.title}>
+            {item.title}
+          </h3>
+          <div className="flex items-center gap-2 mt-1">
+            <span className="text-xs text-muted-foreground truncate">
+              {item.model || "Modelo desconocido"}
+            </span>
+            {item.sampler && (
+              <>
+                <span className="text-muted-foreground/30 text-[10px]">•</span>
+                <span className="text-xs text-muted-foreground truncate">{item.sampler}</span>
+              </>
+            )}
+          </div>
+        </div>
+
+        <div className="relative group/prompt bg-muted/30 rounded-lg p-3 border border-border/50 mt-auto pointer-events-auto">
+          <p className="text-xs font-mono text-foreground/80 line-clamp-3 leading-relaxed">
+            {item.prompt || <span className="italic opacity-50">Sin prompt</span>}
+          </p>
+
+          {item.prompt && (
+            <button
+              onClick={handleCopy}
+              className="absolute top-2 right-2 p-1.5 bg-background border border-border rounded-md shadow-sm opacity-0 group-hover/prompt:opacity-100 hover:bg-accent hover:text-accent-foreground transition-all"
+              title="Copiar Prompt"
+            >
+              {copied ? (
+                <IconCheck size={14} className="text-green-500" stroke={2} />
+              ) : (
+                <IconCopy size={14} stroke={1.5} />
+              )}
+            </button>
+          )}
+        </div>
+
+        <div className="flex justify-between items-center text-[10px] text-muted-foreground font-mono uppercase tracking-widest pt-1 pointer-events-auto">
+          <span>
+            {new Date(item.created_at).toLocaleDateString(lang === "es" ? "es-ES" : "en-US")}
+          </span>
+          {item.resolution && <span>{item.resolution}</span>}
+        </div>
+      </div>
+    </div>
+  );
+}
+</file>
+
+<file path="frontend/app/[lang]/(main)/studio/page.tsx">
+"use client";
+
+import { use, useState } from "react";
+import { useStudio } from "@/src/features/studio/hooks/useStudio";
+import { PromptCard } from "@/src/system/organisms/Studio/PromptCard";
+import { CreateCollectionModal } from "@/src/system/molecules/Cards/CreateCollectionModal";
+import { IconPlus, IconAlbum, IconScanTraces } from "@tabler/icons-react";
+import { useAuthStore } from "@/src/store/authStore";
+import Link from "next/link";
+import { PageLoader } from "@/src/system/atoms/PageLoader";
+import { Breadcrumbs } from "@/src/system/organisms/Navigation/Breadcrumbs";
+import { BulkActionBar } from "@/src/system/organisms/Studio/BulkActionBar";
+
+export default function StudioPage({ params }: { params: Promise<{ lang: string }> }) {
+  const { lang } = use(params);
+  const user = useAuthStore((state: any) => state.user);
+  const {
+    prompts,
+    collections,
+    isLoading,
+    error,
+    deletePrompt,
+    assignToCollection,
+    refetch,
+    deletePromptsBatch,
+    isDeletingBatch,
+  } = useStudio();
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  const [selectedIds, setSelectedIds] = useState<number[]>([]);
+
+  const breadcrumbItems = [{ label: "Mi Studio" }];
+
+  if (isLoading) return <PageLoader text="Cargando Metadata ..." />;
+  if (error) throw new Error(error);
+
+  const handleToggleSelect = (id: number) => {
+    setSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((pId) => pId !== id) : [...prev, id],
+    );
+  };
+
+  const handleBatchDelete = async () => {
+    if (
+      window.confirm(
+        `¿Seguro que deseas eliminar estas ${selectedIds.length} imágenes para siempre?`,
+      )
+    ) {
+      const success = await deletePromptsBatch(selectedIds);
+      if (success) {
+        setSelectedIds([]); // Vaciamos la selección para que desaparezca la barra
+      }
+    }
+  };
+
+  const handleClearSelection = () => setSelectedIds([]);
+
+  return (
+    <main className="min-h-screen bg-background p-4 md:p-8 relative pb-24">
+      <BulkActionBar
+        selectedCount={selectedIds.length}
+        onClearSelection={handleClearSelection}
+        onDeleteSelected={handleBatchDelete}
+        onDownloadSelected={() => console.log("Descargando IDs:", selectedIds)}
+        isDeleting={isDeletingBatch}
+      />
+
+      <div className="max-w-7xl mx-auto space-y-8">
+        <div>
+          <Breadcrumbs items={breadcrumbItems} />
+        </div>
+
+        {/* Cabecera ... (se mantiene igual) ... */}
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-border pb-8 mt-4">
+          <div>
+            <h1 className="text-3xl font-black tracking-tighter flex items-center gap-3">
+              <IconAlbum className="text-(--accent-color)" size={32} /> Mi Studio
+            </h1>
+            <p className="text-muted-foreground mt-1">
+              Gestiona tus <span className="font-mono font-medium text-accent">reprompt</span>.
+            </p>
+          </div>
+
+          <div className="flex gap-3">
+            <Link
+              href={`/${lang}/reprompt`}
+              className="bg-background border border-accent hover:bg-accent/20 text-accent px-4 py-2 rounded-md font-mono text-sm font-bold uppercase tracking-widest transition-colors flex items-center gap-2"
+            >
+              <IconScanTraces className="text-accent" size={18} /> reprompt
+            </Link>
+            <button
+              onClick={() => setIsModalOpen(true)}
+              className="bg-(--accent-color) text-foreground px-4 py-2 rounded-md font-mono text-sm font-bold uppercase tracking-widest hover:bg-opacity-90 hover:text-popover transition-colors flex items-center gap-2 cursor-pointer"
+            >
+              <IconPlus size={18} /> Crear Colección
+            </button>
+          </div>
+        </div>
+
+        <section className="space-y-4">
+          <h2 className="text-sm font-mono font-bold uppercase tracking-widest text-muted-foreground">
+            Todos tus Prompts
+          </h2>
+          {prompts.length === 0 ? (
+            <div className="text-center py-20 bg-muted/10 border border-dashed border-border rounded-xl">
+              <p className="text-muted-foreground font-mono">Aún no hay prompts guardados.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              {prompts.map((prompt, index) => (
+                <PromptCard
+                  key={prompt.id}
+                  item={prompt}
+                  collections={collections}
+                  index={index}
+                  isPriority={index < 6}
+                  onDelete={deletePrompt}
+                  onAssign={assignToCollection}
+                  lang={lang}
+                  isStudio={true}
+                  authorUsername={user?.username}
+                  isSelected={selectedIds.includes(prompt.id)}
+                  onToggleSelect={() => handleToggleSelect(prompt.id)}
+                  selectionModeActive={selectedIds.length > 0}
+                />
+              ))}
+            </div>
+          )}
+        </section>
+      </div>
+
+      <CreateCollectionModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onSuccess={refetch}
+      />
+    </main>
+  );
+}
+</file>
+
 <file path="backend/app/api/routes_prompt.py">
 import logging
 
 import uuid
+from typing import List
 from pydantic import BaseModel
 from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session, select
@@ -26132,6 +26324,10 @@ from app.services.storage import s3_client
 
 logger = logging.getLogger("routes_prompt")
 router = APIRouter()
+
+
+class BatchDeleteRequest(BaseModel):
+    prompt_ids: List[int]
 
 
 class PresignedUrlRequest(BaseModel):
@@ -26199,9 +26395,7 @@ def guardar_prompt(
     old_key = data.image_url.replace(base_url, "")
 
     if not old_key.startswith(f"temp/{current_user.id}/"):
-        raise HTTPException(
-            status_code=403, detail="No se puede guardar archivo"
-        )
+        raise HTTPException(status_code=403, detail="No se puede guardar archivo")
 
     if not is_valid:
         delete_file(old_key)
@@ -26295,6 +26489,43 @@ def eliminar_prompt(
     return {
         "status": "success",
         "message": "Prompt y archivo eliminados correctamente del studio",
+    }
+
+
+@router.post("/batch-delete")
+def eliminar_prompts_lote(
+    data: BatchDeleteRequest,
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    """Elimina múltiples prompts en una sola petición HTTP para no saturar la red."""
+    if not data.prompt_ids:
+        return {"status": "success", "message": "Ningún ID proporcionado"}
+
+    # Buscamos solo los prompts que pertenecen al usuario actual (Seguridad IDOR)
+    statement = select(ImagePrompt).where(
+        ImagePrompt.id.in_(data.prompt_ids), ImagePrompt.user_id == current_user.id
+    )
+    prompts_a_borrar = session.exec(statement).all()
+
+    if not prompts_a_borrar:
+        raise HTTPException(
+            status_code=404,
+            detail="No se encontraron las imágenes o no tienes permiso.",
+        )
+
+    # Borramos de R2 y de la Base de Datos
+    for prompt in prompts_a_borrar:
+        if prompt.image_url:
+            eliminar_de_r2(prompt.image_url)  # Liberamos espacio en Cloudflare
+        session.delete(prompt)
+
+    session.commit()  # Una sola transacción a Neon.tech
+
+    return {
+        "status": "success",
+        "message": f"{len(prompts_a_borrar)} prompts eliminados correctamente",
+        "deleted_ids": [p.id for p in prompts_a_borrar],
     }
 </file>
 
