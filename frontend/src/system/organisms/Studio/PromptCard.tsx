@@ -7,8 +7,8 @@ import {
   IconTrash,
   IconCheck,
   IconPhoto,
-  IconFolderPlus,
-  IconExternalLink,
+  IconDotsVertical,
+  IconFolder,
 } from "@tabler/icons-react";
 import { SavedPrompt, Collection } from "@/src/types/models";
 import { LazyImage } from "../../molecules/Media/LazyImage";
@@ -44,6 +44,7 @@ export function PromptCard({
 }: PromptCardProps) {
   const [copied, setCopied] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   const queryParam = isStudio ? "?from=studio" : "";
   const href = `/${lang}/${authorUsername}/p/${item.id}${queryParam}`;
@@ -60,36 +61,122 @@ export function PromptCard({
 
   return (
     <div
-      className="group relative flex flex-col bg-background rounded-xl border border-border shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden"
+      // 🟢 CORRECCIÓN 2: Quitamos "overflow-hidden" del padre para que el menú pueda salirse libremente
+      className="group relative flex flex-col bg-background rounded-xl border border-border shadow-sm hover:shadow-lg transition-all duration-300"
       onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
+      onMouseLeave={() => {
+        setIsHovered(false);
+        setIsMenuOpen(false);
+      }}
     >
       <Link href={href} className="absolute inset-0 z-0">
         <span className="sr-only">Ver detalles del prompt {item.title}</span>
       </Link>
 
-      {(selectionModeActive || isSelected) && (
+      {(selectionModeActive || isHovered || isSelected) && (
         <div
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
             onToggleSelect?.();
           }}
-          className="absolute top-2 left-2 z-30 cursor-pointer p-2 pointer-events-auto"
+          className="absolute top-3 left-3 z-30 cursor-pointer pointer-events-auto transition-opacity duration-200"
         >
           <div
-            className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all shadow-md ${
+            className={`w-6 h-6 rounded-full border-[1.5px] flex items-center justify-center transition-all shadow-sm ${
               isSelected
-                ? "bg-(--accent-color) border-(--accent-color)"
-                : "bg-black/50 border-white/70 hover:border-white hover:bg-black/70"
+                ? "bg-(--accent-color) border-(--accent-color) text-white"
+                : "bg-black/40 border-white/80 hover:bg-black/60 text-white/0 hover:text-white/50"
             }`}
           >
-            {isSelected && <IconCheck size={16} className="text-white" stroke={3} />}
+            <IconCheck
+              size={14}
+              stroke={3}
+              className={isSelected ? "opacity-100" : "opacity-0 group-hover:opacity-100"}
+            />
           </div>
         </div>
       )}
 
-      <div className="relative aspect-square sm:aspect-4/5 bg-muted/10 overflow-hidden z-10 pointer-events-none">
+      {(onAssign || onDelete) && !selectionModeActive && (
+        <div
+          className={`absolute top-3 right-3 z-40 pointer-events-auto transition-opacity duration-300 ${isHovered || isMenuOpen ? "opacity-100" : "opacity-0"}`}
+        >
+          <button
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setIsMenuOpen(!isMenuOpen);
+            }}
+            className={`p-1.5 rounded-md backdrop-blur-md border shadow-sm transition-colors ${
+              isMenuOpen
+                ? "bg-background border-border text-foreground"
+                : "bg-black/40 border-white/20 text-white hover:bg-black/60"
+            }`}
+          >
+            <IconDotsVertical size={18} />
+          </button>
+
+          {isMenuOpen && (
+            <div
+              className="absolute top-full right-0 mt-2 w-48 bg-background border border-border rounded-xl shadow-xl overflow-hidden flex flex-col py-1 z-50 animate-in fade-in duration-200"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+              }}
+            >
+              {onAssign && collections.length > 0 && (
+                <div className="px-3 py-2 border-b border-border/10">
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1.5 flex items-center gap-1.5">
+                    <IconFolder size={12} /> Colección
+                  </label>
+                  <select
+                    className="w-full bg-muted/50 text-xs text-foreground p-1.5 rounded border border-border focus:outline-none focus:ring-1 focus:ring-(--accent-color) cursor-pointer"
+                    value={item.collection_id || ""}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                    }}
+                    onChange={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      onAssign(item.id, e.target.value ? Number(e.target.value) : null);
+                      setIsMenuOpen(false);
+                    }}
+                  >
+                    <option value="">Ninguna (Suelto)</option>
+                    {collections.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {onDelete && (
+                <button
+                  // 🟢 CORRECCIÓN 1: Devolvemos la protección del evento al botón y forzamos w-full
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (window.confirm("¿Seguro que deseas eliminar este prompt de Mi Studio?")) {
+                      onDelete(item.id);
+                    }
+                    setIsMenuOpen(false);
+                  }}
+                  className="flex w-full items-center gap-2 px-3 py-2.5 text-xs font-medium text-red-500 hover:bg-red-500/10 text-left transition-colors"
+                >
+                  <IconTrash size={14} /> Borrar del Studio
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* 🟢 CORRECCIÓN 2b: Movemos el overflow-hidden y rounded-t-xl AQUÍ para que la imagen no rompa los bordes */}
+      <div className="relative aspect-square sm:aspect-4/5 bg-muted/10 z-10 pointer-events-none rounded-t-xl overflow-hidden">
         {item.image_url ? (
           <LazyImage
             src={item.image_url}
@@ -106,33 +193,8 @@ export function PromptCard({
         )}
 
         <div
-          className={`absolute inset-0 bg-black/20 transition-opacity duration-300 ${isHovered ? "opacity-100" : "opacity-0"}`}
+          className={`absolute inset-0 bg-black/20 transition-opacity duration-300 ${isHovered || isMenuOpen ? "opacity-100" : "opacity-0"}`}
         />
-
-        {onAssign && collections.length > 0 && !selectionModeActive && (
-          <div
-            className={`absolute top-3 left-3 transition-opacity duration-300 pointer-events-auto z-20 ${isHovered ? "opacity-100" : "opacity-0"}`}
-          >
-            <div className="relative flex items-center bg-background/90 backdrop-blur-sm border border-border/50 rounded-md overflow-hidden shadow-sm">
-              <div className="pl-2 text-muted-foreground">
-                <IconFolderPlus size={14} />
-              </div>
-              <select
-                className="bg-transparent text-[10px] font-bold uppercase tracking-widest text-foreground py-1.5 pl-1 pr-4 focus:outline-none cursor-pointer appearance-none"
-                value={item.collection_id || ""}
-                onChange={(e) => onAssign(item.id, e.target.value ? Number(e.target.value) : null)}
-                onClick={(e) => e.stopPropagation()}
-              >
-                <option value="">Suelto</option>
-                {collections.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-        )}
 
         {item.software && (
           <div
@@ -143,40 +205,8 @@ export function PromptCard({
             </span>
           </div>
         )}
-
-        <div
-          className={`absolute bottom-3 right-3 transition-opacity duration-300 z-20 ${isHovered ? "opacity-100" : "opacity-0"}`}
-        >
-          <Link
-            href={href}
-            className="bg-background/90 backdrop-blur-sm text-foreground p-2 rounded-full border border-border/50 transition-colors shadow-sm pointer-events-auto hover:bg-accent"
-          >
-            <IconExternalLink size={16} stroke={1.5} />
-          </Link>
-        </div>
-
-        {onDelete && (
-          <div
-            className={`absolute top-3 right-3 transition-opacity duration-300 pointer-events-auto z-20 ${isHovered ? "opacity-100" : "opacity-0"}`}
-          >
-            <button
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                if (window.confirm("¿Seguro que deseas eliminar este prompt de Mi Studio?")) {
-                  onDelete(item.id);
-                }
-              }}
-              className="bg-background/90 backdrop-blur-sm hover:bg-red-500/10 hover:text-red-500 text-foreground p-2 rounded-full border border-border/50 transition-colors shadow-sm"
-              title="Eliminar"
-            >
-              <IconTrash size={16} stroke={1.5} />
-            </button>
-          </div>
-        )}
       </div>
 
-      {/* ================= CAJA DE TEXTOS ================= */}
       <div className="p-5 flex flex-col grow gap-4 z-10 pointer-events-none">
         <div>
           <h3 className="font-bold text-base tracking-tight truncate" title={item.title}>
@@ -216,7 +246,9 @@ export function PromptCard({
         </div>
 
         <div className="flex justify-between items-center text-[10px] text-muted-foreground font-mono uppercase tracking-widest pt-1 pointer-events-auto">
-          <span>{new Date(item.created_at).toLocaleDateString(lang === "es" ? "es-ES" : "en-US")}</span>
+          <span>
+            {new Date(item.created_at).toLocaleDateString(lang === "es" ? "es-ES" : "en-US")}
+          </span>
           {item.resolution && <span>{item.resolution}</span>}
         </div>
       </div>

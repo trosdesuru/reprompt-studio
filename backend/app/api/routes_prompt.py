@@ -1,6 +1,7 @@
 import logging
 
 import uuid
+from typing import List
 from pydantic import BaseModel
 from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session, select
@@ -19,6 +20,10 @@ from app.services.storage import s3_client
 
 logger = logging.getLogger("routes_prompt")
 router = APIRouter()
+
+
+class BatchDeleteRequest(BaseModel):
+    prompt_ids: List[int]
 
 
 class PresignedUrlRequest(BaseModel):
@@ -86,9 +91,7 @@ def guardar_prompt(
     old_key = data.image_url.replace(base_url, "")
 
     if not old_key.startswith(f"temp/{current_user.id}/"):
-        raise HTTPException(
-            status_code=403, detail="No se puede guardar archivo"
-        )
+        raise HTTPException(status_code=403, detail="No se puede guardar archivo")
 
     if not is_valid:
         delete_file(old_key)
@@ -182,4 +185,41 @@ def eliminar_prompt(
     return {
         "status": "success",
         "message": "Prompt y archivo eliminados correctamente del studio",
+    }
+
+
+@router.post("/batch-delete")
+def eliminar_prompts_lote(
+    data: BatchDeleteRequest,
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    """Elimina múltiples prompts en una sola petición HTTP para no saturar la red."""
+    if not data.prompt_ids:
+        return {"status": "success", "message": "Ningún ID proporcionado"}
+
+    # Buscamos solo los prompts que pertenecen al usuario actual (Seguridad IDOR)
+    statement = select(ImagePrompt).where(
+        ImagePrompt.id.in_(data.prompt_ids), ImagePrompt.user_id == current_user.id
+    )
+    prompts_a_borrar = session.exec(statement).all()
+
+    if not prompts_a_borrar:
+        raise HTTPException(
+            status_code=404,
+            detail="No se encontraron las imágenes o no tienes permiso.",
+        )
+
+    # Borramos de R2 y de la Base de Datos
+    for prompt in prompts_a_borrar:
+        if prompt.image_url:
+            eliminar_de_r2(prompt.image_url)  # Liberamos espacio en Cloudflare
+        session.delete(prompt)
+
+    session.commit()  # Una sola transacción a Neon.tech
+
+    return {
+        "status": "success",
+        "message": f"{len(prompts_a_borrar)} prompts eliminados correctamente",
+        "deleted_ids": [p.id for p in prompts_a_borrar],
     }

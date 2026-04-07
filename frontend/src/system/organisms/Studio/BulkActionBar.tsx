@@ -1,5 +1,5 @@
 import { IconTrash, IconDownload, IconX } from "@tabler/icons-react";
-import { FadeIn } from "../../atoms/FadeIn";
+import { FadeIn } from "../../atoms/FadeIn"; // Tu atom de animación
 
 interface BulkActionBarProps {
   selectedCount: number;
@@ -19,7 +19,8 @@ export function BulkActionBar({
   if (selectedCount === 0) return null;
 
   return (
-    <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 animate-in slide-in-from-bottom-10 fade-in duration-300">
+    // 🟢 CORRECCIÓN: Usamos tu FadeIn y le pasamos el posicionamiento fixed
+    <FadeIn>
       <div className="bg-foreground text-background px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-6 border border-border/20">
         {/* Contador y Cancelar */}
         <div className="flex items-center gap-3 pr-6 border-r border-background/20">
@@ -53,6 +54,6 @@ export function BulkActionBar({
           </button>
         </div>
       </div>
-    </div>
+    </FadeIn>
   );
 }

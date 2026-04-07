@@ -63,6 +63,13 @@ export const api = {
     });
   },
 
+  deletePromptsBatch: async (prompt_ids: number[]) => {
+    return fetchSeguro(`${API_URL}/prompts/batch-delete`, {
+      method: "POST",
+      body: JSON.stringify({ prompt_ids }),
+    });
+  },
+
   verifyGoogleCode: async (data: { code: string }) => {
     return fetchSeguro(`${API_URL}/auth/google/join`, {
       method: "POST",
@@ -75,7 +82,7 @@ export const api = {
       method: "POST",
     });
   },
-  
+
   reportBug: async (data: {
     message: string;
     stack?: string;
@@ -83,7 +90,7 @@ export const api = {
     url: string;
     timestamp: string;
   }) => {
-    return fetchSeguro(`${API_URL}/api/admin/bugs`, {
+    return fetchSeguro(`${API_URL}/admin/bugs`, {
       method: "POST",
       body: JSON.stringify(data),
     });

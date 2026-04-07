@@ -4,7 +4,7 @@ import { use, useState } from "react";
 import { useStudio } from "@/src/features/studio/hooks/useStudio";
 import { PromptCard } from "@/src/system/organisms/Studio/PromptCard";
 import { CreateCollectionModal } from "@/src/system/molecules/Cards/CreateCollectionModal";
-import { IconPlus, IconLock, IconAlbum, IconScanTraces } from "@tabler/icons-react";
+import { IconPlus, IconAlbum, IconScanTraces } from "@tabler/icons-react";
 import { useAuthStore } from "@/src/store/authStore";
 import Link from "next/link";
 import { PageLoader } from "@/src/system/atoms/PageLoader";
@@ -14,8 +14,17 @@ import { BulkActionBar } from "@/src/system/organisms/Studio/BulkActionBar";
 export default function StudioPage({ params }: { params: Promise<{ lang: string }> }) {
   const { lang } = use(params);
   const user = useAuthStore((state: any) => state.user);
-  const { prompts, collections, isLoading, error, deletePrompt, assignToCollection, refetch } =
-    useStudio();
+  const {
+    prompts,
+    collections,
+    isLoading,
+    error,
+    deletePrompt,
+    assignToCollection,
+    refetch,
+    deletePromptsBatch,
+    isDeletingBatch,
+  } = useStudio();
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
@@ -31,6 +40,19 @@ export default function StudioPage({ params }: { params: Promise<{ lang: string 
     );
   };
 
+  const handleBatchDelete = async () => {
+    if (
+      window.confirm(
+        `¿Seguro que deseas eliminar estas ${selectedIds.length} imágenes para siempre?`,
+      )
+    ) {
+      const success = await deletePromptsBatch(selectedIds);
+      if (success) {
+        setSelectedIds([]); // Vaciamos la selección para que desaparezca la barra
+      }
+    }
+  };
+
   const handleClearSelection = () => setSelectedIds([]);
 
   return (
@@ -38,8 +60,9 @@ export default function StudioPage({ params }: { params: Promise<{ lang: string 
       <BulkActionBar
         selectedCount={selectedIds.length}
         onClearSelection={handleClearSelection}
-        onDeleteSelected={() => console.log("Borrando IDs:", selectedIds)}
+        onDeleteSelected={handleBatchDelete}
         onDownloadSelected={() => console.log("Descargando IDs:", selectedIds)}
+        isDeleting={isDeletingBatch}
       />
 
       <div className="max-w-7xl mx-auto space-y-8">
@@ -71,7 +94,6 @@ export default function StudioPage({ params }: { params: Promise<{ lang: string 
             </button>
           </div>
         </div>
-
 
         <section className="space-y-4">
           <h2 className="text-sm font-mono font-bold uppercase tracking-widest text-muted-foreground">

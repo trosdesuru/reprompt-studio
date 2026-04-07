@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { api } from "@/src/services/api";
-import { SavedPrompt } from "@/src/features/studio/hooks/useStudio";
+import { SavedPrompt } from "@/src/types/models";
 
 export function usePublicPrompt(promptId: string) {
   const [data, setData] = useState<SavedPrompt | null>(null);
