@@ -46,7 +46,7 @@ export function ExtractorDropzone({
   return (
     <div
       {...getRootProps()}
-      className={`group relative w-full border-4 border-dashed transition-all duration-300 ease-in-out flex flex-col items-center justify-center min-h-[400px] cursor-pointer neo-border overflow-hidden
+      className={`group relative w-full border-4 border-dashed transition-all duration-300 ease-in-out flex flex-col items-center justify-center min-h-400px cursor-pointer neo-border overflow-hidden
         ${
           isDragReject
             ? "border-destructive bg-destructive/5"
