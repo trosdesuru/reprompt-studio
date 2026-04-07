@@ -1,22 +1,22 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional, Dict, Any
 from datetime import datetime
 from fastapi import Form
 
 
 class PromptCreate(BaseModel):
-    title: str = "Generación IA"
-    prompt: str
-    negative_prompt: Optional[str] = None
-    software: Optional[str] = "Desconocido"
-    model: Optional[str] = None
-    sampler: Optional[str] = None
+    title: str = Field(default="Generación IA", max_length=150)
+    prompt: str = Field(..., max_length=20000)
+    negative_prompt: Optional[str] = Field(None, max_length=20000)
 
-    steps: Optional[str] = None
-    cfg_scale: Optional[str] = None
-    seed: Optional[str] = None
-    resolution: Optional[str] = None
-    image_url: Optional[str] = None
+    software: Optional[str] = Field(default="Desconocido", max_length=50)
+    model: Optional[str] = Field(None, max_length=150)
+    sampler: Optional[str] = Field(None, max_length=100)
+    steps: Optional[str] = Field(None, max_length=20)
+    cfg_scale: Optional[str] = Field(None, max_length=20)
+    seed: Optional[str] = Field(None, max_length=50)
+    resolution: Optional[str] = Field(None, max_length=50)
+    image_url: Optional[str] = Field(None, max_length=500)
     extra_data: Dict[str, Any] = {}
 
 
@@ -31,16 +31,16 @@ class PromptResponse(PromptCreate):
 
 
 def prompt_form_dependency(
-    title: str = Form("Generación IA"),
-    prompt: str = Form(...),
-    negative_prompt: Optional[str] = Form(None),
-    software: Optional[str] = Form("Desconocido"),
-    model: Optional[str] = Form(None),
-    sampler: Optional[str] = Form(None),
-    steps: Optional[str] = Form(None),
-    cfg_scale: Optional[str] = Form(None),
-    seed: Optional[str] = Form(None),
-    resolution: Optional[str] = Form(None),
+    title: str = Form("Generación IA", max_length=150),
+    prompt: str = Form(..., max_length=20000),
+    negative_prompt: Optional[str] = Form(None, max_length=20000),
+    software: Optional[str] = Form("Desconocido", max_length=50),
+    model: Optional[str] = Form(None, max_length=150),
+    sampler: Optional[str] = Form(None, max_length=100),
+    steps: Optional[str] = Form(None, max_length=20),
+    cfg_scale: Optional[str] = Form(None, max_length=20),
+    seed: Optional[str] = Form(None, max_length=50),
+    resolution: Optional[str] = Form(None, max_length=50),
 ) -> PromptCreate:
     """Extrae los campos del form-data y los valida contra el esquema"""
     return PromptCreate(

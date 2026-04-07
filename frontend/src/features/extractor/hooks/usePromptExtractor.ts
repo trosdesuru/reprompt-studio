@@ -3,6 +3,7 @@ import { parsePromptData, ExtractedPromptData } from "../utils/promptParser";
 import { getRawTextFromFile } from "../utils/fileExtractors";
 import { extractFilesFromZip } from "../utils/fileExtractors/zipExtractor";
 import { handleError } from "@/src/utils/errors/ErrorHandler";
+import { useAuthStore } from "@/src/store/authStore";
 
 export interface BatchItem {
   id: string;
@@ -22,8 +23,16 @@ export function usePromptExtractor() {
   const [error, setError] = useState<string | null>(null);
   const [batch, setBatch] = useState<BatchItem[]>([]);
   const [skippedFiles, setSkippedFiles] = useState<SkippedFile[]>([]);
+  const [upgradeModal, setUpgradeModal] = useState(false);
+
+  const { user } = useAuthStore();
+
+  const closeUpgradeModal = useCallback(() => {
+    setUpgradeModal(false);
+  }, []);
 
   const processFiles = useCallback(async (files: File[], fileRejections: any[] = []) => {
+    setUpgradeModal(false);
     setIsExtracting(true);
     setError(null);
 
@@ -33,6 +42,8 @@ export function usePromptExtractor() {
       reason: "Formato no aceptado o archivo inválido.",
     }));
 
+    const maxFilesAllowed = user?.role === "artist" ? 200 : 10;
+
     try {
       // 1. Expandir ZIPs o aceptar múltiples archivos sueltos
       for (const file of files) {
@@ -41,11 +52,20 @@ export function usePromptExtractor() {
           file.name.endsWith(".zip") ||
           file.name.endsWith(".x-zip-compressed")
         ) {
-          const unzipped = await extractFilesFromZip(file);
+          const unzipped = await extractFilesFromZip(file, maxFilesAllowed);
           allFilesToProcess = [...allFilesToProcess, ...unzipped.validFiles];
           currentSkipped.push(...unzipped.rejectedFiles);
+
+          if (unzipped.limitReached && user?.role === "voyager") {
+            setUpgradeModal(true);
+          }
         } else {
-          allFilesToProcess.push(file);
+          if (allFilesToProcess.length < maxFilesAllowed) {
+            allFilesToProcess.push(file);
+          } else {
+            currentSkipped.push({ name: file.name, reason: "Límite de subida alcanzado" });
+            if (user?.role === "voyager") setUpgradeModal(true);
+          }
         }
       }
 
@@ -60,7 +80,7 @@ export function usePromptExtractor() {
         try {
           const rawText = await getRawTextFromFile(file);
           let parsedData: ExtractedPromptData;
-          
+
           if (!rawText) {
             // 🛡️ PRAGMATISMO: Si es imagen pero no tiene IA, la dejamos pasar para MODO MANUAL
             if (file.type.startsWith("image/")) {
@@ -76,7 +96,7 @@ export function usePromptExtractor() {
                 seed: "",
                 resolution: "",
                 loras: [],
-                triggerWords: []
+                triggerWords: [],
               };
             } else {
               currentSkipped.push({ name: file.name, reason: "Sin metadatos de IA detectados." });
@@ -87,7 +107,7 @@ export function usePromptExtractor() {
           }
 
           const previewUrl = file.type.startsWith("image/") ? URL.createObjectURL(file) : null;
-          
+
           newBatchItems.push({
             id: crypto.randomUUID(),
             file,
@@ -105,7 +125,9 @@ export function usePromptExtractor() {
       if (newBatchItems.length > 0) {
         setBatch((prev) => [...prev, ...newBatchItems]);
       } else if (currentSkipped.length > 0) {
-        setError(`Se descartaron ${currentSkipped.length} archivos por no ser válidos o no tener metadatos.`);
+        setError(
+          `Se descartaron ${currentSkipped.length} archivos por no ser válidos o no tener metadatos.`,
+        );
       }
     } catch (err: unknown) {
       setError(handleError(err, "ExtractorBatch"));
@@ -121,7 +143,7 @@ export function usePromptExtractor() {
   // 🟢 NUEVO: Función para actualizar los datos que el usuario teclee
   const updateItemData = useCallback((id: string, newData: Partial<ExtractedPromptData>) => {
     setBatch((prev) =>
-      prev.map((item) => (item.id === id ? { ...item, data: { ...item.data, ...newData } } : item))
+      prev.map((item) => (item.id === id ? { ...item, data: { ...item.data, ...newData } } : item)),
     );
   }, []);
 
@@ -154,10 +176,12 @@ export function usePromptExtractor() {
     batch,
     skippedFiles,
     processFiles,
+    upgradeModal,
     updateItemStatus,
     updateItemData,
     removeItem,
     clearBatch,
     clearSkipped,
+    closeUpgradeModal,
   };
 }

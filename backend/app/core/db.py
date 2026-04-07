@@ -32,10 +32,8 @@ print(f"🔗 [DEBUG DB] Conectando a Neon (Directo al hierro): {safe_log_url}")
 engine = create_engine(
     clean_url,
     echo=False,
-    pool_size=5,          # 🟢 Máximo de conexiones abiertas (Ajustar según tu plan de Neon)
-    max_overflow=10,       # 🟢 Conexiones extra si hay un pico de tráfico repentino
-    pool_pre_ping=True,   # 🟢 CRÍTICO para Neon: Comprueba si la conexión sigue viva antes de usarla (porque Neon se "duerme").
-    pool_recycle=300,     # Recicla las conexiones cada 5 minutos.
+    pool_size=5,
+    max_overflow=10,
     pool_pre_ping=True,
     pool_recycle=300,
     connect_args={

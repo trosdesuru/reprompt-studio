@@ -17,7 +17,6 @@ export default function StudioPage({ params }: { params: Promise<{ lang: string 
     useStudio();
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // 🧠 Lógica del Breadcrumb
   const breadcrumbItems = [{ label: "Mi Studio" }];
 
   if (isLoading) return <PageLoader text="Cargando Metadata ..." />;

@@ -5,6 +5,7 @@ import { usePromptExtractor } from "@/src/features/extractor/hooks/usePromptExtr
 import { ExtractorDropzone } from "@/src/system/organisms/Extractor/Dropzone";
 import { BatchInspector } from "@/src/system/organisms/Extractor/Inspector/BatchInspector";
 import { Breadcrumbs } from "@/src/system/organisms/Navigation/Breadcrumbs";
+import { UpgradeModal } from "@/src/system/organisms/Modal/UpgradeModal";
 import { IconCpu } from "@tabler/icons-react";
 
 export default function RepromptPage({ params }: { params: Promise<{ lang: string }> }) {
@@ -16,6 +17,8 @@ export default function RepromptPage({ params }: { params: Promise<{ lang: strin
     error,
     batch,
     skippedFiles,
+    upgradeModal,
+    closeUpgradeModal,
     updateItemStatus,
     updateItemData,
     removeItem,
@@ -30,6 +33,7 @@ export default function RepromptPage({ params }: { params: Promise<{ lang: strin
 
   return (
     <main className="min-h-screen bg-background p-4 md:p-8">
+      <UpgradeModal isOpen={upgradeModal} onClose={closeUpgradeModal} />
       <div className="max-w-7xl mx-auto space-y-8">
         <div>
           <Breadcrumbs items={breadcrumbItems} />
