@@ -38,7 +38,10 @@ def get_public_profile(username: str, session: Session = Depends(get_session)):
 
     return {
         "status": "success",
-        "user": {"username": user.username, "role": user.role, "tier": user.tier},
+        "user": {
+            "username": user.username,
+            "role": user.role.value if hasattr(user.role, "value") else user.role
+        },
         "collections": collections,
         "recent_prompts": prompts,
     }
