@@ -27,14 +27,18 @@ export async function fetchSeguro(endpoint: string, options: RequestInit = {}) {
     );
   }
 
-  if (
-    response.status === 401 &&
-    !endpoint.includes("/auth/login") &&
-    !endpoint.includes("/auth/refresh") &&
-    !endpoint.includes("/auth/logout")
-  ) {
+  const isAuthFlow =
+    endpoint.includes("/auth/login") ||
+    endpoint.includes("/auth/register") ||
+    endpoint.includes("/auth/google") ||
+    endpoint.includes("/auth/discord") ||
+    endpoint.includes("/auth/refresh");
+
+  console.warn(`[API_CLIENT] 🔴 401 Unauthorized detectado en ${endpoint}`);
+  console.warn(`[API_CLIENT] 🚑 Iniciando protocolo de rescate (Refresh Token)...`);
+
+  if (response.status === 401 && !isAuthFlow) {
     console.warn(`[API_CLIENT] 🔴 401 Unauthorized detectado en ${endpoint}`);
-    console.warn(`[API_CLIENT] 🚑 Iniciando protocolo de rescate (Refresh Token)...`);
 
     if (!isRefreshing) {
       isRefreshing = true;
@@ -44,12 +48,10 @@ export async function fetchSeguro(endpoint: string, options: RequestInit = {}) {
             method: "POST",
             credentials: "include",
           });
-          
-          return refreshRes.ok;
 
+          return refreshRes.ok;
         } catch (error) {
           return false;
-
         } finally {
           isRefreshing = false;
         }
@@ -59,7 +61,7 @@ export async function fetchSeguro(endpoint: string, options: RequestInit = {}) {
     const refreshSuccessful = await refreshPromise;
 
     if (refreshSuccessful) {
-      console.log(`✅ [SECURITY] Rotación exitosa. Reintentando petición original a ${endpoint}`);
+      console.log(`✅ [SECURITY] Rotación exitosa. Reintentando petición original...`);
 
       if (options.body && options.body instanceof FormData) {
         console.warn(
@@ -79,12 +81,15 @@ export async function fetchSeguro(endpoint: string, options: RequestInit = {}) {
         throw new Error("Se perdió la conexión durante el reintento.");
       }
     } else {
-      console.error("🚷 [SECURITY] Refresh Token inválido. Sesión terminada.");
+      console.error("🚷 [SECURITY] Refresh Token inválido o inexistente.");
       if (typeof window !== "undefined") {
         window.dispatchEvent(new Event("auth:unauthorized"));
       }
-      throw new Error("Sesión expirada completamente");
+      throw new Error("Sesión expirada");
     }
+  } else if (response.status === 401 && isAuthFlow) {
+    console.error(`❌ [AUTH_ERROR] Error de credenciales en ${endpoint}`);
+    throw new Error("Credenciales inválidas o sesión de tercero fallida.");
   }
 
   if (!response.ok) {

@@ -59,6 +59,10 @@ export const authApi = {
     });
   },
 
+  getDiscordAuthUrl: async () => {
+    return fetchSeguro(`${API_URL}/auth/discord/url`, { method: "GET" });
+  },
+
   verifyDiscordCode: async (data: { code: string; redirect_uri: string }) => {
     return fetchSeguro(`${API_URL}/auth/discord`, {
       method: "POST",

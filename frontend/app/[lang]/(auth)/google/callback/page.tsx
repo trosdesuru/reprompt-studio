@@ -47,7 +47,7 @@ export default function GoogleCallbackPage() {
             }),
           );
 
-          router.push(`/es/auth/login?step=oauth_invite`);
+          router.push(`/es/login?step=oauth_invite`);
         } else {
           toast.success(`¡Bienvenido de nuevo, ${response.username}!`);
           
@@ -59,7 +59,7 @@ export default function GoogleCallbackPage() {
         }
       } catch (error: any) {
         toast.error(error.message || "Fallo al conectar con Google");
-        router.push("/es/auth/login");
+        router.push("/es/login");
       }
     };
 

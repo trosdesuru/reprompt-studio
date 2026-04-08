@@ -90,10 +90,22 @@ export function useAuthForm() {
     }
   };
 
-  const handleDiscordLogin = () => {
+  const handleDiscordLogin = async () => {
     setIsDiscordLoading(true);
-    toast("Iniciando conexión con Discord...", { icon: "👾" });
-    setTimeout(() => setIsDiscordLoading(false), 2000);
+    try {
+      const response = await api.auth.getDiscordAuthUrl();
+
+      if (response?.auth_url) {
+        window.location.href = response.auth_url;
+      } else {
+        throw new Error("El servidor no devolvió una URL válida");
+      }
+    } catch (error) {
+      console.error("❌ Error al iniciar Discord:", error);
+      toast.error("Servicio de Discord no disponible en este momento.");
+    } finally {
+      setIsDiscordLoading(false);
+    }
   };
 
   const cancelOauthFlow = () => {

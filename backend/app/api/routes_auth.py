@@ -184,6 +184,21 @@ def register_google_user_route(
     }
 
 
+@router.get("/discord/url")
+def get_discord_auth_url():
+    """Genera la URL para que el frontend redirija al usuario a Discord"""
+    base_url = "https://discord.com/api/oauth2/authorize"
+    params = {
+        "client_id": settings.DISCORD_CLIENT_ID,
+        "redirect_uri": "http://localhost:3000/es/discord/callback",
+        "response_type": "code",
+        "scope": "identify email",
+        "prompt": "consent",
+    }
+    url = f"{base_url}?{urllib.parse.urlencode(params)}"
+    return {"auth_url": url}
+
+
 @router.post("/discord")
 def discord_auth(
     data: DiscordAuthRequest,

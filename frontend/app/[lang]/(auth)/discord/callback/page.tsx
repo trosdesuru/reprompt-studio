@@ -38,11 +38,11 @@ export default function DiscordCallbackPage() {
           router.push(`/es/auth/login?discord_email=${response.email}`);
         } else {
           toast.success(`¡Bienvenido de nuevo, ${response.username}!`);
-          router.push("/es/studio");
+          router.push("/es");
         }
       } catch (error: any) {
         toast.error(error.message || "Fallo al validar Discord");
-        router.push("/es/auth/login");
+        router.push("/es/login");
       }
     };
 

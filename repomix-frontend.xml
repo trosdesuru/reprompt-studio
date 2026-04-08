@@ -46,6 +46,9 @@ app/
       discord/
         callback/
           page.tsx
+      google/
+        callback/
+          page.tsx
       join/
         page.tsx
       login/
@@ -147,10 +150,13 @@ src/
         useStudio.ts
   services/
     api/
+      admin.ts
       auth.ts
       client.ts
+      collections.ts
       downloads.ts
       prompts.ts
+      public.ts
       search.ts
     config/
       env.ts
@@ -332,7 +338,7 @@ export default function DiscordCallbackPage() {
     const code = searchParams.get("code");
     if (!code) {
       toast.error("No se recibió código de Discord.");
-      router.push("/es/login");
+      router.push("/es/auth/login");
       return;
     }
 
@@ -349,14 +355,14 @@ export default function DiscordCallbackPage() {
         if (response.status === "needs_invite") {
           toast.success("Cuenta de Discord vinculada. ¡Introduce un código VIP!");
           // Redirigimos a login con un estado para que complete el registro (Fase futura si la necesitas)
-          router.push(`/es/login?discord_email=${response.email}`);
+          router.push(`/es/auth/login?discord_email=${response.email}`);
         } else {
           toast.success(`¡Bienvenido de nuevo, ${response.username}!`);
           router.push("/es/studio");
         }
       } catch (error: any) {
         toast.error(error.message || "Fallo al validar Discord");
-        router.push("/es/login");
+        router.push("/es/auth/login");
       }
     };
 
@@ -364,6 +370,79 @@ export default function DiscordCallbackPage() {
   }, [searchParams, router]);
 
   return <PageLoader text="Verificando enlace cifrado con Discord..." />;
+}
+</file>
+
+<file path="app/[lang]/(auth)/google/callback/page.tsx">
+"use client";
+
+import { api } from "@/src/services/api";
+import { useAuthStore } from "@/src/store/authStore";
+import { useEffect, useRef } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { PageLoader } from "@/src/system/atoms/PageLoader";
+import toast from "react-hot-toast";
+
+export default function GoogleCallbackPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const processed = useRef(false);
+  
+  // 🟢 Extraemos la función para actualizar el estado global
+  const checkAuth = useAuthStore((state) => state.checkAuth);
+
+  useEffect(() => {
+    // 1. Evitamos que se ejecute dos veces en React Strict Mode
+    if (processed.current) return;
+
+    const code = searchParams.get("code");
+    if (!code) {
+      toast.error("No se recibió código de autenticación de Google.");
+      router.push("/es/auth/login"); // Asegúrate de que esta es tu ruta correcta
+      return;
+    }
+
+    processed.current = true;
+
+    const authenticate = async () => {
+      try {
+        const currentUrl = new URL(window.location.href);
+        const redirectUri = `${currentUrl.origin}${currentUrl.pathname}`;
+
+        const response = await api.auth.verifyGoogleCode({ code, redirect_uri: redirectUri });
+
+        if (response.status === "needs_invite") {
+          toast.success("Cuenta verificada. ¡Solo falta tu código VIP!");
+
+          sessionStorage.setItem(
+            "oauth_pending",
+            JSON.stringify({
+              email: response.email,
+              token: response.provider_token,
+              username: response.suggested_username,
+            }),
+          );
+
+          router.push(`/es/auth/login?step=oauth_invite`);
+        } else {
+          toast.success(`¡Bienvenido de nuevo, ${response.username}!`);
+          
+          // 🟢 LA PIEZA CLAVE: Sincronizamos Zustand ANTES de navegar
+          await checkAuth();
+          
+          // Ahora sí, salto seguro al Studio
+          window.location.href = "/es/studio";
+        }
+      } catch (error: any) {
+        toast.error(error.message || "Fallo al conectar con Google");
+        router.push("/es/auth/login");
+      }
+    };
+
+    authenticate();
+  }, [searchParams, router, checkAuth]);
+
+  return <PageLoader text="Cifrando conexión segura con Google..." />;
 }
 </file>
 
@@ -923,7 +1002,7 @@ import { use, useState } from "react";
 import { useStudio } from "@/src/features/studio/hooks/useStudio";
 import { PromptCard } from "@/src/system/organisms/Studio/PromptCard";
 import { CreateCollectionModal } from "@/src/system/molecules/Cards/CreateCollectionModal";
-import { IconPlus, IconAlbum, IconScanTraces } from "@tabler/icons-react";
+import { IconPlus, IconAlbum, IconScanTraces, IconLock, IconWorld } from "@tabler/icons-react";
 import { useAuthStore } from "@/src/store/authStore";
 import Link from "next/link";
 import { PageLoader } from "@/src/system/atoms/PageLoader";
@@ -945,9 +1024,7 @@ export default function StudioPage({ params }: { params: Promise<{ lang: string 
     isDeletingBatch,
   } = useStudio();
   const [isModalOpen, setIsModalOpen] = useState(false);
-
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
-
   const breadcrumbItems = [{ label: "Mi Studio" }];
 
   if (isLoading) return <PageLoader text="Cargando Metadata ..." />;
@@ -989,7 +1066,6 @@ export default function StudioPage({ params }: { params: Promise<{ lang: string 
           <Breadcrumbs items={breadcrumbItems} />
         </div>
 
-        {/* Cabecera ... (se mantiene igual) ... */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-border pb-8 mt-4">
           <div>
             <h1 className="text-3xl font-black tracking-tighter flex items-center gap-3">
@@ -1015,6 +1091,42 @@ export default function StudioPage({ params }: { params: Promise<{ lang: string 
             </button>
           </div>
         </div>
+
+        {collections.length > 0 && (
+          <section className="space-y-4 mb-12">
+            <h2 className="text-sm font-mono font-bold uppercase tracking-widest text-muted-foreground">
+              Tus Colecciones
+            </h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              {collections.map((col) => (
+                <Link
+                  key={col.id}
+                  href={`/${lang}/${user?.username}/${col.slug}`}
+                  className="group relative p-5 bg-(--bg-secondary) neo-border hover:border-accent! hover:bg-accent/15 transition-all neo-shadow flex flex-col justify-between min-h-120px"
+                >
+                  <div className="flex justify-between items-start">
+                    <IconAlbum
+                      size={24}
+                      className="text-muted-foreground group-hover:text-accent transition-colors"
+                    />
+                    <div className="text-muted-foreground hover:text-accent">
+                      {col.is_private ? (
+                        <IconLock size={16} title="Colección Privada" />
+                      ) : (
+                        <IconWorld size={16} title="Colección Pública" />
+                      )}
+                    </div>
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-lg font-mono uppercase tracking-tight truncate mt-4">
+                      {col.name}
+                    </h3>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </section>
+        )}
 
         <section className="space-y-4">
           <h2 className="text-sm font-mono font-bold uppercase tracking-widest text-muted-foreground">
@@ -1174,7 +1286,7 @@ export default function GlobalError({
   const handleReport = async () => {
     setIsSending(true);
     try {
-      await api.reportBug({
+      await api.admin.reportBug({
         message: error.message,
         stack: error.stack,
         digest: error.digest,
@@ -2557,6 +2669,7 @@ export interface AuditLog {
 </file>
 
 <file path="src/features/auth/hooks/useAuthForm.tsx">
+// src/features/auth/hooks/useAuthForm.ts
 import { useState, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { api } from "@/src/services/api";
@@ -2568,6 +2681,7 @@ export function useAuthForm() {
 
   const [isLogin, setIsLogin] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
+  const [oauthPending, setOauthPending] = useState<any>(null);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [isDiscordLoading, setIsDiscordLoading] = useState(false);
 
@@ -2576,8 +2690,13 @@ export function useAuthForm() {
   const [inviteCode, setInviteCode] = useState("");
   const [isInviteLocked, setIsInviteLocked] = useState(false);
 
-  // Detección de código en la URL
   useEffect(() => {
+    const pendingData = sessionStorage.getItem("oauth_pending");
+    if (pendingData) {
+      setOauthPending(JSON.parse(pendingData));
+      return;
+    }
+
     const codeFromUrl = searchParams.get("code");
     if (codeFromUrl) {
       setIsLogin(false);
@@ -2585,6 +2704,25 @@ export function useAuthForm() {
       setIsInviteLocked(true);
     }
   }, [searchParams]);
+
+  const handleOauthSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    try {
+      await api.registerGoogleUser({
+        token: oauthPending.token,
+        invite_code: inviteCode,
+        username: oauthPending.username,
+      });
+      sessionStorage.removeItem("oauth_pending");
+      toast.success("¡Cuenta VIP creada con éxito!");
+      window.location.href = "/es/studio"; // Recarga dura obligatoria
+    } catch (error: any) {
+      toast.error(error.message || "Código inválido");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -2603,7 +2741,7 @@ export function useAuthForm() {
         });
         toast.success("Cuenta creada con éxito");
         await api.login({ username: emailOrUser, password });
-        router.push("/es");
+        router.push("/es/studio");
       }
     } catch (error: any) {
       toast.error(error?.response?.data?.detail || "Error en la autenticación");
@@ -2629,6 +2767,17 @@ export function useAuthForm() {
     setTimeout(() => setIsDiscordLoading(false), 2000);
   };
 
+  const cancelOauthFlow = () => {
+    setOauthPending(null);
+    sessionStorage.removeItem("oauth_pending");
+
+    // Limpiamos la URL por si tiene el ?step=oauth_invite
+    if (searchParams.get("step") === "oauth_invite") {
+      // Reemplazamos la URL sin recargar la página para que sea fluido
+      router.replace("/es/login");
+    }
+  };
+
   return {
     state: {
       isLogin,
@@ -2639,6 +2788,7 @@ export function useAuthForm() {
       password,
       inviteCode,
       isInviteLocked,
+      oauthPending,
     },
     actions: {
       setIsLogin,
@@ -2648,6 +2798,8 @@ export function useAuthForm() {
       handleSubmit,
       handleGoogleLogin,
       handleDiscordLogin,
+      handleOauthSubmit,
+      cancelOauthFlow,
     },
   };
 }
@@ -3684,8 +3836,8 @@ export function usePublicFeed(query: string) {
     setIsFeedLoading(true);
     setFeedError(null);
 
-    api
-      .getPublicFeed({ include_self: false })
+    api.public
+      .getFeed({ include_self: false })
       .then((res) => setFeed(res.feed || []))
       .catch((err) => {
         console.error("Error cargando feed:", err);
@@ -3877,7 +4029,7 @@ export function useSearch() {
 <file path="src/features/studio/hooks/usePublicCollection.ts">
 import { useState, useEffect } from "react";
 import { api } from "@/src/services/api";
-import { SavedPrompt } from "@/src/features/studio/hooks/useStudio";
+import { SavedPrompt } from "@/src/types/models";
 
 export interface CollectionDetail {
   collection: {
@@ -3897,8 +4049,8 @@ export function usePublicCollection(username: string, collection_slug: string) {
 
   useEffect(() => {
     setIsLoading(true);
-    api
-      .getPublicCollection(username, collection_slug)
+    api.public
+      .getCollection(username, collection_slug)
       .then((res) => setData(res))
       .catch((err) => {
         console.error("Error fetching collection:", err);
@@ -3915,7 +4067,7 @@ export function usePublicCollection(username: string, collection_slug: string) {
 <file path="src/features/studio/hooks/usePublicProfile.ts">
 import { useState, useEffect } from "react"; 
 import { api } from "@/src/services/api";
-import { SavedPrompt } from "@/src/features/studio/hooks/useStudio";
+import { SavedPrompt } from "@/src/types/models";
 
 export interface ProfileData {
   user: { username: string; role: string };
@@ -3930,8 +4082,8 @@ export function usePublicProfile(username: string) {
 
   useEffect(() => {
     setIsLoading(true);
-    api
-      .getPublicProfile(username)
+    api.public
+      .getProfile(username)
       .then((res) => setData(res))
       .catch((err) => {
         console.error("Error fetching profile:", err);
@@ -3958,8 +4110,8 @@ export function usePublicPrompt(promptId: string) {
   useEffect(() => {
     setIsLoading(true);
 
-    api
-      .getPublicPromptDetail(promptId)
+    api.public
+      .getPromptDetail(promptId)
       .then((res: any) => {
         const promptReal = res.prompt && typeof res.prompt === "object" ? res.prompt : res;
         setData(promptReal);
@@ -3997,10 +4149,18 @@ export function useStudio() {
     try {
       const [promptsRes, collectionsRes] = await Promise.all([
         api.getMyPrompt(),
-        api.getMyCollections(),
+        api.collections.getMyCollections(),
       ]);
+
+      console.log("📦 [DEBUG] Respuesta cruda de Colecciones:", collectionsRes);
+
       setPrompts(promptsRes);
-      setCollections(collectionsRes.collections || []);
+
+      const collection = Array.isArray(collectionsRes)
+        ? collectionsRes
+        : collectionsRes?.collections || [];
+
+      setCollections(collection);
     } catch (err: unknown) {
       const msg = handleError(err, "useStudio");
       setError(msg);
@@ -4011,7 +4171,7 @@ export function useStudio() {
 
   const assignToCollection = async (promptId: number, collectionId: number | null) => {
     try {
-      await api.assignPromptToCollection(promptId, collectionId);
+      await api.collections.assignPrompt(promptId, collectionId);
       setPrompts((prev) =>
         prev.map((p) => (p.id === promptId ? { ...p, collection_id: collectionId } : p)),
       );
@@ -4035,7 +4195,7 @@ export function useStudio() {
   const deletePromptsBatch = async (ids: number[]) => {
     setIsDeletingBatch(true);
     try {
-      await api.deletePromptsBatch(ids);
+      await api.prompts.deleteBatch(ids);
 
       setPrompts((prev) => prev.filter((p) => !ids.includes(p.id)));
       toast.success(`${ids.length} imágenes eliminadas`);
@@ -4065,6 +4225,25 @@ export function useStudio() {
     deletePromptsBatch,
   };
 }
+</file>
+
+<file path="src/services/api/admin.ts">
+import { API_URL, fetchSeguro } from "./client";
+
+export const adminApi = {
+  reportBug: async (data: {
+    message: string;
+    stack?: string;
+    digest?: string;
+    url: string;
+    timestamp: string;
+  }) => {
+    return fetchSeguro(`${API_URL}/admin/bugs`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  },
+};
 </file>
 
 <file path="src/services/api/auth.ts">
@@ -4098,7 +4277,11 @@ export const authApi = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
     }),
-  obtenerPerfil: () => fetchSeguro(`${API_URL}/auth/me`),
+  me: async () => {
+    return fetchSeguro(`${API_URL}/auth/me`, {
+      method: "GET",
+    });
+  },
   generarInvitacion: (role: string = "voyager") =>
     fetchSeguro(`${API_URL}/auth/invite-codes?role_requested=${role}`, { method: "POST" }),
   obtenerLogsAuditoria: (limit: number = 50) =>
@@ -4106,6 +4289,31 @@ export const authApi = {
   revocarTodasLasSesiones: () =>
     fetchSeguro(`${API_URL}/auth/admin/sessions/revoke-all`, { method: "POST" }),
   refrescarToken: () => fetchSeguro(`${API_URL}/auth/refresh`, { method: "POST" }),
+
+  getGoogleAuthUrl: async () => {
+    return fetchSeguro(`${API_URL}/auth/google/url`, { method: "GET" });
+  },
+
+  verifyGoogleCode: async (data: { code: string; redirect_uri: string }) => {
+    return fetchSeguro(`${API_URL}/auth/google/callback`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  },
+
+  registerGoogleUser: async (data: { token: string; invite_code: string; username: string }) => {
+    return fetchSeguro(`${API_URL}/auth/google/join`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  },
+
+  verifyDiscordCode: async (data: { code: string; redirect_uri: string }) => {
+    return fetchSeguro(`${API_URL}/auth/discord`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  },
 };
 </file>
 
@@ -4208,6 +4416,30 @@ export async function fetchSeguro(endpoint: string, options: RequestInit = {}) {
 }
 </file>
 
+<file path="src/services/api/collections.ts">
+import { API_URL, fetchSeguro } from "./client";
+
+export const collectionsApi = {
+  create: async (data: { name: string; description?: string; is_private: boolean }) => {
+    return fetchSeguro(`${API_URL}/collections`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  },
+
+  getMyCollections: async () => {
+    return fetchSeguro(`${API_URL}/collections/`);
+  },
+
+  assignPrompt: async (promptId: number, collectionId: number | null) => {
+    return fetchSeguro(`${API_URL}/collections/assign/${promptId}`, {
+      method: "PUT",
+      body: JSON.stringify({ collection_id: collectionId }),
+    });
+  },
+};
+</file>
+
 <file path="src/services/api/downloads.ts">
 import { fetchSeguro } from "./client";
 import { ENV } from "@/src/services/config/env";
@@ -4232,6 +4464,7 @@ import { fetchSeguro } from "./client";
 import { ENV } from "@/src/services/config/env";
 
 export const API_URL = ENV.API_URL;
+
 export const promptApi = {
   savePrompt: (data: any) =>
     fetchSeguro(`${API_URL}/prompts/save`, {
@@ -4240,8 +4473,56 @@ export const promptApi = {
       body: JSON.stringify(data),
     }),
 
+  deleteBatch: async (prompt_ids: number[]) => {
+    return fetchSeguro(`${API_URL}/prompts/batch-delete`, {
+      method: "POST",
+      body: JSON.stringify({ prompt_ids }),
+    });
+  },
+
   getMyPrompt: () => fetchSeguro(`${API_URL}/prompts/`),
   deletePrompt: (id: number) => fetchSeguro(`${API_URL}/prompts/${id}`, { method: "DELETE" }),
+};
+</file>
+
+<file path="src/services/api/public.ts">
+import { API_URL, fetchSeguro } from "./client";
+
+const RESERVED_ROUTES = new Set([
+  "login",
+  "register",
+  "join",
+  "admin",
+  "studio",
+  "reprompt",
+  "api",
+  "_next",
+  "favicon.ico",
+]);
+
+export const publicApi = {
+  getProfile: async (username: string) => {
+    if (RESERVED_ROUTES.has(username.toLowerCase())) {
+      return Promise.reject(new Error("Ruta reservada del sistema"));
+    }
+    return fetchSeguro(`${API_URL}/public/profile/${username}`);
+  },
+
+  getCollection: async (username: string, slug: string) => {
+    if (RESERVED_ROUTES.has(username.toLowerCase())) {
+      return Promise.reject(new Error("Ruta reservada del sistema"));
+    }
+    return fetchSeguro(`${API_URL}/public/profile/${username}/${slug}`);
+  },
+
+  getPromptDetail: async (promptId: string) => {
+    return fetchSeguro(`${API_URL}/public/prompt/${promptId}`);
+  },
+
+  getFeed: async (options?: { include_self?: boolean }) => {
+    const queryString = options?.include_self ? "?include_self=true" : "";
+    return fetchSeguro(`${API_URL}/public/feed${queryString}`);
+  },
 };
 </file>
 
@@ -4295,23 +4576,14 @@ export const ENV = {
 </file>
 
 <file path="src/services/api.ts">
+// src/services/api.ts
 import { authApi } from "./api/auth";
 import { searchApi } from "./api/search";
 import { downloadApi } from "./api/downloads";
 import { promptApi } from "./api/prompts";
-import { API_URL, fetchSeguro } from "./api/client";
-
-const RESERVED_ROUTES = new Set([
-  "login",
-  "register",
-  "join",
-  "admin",
-  "studio",
-  "reprompt",
-  "api",
-  "_next",
-  "favicon.ico",
-]);
+import { publicApi } from "./api/public";
+import { collectionsApi } from "./api/collections";
+import { adminApi } from "./api/admin";
 
 export const api = {
   ...authApi,
@@ -4319,86 +4591,11 @@ export const api = {
   ...downloadApi,
   ...promptApi,
 
-  getPublicProfile: async (username: string) => {
-    if (RESERVED_ROUTES.has(username.toLowerCase())) {
-      return Promise.reject(new Error("Ruta reservada del sistema"));
-    }
-    return fetchSeguro(`${API_URL}/public/profile/${username}`);
-  },
-
-  getPublicCollection: async (username: string, slug: string) => {
-    if (RESERVED_ROUTES.has(username.toLowerCase())) {
-      return Promise.reject(new Error("Ruta reservada del sistema"));
-    }
-    return fetchSeguro(`${API_URL}/public/profile/${username}/${slug}`);
-  },
-
-  getPublicPromptDetail: async (promptId: string) => {
-    return fetchSeguro(`${API_URL}/public/prompt/${promptId}`);
-  },
-
-  getPublicFeed: async (options?: { include_self?: boolean }) => {
-    const queryString = options?.include_self ? "?include_self=true" : "";
-    return fetchSeguro(`${API_URL}/public/feed${queryString}`);
-  },
-
-  createCollection: async (data: { name: string; description?: string; is_private: boolean }) => {
-    return fetchSeguro(`${API_URL}/collections`, {
-      method: "POST",
-      body: JSON.stringify(data),
-    });
-  },
-
-  getMyCollections: async () => {
-    return fetchSeguro(`${API_URL}/collections/`);
-  },
-
-  assignPromptToCollection: async (promptId: number, collectionId: number | null) => {
-    return fetchSeguro(`${API_URL}/collections/assign/${promptId}`, {
-      method: "PUT",
-      body: JSON.stringify({ collection_id: collectionId }),
-    });
-  },
-
-  deletePromptsBatch: async (prompt_ids: number[]) => {
-    return fetchSeguro(`${API_URL}/prompts/batch-delete`, {
-      method: "POST",
-      body: JSON.stringify({ prompt_ids }),
-    });
-  },
-
-  getGoogleAuthUrl: async () => {
-    return fetchSeguro(`${API_URL}/auth/google`, {
-      method: "POST",
-    });
-  },
-
-  verifyGoogleCode: async (data: { code: string }) => {
-    return fetchSeguro(`${API_URL}/auth/google/callback`, {
-      method: "POST",
-      body: JSON.stringify(data),
-    });
-  },
-
-  verifyDiscordCode: async (data: { code: string; redirect_uri: string }) => {
-    return fetchSeguro(`${API_URL}/auth/discord`, {
-      method: "POST",
-      body: JSON.stringify(data),
-    });
-  },
-
-  reportBug: async (data: {
-    message: string;
-    stack?: string;
-    digest?: string;
-    url: string;
-    timestamp: string;
-  }) => {
-    return fetchSeguro(`${API_URL}/admin/bugs`, {
-      method: "POST",
-      body: JSON.stringify(data),
-    });
-  },
+  admin: adminApi,
+  auth: authApi,
+  public: publicApi,
+  prompts: promptApi,
+  collections: collectionsApi,
 };
 </file>
 
@@ -4425,7 +4622,13 @@ const redirectToLogin = () => {
   if (typeof window === "undefined") return;
 
   const currentPath = window.location.pathname;
-  if (currentPath.includes("/login")) return;
+  if (
+    currentPath.includes("/login") ||
+    currentPath.includes("/google/callback") ||
+    currentPath.includes("/discord/callback")
+  ) {
+    return;
+  }
 
   const localeMatch = currentPath.match(/^\/([a-z]{2})(?:\/|$)/);
   const localePrefix = localeMatch ? `/${localeMatch[1]}` : "";
@@ -4453,7 +4656,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     set({ isLoadingAuth: true });
 
     try {
-      const res = await api.obtenerPerfil();
+      const res = await api.me();
       const username = res?.username || res?.data?.username || res?.user?.username;
       const role = res?.role || res?.data?.role || res?.user?.role || "user";
 
@@ -4927,6 +5130,7 @@ export function FormHeader() {
 "use client";
 
 import Link from "next/link";
+import { useState, useEffect } from "react";
 import { useAuthStore } from "@/src/store/authStore";
 import { useTheme } from "@/src/utils/hooks/useTheme";
 import { UserDropdown } from "../../molecules/Navbar/UserDropdown";
@@ -4934,12 +5138,23 @@ import { NotificationDropdown } from "../../molecules/Navbar/NotificationDropdow
 import { IconAlbum, IconSun, IconMoon, IconScanTraces } from "@tabler/icons-react";
 
 export function NavbarActions() {
-  const { user } = useAuthStore();
+  const { user, isLoadingAuth } = useAuthStore();
   const { isDark, toggleTheme } = useTheme();
+
+  const [isMounted, setIsMounted] = useState(false);
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  if (!isMounted) {
+    return <div className="hidden md:block w-24 h-10" />;
+  }
 
   return (
     <div className="hidden md:flex items-center gap-1.5 lg:gap-1.5 shrink-0">
-      {user ? (
+      {isLoadingAuth ? (
+        <div className="w-24 h-10 rounded-lg bg-muted/50 animate-pulse"></div>
+      ) : user ? (
         <>
           <div className="flex items-center gap-2">
             <Link
@@ -5596,7 +5811,7 @@ export function CreateCollectionModal({ isOpen, onClose, onSuccess }: Props) {
 
     setIsLoading(true);
     try {
-      await api.createCollection({ name, description, is_private: isPrivate });
+      await api.collections.create({ name, description, is_private: isPrivate });
       toast.success("Colección creada");
       setName("");
       setDescription("");
@@ -7177,9 +7392,56 @@ import { CredentialsForm } from "../../molecules/Auth/CredentialsForm";
 export function AuthForm() {
   const { state, actions } = useAuthForm();
 
+  if (state.oauthPending) {
+    return (
+      <div className="w-full max-w-md mx-auto p-8 bg-(--bg-secondary) neo-border neo-shadow animate-in fade-in zoom-in-95 duration-300">
+        <div className="mb-8 text-center">
+          <h2 className="text-2xl font-black uppercase font-mono tracking-tighter">
+            Último <span className="text-(--accent-color)">Paso</span>
+          </h2>
+          <p className="text-xs font-mono text-(--text-secondary) mt-2 uppercase">
+            Vinculando: {state.oauthPending.email}
+          </p>
+        </div>
+
+        <form onSubmit={actions.handleOauthSubmit} className="flex flex-col gap-6">
+          <div className="relative">
+            <input
+              type="text"
+              required
+              placeholder="CÓDIGO DE INVITACIÓN"
+              value={state.inviteCode}
+              onChange={(e) => actions.setInviteCode(e.target.value.toUpperCase())}
+              className="w-full h-12 bg-background border border-border pl-4 pr-3 text-sm font-mono uppercase focus:outline-none focus:border-(--accent-color) transition-colors"
+              disabled={state.isLoading}
+            />
+          </div>
+
+          {/* 🟢 LA PUERTA DE ESCAPE: Flexbox para alinear Volver y Completar */}
+          <div className="flex flex-col-reverse sm:flex-row gap-4">
+            <button
+              type="button"
+              onClick={actions.cancelOauthFlow}
+              disabled={state.isLoading}
+              className="w-full sm:w-1/3 justify-center h-12 bg-transparent text-foreground border border-border hover:bg-muted font-mono uppercase text-xs font-black tracking-widest transition-colors disabled:opacity-50"
+            >
+              Volver
+            </button>
+            <button
+              type="submit"
+              disabled={state.isLoading}
+              className="w-full sm:w-2/3 justify-center h-12 text-sm font-black uppercase font-mono tracking-widest bg-white text-black hover:bg-gray-200 neo-border transition-all disabled:opacity-50"
+            >
+              {state.isLoading ? "Procesando..." : "Completar"}
+            </button>
+          </div>
+        </form>
+      </div>
+    );
+  }
+
   return (
     <div className="w-full max-w-md mx-auto p-8 bg-(--bg-secondary) neo-border neo-shadow animate-in fade-in zoom-in-95 duration-300">
-      
       <AuthTabs isLogin={state.isLogin} onToggle={actions.setIsLogin} />
 
       <div className="mt-8">
@@ -10262,7 +10524,15 @@ export function proxy(request: NextRequest) {
     defaultLocale;
 
   const pathWithoutLocale = pathname.replace(`/${currentLocale}`, "") || "/";
-  const isPublicPath = pathWithoutLocale === "/login" || pathWithoutLocale === "/join";
+
+  // 🟢 LA SOLUCIÓN: Definimos rutas públicas exactas y prefijos públicos
+  const publicExactPaths = ["/login"]; // Quitamos "/join" porque ya purgramos ese código muerto
+  const publicPrefixes = ["/google/callback", "/discord/callback"]; // Vía libre a los OAuth
+
+  // Comprobamos si la ruta actual es pública
+  const isPublicPath =
+    publicExactPaths.includes(pathWithoutLocale) ||
+    publicPrefixes.some((prefix) => pathWithoutLocale.startsWith(prefix));
 
   const hasAnyAuth = !!accessToken || !!refreshToken;
 
@@ -10271,7 +10541,11 @@ export function proxy(request: NextRequest) {
     return NextResponse.redirect(new URL(`/${currentLocale}/login`, request.url));
   }
 
-  if (hasAnyAuth && isPublicPath) {
+  // 🟢 EVITAMOS REDIRIGIR SI ESTAMOS EN EL CALLBACK.
+  // Si acabamos de loguearnos con Google, el callback necesita ejecutarse aunque ya haya token.
+  const isCallbackPath = publicPrefixes.some((prefix) => pathWithoutLocale.startsWith(prefix));
+
+  if (hasAnyAuth && isPublicPath && !isCallbackPath) {
     console.log(
       `   ♻️ [MIDDLEWARE] Usuario ya logueado o con Refresh vivo. Redirigiendo a la Home.`,
     );
