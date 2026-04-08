@@ -358,11 +358,11 @@ export default function DiscordCallbackPage() {
           router.push(`/es/auth/login?discord_email=${response.email}`);
         } else {
           toast.success(`¡Bienvenido de nuevo, ${response.username}!`);
-          router.push("/es/studio");
+          router.push("/es");
         }
       } catch (error: any) {
         toast.error(error.message || "Fallo al validar Discord");
-        router.push("/es/auth/login");
+        router.push("/es/login");
       }
     };
 
@@ -423,7 +423,7 @@ export default function GoogleCallbackPage() {
             }),
           );
 
-          router.push(`/es/auth/login?step=oauth_invite`);
+          router.push(`/es/login?step=oauth_invite`);
         } else {
           toast.success(`¡Bienvenido de nuevo, ${response.username}!`);
           
@@ -435,7 +435,7 @@ export default function GoogleCallbackPage() {
         }
       } catch (error: any) {
         toast.error(error.message || "Fallo al conectar con Google");
-        router.push("/es/auth/login");
+        router.push("/es/login");
       }
     };
 
@@ -2761,10 +2761,22 @@ export function useAuthForm() {
     }
   };
 
-  const handleDiscordLogin = () => {
+  const handleDiscordLogin = async () => {
     setIsDiscordLoading(true);
-    toast("Iniciando conexión con Discord...", { icon: "👾" });
-    setTimeout(() => setIsDiscordLoading(false), 2000);
+    try {
+      const response = await api.auth.getDiscordAuthUrl();
+
+      if (response?.auth_url) {
+        window.location.href = response.auth_url;
+      } else {
+        throw new Error("El servidor no devolvió una URL válida");
+      }
+    } catch (error) {
+      console.error("❌ Error al iniciar Discord:", error);
+      toast.error("Servicio de Discord no disponible en este momento.");
+    } finally {
+      setIsDiscordLoading(false);
+    }
   };
 
   const cancelOauthFlow = () => {
@@ -4308,6 +4320,10 @@ export const authApi = {
     });
   },
 
+  getDiscordAuthUrl: async () => {
+    return fetchSeguro(`${API_URL}/auth/discord/url`, { method: "GET" });
+  },
+
   verifyDiscordCode: async (data: { code: string; redirect_uri: string }) => {
     return fetchSeguro(`${API_URL}/auth/discord`, {
       method: "POST",
@@ -4347,14 +4363,18 @@ export async function fetchSeguro(endpoint: string, options: RequestInit = {}) {
     );
   }
 
-  if (
-    response.status === 401 &&
-    !endpoint.includes("/auth/login") &&
-    !endpoint.includes("/auth/refresh") &&
-    !endpoint.includes("/auth/logout")
-  ) {
+  const isAuthFlow =
+    endpoint.includes("/auth/login") ||
+    endpoint.includes("/auth/register") ||
+    endpoint.includes("/auth/google") ||
+    endpoint.includes("/auth/discord") ||
+    endpoint.includes("/auth/refresh");
+
+  console.warn(`[API_CLIENT] 🔴 401 Unauthorized detectado en ${endpoint}`);
+  console.warn(`[API_CLIENT] 🚑 Iniciando protocolo de rescate (Refresh Token)...`);
+
+  if (response.status === 401 && !isAuthFlow) {
     console.warn(`[API_CLIENT] 🔴 401 Unauthorized detectado en ${endpoint}`);
-    console.warn(`[API_CLIENT] 🚑 Iniciando protocolo de rescate (Refresh Token)...`);
 
     if (!isRefreshing) {
       isRefreshing = true;
@@ -4364,12 +4384,10 @@ export async function fetchSeguro(endpoint: string, options: RequestInit = {}) {
             method: "POST",
             credentials: "include",
           });
-          
-          return refreshRes.ok;
 
+          return refreshRes.ok;
         } catch (error) {
           return false;
-
         } finally {
           isRefreshing = false;
         }
@@ -4379,7 +4397,7 @@ export async function fetchSeguro(endpoint: string, options: RequestInit = {}) {
     const refreshSuccessful = await refreshPromise;
 
     if (refreshSuccessful) {
-      console.log(`✅ [SECURITY] Rotación exitosa. Reintentando petición original a ${endpoint}`);
+      console.log(`✅ [SECURITY] Rotación exitosa. Reintentando petición original...`);
 
       if (options.body && options.body instanceof FormData) {
         console.warn(
@@ -4399,12 +4417,15 @@ export async function fetchSeguro(endpoint: string, options: RequestInit = {}) {
         throw new Error("Se perdió la conexión durante el reintento.");
       }
     } else {
-      console.error("🚷 [SECURITY] Refresh Token inválido. Sesión terminada.");
+      console.error("🚷 [SECURITY] Refresh Token inválido o inexistente.");
       if (typeof window !== "undefined") {
         window.dispatchEvent(new Event("auth:unauthorized"));
       }
-      throw new Error("Sesión expirada completamente");
+      throw new Error("Sesión expirada");
     }
+  } else if (response.status === 401 && isAuthFlow) {
+    console.error(`❌ [AUTH_ERROR] Error de credenciales en ${endpoint}`);
+    throw new Error("Credenciales inválidas o sesión de tercero fallida.");
   }
 
   if (!response.ok) {
