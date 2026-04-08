@@ -4,7 +4,7 @@ import { use, useState } from "react";
 import { useStudio } from "@/src/features/studio/hooks/useStudio";
 import { PromptCard } from "@/src/system/organisms/Studio/PromptCard";
 import { CreateCollectionModal } from "@/src/system/molecules/Cards/CreateCollectionModal";
-import { IconPlus, IconAlbum, IconScanTraces } from "@tabler/icons-react";
+import { IconPlus, IconAlbum, IconScanTraces, IconLock, IconWorld } from "@tabler/icons-react";
 import { useAuthStore } from "@/src/store/authStore";
 import Link from "next/link";
 import { PageLoader } from "@/src/system/atoms/PageLoader";
@@ -26,9 +26,7 @@ export default function StudioPage({ params }: { params: Promise<{ lang: string 
     isDeletingBatch,
   } = useStudio();
   const [isModalOpen, setIsModalOpen] = useState(false);
-
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
-
   const breadcrumbItems = [{ label: "Mi Studio" }];
 
   if (isLoading) return <PageLoader text="Cargando Metadata ..." />;
@@ -70,7 +68,6 @@ export default function StudioPage({ params }: { params: Promise<{ lang: string 
           <Breadcrumbs items={breadcrumbItems} />
         </div>
 
-        {/* Cabecera ... (se mantiene igual) ... */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-border pb-8 mt-4">
           <div>
             <h1 className="text-3xl font-black tracking-tighter flex items-center gap-3">
@@ -96,6 +93,42 @@ export default function StudioPage({ params }: { params: Promise<{ lang: string 
             </button>
           </div>
         </div>
+
+        {collections.length > 0 && (
+          <section className="space-y-4 mb-12">
+            <h2 className="text-sm font-mono font-bold uppercase tracking-widest text-muted-foreground">
+              Tus Colecciones
+            </h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              {collections.map((col) => (
+                <Link
+                  key={col.id}
+                  href={`/${lang}/${user?.username}/${col.slug}`}
+                  className="group relative p-5 bg-(--bg-secondary) neo-border hover:border-accent! hover:bg-accent/15 transition-all neo-shadow flex flex-col justify-between min-h-120px"
+                >
+                  <div className="flex justify-between items-start">
+                    <IconAlbum
+                      size={24}
+                      className="text-muted-foreground group-hover:text-accent transition-colors"
+                    />
+                    <div className="text-muted-foreground hover:text-accent">
+                      {col.is_private ? (
+                        <IconLock size={16} title="Colección Privada" />
+                      ) : (
+                        <IconWorld size={16} title="Colección Pública" />
+                      )}
+                    </div>
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-lg font-mono uppercase tracking-tight truncate mt-4">
+                      {col.name}
+                    </h3>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </section>
+        )}
 
         <section className="space-y-4">
           <h2 className="text-sm font-mono font-bold uppercase tracking-widest text-muted-foreground">

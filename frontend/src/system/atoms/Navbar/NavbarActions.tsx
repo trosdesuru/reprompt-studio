@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useState, useEffect } from "react";
 import { useAuthStore } from "@/src/store/authStore";
 import { useTheme } from "@/src/utils/hooks/useTheme";
 import { UserDropdown } from "../../molecules/Navbar/UserDropdown";
@@ -8,12 +9,23 @@ import { NotificationDropdown } from "../../molecules/Navbar/NotificationDropdow
 import { IconAlbum, IconSun, IconMoon, IconScanTraces } from "@tabler/icons-react";
 
 export function NavbarActions() {
-  const { user } = useAuthStore();
+  const { user, isLoadingAuth } = useAuthStore();
   const { isDark, toggleTheme } = useTheme();
+
+  const [isMounted, setIsMounted] = useState(false);
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  if (!isMounted) {
+    return <div className="hidden md:block w-24 h-10" />;
+  }
 
   return (
     <div className="hidden md:flex items-center gap-1.5 lg:gap-1.5 shrink-0">
-      {user ? (
+      {isLoadingAuth ? (
+        <div className="w-24 h-10 rounded-lg bg-muted/50 animate-pulse"></div>
+      ) : user ? (
         <>
           <div className="flex items-center gap-2">
             <Link

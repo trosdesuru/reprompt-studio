@@ -20,8 +20,16 @@ export function useStudio() {
         api.getMyPrompt(),
         api.collections.getMyCollections(),
       ]);
+
+      console.log("📦 [DEBUG] Respuesta cruda de Colecciones:", collectionsRes);
+
       setPrompts(promptsRes);
-      setCollections(collectionsRes.collections || []);
+
+      const collection = Array.isArray(collectionsRes)
+        ? collectionsRes
+        : collectionsRes?.collections || [];
+
+      setCollections(collection);
     } catch (err: unknown) {
       const msg = handleError(err, "useStudio");
       setError(msg);
