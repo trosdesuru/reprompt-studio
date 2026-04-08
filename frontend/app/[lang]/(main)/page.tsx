@@ -30,7 +30,7 @@ export default function Home({ params }: { params: Promise<{ lang: string }> }) 
   const globalError = search.error || publicFeed.feedError;
 
   return (
-    <main className="min-h-screen bg-background text-foreground font-sans">
+    <main className="max-h-screen bg-background text-foreground font-sans">
       <Hero />
 
       {globalError && <FeedState type="error" message={globalError} />}

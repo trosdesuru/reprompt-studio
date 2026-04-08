@@ -32,7 +32,7 @@ export default function RepromptPage({ params }: { params: Promise<{ lang: strin
   ];
 
   return (
-    <main className="min-h-screen bg-background p-4 md:p-8">
+    <main className="max-h-screen bg-background p-4 md:p-8">
       <UpgradeModal isOpen={upgradeModal} onClose={closeUpgradeModal} />
       <div className="max-w-7xl mx-auto space-y-8">
         <div>

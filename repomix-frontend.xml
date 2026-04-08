@@ -10364,6 +10364,7 @@ import '@testing-library/jest-dom'
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  output: "standalone",
   transpilePackages: ["framer-motion"],
   images: {
     remotePatterns: [
@@ -10717,15 +10718,16 @@ next-env.d.ts
 
 <file path="docker-compose.yml">
 frontend:
-    build: ./frontend
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
-      - /app/.next
-    ports:
-      - "3000:3000"
-    environment:
-      - NEXT_PUBLIC_API_URL=http://localhost:8000
+  build:
+    context: ./frontend
+  volumes:
+    - ./frontend:/app
+    - /app/node_modules
+    - /app/.next
+  ports:
+    - "3000:3000"
+  environment:
+    - NEXT_PUBLIC_API_URL=http://localhost:8000
 </file>
 
 </files>

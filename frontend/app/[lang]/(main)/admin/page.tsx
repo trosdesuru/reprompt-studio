@@ -40,7 +40,7 @@ export default function AdminDashboard() {
   // Pantalla de carga mientras verificamos identidad
   if (isLoadingAuth || !user || user.role !== "admin") {
     return (
-      <div className="min-h-screen flex items-center justify-center font-mono text-foreground bg-background">
+      <div className="max-h-screen flex items-center justify-center font-mono text-foreground bg-background">
         <span className="animate-pulse">CARGANDO PROTOCOLOS DE MANDO...</span>
       </div>
     );

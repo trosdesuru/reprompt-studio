@@ -24,7 +24,7 @@ export default function PublicProfilePage({
 
   if (error || !data) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center font-mono gap-4">
+      <div className="max-h-screen flex flex-col items-center justify-center font-mono gap-4">
         <p className="text-red-500">
           {error || "Este usuario no existe o se ha perdido en el vacío."}
         </p>
@@ -41,7 +41,7 @@ export default function PublicProfilePage({
   const breadcrumbItems = [{ label: `@${data.user.username}` }];
 
   return (
-    <main className="min-h-screen bg-background p-4 md:p-8">
+    <main className="max-h-screen bg-background p-4 md:p-8">
       <div className="max-w-7xl mx-auto space-y-8">
         <div>
           <Breadcrumbs items={breadcrumbItems} />

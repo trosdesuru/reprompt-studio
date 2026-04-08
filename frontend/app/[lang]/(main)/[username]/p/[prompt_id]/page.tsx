@@ -51,7 +51,7 @@ export default function PromptDetailPage({ params, searchParams }: PromptDetailP
   }
 
   return (
-    <main className="min-h-screen bg-background p-4 md:p-8">
+    <main className="max-h-screen bg-background p-4 md:p-8">
       <div className="max-w-6xl mx-auto space-y-8">
         <div className="mb-4">
           <Breadcrumbs items={breadcrumbItems} />

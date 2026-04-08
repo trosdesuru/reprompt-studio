@@ -28,7 +28,7 @@ export default function PublicCollectionPage({
 
   if (error || !data) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center font-mono gap-4">
+      <div className="max-h-screen flex flex-col items-center justify-center font-mono gap-4">
         <p className="text-red-500">{error || "Colección no encontrada."}</p>
         <Link
           href={`/${lang}/${username}`}
@@ -47,7 +47,7 @@ export default function PublicCollectionPage({
 
   return (
     <FadeIn duration={0.8}>
-      <main className="min-h-screen bg-background p-4 md:p-8">
+      <main className="max-h-screen bg-background p-4 md:p-8">
         <div className="max-w-7xl mx-auto space-y-8">
           <div>
             <Breadcrumbs items={breadcrumbItems} />

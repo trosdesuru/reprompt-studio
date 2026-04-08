@@ -8,8 +8,8 @@ export function PageLoader({ text = "Procesando petición..." }: PageLoaderProps
       <p
         className="font-mono text-sm uppercase tracking-widest
                    bg-gradient-to-r from-zinc-600/40 via-zinc-100 to-zinc-600/40
-                   bg-[length:250%_auto] 
-                   bg-clip-text text-transparent 
+                   bg-[length:250%_auto]
+                   bg-clip-text text-transparent
                    animate-ai-shimmer"
       >
         {text}
