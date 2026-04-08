@@ -12,6 +12,7 @@ export function useLoginForm() {
 
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
+    email: "",
     username: "",
     password: "",
   });

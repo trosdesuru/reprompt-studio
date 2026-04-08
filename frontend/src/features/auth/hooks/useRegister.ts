@@ -18,7 +18,7 @@ export const useRegister = (lang: string) => {
     setError(null);
 
     try {
-      await api.registrar(formData);
+      await api.register(formData);
 
       router.push(`/${lang}/login?registered=true`);
     } catch (err: any) {

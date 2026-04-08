@@ -156,6 +156,7 @@ frontend/
         admin.types.ts
       auth/
         hooks/
+          useAuthForm.tsx
           useGoogleAuth.ts
           useLoginForm.tsx
           useRedirectIfAuthenticated.ts
@@ -217,6 +218,7 @@ frontend/
         icons/
           IconLampOn.tsx
         Login/
+          AuthSeparator.tsx
           FormDivider.tsx
           FormHeader.tsx
         Navbar/
@@ -233,6 +235,10 @@ frontend/
         ProgressBar.tsx
         Skeleton.tsx
       molecules/
+        Auth/
+          AuthHeader.tsx
+          CredentialsForm.tsx
+          SocialLogins.tsx
         Cards/
           CreateCollectionModal.tsx
           FeedItemCard.tsx
@@ -251,6 +257,8 @@ frontend/
           NotificationDropdown.tsx
           SearchCategorySelector.tsx
           UserDropdown.tsx
+        Tabs/
+          AuthTabs.tsx
         DownloadButton.tsx
         FilterBar.tsx
         FormField.tsx
@@ -264,6 +272,7 @@ frontend/
           InviteManager.tsx
           SecurityModule.tsx
         Auth/
+          AuthForm.tsx
           ChangePasswordModal.tsx
           LoginForm.tsx
           RegisterForm.tsx
@@ -365,6 +374,37 @@ sonar-project.properties
 
 <files>
 This section contains the contents of the repository's files.
+
+<file path=".tokens/tokens.json">
+{
+  "global": {
+    "color": {
+      "neutral": {
+        "0": { "value": "#ffffff", "type": "color" },
+        "100": { "value": "#f4f5f5", "type": "color" },
+        "400": { "value": "#a1a1aa", "type": "color" },
+        "600": { "value": "#4b5563", "type": "color" },
+        "800": { "value": "#1d1f21", "type": "color" },
+        "900": { "value": "#0a0a0a", "type": "color" },
+        "950": { "value": "#171717", "type": "color" },
+        "1000": { "value": "#000000", "type": "color" }
+      },
+      "brand": {
+        "orange": { "value": "#d83c00", "type": "color" },
+        "blue": { "value": "#0ea5e9", "type": "color" }
+      }
+    },
+    "spacing": {
+      "2": { "value": "8px", "type": "spacing" },
+      "4": { "value": "16px", "type": "spacing" },
+      "8": { "value": "32px", "type": "spacing" }
+    },
+    "borderRadius": {
+      "base": { "value": "10px", "type": "borderRadius" }
+    }
+  }
+}
+</file>
 
 <file path="backend/app/api/__init__.py">
 
@@ -605,30 +645,6 @@ def navegador_seguro():
     finally:
         logger.info("🔒 Destruyendo instancia de Chrome para liberar RAM...")
         driver.quit()
-</file>
-
-<file path="backend/app/models/gallery.py">
-# backend/app/models/gallery.py
-from typing import Optional
-from sqlmodel import Field, SQLModel
-from datetime import datetime, timezone
-
-
-class GalleryMetric(SQLModel, table=True):
-    """Tabla para almacenar las métricas locales de las galerías scrapeadas"""
-
-    id: Optional[int] = Field(default=None, primary_key=True)
-    url: str = Field(index=True, unique=True, nullable=False)
-    title: str
-    thumb: str | None = None
-
-    # 🟢 Métricas Core
-    views: int = Field(default=0)
-    downloads: int = Field(default=0)
-
-    # Trazabilidad
-    last_accessed: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 </file>
 
 <file path="backend/app/schemas/__init__.py">
@@ -907,29 +923,6 @@ line-length = 88
 python_version = "3.11"
 strict = true
 ignore_missing_imports = true
-</file>
-
-<file path="backend/worker.py">
-import logging
-
-from rq import Queue, Worker
-
-from app.core.redis_config import conn
-
-# Logs para el proceso worker
-logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s")
-logger = logging.getLogger("rq_worker")
-
-if __name__ == '__main__':
-    try:
-        # Definimos la cola 'downloads' usando nuestra conexión de Redis
-        queue = Queue('downloads', connection=conn)
-        worker = Worker([queue], connection=conn)
-        
-        logger.info("👷 Worker RQ v2.7.0 online. Esperando tareas en 'downloads'...")
-        worker.work()
-    except Exception as e:
-        logger.error(f"❌ El Worker ha muerto: {e}")
 </file>
 
 <file path="frontend/.vscode/mcp.json">
@@ -3708,37 +3701,6 @@ sonar.python.version=3.11
 sonar.javascript.node.maxspace=4096
 </file>
 
-<file path=".tokens/tokens.json">
-{
-  "global": {
-    "color": {
-      "neutral": {
-        "0": { "value": "#ffffff", "type": "color" },
-        "100": { "value": "#f4f5f5", "type": "color" },
-        "400": { "value": "#a1a1aa", "type": "color" },
-        "600": { "value": "#4b5563", "type": "color" },
-        "800": { "value": "#1d1f21", "type": "color" },
-        "900": { "value": "#0a0a0a", "type": "color" },
-        "950": { "value": "#171717", "type": "color" },
-        "1000": { "value": "#000000", "type": "color" }
-      },
-      "brand": {
-        "orange": { "value": "#d83c00", "type": "color" },
-        "blue": { "value": "#0ea5e9", "type": "color" }
-      }
-    },
-    "spacing": {
-      "2": { "value": "8px", "type": "spacing" },
-      "4": { "value": "16px", "type": "spacing" },
-      "8": { "value": "32px", "type": "spacing" }
-    },
-    "borderRadius": {
-      "base": { "value": "10px", "type": "borderRadius" }
-    }
-  }
-}
-</file>
-
 <file path="backend/app/api/routes_admin.py">
 import logging
 from fastapi import APIRouter, Depends, Request
@@ -3787,228 +3749,31 @@ async def receive_bug_report(report: BugReport, request: Request):
     }
 </file>
 
-<file path="backend/app/api/routes_collections.py">
-import re
-import unicodedata
-from typing import Optional
-from pydantic import BaseModel
-from fastapi import APIRouter, Depends, HTTPException
-from sqlmodel import Session, select
-from app.core.db import get_session
-from app.api.deps import get_current_user
-from app.models.user import User
-from app.models.collection import Collection
-from app.models.prompt import ImagePrompt
-
-router = APIRouter()
-
-
-class CollectionCreate(BaseModel):
-    name: str
-    description: Optional[str] = None
-    is_private: bool = False
-
-
-class AssignPrompt(BaseModel):
-    collection_id: Optional[int]
-
-
-def create_unique_slug(name: str, user_id: int, session: Session) -> str:
-    """Genera un slug seguro, quitando tildes y añadiendo número si hay colisión."""
-    name_normalized = (
-        unicodedata.normalize("NFKD", name).encode("ASCII", "ignore").decode("utf-8")
-    )
-
-    # 2. Limpiar caracteres raros y espacios por guiones
-    base_slug = (
-        re.sub(r"[^a-z0-9]+", "-", name_normalized.lower()).strip("-") or "coleccion"
-    )
-
-    slug = base_slug
-    counter = 1
-
-    # 3. Evitar colisiones (si ya tienes otra que se llame igual)
-    while session.exec(
-        select(Collection).where(Collection.user_id == user_id, Collection.slug == slug)
-    ).first():
-        slug = f"{base_slug}-{counter}"
-        counter += 1
-
-    return slug
-
-
-@router.post("/")
-def create_collection(
-    data: CollectionCreate,
-    current_user: User = Depends(get_current_user),
-    session: Session = Depends(get_session),
-):
-    slug = create_unique_slug(data.name, current_user.id, session)
-
-    nueva_coleccion = Collection(
-        user_id=current_user.id,
-        name=data.name,
-        slug=slug,
-        description=data.description,
-        is_private=data.is_private,
-    )
-
-    session.add(nueva_coleccion)
-    session.commit()
-    session.refresh(nueva_coleccion)
-
-    return {
-        "status": "success",
-        "message": "Colección creada",
-        "collection": nueva_coleccion,
-    }
-
-
-@router.get("/")
-def get_my_collections(
-    current_user: User = Depends(get_current_user),
-    session: Session = Depends(get_session),
-):
-    statement = (
-        select(Collection)
-        .where(Collection.user_id == current_user.id)
-        .order_by(Collection.created_at.desc())
-    )
-    colecciones = session.exec(statement).all()
-    return {"status": "success", "collections": colecciones}
-
-
-@router.put("/assign/{prompt_id}")
-def assign_prompt_to_collection(
-    prompt_id: int,
-    data: AssignPrompt,
-    current_user: User = Depends(get_current_user),
-    session: Session = Depends(get_session),
-):
-    prompt = session.exec(
-        select(ImagePrompt).where(
-            ImagePrompt.id == prompt_id, ImagePrompt.user_id == current_user.id
-        )
-    ).first()
-    if not prompt:
-        raise HTTPException(status_code=404, detail="Prompt no encontrado")
-
-    # Validamos que la colección sea suya si no es None
-    if data.collection_id:
-        col = session.exec(
-            select(Collection).where(
-                Collection.id == data.collection_id,
-                Collection.user_id == current_user.id,
-            )
-        ).first()
-        if not col:
-            raise HTTPException(status_code=404, detail="Colección no encontrada")
-
-    prompt.collection_id = data.collection_id
-    session.add(prompt)
-    session.commit()
-
-    return {"status": "success", "message": "Imagen movida correctamente"}
-</file>
-
-<file path="backend/app/models/collection.py">
+<file path="backend/app/models/gallery.py">
+import uuid
 from typing import Optional
 from sqlmodel import Field, SQLModel
-from sqlalchemy import UniqueConstraint
 from datetime import datetime, timezone
 
 
-class Collection(SQLModel, table=True):
-    """Agrupación lógica de ImagePrompts (Galerías del usuario)"""
-
-    # Pero dos usuarios diferentes SÍ pueden tener la colección "cyberpunk".
-    __table_args__ = (
-        UniqueConstraint("user_id", "slug", name="unique_user_collection_slug"),
-    )
+class GalleryMetric(SQLModel, table=True):
+    """Tabla para almacenar las métricas locales de las galerías scrapeadas"""
 
     id: Optional[int] = Field(default=None, primary_key=True)
-    user_id: int = Field(foreign_key="user.id", index=True)
 
-    name: str = Field(nullable=False)
-    slug: str = Field(index=True, nullable=False)
-    description: Optional[str] = Field(default=None)
+    user_id: uuid.UUID = Field(foreign_key="user.id", index=True)
 
-    is_private: bool = Field(default=False)
-    share_token: Optional[str] = Field(default=None, index=True, unique=True)
-
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-</file>
-
-<file path="backend/app/models/prompt.py">
-from sqlmodel import SQLModel, Field, Column, JSON
-from sqlalchemy import Text
-from typing import Optional, Dict, Any
-from datetime import datetime
-
-
-class ImagePrompt(SQLModel, table=True):
-    """Almacenamiento individual de cada generación extraída"""
-
-    id: Optional[int] = Field(default=None, primary_key=True)
-    user_id: int = Field(foreign_key="user.id", index=True)
-
-    collection_id: Optional[int] = Field(
-        default=None, foreign_key="collection.id", index=True
-    )
-
+    url: str = Field(index=True, unique=True, nullable=False)
     title: str
+    thumb: str | None = None
 
-    prompt: str = Field(sa_column=Column(Text))
-    negative_prompt: Optional[str] = Field(default=None, sa_column=Column(Text))
+    # 🟢 Métricas Core
+    views: int = Field(default=0)
+    downloads: int = Field(default=0)
 
-    software: Optional[str] = Field(default="Desconocido")
-    model: Optional[str] = Field(default=None)
-    sampler: Optional[str] = Field(default=None)
-    steps: Optional[str] = Field(default=None)
-    cfg_scale: Optional[str] = Field(default=None)
-    seed: Optional[str] = Field(default=None)
-    resolution: Optional[str] = Field(default=None)
-
-    image_url: Optional[str] = Field(default=None, sa_column=Column(Text))
-
-    extra_data: Dict[str, Any] = Field(default_factory=dict, sa_column=Column(JSON))
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-</file>
-
-<file path="backend/app/schemas/user.py">
-# backend/app/schemas/user.py
-from pydantic import BaseModel
-
-
-class UserRegister(BaseModel):
-    username: str
-    password: str
-    invite_code: str
-
-
-class UserLogin(BaseModel):
-    username: str
-    password: str
-
-
-class Token(BaseModel):
-    access_token: str
-    token_type: str
-
-
-class PasswordChange(BaseModel):
-    old_password: str
-    new_password: str
-
-
-class GoogleAuthRequest(BaseModel):
-    token: str
-
-
-class GoogleJoinRequest(BaseModel):
-    token: str
-    invite_code: str
-    username: str
+    # Trazabilidad
+    last_accessed: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 </file>
 
 <file path="backend/app/services/storage.py">
@@ -4083,6 +3848,30 @@ COPY . .
 EXPOSE 8000
 # Cambia la última línea de tu backend/Dockerfile a esto:
 CMD ["python", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+</file>
+
+<file path="backend/worker.py">
+import logging
+from rq import Queue, Worker
+from app.core.redis_config import conn
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s")
+logger = logging.getLogger("rq_worker")
+
+if __name__ == "__main__":
+    try:
+        premium_queue = Queue("downloads_premium", connection=conn)
+        free_queue = Queue("downloads_free", connection=conn)
+
+        # El orden de la lista importa:
+        # vaciará premium antes de tocar free
+        worker = Worker([premium_queue, free_queue], connection=conn)
+
+        logger.info("👷 Worker RQ v2.7.0 online.")
+        logger.info("🎧 Escuchando colas: 1. downloads_premium | 2. downloads_free")
+        worker.work()
+    except Exception as e:
+        logger.error(f"❌ El Worker ha muerto: {e}")
 </file>
 
 <file path="frontend/app/[lang]/(auth)/join/page.tsx">
@@ -4336,6 +4125,104 @@ export function ThemeProvider({
   ...props
 }: React.ComponentProps<typeof NextThemesProvider>) {
   return <NextThemesProvider {...props}>{children}</NextThemesProvider>;
+}
+</file>
+
+<file path="frontend/src/features/auth/hooks/useAuthForm.tsx">
+import { useState, useEffect } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
+import { api } from "@/src/services/api";
+import toast from "react-hot-toast";
+
+export function useAuthForm() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  const [isLogin, setIsLogin] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const [isDiscordLoading, setIsDiscordLoading] = useState(false);
+
+  const [emailOrUser, setEmailOrUser] = useState("");
+  const [password, setPassword] = useState("");
+  const [inviteCode, setInviteCode] = useState("");
+  const [isInviteLocked, setIsInviteLocked] = useState(false);
+
+  // Detección de código en la URL
+  useEffect(() => {
+    const codeFromUrl = searchParams.get("code");
+    if (codeFromUrl) {
+      setIsLogin(false);
+      setInviteCode(codeFromUrl);
+      setIsInviteLocked(true);
+    }
+  }, [searchParams]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+
+    try {
+      if (isLogin) {
+        await api.login({ username: emailOrUser, password });
+        toast.success("¡Bienvenido de nuevo!");
+        router.push("/es/studio");
+      } else {
+        await api.registrar({
+          email: emailOrUser,
+          username: emailOrUser,
+          password,
+          invite_code: inviteCode,
+        });
+        toast.success("Cuenta creada con éxito");
+        await api.login({ username: emailOrUser, password });
+        router.push("/es/studio");
+      }
+    } catch (error: any) {
+      toast.error(error?.response?.data?.detail || "Error en la autenticación");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleGoogleLogin = async () => {
+    setIsGoogleLoading(true);
+    try {
+      const response = await api.getGoogleAuthUrl();
+      if (response?.auth_url) window.location.href = response.auth_url;
+    } catch (error) {
+      toast.error("Error al conectar con Google");
+      setIsGoogleLoading(false);
+    }
+  };
+
+  const handleDiscordLogin = () => {
+    setIsDiscordLoading(true);
+    toast("Iniciando conexión con Discord...", { icon: "👾" });
+    setTimeout(() => setIsDiscordLoading(false), 2000);
+  };
+
+  return {
+    state: {
+      isLogin,
+      isLoading,
+      isGoogleLoading,
+      isDiscordLoading,
+      emailOrUser,
+      password,
+      inviteCode,
+      isInviteLocked,
+    },
+    actions: {
+      setIsLogin,
+      setEmailOrUser,
+      setPassword,
+      setInviteCode,
+      handleSubmit,
+      handleGoogleLogin,
+      handleDiscordLogin,
+    },
+  };
 }
 </file>
 
@@ -5069,6 +4956,20 @@ export const IconLamp2On = forwardRef<SVGSVGElement, SVGProps<SVGSVGElement>>(
 IconLamp2On.displayName = "IconLamp2On";
 </file>
 
+<file path="frontend/src/system/atoms/Login/AuthSeparator.tsx">
+export function AuthSeparator() {
+  return (
+    <div className="relative flex items-center py-4">
+      <div className="grow border-t border-border"></div>
+      <span className="shrink-0 mx-4 text-xs font-mono text-muted-foreground uppercase tracking-widest">
+        O con email
+      </span>
+      <div className="grow border-t border-border"></div>
+    </div>
+  );
+}
+</file>
+
 <file path="frontend/src/system/atoms/Login/FormDivider.tsx">
 export function FormDivider() {
   return (
@@ -5236,6 +5137,177 @@ export function MediaCover({ src, alt }: MediaCoverProps) {
       quality={90}
       decoding="async"
     />
+  );
+}
+</file>
+
+<file path="frontend/src/system/molecules/Auth/AuthHeader.tsx">
+// src/system/molecules/Auth/AuthHeader.tsx
+interface AuthHeaderProps {
+  isLogin: boolean;
+}
+
+export function AuthHeader({ isLogin }: AuthHeaderProps) {
+  return (
+    <div className="mb-8 text-center">
+      <h2 className="text-2xl font-black uppercase font-mono tracking-tighter">
+        {isLogin ? "Bienvenido de" : "Únete a la"}{" "}
+        <span className="text-(--accent-color)">{isLogin ? "Nuevo" : "Resistencia"}</span>
+      </h2>
+      <p className="text-xs font-mono text-(--text-secondary) mt-2 uppercase">
+        {isLogin ? "Accede para gestionar tus prompts" : "Almacena tu arte generado por IA"}
+      </p>
+    </div>
+  );
+}
+</file>
+
+<file path="frontend/src/system/molecules/Auth/CredentialsForm.tsx">
+// src/system/molecules/Auth/CredentialsForm.tsx
+import { IconMail, IconLock, IconTicket, IconLoader2 } from "@tabler/icons-react";
+
+interface CredentialsFormProps {
+  // ... (Mismos props de antes, no cambian)
+  isLogin: boolean;
+  isLoading: boolean;
+  isSocialLoading: boolean;
+  emailOrUser: string;
+  password: string;
+  inviteCode: string;
+  isInviteLocked: boolean;
+  onEmailChange: (value: string) => void;
+  onPasswordChange: (value: string) => void;
+  onInviteChange: (value: string) => void;
+  onSubmit: (e: React.FormEvent) => void;
+}
+
+export function CredentialsForm({
+  isLogin, isLoading, isSocialLoading, emailOrUser, password,
+  inviteCode, isInviteLocked, onEmailChange, onPasswordChange, onInviteChange, onSubmit,
+}: CredentialsFormProps) {
+  return (
+    <form onSubmit={onSubmit} className="flex flex-col gap-5">
+      <div className="relative">
+        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-(--text-secondary)">
+          <IconMail size={18} />
+        </div>
+        <input
+          type="text"
+          required
+          placeholder={isLogin ? "EMAIL O USUARIO" : "CORREO ELECTRÓNICO"}
+          value={emailOrUser}
+          onChange={(e) => onEmailChange(e.target.value)}
+          className="w-full h-12 bg-background border border-border pl-10 pr-3 text-sm font-mono focus:outline-none focus:border-(--accent-color) transition-colors placeholder:text-(--text-secondary)/50"
+          disabled={isLoading}
+        />
+      </div>
+
+      <div className="relative">
+        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-(--text-secondary)">
+          <IconLock size={18} />
+        </div>
+        <input
+          type="password"
+          required
+          placeholder="••••••••"
+          value={password}
+          onChange={(e) => onPasswordChange(e.target.value)}
+          className="w-full h-12 bg-background border border-border pl-10 pr-3 text-sm font-mono focus:outline-none focus:border-(--accent-color) transition-colors placeholder:text-(--text-secondary)/50"
+          disabled={isLoading}
+        />
+      </div>
+
+      {!isLogin && (
+        <div className="relative animate-in slide-in-from-top-2 duration-200">
+          <div className={`absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none ${isInviteLocked ? "text-(--accent-color)" : "text-(--text-secondary)"}`}>
+            <IconTicket size={18} />
+          </div>
+          <input
+            type="text"
+            required
+            placeholder="CÓDIGO DE INVITACIÓN"
+            value={inviteCode}
+            onChange={(e) => onInviteChange(e.target.value.toUpperCase())}
+            readOnly={isInviteLocked}
+            className={`w-full h-12 border pl-10 pr-3 text-sm font-mono uppercase focus:outline-none transition-colors placeholder:text-(--text-secondary)/50 ${
+              isInviteLocked
+                ? "bg-(--accent-color)/10 border-(--accent-color) text-(--accent-color) font-black"
+                : "bg-background border-border focus:border-(--accent-color)"
+            }`}
+            disabled={isLoading}
+          />
+        </div>
+      )}
+
+      <button
+        type="submit"
+        disabled={isLoading || isSocialLoading}
+        className="w-full justify-center h-12 mt-2 text-sm font-black uppercase font-mono tracking-widest bg-white text-black hover:bg-gray-200 neo-border transition-all disabled:opacity-50"
+      >
+        {isLoading ? (
+          <IconLoader2 className="animate-spin mx-auto" size={20} />
+        ) : isLogin ? (
+          "Entrar"
+        ) : (
+          "Confirmar Acceso"
+        )}
+      </button>
+    </form>
+  );
+}
+</file>
+
+<file path="frontend/src/system/molecules/Auth/SocialLogins.tsx">
+// src/system/molecules/Auth/SocialLogins.tsx
+import { IconBrandGoogleFilled, IconBrandDiscordFilled, IconLoader2 } from "@tabler/icons-react";
+
+interface SocialLoginsProps {
+  isLoading: boolean;
+  isGoogleLoading: boolean;
+  isDiscordLoading: boolean;
+  onGoogle: () => void;
+  onDiscord: () => void;
+}
+
+export function SocialLogins({
+  isLoading,
+  isGoogleLoading,
+  isDiscordLoading,
+  onGoogle,
+  onDiscord,
+}: SocialLoginsProps) {
+  const isDisabled = isLoading || isGoogleLoading || isDiscordLoading;
+
+  return (
+    <div className="flex flex-col gap-4">
+      <button
+        type="button"
+        onClick={onGoogle}
+        disabled={isDisabled}
+        className="flex items-center justify-center gap-3 w-full h-12 bg-transparent text-foreground border border-border hover:bg-muted font-mono uppercase text-xs font-black tracking-widest transition-colors disabled:opacity-50"
+      >
+        {isGoogleLoading ? (
+          <IconLoader2 className="animate-spin" size={18} />
+        ) : (
+          <IconBrandGoogleFilled size={18} className="text-red-500" />
+        )}
+        Continuar con Google
+      </button>
+
+      <button
+        type="button"
+        onClick={onDiscord}
+        disabled={isDisabled}
+        className="flex items-center justify-center gap-3 w-full h-12 bg-[#5865F2] text-white hover:bg-[#4752C4] neo-border font-mono uppercase text-xs font-black tracking-widest transition-colors disabled:opacity-50"
+      >
+        {isDiscordLoading ? (
+          <IconLoader2 className="animate-spin" size={18} />
+        ) : (
+          <IconBrandDiscordFilled size={18} />
+        )}
+        Continuar con Discord
+      </button>
+    </div>
   );
 }
 </file>
@@ -5841,6 +5913,43 @@ export function UserDropdown() {
 }
 </file>
 
+<file path="frontend/src/system/molecules/Tabs/AuthTabs.tsx">
+// src/system/molecules/Tabs/AuthTabs.tsx
+interface AuthTabsProps {
+  isLogin: boolean;
+  onToggle: (isLogin: boolean) => void;
+}
+
+export function AuthTabs({ isLogin, onToggle }: AuthTabsProps) {
+  return (
+    <div className="flex w-full border-b border-border">
+      <button
+        type="button"
+        onClick={() => onToggle(true)}
+        className={`flex-1 pb-4 text-xs font-black tracking-widest uppercase font-mono transition-colors ${
+          isLogin
+            ? "text-(--accent-color) border-b-2 border-(--accent-color)"
+            : "text-(--text-secondary) hover:text-foreground"
+        }`}
+      >
+        Iniciar Sesión
+      </button>
+      <button
+        type="button"
+        onClick={() => onToggle(false)}
+        className={`flex-1 pb-4 text-xs font-black tracking-widest uppercase font-mono transition-colors ${
+          !isLogin
+            ? "text-(--accent-color) border-b-2 border-(--accent-color)"
+            : "text-(--text-secondary) hover:text-foreground"
+        }`}
+      >
+        Registrarse
+      </button>
+    </div>
+  );
+}
+</file>
+
 <file path="frontend/src/system/molecules/DownloadButton.tsx">
 "use client";
 
@@ -5960,6 +6069,57 @@ export function MediaOverlay({ title, prompt, tags, variant = "gallery", onDownl
             ))}
           </div>
         )}
+      </div>
+    </div>
+  );
+}
+</file>
+
+<file path="frontend/src/system/organisms/Auth/AuthForm.tsx">
+// src/system/organisms/Auth/AuthForm.tsx
+"use client";
+
+import { useAuthForm } from "@/src/features/auth/hooks/useAuthForm";
+import { AuthTabs } from "../../molecules/Tabs/AuthTabs";
+import { AuthHeader } from "../../molecules/Auth/AuthHeader";
+import { SocialLogins } from "../../molecules/Auth/SocialLogins";
+import { AuthSeparator } from "../../atoms/Login/AuthSeparator";
+import { CredentialsForm } from "../../molecules/Auth/CredentialsForm";
+
+export function AuthForm() {
+  const { state, actions } = useAuthForm();
+
+  return (
+    <div className="w-full max-w-md mx-auto p-8 bg-(--bg-secondary) neo-border neo-shadow animate-in fade-in zoom-in-95 duration-300">
+      
+      <AuthTabs isLogin={state.isLogin} onToggle={actions.setIsLogin} />
+
+      <div className="mt-8">
+        <AuthHeader isLogin={state.isLogin} />
+
+        <SocialLogins
+          isLoading={state.isLoading}
+          isGoogleLoading={state.isGoogleLoading}
+          isDiscordLoading={state.isDiscordLoading}
+          onGoogle={actions.handleGoogleLogin}
+          onDiscord={actions.handleDiscordLogin}
+        />
+
+        <AuthSeparator />
+
+        <CredentialsForm
+          isLogin={state.isLogin}
+          isLoading={state.isLoading}
+          isSocialLoading={state.isGoogleLoading || state.isDiscordLoading}
+          emailOrUser={state.emailOrUser}
+          password={state.password}
+          inviteCode={state.inviteCode}
+          isInviteLocked={state.isInviteLocked}
+          onEmailChange={actions.setEmailOrUser}
+          onPasswordChange={actions.setPassword}
+          onInviteChange={actions.setInviteCode}
+          onSubmit={actions.handleSubmit}
+        />
       </div>
     </div>
   );
@@ -7057,89 +7217,169 @@ volumes:
   caddy_config:
 </file>
 
-<file path="backend/app/core/config.py">
-# backend/app/core/config.py
-from pydantic_settings import BaseSettings
+<file path="backend/app/api/routes_collections.py">
+import uuid
+import re
+import unicodedata
+from typing import Optional
+from pydantic import BaseModel
+from fastapi import APIRouter, Depends, HTTPException
+from sqlmodel import Session, select
+from app.core.db import get_session
+from app.api.deps import get_current_user
+from app.models.user import User
+from app.models.collection import Collection
+from app.models.prompt import ImagePrompt
 
-class Settings(BaseSettings):
-    # Base de datos y Core
-    DATABASE_URL: str
-    SECRET_KEY: str
-    REDIS_URL: str
+router = APIRouter()
 
-    # Cloudflare R2
-    R2_ENDPOINT_URL: str
-    R2_ACCESS_KEY: str
-    R2_SECRET_KEY: str
-    R2_BUCKET_NAME: str
-    R2_PUBLIC_URL: str
 
-    # Google Auth
-    GOOGLE_CLIENT_ID: str
-    GOOGLE_CLIENT_SECRET: str
-    INVITE_ONLY_MODE: bool = True
+class CollectionCreate(BaseModel):
+    name: str
+    description: Optional[str] = None
+    is_private: bool = False
 
-    class Config:
-        env_file = ".env"
-        extra = "ignore" # Ignora variables extra en el sistema para no crashear
 
-# Instanciamos la configuración para que el resto de la app la pueda importar
-settings = Settings()
+class AssignPrompt(BaseModel):
+    collection_id: Optional[uuid.UUID]
+
+
+def create_unique_slug(name: str, user_id: int, session: Session) -> str:
+    """Genera un slug seguro, quitando tildes y añadiendo número si hay colisión."""
+    name_normalized = (
+        unicodedata.normalize("NFKD", name).encode("ASCII", "ignore").decode("utf-8")
+    )
+
+    # 2. Limpiar caracteres raros y espacios por guiones
+    base_slug = (
+        re.sub(r"[^a-z0-9]+", "-", name_normalized.lower()).strip("-") or "coleccion"
+    )
+
+    slug = base_slug
+    counter = 1
+
+    # 3. Evitar colisiones (si ya tienes otra que se llame igual)
+    while session.exec(
+        select(Collection).where(Collection.user_id == user_id, Collection.slug == slug)
+    ).first():
+        slug = f"{base_slug}-{counter}"
+        counter += 1
+
+    return slug
+
+
+@router.post("/")
+def create_collection(
+    data: CollectionCreate,
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    slug = create_unique_slug(data.name, current_user.id, session)
+
+    nueva_coleccion = Collection(
+        user_id=current_user.id,
+        name=data.name,
+        slug=slug,
+        description=data.description,
+        is_private=data.is_private,
+    )
+
+    session.add(nueva_coleccion)
+    session.commit()
+    session.refresh(nueva_coleccion)
+
+    return {
+        "status": "success",
+        "message": "Colección creada",
+        "collection": nueva_coleccion,
+    }
+
+
+@router.get("/")
+def get_my_collections(
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    statement = (
+        select(Collection)
+        .where(Collection.user_id == current_user.id)
+        .order_by(Collection.created_at.desc())
+    )
+    colecciones = session.exec(statement).all()
+    return {"status": "success", "collections": colecciones}
+
+
+@router.put("/assign/{prompt_id}")
+def assign_prompt_to_collection(
+    prompt_id: uuid.UUID,
+    data: AssignPrompt,
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    prompt = session.exec(
+        select(ImagePrompt).where(
+            ImagePrompt.id == prompt_id, ImagePrompt.user_id == current_user.id
+        )
+    ).first()
+    if not prompt:
+        raise HTTPException(status_code=404, detail="Prompt no encontrado")
+
+    # Validamos que la colección sea suya si no es None
+    if data.collection_id:
+        col = session.exec(
+            select(Collection).where(
+                Collection.id == data.collection_id,
+                Collection.user_id == current_user.id,
+            )
+        ).first()
+        if not col:
+            raise HTTPException(status_code=404, detail="Colección no encontrada")
+
+    prompt.collection_id = data.collection_id
+    session.add(prompt)
+    session.commit()
+
+    return {"status": "success", "message": "Imagen movida correctamente"}
 </file>
 
-<file path="backend/app/models/user.py">
-from typing import Optional
-from sqlmodel import Field, SQLModel
-from datetime import datetime, timezone
-from enum import Enum
+<file path="backend/app/schemas/user.py">
+from pydantic import BaseModel, EmailStr
 
 
-class UserRole(str, Enum):
-    VOYAGER = "voyager"
-    ARTIST = "artist"
-    ADMIN = "admin"
+class UserRegister(BaseModel):
+    email: EmailStr
+    password: str
+    invite_code: str
 
 
-class InviteCode(SQLModel, table=True):
-    """Códigos de un solo uso para acceder a la plataforma"""
-
-    id: Optional[int] = Field(default=None, primary_key=True)
-    code: str = Field(index=True, unique=True, nullable=False)
-    is_used: bool = Field(default=False)
-
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-
-    used_by_id: Optional[int] = Field(default=None, foreign_key="user.id")
+class UserLogin(BaseModel):
+    username: str
+    password: str
 
 
-class User(SQLModel, table=True):
-    """Usuarios de la plataforma con soporte Híbrido (Local / OAuth)"""
-
-    id: Optional[int] = Field(default=None, primary_key=True)
-    username: str = Field(index=True, unique=True, nullable=False)
-    role: UserRole = Field(default=UserRole.VOYAGER)
-
-    # Soporte para Google Auth
-    email: Optional[str] = Field(default=None, index=True, unique=True)
-    auth_provider: str = Field(default="local")
-    provider_id: Optional[str] = Field(default=None, index=True)
-
-    hashed_password: Optional[str] = Field(default=None)
-
-    role: str = Field(default="voyager")
-
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    is_active: bool = Field(default=True)
+class Token(BaseModel):
+    access_token: str
+    token_type: str
 
 
-class AuditLog(SQLModel, table=True):
-    """Registro inmutable de auditoría del sistema"""
+class PasswordChange(BaseModel):
+    old_password: str
+    new_password: str
 
-    id: Optional[int] = Field(default=None, primary_key=True)
-    username: str = Field(index=True)
-    action: str
-    details: Optional[str] = None
-    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class GoogleAuthRequest(BaseModel):
+    token: str
+
+
+class GoogleJoinRequest(BaseModel):
+    token: str
+    invite_code: str
+    username: str
+
+
+class DiscordAuthRequest(BaseModel):
+    code: str
+    redirect_uri: str
 </file>
 
 <file path="backend/app/services/downloader.py">
@@ -8872,64 +9112,6 @@ export interface ImageViewerModalProps {
 }
 </file>
 
-<file path="frontend/src/types/models.ts">
-export type MediaVariant = "gallery" | "viewer" | "search";
-export type AspectRatio = "portrait" | "landscape" | "square" | "auto";
-
-export interface MediaCardData {
-  id: string | number;
-  imageUrl: string;
-  title: string;
-  prompt?: string;
-  tags?: string[];
-  source?: string;
-  aspectRatio?: AspectRatio;
-}
-
-export interface GalleryItem {
-  url: string;
-  title: string;
-  thumb: string;
-  gid?: string;
-  token?: string;
-  tags?: string[];
-  [key: string]: any;
-}
-
-export interface FeedItem {
-  id: string;
-  raw_id: string;
-  slug?: string;
-  type: "prompt" | "collection" | "studio";
-  title: string;
-  username: string;
-  image_url?: string;
-  items_count: number;
-}
-
-export interface Collection {
-  id: number;
-  name: string;
-  slug: string;
-  description: string | null;
-  is_private: boolean;
-  created_at: string;
-}
-
-export interface SavedPrompt {
-  id: number;
-  title: string;
-  prompt: string;
-  model: string;
-  resolution?: string;
-  sampler?: string;
-  image_url?: string;
-  software?: string;
-  collection_id?: number | null;
-  created_at: string;
-}
-</file>
-
 <file path="docker-compose.yml">
 services:
   backend:
@@ -9131,750 +9313,176 @@ def get_optional_user(request: Request, session: Session = Depends(get_session))
     return None
 </file>
 
-<file path="backend/app/api/routes_auth.py">
-import os
-import secrets
-import redis
-import logging
-from fastapi import APIRouter, Depends, Response, Cookie, HTTPException, status
-from fastapi.responses import JSONResponse
-from sqlmodel import Session, select
+<file path="backend/app/core/config.py">
+# backend/app/core/config.py
+from pydantic_settings import BaseSettings
 
-from app.services.auth_service import AuthService
-from app.services.audit_service import AuditService
-from app.core.db import get_session
-from app.api.deps import get_current_user, get_current_admin, RateLimiter
-from app.models.user import User, InviteCode, AuditLog
+class Settings(BaseSettings):
+    # Base de datos y Core
+    DATABASE_URL: str
+    SECRET_KEY: str
+    REDIS_URL: str
 
-from app.schemas.user import (
-    UserRegister,
-    UserLogin,
-    PasswordChange,
-    GoogleAuthRequest,
-    GoogleJoinRequest,
-)
+    # Cloudflare R2
+    R2_ENDPOINT_URL: str
+    R2_ACCESS_KEY: str
+    R2_SECRET_KEY: str
+    R2_BUCKET_NAME: str
+    R2_PUBLIC_URL: str
 
-IS_PRODUCTION = os.getenv("ENVIRONMENT") == "production"
+    # Google Auth
+    GOOGLE_CLIENT_ID: str
+    GOOGLE_CLIENT_SECRET: str
+    INVITE_ONLY_MODE: bool = True
 
-logger = logging.getLogger("routes_auth")
-redis_client = redis.Redis(host="redis", port=6379, db=0, decode_responses=True)
-router = APIRouter()
-
-
-@router.post("/register")
-def register_user(user_data: UserRegister, session: Session = Depends(get_session)):
-    new_user = AuthService.register_user(user_data, session)
-    return {
-        "status": "success",
-        "message": "Usuario registrado correctamente",
-        "user": {"username": new_user.username, "role": new_user.role},
-    }
-
-
-@router.post(
-    "/login", dependencies=[Depends(RateLimiter(max_requests=5, window_seconds=60))]
-)
-def login_user(
-    user_data: UserLogin, response: Response, session: Session = Depends(get_session)
-):
-    user_key = f"brute_force_user:{user_data.username}"
-
-    attempts = redis_client.incr(user_key)
-    if attempts == 1:
-        redis_client.expire(user_key, 300)
-
-    if attempts > 5:
-        raise HTTPException(
-            status_code=429,
-            detail=f"La cuenta '{user_data.username}' está bloqueada temporalmente por seguridad. Inténtalo en 5 minutos.",
-        )
-
-    try:
-        access_token, refresh_token, username = AuthService.authenticate_user(
-            user_data, session, redis_client
-        )
-    except HTTPException as e:
-        raise e
-
-    redis_client.delete(user_key)
-
-    response.set_cookie(
-        key="access_token",
-        value=access_token,
-        httponly=True,
-        secure=IS_PRODUCTION,
-        max_age=60 * 15,
-        samesite="lax",
-        path="/",
-    )
-    response.set_cookie(
-        key="refresh_token",
-        value=refresh_token,
-        httponly=True,
-        secure=IS_PRODUCTION,
-        max_age=60 * 60 * 24 * 7,
-        samesite="lax",
-        path="/",
-    )
-
-    AuditService.log_action(session, username, "LOGIN", "Inicio de sesión exitoso")
-    return {"status": "success", "message": f"Bienvenido, {username}"}
-
-
-@router.post("/google")
-def google_auth(
-    data: GoogleAuthRequest, response: Response, session: Session = Depends(get_session)
-):
-    result = AuthService.authenticate_google_user(data.token, session, redis_client)
-
-    if result["status"] == "needs_invite":
-        response.status_code = status.HTTP_202_ACCEPTED
-        return result
-
-    response.set_cookie(
-        key="access_token",
-        value=result["access_token"],
-        httponly=True,
-        secure=IS_PRODUCTION,
-        max_age=60 * 15,
-        samesite="lax",
-        path="/",
-    )
-    response.set_cookie(
-        key="refresh_token",
-        value=result["refresh_token"],
-        httponly=True,
-        secure=IS_PRODUCTION,
-        max_age=60 * 60 * 24 * 7,
-        samesite="lax",
-        path="/",
-    )
-
-    AuditService.log_action(
-        session, result["username"], "LOGIN_GOOGLE", "Inicio de sesión con Google"
-    )
-    return {
-        "status": "success",
-        "message": f"Bienvenido de nuevo, {result['username']}",
-    }
-
-
-@router.post("/google/join")
-def google_join(
-    data: GoogleJoinRequest, response: Response, session: Session = Depends(get_session)
-):
-    access_token, refresh_token, username = AuthService.register_google_user(
-        data, session, redis_client
-    )
-
-    response.set_cookie(
-        key="access_token",
-        value=access_token,
-        httponly=True,
-        secure=IS_PRODUCTION,
-        max_age=60 * 15,
-        samesite="lax",
-        path="/",
-    )
-    response.set_cookie(
-        key="refresh_token",
-        value=refresh_token,
-        httponly=True,
-        secure=IS_PRODUCTION,
-        max_age=60 * 60 * 24 * 7,
-        samesite="lax",
-        path="/",
-    )
-
-    AuditService.log_action(
-        session, username, "REGISTER_GOOGLE", "Registro híbrido completado"
-    )
-    return {
-        "status": "success",
-        "message": f"Cuenta creada. Bienvenido a la Resistencia, {username}",
-    }
-
-
-@router.post("/logout")
-def logout_user(response: Response, refresh_token: str | None = Cookie(None)):
-    response.delete_cookie(
-        "access_token", path="/", httponly=True, samesite="lax", secure=IS_PRODUCTION
-    )
-    response.delete_cookie(
-        "refresh_token", path="/", httponly=True, samesite="lax", secure=IS_PRODUCTION
-    )
-
-    if refresh_token:
-        try:
-            from jose import jwt
-            from app.core.security import SECRET_KEY, ALGORITHM
-
-            payload = jwt.decode(refresh_token, SECRET_KEY, algorithms=[ALGORITHM])
-            username = payload.get("sub")
-            family_id = payload.get("family")
-
-            if username and family_id:
-                redis_key = f"session:{username}:{family_id}"
-                redis_client.delete(redis_key)
-        except Exception:
-            pass
-
-    return {"status": "success", "message": "Sesión cerrada y destruida por completo"}
-
-
-@router.put("/change-password")
-def change_password(
-    data: PasswordChange,
-    current_user: User = Depends(get_current_user),
-    session: Session = Depends(get_session),
-):
-    AuthService.change_password(data, current_user, session)
-    return {"status": "success", "message": "Contraseña actualizada correctamente"}
-
-
-@router.get("/me")
-def get_current_user_profile(current_user: User = Depends(get_current_user)):
-    return {
-        "status": "success",
-        "user": {
-            "username": current_user.username,
-            "role": current_user.role,
-            "is_active": current_user.is_active,
-        },
-    }
-
-
-@router.post("/refresh")
-def refresh_access_token(
-    response: Response,
-    refresh_token: str | None = Cookie(None),
-    session: Session = Depends(get_session),
-):
-    logger.info("🌐 [API_AUTH] Petición POST recibida en /api/auth/refresh")
-
-    if refresh_token:
-        logger.info(
-            f"🍪 [API_AUTH] Cookie 'refresh_token' detectada (Termina en: ...{refresh_token[-6:]})"
-        )
-    else:
-        logger.warning(
-            "🍪 [API_AUTH] NO SE DETECTÓ cookie 'refresh_token' en la petición."
-        )
-
-    try:
-        new_access, new_refresh = AuthService.rotate_tokens(
-            refresh_token, session, redis_client
-        )
-
-        logger.info(
-            "📦 [API_AUTH] Inyectando nuevos tokens en las cookies de respuesta..."
-        )
-        response.set_cookie(
-            key="access_token",
-            value=new_access,
-            httponly=True,
-            secure=IS_PRODUCTION,
-            max_age=60 * 15,
-            samesite="lax",
-            path="/",
-        )
-        response.set_cookie(
-            key="refresh_token",
-            value=new_refresh,
-            httponly=True,
-            secure=IS_PRODUCTION,
-            max_age=60 * 60 * 24 * 7,
-            samesite="lax",
-            path="/",
-        )
-        logger.info("✅ [API_AUTH] Ciclo de /refresh completado y enviado al cliente.")
-        return {"status": "success", "message": "Tokens rotados"}
-
-    except HTTPException as e:
-        logger.warning(
-            f"🛑 [API_AUTH] /refresh abortado con código {e.status_code}: {e.detail}"
-        )
-
-        if e.status_code in [401, 403]:
-            logger.info(
-                "🧹 [API_AUTH] Limpiando cookies del navegador (Sesión muerta)..."
-            )
-
-            error_response = JSONResponse(
-                status_code=e.status_code,
-                content={"status": "error", "detail": e.detail},
-            )
-            error_response.delete_cookie(
-                "access_token",
-                path="/",
-                httponly=True,
-                samesite="lax",
-                secure=IS_PRODUCTION,
-            )
-            error_response.delete_cookie(
-                "refresh_token",
-                path="/",
-                httponly=True,
-                samesite="lax",
-                secure=IS_PRODUCTION,
-            )
-
-            return error_response
-
-        raise e
-
-
-@router.get("/admin/logs")
-def get_audit_logs(
-    limit: int = 50,
-    current_admin: User = Depends(get_current_admin),
-    session: Session = Depends(get_session),
-):
-    statement = select(AuditLog).order_by(AuditLog.timestamp.desc()).limit(limit)
-    logs = session.exec(statement).all()
-    return {"status": "success", "logs": logs}
-
-
-@router.post("/invite-codes")
-def generate_invite_code(
-    role_requested: str = "voyager",
-    current_admin: User = Depends(get_current_admin),
-    session: Session = Depends(get_session),
-):
-    prefix = "VGR" if role_requested == "voyager" else "ART"
-    new_code_str = f"{prefix}-{secrets.token_hex(4).upper()}"
-    new_invite = InviteCode(code=new_code_str)
-    session.add(new_invite)
-    session.commit()
-    return {"status": "success", "message": "Código generado", "code": new_code_str}
-
-
-@router.get("/admin/sessions")
-def list_active_sessions(current_admin: User = Depends(get_current_admin)):
-    sessions = AuthService.get_active_sessions(current_admin.username, redis_client)
-    return {"status": "success", "sessions": sessions}
-
-
-@router.post("/admin/sessions/revoke-all")
-def revoke_all_sessions(current_admin: User = Depends(get_current_admin)):
-    AuthService.revoke_all_sessions(current_admin.username, redis_client)
-    return {"status": "success", "message": "Todas las sesiones han sido revocadas."}
-</file>
-
-<file path="backend/app/schemas/prompt.py">
-from pydantic import BaseModel, Field
-from typing import Optional, Dict, Any
-from datetime import datetime
-from fastapi import Form
-
-
-class PromptCreate(BaseModel):
-    title: str = Field(default="Generación IA", max_length=150)
-    prompt: str = Field(..., max_length=20000)
-    negative_prompt: Optional[str] = Field(None, max_length=20000)
-
-    software: Optional[str] = Field(default="Desconocido", max_length=50)
-    model: Optional[str] = Field(None, max_length=150)
-    sampler: Optional[str] = Field(None, max_length=100)
-    steps: Optional[str] = Field(None, max_length=20)
-    cfg_scale: Optional[str] = Field(None, max_length=20)
-    seed: Optional[str] = Field(None, max_length=50)
-    resolution: Optional[str] = Field(None, max_length=50)
-    image_url: Optional[str] = Field(None, max_length=500)
-    extra_data: Dict[str, Any] = {}
-
-
-class PromptResponse(PromptCreate):
-    id: int
-    user_id: int
-    collection_id: Optional[int] = None
-    created_at: datetime
+    # Discord Auth
+    DISCORD_CLIENT_ID: str = ""
+    DISCORD_CLIENT_SECRET: str = ""
+    INVITE_ONLY_MODE: bool = True
 
     class Config:
-        from_attributes = True
+        env_file = ".env"
+        extra = "ignore" # Ignora variables extra en el sistema para no crashear
 
-
-def prompt_form_dependency(
-    title: str = Form("Generación IA", max_length=150),
-    prompt: str = Form(..., max_length=20000),
-    negative_prompt: Optional[str] = Form(None, max_length=20000),
-    software: Optional[str] = Form("Desconocido", max_length=50),
-    model: Optional[str] = Form(None, max_length=150),
-    sampler: Optional[str] = Form(None, max_length=100),
-    steps: Optional[str] = Form(None, max_length=20),
-    cfg_scale: Optional[str] = Form(None, max_length=20),
-    seed: Optional[str] = Form(None, max_length=50),
-    resolution: Optional[str] = Form(None, max_length=50),
-) -> PromptCreate:
-    """Extrae los campos del form-data y los valida contra el esquema"""
-    return PromptCreate(
-        title=title,
-        prompt=prompt,
-        negative_prompt=negative_prompt,
-        software=software,
-        model=model,
-        sampler=sampler,
-        steps=steps,
-        cfg_scale=cfg_scale,
-        seed=seed,
-        resolution=resolution,
-    )
+# Instanciamos la configuración para que el resto de la app la pueda importar
+settings = Settings()
 </file>
 
-<file path="backend/app/services/auth_service.py">
-import os
-import logging
-from google.oauth2 import id_token
-from google.auth.transport import requests as google_requests
-
-GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
-
-from jose import jwt
-from fastapi import HTTPException
-from sqlmodel import Session, select
-from app.models.user import User, InviteCode
-from app.core.security import (
-    get_password_hash,
-    verify_password,
-    create_access_token,
-    create_refresh_token,
-    SECRET_KEY,
-    ALGORITHM,
-)
+<file path="backend/app/models/collection.py">
+import uuid
+from typing import Optional
+from sqlmodel import Field, SQLModel
+from sqlalchemy import UniqueConstraint
+from datetime import datetime, timezone
 
 
-class AuthService:
+class Collection(SQLModel, table=True):
+    """Agrupación lógica de ImagePrompts (Galerías del usuario)"""
 
-    @staticmethod
-    def register_user(user_data, session: Session):
-        """Lógica de negocio pura para registrar un usuario."""
+    # Pero dos usuarios diferentes SÍ pueden tener la colección "cyberpunk".
+    __table_args__ = (
+        UniqueConstraint("user_id", "slug", name="unique_user_collection_slug"),
+    )
 
-        logger = logging.getLogger("auth_service")
+    id: uuid.UUID = Field(
+        default_factory=uuid.uuid4,
+        primary_key=True,
+        index=True,
+        nullable=False,
+    )
+    user_id: uuid.UUID = Field(foreign_key="user.id", index=True)
 
-        logger.info(
-            f"📝 [AUTH_SERVICE] Intento de registro manual. Username: @{user_data.username}"
-        )
+    name: str = Field(nullable=False)
+    slug: str = Field(index=True, nullable=False)
+    description: Optional[str] = Field(default=None)
 
-        # 1. Validación de código
-        logger.info(
-            f"🔑 [AUTH_SERVICE] Verificando código de invitación: {user_data.invite_code}"
-        )
-        statement = (
-            select(InviteCode)
-            .where(InviteCode.code == user_data.invite_code)
-            .where(InviteCode.is_used == False)
-        )
-        invite = session.exec(statement).first()
+    is_private: bool = Field(default=False)
+    share_token: Optional[str] = Field(default=None, index=True, unique=True)
 
-        if not invite:
-            logger.warning(
-                f"🚫 [AUTH_SERVICE] Registro fallido: Código '{user_data.invite_code}' es inválido o ya fue usado."
-            )
-            raise HTTPException(
-                status_code=400, detail="Código de invitación inválido o ya usado"
-            )
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+</file>
 
-        # 2. Validación de usuario existente
-        user_exists = session.exec(
-            select(User).where(User.username == user_data.username)
-        ).first()
+<file path="backend/app/models/prompt.py">
+import uuid
+from sqlmodel import SQLModel, Field, Column, JSON
+from sqlalchemy import Text
+from typing import Optional, Dict, Any
+from datetime import datetime
 
-        if user_exists:
-            logger.warning(
-                f"🚫 [AUTH_SERVICE] Registro fallido: El username '@{user_data.username}' ya está ocupado."
-            )
-            raise HTTPException(
-                status_code=400, detail="El nombre de usuario ya está en uso"
-            )
 
-        # 3. Asignación de rol y creación
-        assigned_role = "admin" if invite.code.startswith("TROYA-") else "voyager"
-        logger.info(
-            f"✅ [AUTH_SERVICE] Validaciones pasadas. Creando usuario con rol: {assigned_role}"
-        )
+class ImagePrompt(SQLModel, table=True):
+    """Almacenamiento individual de cada generación extraída"""
 
-        new_user = User(
-            username=user_data.username,
-            hashed_password=get_password_hash(user_data.password),
-            role=assigned_role,
-        )
-        session.add(new_user)
-        session.commit()
-        session.refresh(new_user)
+    id: uuid.UUID = Field(
+        default_factory=uuid.uuid4,
+        primary_key=True,
+        index=True,
+        nullable=False,
+    )
 
-        # 4. Quema de código
-        invite.is_used = True
-        invite.used_by_id = new_user.id
-        session.add(invite)
-        session.commit()
+    user_id: uuid.UUID = Field(foreign_key="user.id", index=True)
 
-        logger.info(
-            f"✨ [AUTH_SERVICE] ¡Usuario @{new_user.username} registrado exitosamente y código quemado!"
-        )
-        return new_user
+    collection_id: Optional[uuid.UUID] = Field(
+        default=None, foreign_key="collection.id", index=True
+    )
 
-    @staticmethod
-    def change_password(data, current_user: User, session: Session):
-        """Lógica para cambiar contraseñas."""
-        if not verify_password(data.old_password, current_user.hashed_password):
-            raise HTTPException(
-                status_code=400, detail="La contraseña actual es incorrecta"
-            )
+    title: str
+    prompt: str = Field(sa_column=Column(Text))
+    negative_prompt: Optional[str] = Field(default=None, sa_column=Column(Text))
 
-        current_user.hashed_password = get_password_hash(data.new_password)
-        session.add(current_user)
-        session.commit()
+    software: Optional[str] = Field(default="Desconocido")
+    model: Optional[str] = Field(default=None)
+    sampler: Optional[str] = Field(default=None)
+    steps: Optional[str] = Field(default=None)
+    cfg_scale: Optional[str] = Field(default=None)
+    seed: Optional[str] = Field(default=None)
+    resolution: Optional[str] = Field(default=None)
 
-    @staticmethod
-    def get_active_sessions(username: str, redis_client):
-        """Consulta Redis para obtener sesiones de un usuario."""
-        prefix = f"session:{username}:*"
-        keys = redis_client.keys(prefix)
-        sessions = []
-        for key in keys:
-            family_id = key.split(":")[-1]
-            sessions.append(
-                {"family_id": family_id, "last_active_jti": redis_client.get(key)}
-            )
-        return sessions
+    image_url: Optional[str] = Field(default=None, sa_column=Column(Text))
 
-    @staticmethod
-    def revoke_all_sessions(username: str, redis_client):
-        """Botón del pánico: borra todas las sesiones de Redis."""
-        prefix = f"session:{username}:*"
-        keys = redis_client.keys(prefix)
-        if keys:
-            redis_client.delete(*keys)
+    extra_data: Dict[str, Any] = Field(default_factory=dict, sa_column=Column(JSON))
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+</file>
 
-    @staticmethod
-    def authenticate_user(user_data, session: Session, redis_client):
-        # ... (Mantén el código original de authenticate_user que ya tenías) ...
-        user = session.exec(
-            select(User).where(User.username == user_data.username)
-        ).first()
-        if not user or not verify_password(user_data.password, user.hashed_password):
-            raise HTTPException(
-                status_code=401, detail="Usuario o contraseña incorrectos"
-            )
+<file path="backend/app/models/user.py">
+import uuid
+from typing import Optional
+from sqlmodel import Field, SQLModel
+from datetime import datetime, timezone
+from enum import Enum
 
-        access_token = create_access_token(
-            data={"sub": user.username, "role": user.role}
-        )
-        refresh_data = create_refresh_token(data={"sub": user.username})
 
-        redis_key = f"session:{user.username}:{refresh_data['family_id']}"
-        redis_client.setex(redis_key, 60 * 60 * 24 * 7, refresh_data["jti"])
+class UserRole(str, Enum):
+    VOYAGER = "voyager"
+    ARTIST = "artist"
+    ADMIN = "admin"
 
-        return access_token, refresh_data["token"], user.username
 
-    @staticmethod
-    def rotate_tokens(refresh_token: str, session: Session, redis_client):
-        logger = logging.getLogger("auth_service")
-        logger.info("🔄 [AUTH_SERVICE] Iniciando secuencia de rotación de tokens...")
+class InviteCode(SQLModel, table=True):
+    """Códigos de un solo uso para acceder a la plataforma"""
 
-        if not refresh_token:
-            logger.warning(
-                "🚫 [AUTH_SERVICE] Rotación fallida: No se recibió token de refresco."
-            )
-            raise HTTPException(status_code=401, detail="No hay token de refresco")
+    id: Optional[int] = Field(default=None, primary_key=True)
+    code: str = Field(index=True, unique=True, nullable=False)
+    is_used: bool = Field(default=False)
 
-        try:
-            payload = jwt.decode(refresh_token, SECRET_KEY, algorithms=[ALGORITHM])
-            username, jti, family_id = (
-                payload.get("sub"),
-                payload.get("jti"),
-                payload.get("family"),
-            )
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
-            logger.info(
-                f"🔍 [AUTH_SERVICE] Token decodificado -> User: {username} | JTI: {jti} | Family: {family_id}"
-            )
+    used_by_id: Optional[uuid.UUID] = Field(default=None, foreign_key="user.id")
 
-            if not all([username, jti, family_id]) or payload.get("type") != "refresh":
-                logger.error(
-                    "❌ [AUTH_SERVICE] Rotación fallida: Estructura del token inválida o no es tipo 'refresh'."
-                )
-                raise HTTPException(
-                    status_code=401, detail="Estructura de token inválida"
-                )
 
-            redis_key = f"session:{username}:{family_id}"
-            active_jti = redis_client.get(redis_key)
+class User(SQLModel, table=True):
+    """Usuarios de la plataforma con soporte Híbrido (Local / OAuth)"""
 
-            logger.info(
-                f"📡 [AUTH_SERVICE] Consultando Redis -> Clave: {redis_key} | JTI Guardado: {active_jti}"
-            )
+    id: uuid.UUID = Field(
+        default_factory=uuid.uuid4,
+        primary_key=True,
+        index=True,
+        nullable=False,
+    )
+    username: str = Field(index=True, unique=True, nullable=False)
+    role: UserRole = Field(default=UserRole.VOYAGER)
 
-            if active_jti and active_jti != jti:
-                logger.warning(
-                    f"🚨 [AUTH_SERVICE] ALERTA DE SEGURIDAD (Posible Robo o Doble Petición)."
-                )
-                logger.warning(f"   -> JTI Recibido: {jti}")
-                logger.warning(f"   -> JTI en Redis: {active_jti}")
-                redis_client.delete(redis_key)
-                logger.info(
-                    f"🧹 [AUTH_SERVICE] Sesión {family_id} destruida en Redis por seguridad."
-                )
-                raise HTTPException(
-                    status_code=403, detail="ALERTA: Robo de sesión detectado."
-                )
+    # Soporte para Google Auth
+    email: Optional[str] = Field(default=None, index=True, unique=True)
+    auth_provider: str = Field(default="local")
+    provider_id: Optional[str] = Field(default=None, index=True)
 
-            if not active_jti:
-                logger.warning(
-                    f"⚠️ [AUTH_SERVICE] Rotación rechazada: La sesión {family_id} ya expiró o fue cerrada remotamente."
-                )
-                raise HTTPException(
-                    status_code=401, detail="Sesión expirada o cerrada remotamente."
-                )
+    hashed_password: Optional[str] = Field(default=None)
 
-            user = session.exec(select(User).where(User.username == username)).first()
-            if not user:
-                logger.error(
-                    f"❌ [AUTH_SERVICE] El usuario {username} existe en el token pero no en la Base de Datos."
-                )
-                raise HTTPException(status_code=401, detail="Usuario no encontrado")
+    role: str = Field(default="voyager")
 
-            # Generación de nuevos tokens
-            new_access_token = create_access_token(
-                data={"sub": username, "role": user.role}
-            )
-            new_refresh_data = create_refresh_token(
-                data={"sub": username}, family_id=family_id
-            )
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    is_active: bool = Field(default=True)
 
-            # Actualizamos Redis
-            redis_client.setex(redis_key, 60 * 60 * 24 * 7, new_refresh_data["jti"])
 
-            logger.info(
-                f"✅ [AUTH_SERVICE] Rotación EXITOSA. Nuevo JTI asignado: {new_refresh_data['jti']}"
-            )
+class AuditLog(SQLModel, table=True):
+    """Registro inmutable de auditoría del sistema"""
 
-            return new_access_token, new_refresh_data["token"]
-
-        except jwt.ExpiredSignatureError:
-            logger.warning("⏱️ [AUTH_SERVICE] El Refresh Token ha caducado por tiempo.")
-            raise HTTPException(
-                status_code=401, detail="Token expirado. Inicia sesión."
-            )
-        except jwt.JWTError as e:
-            logger.error(f"❌ [AUTH_SERVICE] Error de firma JWT: {str(e)}")
-            raise HTTPException(status_code=401, detail="Firma inválida.")
-
-    @staticmethod
-    def verify_google_token(token: str):
-        """Verifica criptográficamente el JWT contra los servidores de Google"""
-        if not GOOGLE_CLIENT_ID:
-            raise HTTPException(
-                status_code=500,
-                detail="Falta configurar GOOGLE_CLIENT_ID en el servidor",
-            )
-        try:
-            idinfo = id_token.verify_oauth2_token(
-                token, google_requests.Request(), GOOGLE_CLIENT_ID
-            )
-            return idinfo
-        except ValueError:
-            raise HTTPException(
-                status_code=401, detail="Token de Google inválido o expirado"
-            )
-
-    @staticmethod
-    def authenticate_google_user(token: str, session: Session, redis_client):
-        """Flujo de decisión: ¿Existe el usuario o es nuevo?"""
-        idinfo = AuthService.verify_google_token(token)
-        email = idinfo.get("email")
-        name = idinfo.get("name", "").replace(" ", "").lower()
-
-        # Buscamos si ya existe alguien con este correo
-        user = session.exec(select(User).where(User.email == email)).first()
-
-        if user:
-            # ESCENARIO A: Ya existe. Generamos sesión silenciosamente.
-            access_token = create_access_token(
-                data={"sub": user.username, "role": user.role}
-            )
-            refresh_data = create_refresh_token(data={"sub": user.username})
-
-            redis_key = f"session:{user.username}:{refresh_data['family_id']}"
-            redis_client.setex(redis_key, 60 * 60 * 24 * 7, refresh_data["jti"])
-
-            return {
-                "status": "success",
-                "access_token": access_token,
-                "refresh_token": refresh_data["token"],
-                "username": user.username,
-            }
-        else:
-            # ESCENARIO B: Es nuevo. Cortamos el flujo y pedimos invitación.
-            # Sugerimos un nombre de usuario basado en su nombre de Google
-            return {
-                "status": "needs_invite",
-                "email": email,
-                "suggested_username": name,
-            }
-
-    @staticmethod
-    def register_google_user(join_data, session: Session, redis_client):
-        """El usuario nuevo nos ha dado su código de invitación. Lo registramos."""
-        # 1. Volvemos a validar el token de Google por seguridad extrema
-        idinfo = AuthService.verify_google_token(join_data.token)
-        email = idinfo.get("email")
-        provider_id = idinfo.get("sub")
-
-        # 2. Verificamos que el Alias que eligió no esté cogido
-        user_exists = session.exec(
-            select(User).where(User.username == join_data.username)
-        ).first()
-        if user_exists:
-            raise HTTPException(
-                status_code=400,
-                detail="El nombre de usuario ya está en uso. Elige otro.",
-            )
-
-        # 3. Validar código de invitación (El Muro Físico)
-        statement = (
-            select(InviteCode)
-            .where(InviteCode.code == join_data.invite_code)
-            .where(InviteCode.is_used == False)
-        )
-        invite = session.exec(statement).first()
-
-        if not invite:
-            raise HTTPException(
-                status_code=400,
-                detail="Código de invitación inválido o ya fue utilizado",
-            )
-
-        assigned_role = "admin" if invite.code.startswith("TROYA-") else "voyager"
-
-        # 4. Crear el usuario en PostgreSQL
-        new_user = User(
-            username=join_data.username,
-            email=email,
-            auth_provider="google",
-            provider_id=provider_id,
-            role=assigned_role,
-        )
-        session.add(new_user)
-        session.commit()
-        session.refresh(new_user)
-
-        # 5. Quemar la invitación para que no se re-use
-        invite.is_used = True
-        invite.used_by_id = new_user.id
-        session.add(invite)
-        session.commit()
-
-        # 6. Crear la sesión en Redis
-        access_token = create_access_token(
-            data={"sub": new_user.username, "role": new_user.role}
-        )
-        refresh_data = create_refresh_token(data={"sub": new_user.username})
-
-        redis_key = f"session:{new_user.username}:{refresh_data['family_id']}"
-        redis_client.setex(redis_key, 60 * 60 * 24 * 7, refresh_data["jti"])
-
-        return access_token, refresh_data["token"], new_user.username
+    id: Optional[int] = Field(default=None, primary_key=True)
+    username: str = Field(index=True)
+    action: str
+    details: Optional[str] = None
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 </file>
 
 <file path="backend/app/services/security.py">
@@ -10080,43 +9688,6 @@ def guardar_json(ruta_directorio: str, nombre_archivo: str, datos: list | dict) 
     except Exception as e:
         logger.error(f"❌ Error al guardar JSON ({ruta_archivo}): {e}")
         raise e
-</file>
-
-<file path="frontend/app/[lang]/(auth)/login/page.tsx">
-"use client";
-
-import Link from "next/link";
-import { LoginForm } from "@/src/system/organisms/Auth/LoginForm";
-import { useRedirectIfAuthenticated } from "@/src/features/auth/hooks/useRedirectIfAuthenticated";
-import { PageLoader } from "@/src/system/atoms/PageLoader";
-
-export default function LoginPage() {
-  const { isChecking, isAuthenticated } = useRedirectIfAuthenticated("/");
-
-  if (isChecking || isAuthenticated) {
-    return (
-      <main className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
-        <PageLoader text = "Sincronizando acceso" />
-      </main>
-    );
-  }
-
-  return (
-    <main className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
-      <LoginForm />
-
-      <p className="mt-8 text-center text-sm font-mono text-(--text-secondary)">
-        ¿No tienes cuenta?{" "}
-        <Link
-          href="/join"
-          className="text-(--accent-color) font-black hover:underline underline-offset-4"
-        >
-          Registrarte aquí
-        </Link>
-      </p>
-    </main>
-  );
-}
 </file>
 
 <file path="frontend/app/[lang]/(main)/layout.tsx">
@@ -10494,6 +10065,69 @@ export function PublicFeedGrid({ feed, isLoading, lang }: PublicFeedGridProps) {
 }
 </file>
 
+<file path="frontend/src/types/models.ts">
+export type MediaVariant = "gallery" | "viewer" | "search";
+export type AspectRatio = "portrait" | "landscape" | "square" | "auto";
+
+export interface MediaCardData {
+  id: string | number;
+  user_id: string;
+  imageUrl: string;
+  title: string;
+  prompt?: string;
+  tags?: string[];
+  source?: string;
+  aspectRatio?: AspectRatio;
+}
+
+export interface GalleryItem {
+  url: string;
+  user_id: string;
+  title: string;
+  thumb: string;
+  gid?: string;
+  token?: string;
+  tags?: string[];
+  [key: string]: any;
+}
+
+export interface FeedItem {
+  id: string;
+  user_id: string;
+  raw_id: string;
+  slug?: string;
+  type: "prompt" | "collection" | "studio";
+  title: string;
+  username: string;
+  image_url?: string;
+  items_count: number;
+}
+
+export interface Collection {
+  id: number;
+  user_id: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  is_private: boolean;
+  created_at: string;
+}
+
+export interface SavedPrompt {
+  id: number;
+  user_id: string;
+  title: string;
+  prompt: string;
+  model: string;
+  resolution?: string;
+  sampler?: string;
+  image_url?: string;
+  software?: string;
+  collection_id?: number | null;
+  created_at: string;
+}
+</file>
+
 <file path="frontend/next.config.ts">
 import type { NextConfig } from "next";
 
@@ -10592,142 +10226,822 @@ export default nextConfig;
 }
 </file>
 
-<file path="backend/app/api/routes_download.py">
-from rq import Queue
-from rq.job import Job
-from rq.exceptions import NoSuchJobError
-from sqlmodel import Session, select, func
-from fastapi import APIRouter, Depends, HTTPException
+<file path="backend/app/api/routes_auth.py">
+import os
+import secrets
+import redis
+import logging
+from app.schemas.user import DiscordAuthRequest
+from fastapi import APIRouter, Depends, Response, Cookie, HTTPException, status
+from fastapi.responses import JSONResponse
+from sqlmodel import Session, select
 
-from app.core.redis_config import conn
+from app.services.auth_service import AuthService
+from app.services.audit_service import AuditService
 from app.core.db import get_session
-from app.models.collection import Collection
-from app.models.prompt import ImagePrompt
-from app.services.downloader import generar_zip_coleccion, ejecutar_descarga_individual
-from app.api.deps import get_current_user
-from app.models.user import User, UserRole
+from app.api.deps import get_current_user, get_current_admin, RateLimiter
+from app.models.user import User, InviteCode, AuditLog
 
+from app.schemas.user import (
+    UserRegister,
+    UserLogin,
+    PasswordChange,
+    GoogleAuthRequest,
+    GoogleJoinRequest,
+)
+
+IS_PRODUCTION = os.getenv("ENVIRONMENT") == "production"
+
+logger = logging.getLogger("routes_auth")
+redis_client = redis.Redis(host="redis", port=6379, db=0, decode_responses=True)
 router = APIRouter()
 
-downloads_queue_premium = Queue("downloads_premium", connection=conn)
-downloads_queue_free = Queue("downloads_free", connection=conn)
+
+@router.post("/register")
+def register_user(user_data: UserRegister, session: Session = Depends(get_session)):
+    new_user = AuthService.register_user(user_data, session)
+    return {
+        "status": "success",
+        "message": "Usuario registrado correctamente",
+        "user": {"username": new_user.username, "role": new_user.role},
+    }
 
 
-@router.get("/single/{image_key}")
-def descargar_una_imagen(
-    image_key: str,
+@router.post(
+    "/login", dependencies=[Depends(RateLimiter(max_requests=5, window_seconds=60))]
+)
+def login_user(
+    user_data: UserLogin, response: Response, session: Session = Depends(get_session)
+):
+    user_key = f"brute_force_user:{user_data.username}"
+
+    attempts = redis_client.incr(user_key)
+    if attempts == 1:
+        redis_client.expire(user_key, 300)
+
+    if attempts > 5:
+        raise HTTPException(
+            status_code=429,
+            detail=f"La cuenta '{user_data.username}' está bloqueada temporalmente por seguridad. Inténtalo en 5 minutos.",
+        )
+
+    try:
+        access_token, refresh_token, username = AuthService.authenticate_user(
+            user_data, session, redis_client
+        )
+    except HTTPException as e:
+        raise e
+
+    redis_client.delete(user_key)
+
+    response.set_cookie(
+        key="access_token",
+        value=access_token,
+        httponly=True,
+        secure=IS_PRODUCTION,
+        max_age=60 * 15,
+        samesite="lax",
+        path="/",
+    )
+    response.set_cookie(
+        key="refresh_token",
+        value=refresh_token,
+        httponly=True,
+        secure=IS_PRODUCTION,
+        max_age=60 * 60 * 24 * 7,
+        samesite="lax",
+        path="/",
+    )
+
+    AuditService.log_action(session, username, "LOGIN", "Inicio de sesión exitoso")
+    return {"status": "success", "message": f"Bienvenido, {username}"}
+
+
+@router.post("/google")
+def google_auth(
+    data: GoogleAuthRequest, response: Response, session: Session = Depends(get_session)
+):
+    result = AuthService.authenticate_google_user(data.token, session, redis_client)
+
+    if result["status"] == "needs_invite":
+        response.status_code = status.HTTP_202_ACCEPTED
+        return result
+
+    response.set_cookie(
+        key="access_token",
+        value=result["access_token"],
+        httponly=True,
+        secure=IS_PRODUCTION,
+        max_age=60 * 15,
+        samesite="lax",
+        path="/",
+    )
+    response.set_cookie(
+        key="refresh_token",
+        value=result["refresh_token"],
+        httponly=True,
+        secure=IS_PRODUCTION,
+        max_age=60 * 60 * 24 * 7,
+        samesite="lax",
+        path="/",
+    )
+
+    AuditService.log_action(
+        session, result["username"], "LOGIN_GOOGLE", "Inicio de sesión con Google"
+    )
+    return {
+        "status": "success",
+        "message": f"Bienvenido de nuevo, {result['username']}",
+    }
+
+
+@router.post("/google/join")
+def google_join(
+    data: GoogleJoinRequest, response: Response, session: Session = Depends(get_session)
+):
+    access_token, refresh_token, username = AuthService.register_google_user(
+        data, session, redis_client
+    )
+
+    response.set_cookie(
+        key="access_token",
+        value=access_token,
+        httponly=True,
+        secure=IS_PRODUCTION,
+        max_age=60 * 15,
+        samesite="lax",
+        path="/",
+    )
+    response.set_cookie(
+        key="refresh_token",
+        value=refresh_token,
+        httponly=True,
+        secure=IS_PRODUCTION,
+        max_age=60 * 60 * 24 * 7,
+        samesite="lax",
+        path="/",
+    )
+
+    AuditService.log_action(
+        session, username, "REGISTER_GOOGLE", "Registro híbrido completado"
+    )
+    return {
+        "status": "success",
+        "message": f"Cuenta creada. Bienvenido a la Resistencia, {username}",
+    }
+
+
+@router.post("/discord")
+def discord_auth(
+    data: DiscordAuthRequest,
+    response: Response,
+    session: Session = Depends(get_session),
+):
+    result = AuthService.authenticate_discord_user(
+        data.code, data.redirect_uri, session, redis_client
+    )
+
+    if result["status"] == "needs_invite":
+        response.status_code = status.HTTP_202_ACCEPTED
+        return result
+
+    # Configurar cookies
+    response.set_cookie(
+        key="access_token",
+        value=result["access_token"],
+        httponly=True,
+        secure=IS_PRODUCTION,
+        max_age=60 * 15,
+        samesite="lax",
+        path="/",
+    )
+    response.set_cookie(
+        key="refresh_token",
+        value=result["refresh_token"],
+        httponly=True,
+        secure=IS_PRODUCTION,
+        max_age=60 * 60 * 24 * 7,
+        samesite="lax",
+        path="/",
+    )
+
+    AuditService.log_action(
+        session, result["username"], "LOGIN_DISCORD", "Inicio de sesión con Discord"
+    )
+    return {
+        "status": "success",
+        "message": f"Bienvenido de nuevo, {result['username']}",
+    }
+
+
+@router.post("/logout")
+def logout_user(response: Response, refresh_token: str | None = Cookie(None)):
+    response.delete_cookie(
+        "access_token", path="/", httponly=True, samesite="lax", secure=IS_PRODUCTION
+    )
+    response.delete_cookie(
+        "refresh_token", path="/", httponly=True, samesite="lax", secure=IS_PRODUCTION
+    )
+
+    if refresh_token:
+        try:
+            from jose import jwt
+            from app.core.security import SECRET_KEY, ALGORITHM
+
+            payload = jwt.decode(refresh_token, SECRET_KEY, algorithms=[ALGORITHM])
+            username = payload.get("sub")
+            family_id = payload.get("family")
+
+            if username and family_id:
+                redis_key = f"session:{username}:{family_id}"
+                redis_client.delete(redis_key)
+        except Exception:
+            pass
+
+    return {"status": "success", "message": "Sesión cerrada y destruida por completo"}
+
+
+@router.put("/change-password")
+def change_password(
+    data: PasswordChange,
     current_user: User = Depends(get_current_user),
     session: Session = Depends(get_session),
 ):
-    """Resolución sincrónica instantánea para archivos únicos."""
+    AuthService.change_password(data, current_user, session)
+    return {"status": "success", "message": "Contraseña actualizada correctamente"}
 
-    statement = select(ImagePrompt).where(ImagePrompt.image_url.contains(image_key))
-    prompt = session.exec(statement).first()
 
-    if not prompt:
-        raise HTTPException(
-            status_code=404, detail="Imagen no encontrada en la base de datos."
+@router.get("/me")
+def get_current_user_profile(current_user: User = Depends(get_current_user)):
+    return {
+        "status": "success",
+        "user": {
+            "username": current_user.username,
+            "role": current_user.role,
+            "is_active": current_user.is_active,
+        },
+    }
+
+
+@router.post("/refresh")
+def refresh_access_token(
+    response: Response,
+    refresh_token: str | None = Cookie(None),
+    session: Session = Depends(get_session),
+):
+    logger.info("🌐 [API_AUTH] Petición POST recibida en /api/auth/refresh")
+
+    if refresh_token:
+        logger.info(
+            f"🍪 [API_AUTH] Cookie 'refresh_token' detectada (Termina en: ...{refresh_token[-6:]})"
+        )
+    else:
+        logger.warning(
+            "🍪 [API_AUTH] NO SE DETECTÓ cookie 'refresh_token' en la petición."
         )
 
-    if prompt.collection_id:
-        col = session.get(Collection, prompt.collection_id)
-        if col and col.is_private and col.user_id != current_user.id:
+    try:
+        new_access, new_refresh = AuthService.rotate_tokens(
+            refresh_token, session, redis_client
+        )
+
+        logger.info(
+            "📦 [API_AUTH] Inyectando nuevos tokens en las cookies de respuesta..."
+        )
+        response.set_cookie(
+            key="access_token",
+            value=new_access,
+            httponly=True,
+            secure=IS_PRODUCTION,
+            max_age=60 * 15,
+            samesite="lax",
+            path="/",
+        )
+        response.set_cookie(
+            key="refresh_token",
+            value=new_refresh,
+            httponly=True,
+            secure=IS_PRODUCTION,
+            max_age=60 * 60 * 24 * 7,
+            samesite="lax",
+            path="/",
+        )
+        logger.info("✅ [API_AUTH] Ciclo de /refresh completado y enviado al cliente.")
+        return {"status": "success", "message": "Tokens rotados"}
+
+    except HTTPException as e:
+        logger.warning(
+            f"🛑 [API_AUTH] /refresh abortado con código {e.status_code}: {e.detail}"
+        )
+
+        if e.status_code in [401, 403]:
+            logger.info(
+                "🧹 [API_AUTH] Limpiando cookies del navegador (Sesión muerta)..."
+            )
+
+            error_response = JSONResponse(
+                status_code=e.status_code,
+                content={"status": "error", "detail": e.detail},
+            )
+            error_response.delete_cookie(
+                "access_token",
+                path="/",
+                httponly=True,
+                samesite="lax",
+                secure=IS_PRODUCTION,
+            )
+            error_response.delete_cookie(
+                "refresh_token",
+                path="/",
+                httponly=True,
+                samesite="lax",
+                secure=IS_PRODUCTION,
+            )
+
+            return error_response
+
+        raise e
+
+
+@router.get("/admin/logs")
+def get_audit_logs(
+    limit: int = 50,
+    current_admin: User = Depends(get_current_admin),
+    session: Session = Depends(get_session),
+):
+    statement = select(AuditLog).order_by(AuditLog.timestamp.desc()).limit(limit)
+    logs = session.exec(statement).all()
+    return {"status": "success", "logs": logs}
+
+
+@router.post("/invite-codes")
+def generate_invite_code(
+    role_requested: str = "voyager",
+    current_admin: User = Depends(get_current_admin),
+    session: Session = Depends(get_session),
+):
+    prefix = "VGR" if role_requested == "voyager" else "ART"
+    new_code_str = f"{prefix}-{secrets.token_hex(4).upper()}"
+    new_invite = InviteCode(code=new_code_str)
+    session.add(new_invite)
+    session.commit()
+    return {"status": "success", "message": "Código generado", "code": new_code_str}
+
+
+@router.get("/admin/sessions")
+def list_active_sessions(current_admin: User = Depends(get_current_admin)):
+    sessions = AuthService.get_active_sessions(current_admin.username, redis_client)
+    return {"status": "success", "sessions": sessions}
+
+
+@router.post("/admin/sessions/revoke-all")
+def revoke_all_sessions(current_admin: User = Depends(get_current_admin)):
+    AuthService.revoke_all_sessions(current_admin.username, redis_client)
+    return {"status": "success", "message": "Todas las sesiones han sido revocadas."}
+</file>
+
+<file path="backend/app/services/auth_service.py">
+import os
+import re
+import logging
+import requests
+from app.core.config import settings
+from sqlalchemy import or_
+from google.oauth2 import id_token
+from google.auth.transport import requests as google_requests
+
+GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
+
+from jose import jwt
+from fastapi import HTTPException
+from sqlmodel import Session, select
+from app.models.user import User, InviteCode
+from app.core.security import (
+    get_password_hash,
+    verify_password,
+    create_access_token,
+    create_refresh_token,
+    SECRET_KEY,
+    ALGORITHM,
+)
+
+
+class AuthService:
+
+    @staticmethod
+    def register_user(user_data, session: Session):
+        """Lógica de negocio pura para registrar un usuario."""
+
+        logger = logging.getLogger("auth_service")
+
+        logger.info(f"📝 [AUTH_SERVICE] Intento de registro. Email: {user_data.email}")
+
+        # 1. Validación de código
+        logger.info(
+            f"🔑 [AUTH_SERVICE] Verificando código de invitación: {user_data.invite_code}"
+        )
+        statement = (
+            select(InviteCode)
+            .where(InviteCode.code == user_data.invite_code)
+            .where(InviteCode.is_used == False)
+        )
+        invite = session.exec(statement).first()
+
+        if not invite:
             raise HTTPException(
-                status_code=403, detail="No tienes permiso. Esta imagen es privada."
+                status_code=400, detail="Código de invitación inválido o ya usado"
             )
 
-    try:
-        url = ejecutar_descarga_individual(image_key)
-        return {"download_url": url}
-    except Exception as e:
-        raise HTTPException(
-            status_code=500, detail="Error al generar el acceso directo en R2"
-        )
-
-
-@router.post("/collection/{collection_id}")
-def descargar_coleccion_completa(
-    collection_id: int,
-    current_user: User = Depends(get_current_user),
-    session: Session = Depends(get_session),
-):
-    """Delega la generación masiva del ZIP al Worker de Redis para no congelar la API."""
-
-    col = session.get(Collection, collection_id)
-    if not col:
-        raise HTTPException(status_code=404, detail="Colección no encontrada")
-
-    if col.is_private and col.user_id != current_user.id:
-        raise HTTPException(status_code=403, detail="Esta colección es privada")
-
-    cantidad_imagenes = session.exec(
-        select(func.count(ImagePrompt.id)).where(
-            ImagePrompt.collection_id == collection_id
-        )
-    ).one()
-
-    limite_descarga = 50 if current_user.role == UserRole.VOYAGER else 1000
-
-    if cantidad_imagenes > limite_descarga:
-        raise HTTPException(
-            status_code=403,
-            detail=f"Tu plan '{current_user.role}' permite descargar un máximo de {limite_descarga} imágenes de golpe. Esta colección tiene {cantidad_imagenes}. ¡Haz upgrade a Artist!",
-        )
-
-    try:
-        if current_user.role == UserRole.ARTIST:
-            job = downloads_queue_premium.enqueue(
-                generar_zip_coleccion,
-                str(collection_id),
-                current_user.email,
-                job_timeout="1h",
+        # 2. Validación de usuario existente
+        email_exists = session.exec(
+            select(User).where(User.email == user_data.email)
+        ).first()
+        if email_exists:
+            raise HTTPException(
+                status_code=400, detail="Este correo electrónico ya está registrado."
             )
-            queue_assigned = "premium"
+
+        base_username = re.sub(r"[^a-z0-9]", "", user_data.email.split("@")[0].lower())
+        if not base_username:
+            base_username = (
+                "user"  # Fallback extremo por si el email era ".-_@gmail.com"
+            )
+
+        username = base_username
+        counter = 1
+
+        while session.exec(select(User).where(User.username == username)).first():
+            username = f"{base_username}{counter}"
+            counter += 1
+
+        # 4. Asignación de rol y creación
+        assigned_role = "admin" if invite.code.startswith("TROYA-") else "voyager"
+
+        new_user = User(
+            email=user_data.email,
+            username=username,
+            hashed_password=get_password_hash(user_data.password),
+            role=assigned_role,
+        )
+
+        session.add(new_user)
+        session.commit()
+        session.refresh(new_user)
+
+        # 5. Quema de código
+        invite.is_used = True
+        invite.used_by_id = new_user.id
+        session.add(invite)
+        session.commit()
+
+        logger.info(
+            f"✨ ¡Usuario registrado! Email: {new_user.email} -> Username asignado: @{new_user.username}"
+        )
+        return new_user
+
+    @staticmethod
+    def change_password(data, current_user: User, session: Session):
+        """Lógica para cambiar contraseñas."""
+        if not verify_password(data.old_password, current_user.hashed_password):
+            raise HTTPException(
+                status_code=400, detail="La contraseña actual es incorrecta"
+            )
+
+        current_user.hashed_password = get_password_hash(data.new_password)
+        session.add(current_user)
+        session.commit()
+
+    @staticmethod
+    def get_active_sessions(username: str, redis_client):
+        """Consulta Redis para obtener sesiones de un usuario."""
+        prefix = f"session:{username}:*"
+        keys = redis_client.keys(prefix)
+        sessions = []
+        for key in keys:
+            family_id = key.split(":")[-1]
+            sessions.append(
+                {"family_id": family_id, "last_active_jti": redis_client.get(key)}
+            )
+        return sessions
+
+    @staticmethod
+    def revoke_all_sessions(username: str, redis_client):
+        """Botón del pánico: borra todas las sesiones de Redis."""
+        prefix = f"session:{username}:*"
+        keys = redis_client.keys(prefix)
+        if keys:
+            redis_client.delete(*keys)
+
+    @staticmethod
+    def authenticate_user(user_data, session: Session, redis_client):
+        # ... (Mantén el código original de authenticate_user que ya tenías) ...
+        user = session.exec(
+            select(User).where(User.username == user_data.username)
+        ).first()
+        if not user or not verify_password(user_data.password, user.hashed_password):
+            raise HTTPException(
+                status_code=401, detail="Usuario o contraseña incorrectos"
+            )
+
+        access_token = create_access_token(
+            data={"sub": user.username, "role": user.role}
+        )
+        refresh_data = create_refresh_token(data={"sub": user.username})
+
+        redis_key = f"session:{user.username}:{refresh_data['family_id']}"
+        redis_client.setex(redis_key, 60 * 60 * 24 * 7, refresh_data["jti"])
+
+        return access_token, refresh_data["token"], user.username
+
+    @staticmethod
+    def rotate_tokens(refresh_token: str, session: Session, redis_client):
+        logger = logging.getLogger("auth_service")
+        logger.info("🔄 [AUTH_SERVICE] Iniciando secuencia de rotación de tokens...")
+
+        if not refresh_token:
+            logger.warning(
+                "🚫 [AUTH_SERVICE] Rotación fallida: No se recibió token de refresco."
+            )
+            raise HTTPException(status_code=401, detail="No hay token de refresco")
+
+        try:
+            payload = jwt.decode(refresh_token, SECRET_KEY, algorithms=[ALGORITHM])
+            username, jti, family_id = (
+                payload.get("sub"),
+                payload.get("jti"),
+                payload.get("family"),
+            )
+
+            logger.info(
+                f"🔍 [AUTH_SERVICE] Token decodificado -> User: {username} | JTI: {jti} | Family: {family_id}"
+            )
+
+            if not all([username, jti, family_id]) or payload.get("type") != "refresh":
+                logger.error(
+                    "❌ [AUTH_SERVICE] Rotación fallida: Estructura del token inválida o no es tipo 'refresh'."
+                )
+                raise HTTPException(
+                    status_code=401, detail="Estructura de token inválida"
+                )
+
+            redis_key = f"session:{username}:{family_id}"
+            active_jti = redis_client.get(redis_key)
+
+            logger.info(
+                f"📡 [AUTH_SERVICE] Consultando Redis -> Clave: {redis_key} | JTI Guardado: {active_jti}"
+            )
+
+            if active_jti and active_jti != jti:
+                logger.warning(
+                    f"🚨 [AUTH_SERVICE] ALERTA DE SEGURIDAD (Posible Robo o Doble Petición)."
+                )
+                logger.warning(f"   -> JTI Recibido: {jti}")
+                logger.warning(f"   -> JTI en Redis: {active_jti}")
+                redis_client.delete(redis_key)
+                logger.info(
+                    f"🧹 [AUTH_SERVICE] Sesión {family_id} destruida en Redis por seguridad."
+                )
+                raise HTTPException(
+                    status_code=403, detail="ALERTA: Robo de sesión detectado."
+                )
+
+            if not active_jti:
+                logger.warning(
+                    f"⚠️ [AUTH_SERVICE] Rotación rechazada: La sesión {family_id} ya expiró o fue cerrada remotamente."
+                )
+                raise HTTPException(
+                    status_code=401, detail="Sesión expirada o cerrada remotamente."
+                )
+
+            user = session.exec(select(User).where(User.username == username)).first()
+            if not user:
+                logger.error(
+                    f"❌ [AUTH_SERVICE] El usuario {username} existe en el token pero no en la Base de Datos."
+                )
+                raise HTTPException(status_code=401, detail="Usuario no encontrado")
+
+            # Generación de nuevos tokens
+            new_access_token = create_access_token(
+                data={"sub": username, "role": user.role}
+            )
+            new_refresh_data = create_refresh_token(
+                data={"sub": username}, family_id=family_id
+            )
+
+            # Actualizamos Redis
+            redis_client.setex(redis_key, 60 * 60 * 24 * 7, new_refresh_data["jti"])
+
+            logger.info(
+                f"✅ [AUTH_SERVICE] Rotación EXITOSA. Nuevo JTI asignado: {new_refresh_data['jti']}"
+            )
+
+            return new_access_token, new_refresh_data["token"]
+
+        except jwt.ExpiredSignatureError:
+            logger.warning("⏱️ [AUTH_SERVICE] El Refresh Token ha caducado por tiempo.")
+            raise HTTPException(
+                status_code=401, detail="Token expirado. Inicia sesión."
+            )
+        except jwt.JWTError as e:
+            logger.error(f"❌ [AUTH_SERVICE] Error de firma JWT: {str(e)}")
+            raise HTTPException(status_code=401, detail="Firma inválida.")
+
+    @staticmethod
+    def verify_google_token(token: str):
+        """Verifica criptográficamente el JWT contra los servidores de Google"""
+        if not GOOGLE_CLIENT_ID:
+            raise HTTPException(
+                status_code=500,
+                detail="Falta configurar GOOGLE_CLIENT_ID en el servidor",
+            )
+        try:
+            idinfo = id_token.verify_oauth2_token(
+                token, google_requests.Request(), GOOGLE_CLIENT_ID
+            )
+            return idinfo
+        except ValueError:
+            raise HTTPException(
+                status_code=401, detail="Token de Google inválido o expirado"
+            )
+
+    @staticmethod
+    def authenticate_google_user(token: str, session: Session, redis_client):
+        """Flujo de decisión: ¿Existe el usuario o es nuevo?"""
+        idinfo = AuthService.verify_google_token(token)
+        email = idinfo.get("email")
+        name = idinfo.get("name", "").replace(" ", "").lower()
+
+        # Buscamos si ya existe alguien con este correo
+        user = session.exec(select(User).where(User.email == email)).first()
+
+        if user:
+            # ESCENARIO A: Ya existe. Generamos sesión silenciosamente.
+            access_token = create_access_token(
+                data={"sub": user.username, "role": user.role}
+            )
+            refresh_data = create_refresh_token(data={"sub": user.username})
+
+            redis_key = f"session:{user.username}:{refresh_data['family_id']}"
+            redis_client.setex(redis_key, 60 * 60 * 24 * 7, refresh_data["jti"])
+
+            return {
+                "status": "success",
+                "access_token": access_token,
+                "refresh_token": refresh_data["token"],
+                "username": user.username,
+            }
         else:
-            job = downloads_queue_free.enqueue(
-                generar_zip_coleccion,
-                str(collection_id),
-                current_user.email,
-                job_timeout="1h",
-            )
-            queue_assigned = "free"
+            # ESCENARIO B: Es nuevo. Cortamos el flujo y pedimos invitación.
+            # Sugerimos un nombre de usuario basado en su nombre de Google
+            return {
+                "status": "needs_invite",
+                "email": email,
+                "suggested_username": name,
+            }
 
-        return {
-            "status": "processing",
-            "job_id": job.get_id(),
-            "message": "Generando ZIP en segundo plano.",
-            "queue": queue_assigned,
+    @staticmethod
+    def register_google_user(join_data, session: Session, redis_client):
+        """El usuario nuevo nos ha dado su código de invitación. Lo registramos."""
+        # 1. Volvemos a validar el token de Google por seguridad extrema
+        idinfo = AuthService.verify_google_token(join_data.token)
+        email = idinfo.get("email")
+        provider_id = idinfo.get("sub")
+
+        # 2. Verificamos que el Alias que eligió no esté cogido
+        user_exists = session.exec(
+            select(User).where(User.username == join_data.username)
+        ).first()
+        if user_exists:
+            raise HTTPException(
+                status_code=400,
+                detail="El nombre de usuario ya está en uso. Elige otro.",
+            )
+
+        # 3. Validar código de invitación (El Muro Físico)
+        statement = (
+            select(InviteCode)
+            .where(InviteCode.code == join_data.invite_code)
+            .where(InviteCode.is_used == False)
+        )
+        invite = session.exec(statement).first()
+
+        if not invite:
+            raise HTTPException(
+                status_code=400,
+                detail="Código de invitación inválido o ya fue utilizado",
+            )
+
+        assigned_role = "admin" if invite.code.startswith("TROYA-") else "voyager"
+
+        # 4. Crear el usuario en PostgreSQL
+        new_user = User(
+            username=join_data.username,
+            email=email,
+            auth_provider="google",
+            provider_id=provider_id,
+            role=assigned_role,
+        )
+        session.add(new_user)
+        session.commit()
+        session.refresh(new_user)
+
+        # 5. Quemar la invitación para que no se re-use
+        invite.is_used = True
+        invite.used_by_id = new_user.id
+        session.add(invite)
+        session.commit()
+
+        # 6. Crear la sesión en Redis
+        access_token = create_access_token(
+            data={"sub": new_user.username, "role": new_user.role}
+        )
+        refresh_data = create_refresh_token(data={"sub": new_user.username})
+
+        redis_key = f"session:{new_user.username}:{refresh_data['family_id']}"
+        redis_client.setex(redis_key, 60 * 60 * 24 * 7, refresh_data["jti"])
+
+        return access_token, refresh_data["token"], new_user.username
+
+    @staticmethod
+    def authenticate_discord_user(
+        code: str, redirect_uri: str, session: Session, redis_client
+    ):
+        """Intercambia el código por el token de Discord y extrae el perfil."""
+
+        # 1. Intercambiar código por Access Token en Discord
+        data = {
+            "client_id": settings.DISCORD_CLIENT_ID,
+            "client_secret": settings.DISCORD_CLIENT_SECRET,
+            "grant_type": "authorization_code",
+            "code": code,
+            "redirect_uri": redirect_uri,
         }
-    except Exception as e:
-        raise HTTPException(
-            status_code=500, detail="Error al encolar la descarga masiva"
-        )
+        headers = {"Content-Type": "application/x-www-form-urlencoded"}
 
+        try:
+            token_response = requests.post(
+                "https://discord.com/api/oauth2/token", data=data, headers=headers
+            )
+            token_response.raise_for_status()
+            token_json = token_response.json()
+            discord_access_token = token_json["access_token"]
+        except requests.exceptions.RequestException as e:
+            raise HTTPException(
+                status_code=401,
+                detail="El código de Discord ha expirado o es inválido.",
+            )
 
-@router.get("/status/{job_id}")
-def verificar_estado_descarga(
-    job_id: str, current_user: User = Depends(get_current_user)
-):
-    """
-    El frontend consulta este endpoint cada X segundos.
-    Lee directamente de Redis el estado del Worker sin tocar la Base de Datos.
-    """
-    try:
-        job = Job.fetch(job_id, connection=conn)
+        # 2. Obtener el perfil del usuario usando el Token
+        try:
+            user_response = requests.get(
+                "https://discord.com/api/users/me",
+                headers={"Authorization": f"Bearer {discord_access_token}"},
+            )
+            user_response.raise_for_status()
+            discord_user = user_response.json()
+        except requests.exceptions.RequestException:
+            raise HTTPException(
+                status_code=401, detail="No se pudo obtener el perfil de Discord."
+            )
 
-        if job.is_finished:
-            return {"status": "finished", "download_url": job.result}
-        elif job.is_failed:
-            return {"status": "failed", "error": str(job.exc_info)}
+        email = discord_user.get("email")
+        provider_id = str(discord_user.get("id"))
+        name = discord_user.get("global_name") or discord_user.get("username")
+
+        if not email:
+            raise HTTPException(
+                status_code=400,
+                detail="Necesitas tener un email verificado en Discord.",
+            )
+
+        # 3. Flujo de decisión: ¿Existe o es nuevo?
+        user = session.exec(select(User).where(User.email == email)).first()
+
+        if user:
+            # ESCENARIO A: Ya existe. Iniciamos sesión.
+            access_token = create_access_token(
+                data={"sub": user.username, "role": user.role}
+            )
+            refresh_data = create_refresh_token(data={"sub": user.username})
+
+            redis_key = f"session:{user.username}:{refresh_data['family_id']}"
+            redis_client.setex(redis_key, 60 * 60 * 24 * 7, refresh_data["jti"])
+
+            return {
+                "status": "success",
+                "access_token": access_token,
+                "refresh_token": refresh_data["token"],
+                "username": user.username,
+            }
         else:
-            return {"status": "processing"}
-
-    except NoSuchJobError:
-        raise HTTPException(
-            status_code=404, detail="El trabajo de descarga no existe o ha caducado"
-        )
-    except Exception as e:
-        raise HTTPException(status_code=500, detail="Error interno al consultar Redis")
+            # ESCENARIO B: Es nuevo. Necesita invitación.
+            suggested_username = "".join(e for e in name.lower() if e.isalnum())
+            return {
+                "status": "needs_invite",
+                "email": email,
+                "suggested_username": suggested_username,
+                "provider_id": provider_id,  # Discord ID para enlazar la cuenta
+            }
 </file>
 
 <file path="backend/app/init_db.py">
@@ -10852,295 +11166,24 @@ if __name__ == "__main__":
     init_db()
 </file>
 
-<file path="frontend/src/features/home/hooks/usePublicFeed.ts">
-import { FeedItem } from "@/src/types/models";
-import { useState, useEffect } from "react";
-import { api } from "@/src/services/api";
+<file path="frontend/app/[lang]/(auth)/login/page.tsx">
+import { Suspense } from "react";
+import { IconLoader2 } from "@tabler/icons-react";
+import { AuthForm } from "@/src/system/organisms/Auth/AuthForm";
 
-export function usePublicFeed(query: string) {
-  const [feed, setFeed] = useState<FeedItem[]>([]);
-  const [isFeedLoading, setIsFeedLoading] = useState(true);
-  const [feedError, setFeedError] = useState<string | null>(null);
-  const [showMyArt, setShowMyArt] = useState(false);
-
-  useEffect(() => {
-    if (query) return;
-
-    setIsFeedLoading(true);
-    setFeedError(null);
-
-    api
-      .getPublicFeed({ include_self: false })
-      .then((res) => setFeed(res.feed || []))
-      .catch((err) => {
-        console.error("Error cargando feed:", err);
-        setFeedError("Hubo un problema al cargar el arte de la comunidad.");
-      })
-      .finally(() => setIsFeedLoading(false));
-  }, [query, showMyArt]);
-
-  return { feed, isFeedLoading, showMyArt, setShowMyArt, feedError };
-}
-</file>
-
-<file path="frontend/src/services/api/downloads.ts">
-import { fetchSeguro } from "./client";
-import { ENV } from "@/src/services/config/env";
-
-export const API_URL = ENV.API_URL;
-export const downloadApi = {
-  solicitarZipColeccion: (collectionId: string) =>
-    fetchSeguro(`${API_URL}/download/collection/${encodeURIComponent(collectionId)}`, {
-      method: "POST",
-    }),
-
-  verificarEstado: (jobId: string) =>
-    fetchSeguro(`${API_URL}/download/status/${encodeURIComponent(jobId)}`),
-
-  descargarImagenUnica: (imageKey: string) =>
-    fetchSeguro(`${API_URL}/download/single/${encodeURIComponent(imageKey)}`),
-};
-</file>
-
-<file path="backend/requirements.txt">
-alembic==1.18.4
-annotated-doc==0.0.4
-annotated-types==0.7.0
-anyio==4.13.0
-attrs==26.1.0
-bcrypt==5.0.0
-beautifulsoup4==4.14.3
-boto3==1.34.62
-botocore==1.34.162
-cachetools==5.5.2
-certifi==2026.2.25
-cffi==2.0.0
-charset-normalizer==3.4.7
-click==8.3.1
-croniter==6.2.2
-cryptography==46.0.6
-ecdsa==0.19.2
-fastapi==0.135.3
-google-auth==2.28.1
-greenlet==3.3.2
-h11==0.16.0
-idna==3.11
-jmespath==1.1.0
-lxml==6.0.2
-Mako==1.3.10
-MarkupSafe==3.0.3
-outcome==1.3.0.post0
-passlib==1.7.4
-psycopg2-binary==2.9.11
-pyasn1==0.6.3
-pyasn1_modules==0.4.2
-pycparser==3.0
-pydantic==2.12.5
-pydantic-settings==2.13.1
-pydantic_core==2.41.5
-PyJWT==2.8.0
-PySocks==1.7.1
-python-dateutil==2.9.0.post0
-python-dotenv==1.2.2
-python-jose==3.5.0
-python-multipart==0.0.9
-redis==5.0.1
-requests==2.33.1
-rq==2.7.0
-rsa==4.9.1
-s3transfer==0.10.4
-selenium==4.41.0
-six==1.17.0
-sniffio==1.3.1
-sortedcontainers==2.4.0
-soupsieve==2.8.3
-SQLAlchemy==2.0.48
-sqlmodel==0.0.37
-starlette==1.0.0
-trio==0.33.0
-trio-websocket==0.12.2
-typing-inspection==0.4.2
-typing_extensions==4.15.0
-urllib3==2.6.3
-uvicorn==0.42.0
-websocket-client==1.9.0
-wsproto==1.3.2
-</file>
-
-<file path="frontend/app/[lang]/(main)/[username]/[collection_slug]/page.tsx">
-"use client";
-
-import { use } from "react";
-import Link from "next/link";
-import { IconFolder, IconPhotoOff } from "@tabler/icons-react";
-
-import { PromptCard } from "@/src/system/organisms/Studio/PromptCard";
-import { usePublicCollection } from "@/src/features/studio/hooks/usePublicCollection";
-import { FadeIn } from "@/src/system/atoms/FadeIn";
-import { Breadcrumbs } from "@/src/system/organisms/Navigation/Breadcrumbs";
-
-export default function PublicCollectionPage({
-  params,
-}: {
-  params: Promise<{ lang: string; username: string; collection_slug: string }>;
-}) {
-  const { lang, username, collection_slug } = use(params);
-
-  const { data, isLoading, error } = usePublicCollection(username, collection_slug);
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center font-mono animate-pulse">
-        Descifrando la colección...
-      </div>
-    );
-  }
-
-  if (error || !data) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center font-mono gap-4">
-        <p className="text-red-500">{error || "Colección no encontrada."}</p>
-        <Link
-          href={`/${lang}/${username}`}
-          className="text-(--accent-color) hover:underline uppercase text-xs tracking-widest"
-        >
-          ← Volver al perfil
-        </Link>
-      </div>
-    );
-  }
-
-  const breadcrumbItems = [
-    { label: `@${username}`, href: `/${lang}/${username}` },
-    { label: data.collection.name },
-  ];
-
+export default function LoginPage() {
   return (
-    <FadeIn duration={0.8}>
-      <main className="min-h-screen bg-background p-4 md:p-8">
-        <div className="max-w-7xl mx-auto space-y-8">
-          <div>
-            <Breadcrumbs items={breadcrumbItems} />
+    <main className="min-h-screen flex items-center justify-center p-4 bg-muted/10">
+      <Suspense
+        fallback={
+          <div className="flex flex-col items-center gap-4 text-muted-foreground">
+            <IconLoader2 className="animate-spin" size={32} />
+            <span className="font-mono text-sm tracking-widest uppercase">Cargando acceso...</span>
           </div>
-
-          <header className="flex flex-col gap-2 border-b border-border pb-8">
-            <div className="flex items-center gap-3">
-              <IconFolder size={32} className="text-(--accent-color)" />
-              <h1 className="text-3xl md:text-4xl font-black tracking-tighter uppercase">
-                {data.collection.name}
-              </h1>
-            </div>
-            {data.collection.description && (
-              <p className="text-muted-foreground font-mono mt-2">{data.collection.description}</p>
-            )}
-          </header>
-
-          <section>
-            {data.prompts.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-20 text-muted-foreground/50 bg-muted/5 rounded-xl border border-dashed border-border/50">
-                <IconPhotoOff size={48} stroke={1} className="mb-4" />
-                <p className="font-mono text-xs uppercase tracking-widest">
-                  Esta colección está vacía
-                </p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-6">
-                {data.prompts.map((prompt, index) => (
-                  <FadeIn key={prompt.id} delay={0.3 + index * 0.05} y={15}>
-                    <PromptCard
-                      item={prompt}
-                      index={index}
-                      isPriority={index < 6}
-                      lang={lang}
-                      isStudio={false}
-                      authorUsername={username}
-                    />
-                  </FadeIn>
-                ))}
-              </div>
-            )}
-          </section>
-        </div>
-      </main>
-    </FadeIn>
-  );
-}
-</file>
-
-<file path="frontend/app/[lang]/(main)/reprompt/page.tsx">
-"use client";
-
-import { use } from "react";
-import { usePromptExtractor } from "@/src/features/extractor/hooks/usePromptExtractor";
-import { ExtractorDropzone } from "@/src/system/organisms/Extractor/Dropzone";
-import { BatchInspector } from "@/src/system/organisms/Extractor/Inspector/BatchInspector";
-import { Breadcrumbs } from "@/src/system/organisms/Navigation/Breadcrumbs";
-import { UpgradeModal } from "@/src/system/organisms/Modal/UpgradeModal";
-import { IconScanTraces } from "@tabler/icons-react";
-
-export default function RepromptPage({ params }: { params: Promise<{ lang: string }> }) {
-  const { lang } = use(params);
-
-  const {
-    processFiles,
-    isExtracting,
-    error,
-    batch,
-    skippedFiles,
-    upgradeModal,
-    closeUpgradeModal,
-    updateItemStatus,
-    updateItemData,
-    removeItem,
-    clearBatch,
-    clearSkipped,
-  } = usePromptExtractor();
-
-  const breadcrumbItems = [
-    { label: "Mi Studio", href: `/${lang}/studio` },
-    { label: "Extractor Reprompt" },
-  ];
-
-  return (
-    <main className="min-h-screen bg-background p-4 md:p-8">
-      <UpgradeModal isOpen={upgradeModal} onClose={closeUpgradeModal} />
-      <div className="max-w-7xl mx-auto space-y-8">
-        <div>
-          <Breadcrumbs items={breadcrumbItems} />
-        </div>
-
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-border pb-8 mt-4">
-          <div>
-            <h1 className="text-3xl font-black tracking-tighter flex items-center gap-3">
-              <IconScanTraces className="text-(--accent-color)" size={32} />
-              Extractor <span className="font-mono font-regular">reprompt</span>
-            </h1>
-            <p className="text-muted-foreground mt-1">
-              Arrastra múltiples imágenes o archivos ZIP para extraer metadatos en lote.
-            </p>
-          </div>
-        </div>
-
-        <section className="w-full max-w-7xl mx-auto">
-          {batch.length === 0 ? (
-            <ExtractorDropzone
-              onFileDrop={processFiles}
-              isExtracting={isExtracting}
-              error={error}
-            />
-          ) : (
-            <BatchInspector
-              batch={batch}
-              skippedFiles={skippedFiles}
-              onUpdateStatus={updateItemStatus}
-              onUpdateItemData={updateItemData}
-              onRemoveItem={removeItem}
-              onClearAll={clearBatch}
-              onClearSkipped={clearSkipped}
-            />
-          )}
-        </section>
-      </div>
+        }
+      >
+        <AuthForm />
+      </Suspense>
     </main>
   );
 }
@@ -11325,6 +11368,436 @@ body {
   * {
     @apply border-border outline-ring/50;
   }
+}
+</file>
+
+<file path="frontend/src/features/home/hooks/usePublicFeed.ts">
+import { FeedItem } from "@/src/types/models";
+import { useState, useEffect } from "react";
+import { api } from "@/src/services/api";
+
+export function usePublicFeed(query: string) {
+  const [feed, setFeed] = useState<FeedItem[]>([]);
+  const [isFeedLoading, setIsFeedLoading] = useState(true);
+  const [feedError, setFeedError] = useState<string | null>(null);
+  const [showMyArt, setShowMyArt] = useState(false);
+
+  useEffect(() => {
+    if (query) return;
+
+    setIsFeedLoading(true);
+    setFeedError(null);
+
+    api
+      .getPublicFeed({ include_self: false })
+      .then((res) => setFeed(res.feed || []))
+      .catch((err) => {
+        console.error("Error cargando feed:", err);
+        setFeedError("Hubo un problema al cargar el arte de la comunidad.");
+      })
+      .finally(() => setIsFeedLoading(false));
+  }, [query, showMyArt]);
+
+  return { feed, isFeedLoading, showMyArt, setShowMyArt, feedError };
+}
+</file>
+
+<file path="frontend/src/services/api/downloads.ts">
+import { fetchSeguro } from "./client";
+import { ENV } from "@/src/services/config/env";
+
+export const API_URL = ENV.API_URL;
+export const downloadApi = {
+  solicitarZipColeccion: (collectionId: string) =>
+    fetchSeguro(`${API_URL}/download/collection/${encodeURIComponent(collectionId)}`, {
+      method: "POST",
+    }),
+
+  verificarEstado: (jobId: string) =>
+    fetchSeguro(`${API_URL}/download/status/${encodeURIComponent(jobId)}`),
+
+  descargarImagenUnica: (imageKey: string) =>
+    fetchSeguro(`${API_URL}/download/single/${encodeURIComponent(imageKey)}`),
+};
+</file>
+
+<file path="backend/app/api/routes_download.py">
+import uuid
+from rq import Queue
+from rq.job import Job
+from rq.exceptions import NoSuchJobError
+from sqlmodel import Session, select, func
+from fastapi import APIRouter, Depends, HTTPException
+
+from app.core.redis_config import conn
+from app.core.db import get_session
+from app.models.collection import Collection
+from app.models.prompt import ImagePrompt
+from app.services.downloader import generar_zip_coleccion, ejecutar_descarga_individual
+from app.api.deps import get_current_user
+from app.models.user import User, UserRole
+
+router = APIRouter()
+
+downloads_queue_premium = Queue("downloads_premium", connection=conn)
+downloads_queue_free = Queue("downloads_free", connection=conn)
+
+
+@router.get("/single/{image_key}")
+def descargar_una_imagen(
+    image_key: str,
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    """Resolución sincrónica instantánea para archivos únicos."""
+
+    statement = select(ImagePrompt).where(ImagePrompt.image_url.contains(image_key))
+    prompt = session.exec(statement).first()
+
+    if not prompt:
+        raise HTTPException(
+            status_code=404, detail="Imagen no encontrada en la base de datos."
+        )
+
+    if prompt.collection_id:
+        col = session.get(Collection, prompt.collection_id)
+        if col and col.is_private and col.user_id != current_user.id:
+            raise HTTPException(
+                status_code=403, detail="No tienes permiso. Esta imagen es privada."
+            )
+
+    try:
+        url = ejecutar_descarga_individual(image_key)
+        return {"download_url": url}
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail="Error al generar el acceso directo en R2"
+        )
+
+
+@router.post("/collection/{collection_id}")
+def descargar_coleccion_completa(
+    collection_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    """Delega la generación masiva del ZIP al Worker de Redis para no congelar la API."""
+
+    col = session.get(Collection, collection_id)
+    if not col:
+        raise HTTPException(status_code=404, detail="Colección no encontrada")
+
+    if col.is_private and col.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Esta colección es privada")
+
+    cantidad_imagenes = session.exec(
+        select(func.count(ImagePrompt.id)).where(
+            ImagePrompt.collection_id == collection_id
+        )
+    ).one()
+
+    limite_descarga = 50 if current_user.role == UserRole.VOYAGER else 1000
+
+    if cantidad_imagenes > limite_descarga:
+        raise HTTPException(
+            status_code=403,
+            detail=f"Tu plan '{current_user.role}' permite descargar un máximo de {limite_descarga} imágenes de golpe. Esta colección tiene {cantidad_imagenes}. ¡Haz upgrade a Artist!",
+        )
+
+    try:
+        if current_user.role == UserRole.ARTIST:
+            job = downloads_queue_premium.enqueue(
+                generar_zip_coleccion,
+                str(collection_id),
+                current_user.email,
+                job_timeout="1h",
+            )
+            queue_assigned = "premium"
+        else:
+            job = downloads_queue_free.enqueue(
+                generar_zip_coleccion,
+                str(collection_id),
+                current_user.email,
+                job_timeout="1h",
+            )
+            queue_assigned = "free"
+
+        return {
+            "status": "processing",
+            "job_id": job.get_id(),
+            "message": "Generando ZIP en segundo plano.",
+            "queue": queue_assigned,
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail="Error al encolar la descarga masiva"
+        )
+
+
+@router.get("/status/{job_id}")
+def verificar_estado_descarga(
+    job_id: str, current_user: User = Depends(get_current_user)
+):
+    """
+    El frontend consulta este endpoint cada X segundos.
+    Lee directamente de Redis el estado del Worker sin tocar la Base de Datos.
+    """
+    try:
+        job = Job.fetch(job_id, connection=conn)
+
+        if job.is_finished:
+            return {"status": "finished", "download_url": job.result}
+        elif job.is_failed:
+            return {"status": "failed", "error": str(job.exc_info)}
+        else:
+            return {"status": "processing"}
+
+    except NoSuchJobError:
+        raise HTTPException(
+            status_code=404, detail="El trabajo de descarga no existe o ha caducado"
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Error interno al consultar Redis")
+</file>
+
+<file path="backend/app/schemas/prompt.py">
+import uuid
+from pydantic import BaseModel, Field
+from typing import Optional, Dict, Any
+from datetime import datetime
+from fastapi import Form
+
+
+class PromptCreate(BaseModel):
+    title: str = Field(default="Generación IA", max_length=150)
+    prompt: str = Field(..., max_length=20000)
+    negative_prompt: Optional[str] = Field(None, max_length=20000)
+
+    software: Optional[str] = Field(default="Desconocido", max_length=50)
+    model: Optional[str] = Field(None, max_length=150)
+    sampler: Optional[str] = Field(None, max_length=100)
+    steps: Optional[str] = Field(None, max_length=20)
+    cfg_scale: Optional[str] = Field(None, max_length=20)
+    seed: Optional[str] = Field(None, max_length=50)
+    resolution: Optional[str] = Field(None, max_length=50)
+    image_url: Optional[str] = Field(None, max_length=500)
+    extra_data: Dict[str, Any] = {}
+
+
+class PromptResponse(PromptCreate):
+    id: uuid.UUID
+    user_id: uuid.UUID
+    prompt: str = Field(..., max_length=20000)
+    collection_id: Optional[int] = None
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+def prompt_form_dependency(
+    title: str = Form("Generación IA", max_length=150),
+    prompt: str = Form(..., max_length=20000),
+    negative_prompt: Optional[str] = Form(None, max_length=20000),
+    software: Optional[str] = Form("Desconocido", max_length=50),
+    model: Optional[str] = Form(None, max_length=150),
+    sampler: Optional[str] = Form(None, max_length=100),
+    steps: Optional[str] = Form(None, max_length=20),
+    cfg_scale: Optional[str] = Form(None, max_length=20),
+    seed: Optional[str] = Form(None, max_length=50),
+    resolution: Optional[str] = Form(None, max_length=50),
+) -> PromptCreate:
+    """Extrae los campos del form-data y los valida contra el esquema"""
+    return PromptCreate(
+        title=title,
+        prompt=prompt,
+        negative_prompt=negative_prompt,
+        software=software,
+        model=model,
+        sampler=sampler,
+        steps=steps,
+        cfg_scale=cfg_scale,
+        seed=seed,
+        resolution=resolution,
+    )
+</file>
+
+<file path="frontend/app/[lang]/(main)/[username]/[collection_slug]/page.tsx">
+"use client";
+
+import { use } from "react";
+import Link from "next/link";
+import { IconFolder, IconPhotoOff } from "@tabler/icons-react";
+
+import { PromptCard } from "@/src/system/organisms/Studio/PromptCard";
+import { usePublicCollection } from "@/src/features/studio/hooks/usePublicCollection";
+import { FadeIn } from "@/src/system/atoms/FadeIn";
+import { Breadcrumbs } from "@/src/system/organisms/Navigation/Breadcrumbs";
+
+export default function PublicCollectionPage({
+  params,
+}: {
+  params: Promise<{ lang: string; username: string; collection_slug: string }>;
+}) {
+  const { lang, username, collection_slug } = use(params);
+
+  const { data, isLoading, error } = usePublicCollection(username, collection_slug);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center font-mono animate-pulse">
+        Descifrando la colección...
+      </div>
+    );
+  }
+
+  if (error || !data) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center font-mono gap-4">
+        <p className="text-red-500">{error || "Colección no encontrada."}</p>
+        <Link
+          href={`/${lang}/${username}`}
+          className="text-(--accent-color) hover:underline uppercase text-xs tracking-widest"
+        >
+          ← Volver al perfil
+        </Link>
+      </div>
+    );
+  }
+
+  const breadcrumbItems = [
+    { label: `@${username}`, href: `/${lang}/${username}` },
+    { label: data.collection.name },
+  ];
+
+  return (
+    <FadeIn duration={0.8}>
+      <main className="min-h-screen bg-background p-4 md:p-8">
+        <div className="max-w-7xl mx-auto space-y-8">
+          <div>
+            <Breadcrumbs items={breadcrumbItems} />
+          </div>
+
+          <header className="flex flex-col gap-2 border-b border-border pb-8">
+            <div className="flex items-center gap-3">
+              <IconFolder size={32} className="text-(--accent-color)" />
+              <h1 className="text-3xl md:text-4xl font-black tracking-tighter uppercase">
+                {data.collection.name}
+              </h1>
+            </div>
+            {data.collection.description && (
+              <p className="text-muted-foreground font-mono mt-2">{data.collection.description}</p>
+            )}
+          </header>
+
+          <section>
+            {data.prompts.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-20 text-muted-foreground/50 bg-muted/5 rounded-xl border border-dashed border-border/50">
+                <IconPhotoOff size={48} stroke={1} className="mb-4" />
+                <p className="font-mono text-xs uppercase tracking-widest">
+                  Esta colección está vacía
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+                {data.prompts.map((prompt, index) => (
+                  <FadeIn key={prompt.id} delay={0.3 + index * 0.05} y={15}>
+                    <PromptCard
+                      item={prompt}
+                      index={index}
+                      isPriority={index < 6}
+                      lang={lang}
+                      isStudio={false}
+                      authorUsername={username}
+                    />
+                  </FadeIn>
+                ))}
+              </div>
+            )}
+          </section>
+        </div>
+      </main>
+    </FadeIn>
+  );
+}
+</file>
+
+<file path="frontend/app/[lang]/(main)/reprompt/page.tsx">
+"use client";
+
+import { use } from "react";
+import { usePromptExtractor } from "@/src/features/extractor/hooks/usePromptExtractor";
+import { ExtractorDropzone } from "@/src/system/organisms/Extractor/Dropzone";
+import { BatchInspector } from "@/src/system/organisms/Extractor/Inspector/BatchInspector";
+import { Breadcrumbs } from "@/src/system/organisms/Navigation/Breadcrumbs";
+import { UpgradeModal } from "@/src/system/organisms/Modal/UpgradeModal";
+import { IconScanTraces } from "@tabler/icons-react";
+
+export default function RepromptPage({ params }: { params: Promise<{ lang: string }> }) {
+  const { lang } = use(params);
+
+  const {
+    processFiles,
+    isExtracting,
+    error,
+    batch,
+    skippedFiles,
+    upgradeModal,
+    closeUpgradeModal,
+    updateItemStatus,
+    updateItemData,
+    removeItem,
+    clearBatch,
+    clearSkipped,
+  } = usePromptExtractor();
+
+  const breadcrumbItems = [
+    { label: "Mi Studio", href: `/${lang}/studio` },
+    { label: "Extractor Reprompt" },
+  ];
+
+  return (
+    <main className="min-h-screen bg-background p-4 md:p-8">
+      <UpgradeModal isOpen={upgradeModal} onClose={closeUpgradeModal} />
+      <div className="max-w-7xl mx-auto space-y-8">
+        <div>
+          <Breadcrumbs items={breadcrumbItems} />
+        </div>
+
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-border pb-8 mt-4">
+          <div>
+            <h1 className="text-3xl font-black tracking-tighter flex items-center gap-3">
+              <IconScanTraces className="text-(--accent-color)" size={32} />
+              Extractor <span className="font-mono font-regular">reprompt</span>
+            </h1>
+            <p className="text-muted-foreground mt-1">
+              Arrastra múltiples imágenes o archivos ZIP para extraer metadatos en lote.
+            </p>
+          </div>
+        </div>
+
+        <section className="w-full max-w-7xl mx-auto">
+          {batch.length === 0 ? (
+            <ExtractorDropzone
+              onFileDrop={processFiles}
+              isExtracting={isExtracting}
+              error={error}
+            />
+          ) : (
+            <BatchInspector
+              batch={batch}
+              skippedFiles={skippedFiles}
+              onUpdateStatus={updateItemStatus}
+              onUpdateItemData={updateItemData}
+              onRemoveItem={removeItem}
+              onClearAll={clearBatch}
+              onClearSkipped={clearSkipped}
+            />
+          )}
+        </section>
+      </div>
+    </main>
+  );
 }
 </file>
 
@@ -11651,6 +12124,72 @@ export const config = {
     "/((?!api|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };
+</file>
+
+<file path="backend/requirements.txt">
+alembic==1.18.4
+annotated-doc==0.0.4
+annotated-types==0.7.0
+anyio==4.13.0
+attrs==26.1.0
+bcrypt==5.0.0
+beautifulsoup4==4.14.3
+boto3==1.34.62
+botocore==1.34.162
+cachetools==5.5.2
+certifi==2026.2.25
+cffi==2.0.0
+charset-normalizer==3.4.7
+click==8.3.1
+croniter==6.2.2
+cryptography==46.0.6
+ecdsa==0.19.2
+fastapi==0.135.3
+google-auth==2.28.1
+greenlet==3.3.2
+h11==0.16.0
+idna==3.11
+jmespath==1.1.0
+lxml==6.0.2
+Mako==1.3.10
+MarkupSafe==3.0.3
+outcome==1.3.0.post0
+passlib==1.7.4
+psycopg2-binary==2.9.11
+pyasn1==0.6.3
+pyasn1_modules==0.4.2
+pycparser==3.0
+pydantic==2.12.5
+pydantic-settings==2.13.1
+pydantic_core==2.41.5
+PyJWT==2.8.0
+PySocks==1.7.1
+python-dateutil==2.9.0.post0
+python-dotenv==1.2.2
+python-jose==3.5.0
+python-multipart==0.0.9
+redis==5.0.1
+requests==2.33.1
+rq==2.7.0
+rsa==4.9.1
+s3transfer==0.10.4
+selenium==4.41.0
+six==1.17.0
+sniffio==1.3.1
+sortedcontainers==2.4.0
+soupsieve==2.8.3
+SQLAlchemy==2.0.48
+sqlmodel==0.0.37
+starlette==1.0.0
+trio==0.33.0
+trio-websocket==0.12.2
+typing-inspection==0.4.2
+typing_extensions==4.15.0
+urllib3==2.6.3
+uvicorn==0.42.0
+websocket-client==1.9.0
+wsproto==1.3.2
+email-validator==2.1.1
 </file>
 
 <file path="frontend/app/[lang]/(main)/[username]/p/[prompt_id]/page.tsx">
@@ -12348,246 +12887,6 @@ git:
 		git push origin $$BRANCH; \
 		echo "✅ ¡Sincronización completada con éxito!"; \
 	fi
-</file>
-
-<file path="backend/app/api/routes_public.py">
-# backend/app/api/routes_public.py
-from fastapi import APIRouter, Depends, HTTPException
-from sqlmodel import Session, select, or_, func
-from app.core.db import get_session
-from app.models.user import User
-from app.models.collection import Collection
-from app.models.prompt import ImagePrompt
-from app.api.deps import get_optional_user, get_optional_user
-from typing import Optional
-
-router = APIRouter()
-
-
-@router.get("/profile/{username}")
-def get_public_profile(username: str, session: Session = Depends(get_session)):
-    """Devuelve los datos públicos de un usuario, sus colecciones y sus prompts recientes."""
-    user = session.exec(select(User).where(User.username == username)).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="Usuario no encontrado")
-
-    # 1. Colecciones Públicas
-    collections = session.exec(
-        select(Collection)
-        .where(Collection.user_id == user.id)
-        .where(Collection.is_private == False)
-    ).all()
-
-    # 2. Prompts Públicos (Que no estén en una colección o que su colección sea pública)
-    statement = (
-        select(ImagePrompt)
-        .outerjoin(Collection, ImagePrompt.collection_id == Collection.id)
-        .where(ImagePrompt.user_id == user.id)
-        .where(or_(ImagePrompt.collection_id == None, Collection.is_private == False))
-        .order_by(ImagePrompt.created_at.desc())
-        .limit(50)  # Traemos los últimos 50 para el escaparate
-    )
-    prompts = session.exec(statement).all()
-
-    return {
-        "status": "success",
-        "user": {
-            "username": user.username,
-            "role": user.role.value if hasattr(user.role, "value") else user.role
-        },
-        "collections": collections,
-        "recent_prompts": prompts,
-    }
-
-
-@router.get("/profile/{username}/{collection_slug}")
-def get_public_collection(
-    username: str,
-    collection_slug: str,
-    session: Session = Depends(get_session),
-    current_user: User = Depends(get_optional_user),
-):
-    """Devuelve una colección específica siempre y cuando sea pública."""
-    user = session.exec(select(User).where(User.username == username)).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="Usuario no encontrado")
-
-    collection = session.exec(
-        select(Collection)
-        .where(Collection.user_id == user.id)
-        .where(Collection.slug == collection_slug)
-        .where(Collection.is_private == False)
-    ).first()
-
-    if not collection:
-        raise HTTPException(
-            status_code=404, detail="Colección no encontrada o es privada"
-        )
-
-    if collection.is_private:
-        if not current_user or current_user.id != collection.user_id:
-            raise HTTPException(
-                status_code=403, detail="Esta colección es privada o no existe."
-            )
-
-    prompts = session.exec(
-        select(ImagePrompt)
-        .where(ImagePrompt.collection_id == collection.id)
-        .order_by(ImagePrompt.created_at.desc())
-    ).all()
-
-    return {
-        "status": "success",
-        "user": {"username": user.username},
-        "collection": collection,
-        "prompts": prompts,
-    }
-
-
-@router.get("/prompt/{prompt_id}")
-def get_public_prompt_detail(
-    prompt_id: int,
-    session: Session = Depends(get_session),
-    current_user: User = Depends(get_optional_user),
-):
-    """Devuelve el detalle de un prompt, su metadata, y las imágenes relacionadas (Colección y Usuario)"""
-
-    # 1. Buscar la imagen
-    prompt = session.exec(
-        select(ImagePrompt).where(ImagePrompt.id == prompt_id)
-    ).first()
-    if not prompt:
-        raise HTTPException(status_code=404, detail="Imagen no encontrada")
-
-    # 2. Buscar al dueño
-    user = session.exec(select(User).where(User.id == prompt.user_id)).first()
-
-    # 3. Validar privacidad y buscar relacionadas de la Colección
-    collection = None
-    related_collection = []
-
-    if prompt.collection_id:
-        collection = session.exec(
-            select(Collection).where(Collection.id == prompt.collection_id)
-        ).first()
-        if collection and collection.is_private:
-            if not current_user or current_user.id != collection.user_id:
-                raise HTTPException(
-                    status_code=403,
-                    detail="Esta imagen pertenece a una colección privada",
-                )
-
-        # Otras imágenes de esta misma colección
-        related_collection = session.exec(
-            select(ImagePrompt)
-            .where(ImagePrompt.collection_id == prompt.collection_id)
-            .where(ImagePrompt.id != prompt.id)
-            .order_by(ImagePrompt.created_at.desc())
-            .limit(6)
-        ).all()
-
-    # 4. Otras imágenes públicas del mismo Usuario
-    statement = (
-        select(ImagePrompt)
-        .outerjoin(Collection, ImagePrompt.collection_id == Collection.id)
-        .where(ImagePrompt.user_id == user.id)
-        .where(ImagePrompt.id != prompt.id)
-        .where(or_(ImagePrompt.collection_id == None, Collection.is_private == False))
-        .order_by(ImagePrompt.created_at.desc())
-        .limit(12)
-    )
-    related_user = session.exec(statement).all()
-
-    return {
-        "status": "success",
-        "prompt": prompt,
-        "user": {"username": user.username, "role": user.role},
-        "collection": collection,
-        "related_collection": related_collection,
-        "related_user": related_user,
-    }
-
-
-@router.get("/feed")
-def get_public_feed(
-    include_self: bool = False,
-    limit: int = 50,
-    session: Session = Depends(get_session),
-    current_user: Optional[User] = Depends(get_optional_user),
-):
-    """Devuelve un mix de Prompts sueltos y Colecciones para la Home optimizado"""
-
-    query_col = (
-        select(Collection, User)
-        .join(User, Collection.user_id == User.id)
-        .where(Collection.is_private == False)
-    )
-
-    query_prompt = (
-        select(ImagePrompt, User)
-        .join(User, ImagePrompt.user_id == User.id)
-        .where(ImagePrompt.collection_id == None)
-    )
-
-    if current_user and not include_self:
-        query_col = query_col.where(User.id != current_user.id)
-        query_prompt = query_prompt.where(User.id != current_user.id)
-
-    collections = session.exec(
-        query_col.order_by(Collection.created_at.desc()).limit(limit)
-    ).all()
-    prompts = session.exec(
-        query_prompt.order_by(ImagePrompt.created_at.desc()).limit(limit)
-    ).all()
-
-    feed = []
-
-    for col, user in collections:
-        count_statement = select(func.count(ImagePrompt.id)).where(
-            ImagePrompt.collection_id == col.id
-        )
-        items_count = session.exec(count_statement).one()
-
-        cover_url = session.exec(
-            select(ImagePrompt.image_url)
-            .where(ImagePrompt.collection_id == col.id)
-            .order_by(ImagePrompt.created_at.desc())
-            .limit(1)
-        ).first()
-
-        feed.append(
-            {
-                "type": "collection",
-                "id": f"col_{col.id}",
-                "raw_id": col.id,
-                "created_at": str(col.created_at),
-                "title": col.name,
-                "slug": col.slug,
-                "username": user.username,
-                "image_url": cover_url,
-                "items_count": items_count,
-            }
-        )
-
-    for p, user in prompts:
-        feed.append(
-            {
-                "type": "prompt",
-                "id": f"prompt_{p.id}",
-                "raw_id": p.id,
-                "created_at": str(p.created_at),
-                "title": p.title,
-                "prompt": p.prompt,
-                "username": user.username,
-                "image_url": p.image_url,
-                "model": p.model,
-                "resolution": p.resolution,
-            }
-        )
-
-    feed.sort(key=lambda x: x["created_at"], reverse=True)
-
-    return {"status": "success", "feed": feed[:limit]}
 </file>
 
 <file path="backend/app/core/db.py">
@@ -22171,6 +22470,254 @@ frontend:
 </files>
 </file>
 
+<file path="backend/app/api/routes_public.py">
+import uuid
+from fastapi import APIRouter, Depends, HTTPException
+from sqlmodel import Session, select, or_, func
+from sqlalchemy import select as sa_select
+from app.core.db import get_session
+from app.models.user import User
+from app.models.collection import Collection
+from app.models.prompt import ImagePrompt
+from app.api.deps import get_optional_user, get_optional_user
+from typing import Optional
+
+router = APIRouter()
+
+
+@router.get("/profile/{username}")
+def get_public_profile(username: str, session: Session = Depends(get_session)):
+    """Devuelve los datos públicos de un usuario, sus colecciones y sus prompts recientes."""
+    user = session.exec(select(User).where(User.username == username)).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+
+    # 1. Colecciones Públicas
+    collections = session.exec(
+        select(Collection)
+        .where(Collection.user_id == user.id)
+        .where(Collection.is_private == False)
+    ).all()
+
+    # 2. Prompts Públicos (Que no estén en una colección o que su colección sea pública)
+    statement = (
+        select(ImagePrompt)
+        .outerjoin(Collection, ImagePrompt.collection_id == Collection.id)
+        .where(ImagePrompt.user_id == user.id)
+        .where(or_(ImagePrompt.collection_id == None, Collection.is_private == False))
+        .order_by(ImagePrompt.created_at.desc())
+        .limit(50)  # Traemos los últimos 50 para el escaparate
+    )
+    prompts = session.exec(statement).all()
+
+    return {
+        "status": "success",
+        "user": {
+            "username": user.username,
+            "role": user.role.value if hasattr(user.role, "value") else user.role,
+        },
+        "collections": collections,
+        "recent_prompts": prompts,
+    }
+
+
+@router.get("/profile/{username}/{collection_slug}")
+def get_public_collection(
+    username: str,
+    collection_slug: str,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_optional_user),
+):
+    """Devuelve una colección específica siempre y cuando sea pública."""
+    user = session.exec(select(User).where(User.username == username)).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+
+    collection = session.exec(
+        select(Collection)
+        .where(Collection.user_id == user.id)
+        .where(Collection.slug == collection_slug)
+        .where(Collection.is_private == False)
+    ).first()
+
+    if not collection:
+        raise HTTPException(
+            status_code=404, detail="Colección no encontrada o es privada"
+        )
+
+    if collection.is_private:
+        if not current_user or current_user.id != collection.user_id:
+            raise HTTPException(
+                status_code=403, detail="Esta colección es privada o no existe."
+            )
+
+    prompts = session.exec(
+        select(ImagePrompt)
+        .where(ImagePrompt.collection_id == collection.id)
+        .order_by(ImagePrompt.created_at.desc())
+    ).all()
+
+    return {
+        "status": "success",
+        "user": {"username": user.username},
+        "collection": collection,
+        "prompts": prompts,
+    }
+
+
+@router.get("/prompt/{prompt_id}")
+def get_public_prompt_detail(
+    prompt_id: uuid.UUID,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_optional_user),
+):
+    """Devuelve el detalle de un prompt, su metadata, y las imágenes relacionadas (Colección y Usuario)"""
+
+    # 1. Buscar la imagen
+    prompt = session.exec(
+        select(ImagePrompt).where(ImagePrompt.id == prompt_id)
+    ).first()
+    if not prompt:
+        raise HTTPException(status_code=404, detail="Imagen no encontrada")
+
+    # 2. Buscar al dueño
+    user = session.exec(select(User).where(User.id == prompt.user_id)).first()
+
+    # 3. Validar privacidad y buscar relacionadas de la Colección
+    collection = None
+    related_collection = []
+
+    if prompt.collection_id:
+        collection = session.exec(
+            select(Collection).where(Collection.id == prompt.collection_id)
+        ).first()
+        if collection and collection.is_private:
+            if not current_user or current_user.id != collection.user_id:
+                raise HTTPException(
+                    status_code=403,
+                    detail="Esta imagen pertenece a una colección privada",
+                )
+
+        # Otras imágenes de esta misma colección
+        related_collection = session.exec(
+            select(ImagePrompt)
+            .where(ImagePrompt.collection_id == prompt.collection_id)
+            .where(ImagePrompt.id != prompt.id)
+            .order_by(ImagePrompt.created_at.desc())
+            .limit(6)
+        ).all()
+
+    # 4. Otras imágenes públicas del mismo Usuario
+    statement = (
+        select(ImagePrompt)
+        .outerjoin(Collection, ImagePrompt.collection_id == Collection.id)
+        .where(ImagePrompt.user_id == user.id)
+        .where(ImagePrompt.id != prompt.id)
+        .where(or_(ImagePrompt.collection_id == None, Collection.is_private == False))
+        .order_by(ImagePrompt.created_at.desc())
+        .limit(12)
+    )
+    related_user = session.exec(statement).all()
+
+    return {
+        "status": "success",
+        "prompt": prompt,
+        "user": {"username": user.username, "role": user.role},
+        "collection": collection,
+        "related_collection": related_collection,
+        "related_user": related_user,
+    }
+
+
+@router.get("/feed")
+def get_public_feed(
+    include_self: bool = False,
+    limit: int = 50,
+    session: Session = Depends(get_session),
+    current_user: Optional[User] = Depends(get_optional_user),
+):
+    """Devuelve un mix de Prompts sueltos y Colecciones para la Home optimizado"""
+
+    subq_count = (
+        sa_select(func.count(ImagePrompt.id))
+        .where(ImagePrompt.collection_id == Collection.id)
+        .scalar_subquery()
+    )
+
+    subq_cover = (
+        sa_select(ImagePrompt.image_url)
+        .where(ImagePrompt.collection_id == Collection.id)
+        .order_by(ImagePrompt.created_at.desc())
+        .limit(1)
+        .scalar_subquery()
+    )
+
+    query_col = (
+        select(
+            Collection,
+            User,
+            subq_count.label("items_count"),
+            subq_cover.label("cover_url"),
+        )
+        .join(User, Collection.user_id == User.id)
+        .where(Collection.is_private == False)
+    )
+
+    query_prompt = (
+        select(ImagePrompt, User)
+        .join(User, ImagePrompt.user_id == User.id)
+        .where(ImagePrompt.collection_id == None)
+    )
+
+    if current_user and not include_self:
+        query_col = query_col.where(User.id != current_user.id)
+        query_prompt = query_prompt.where(User.id != current_user.id)
+
+    collections = session.exec(
+        query_col.order_by(Collection.created_at.desc()).limit(limit)
+    ).all()
+    prompts = session.exec(
+        query_prompt.order_by(ImagePrompt.created_at.desc()).limit(limit)
+    ).all()
+
+    feed = []
+
+    for col, user, items_count, cover_url in collections:
+        feed.append(
+            {
+                "type": "collection",
+                "id": f"col_{col.id}",
+                "raw_id": col.id,
+                "created_at": str(col.created_at),
+                "title": col.name,
+                "slug": col.slug,
+                "username": user.username,
+                "image_url": cover_url,
+                "items_count": items_count or 0,
+            }
+        )
+
+    for p, user in prompts:
+        feed.append(
+            {
+                "type": "prompt",
+                "id": f"prompt_{p.id}",
+                "raw_id": p.id,
+                "created_at": str(p.created_at),
+                "title": p.title,
+                "prompt": p.prompt,
+                "username": user.username,
+                "image_url": p.image_url,
+                "model": p.model,
+                "resolution": p.resolution,
+            }
+        )
+
+    feed.sort(key=lambda x: x["created_at"], reverse=True)
+
+    return {"status": "success", "feed": feed[:limit]}
+</file>
+
 <file path="frontend/app/[lang]/layout.tsx">
 import type { Metadata } from "next";
 import { Prompt, JetBrains_Mono } from "next/font/google";
@@ -22238,6 +22785,214 @@ export default async function RootLayout({
     </html>
   );
 }
+</file>
+
+<file path="backend/app/main.py">
+import os
+import logging
+import secrets
+from contextlib import asynccontextmanager
+from fastapi.openapi.docs import get_swagger_ui_html
+from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi.security import HTTPBasic, HTTPBasicCredentials
+from fastapi.middleware.cors import CORSMiddleware
+
+from app.init_db import init_db
+
+from app.api.routes_download import router as download_router
+# from app.api.routes_search import router as search_router
+from app.api.routes_auth import router as auth_router
+from app.api.routes_prompt import router as prompt_router
+from app.api.routes_public import router as public_router
+from app.api.routes_collections import router as collections_router
+from app.api.routes_admin import router as admin_router
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    handlers=[logging.StreamHandler()],
+)
+logger = logging.getLogger("backend")
+
+security = HTTPBasic()
+
+
+def get_current_username(credentials: HTTPBasicCredentials = Depends(security)):
+    correct_username = secrets.compare_digest(
+        credentials.username.encode("utf8"),
+        os.getenv("DOCS_USERNAME", "admin").encode("utf8"),
+    )
+    correct_password = secrets.compare_digest(
+        credentials.password.encode("utf8"),
+        os.getenv("DOCS_PASSWORD", "admin").encode("utf8"),
+    )
+    if not (correct_username and correct_password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Acceso denegado a la documentación",
+            headers={"WWW-Authenticate": "Basic"},
+        )
+    return credentials.username
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    logger.info("🚀 API Backend iniciada. Sistemas en línea.")
+    try:
+        init_db()
+    except Exception as e:
+        logger.error(f"❌ Error al inicializar la base de datos: {e}")
+
+        raise RuntimeError("Imposible iniciar el servidor sin Base de Datos.") from e
+
+    yield
+    logger.info("🛑 Apagando API Backend limpiamente...")
+
+
+app = FastAPI(
+    title="reprompt FastAPI",
+    lifespan=lifespan,
+    docs_url=None,
+    redoc_url=None,
+    openapi_url=None,
+)
+
+ALLOWED_ORIGINS = [
+    "http://localhost:3000",
+    "https://reprompt.studio",
+    "https://www.reprompt.studio",
+]
+
+if os.getenv("ENVIRONMENT") != "production":
+    ALLOWED_ORIGINS.append("http://127.0.0.1:3000")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=ALLOWED_ORIGINS,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+@app.get("/docs", include_in_schema=False)
+async def get_swagger_documentation(username: str = Depends(get_current_username)):
+    return get_swagger_ui_html(openapi_url="/openapi.json", title="reprompt FastAPI")
+
+
+@app.get("/openapi.json", include_in_schema=False)
+async def openapi(username: str = Depends(get_current_username)):
+    return app.openapi()
+
+
+# app.include_router(search_router, prefix="/api")
+app.include_router(admin_router, prefix="/api/admin", tags=["Admin"])
+app.include_router(auth_router, prefix="/api/auth", tags=["Autenticación"])
+app.include_router(public_router, prefix="/api/public", tags=["Feed"])
+app.include_router(prompt_router, prefix="/api/prompts", tags=["Reprompt Studio"])
+app.include_router(download_router, prefix="/api/download", tags=["Descargas"])
+app.include_router(collections_router, prefix="/api/collections", tags=["Colecciones"])
+</file>
+
+<file path="frontend/src/services/api.ts">
+import { authApi } from "./api/auth";
+import { searchApi } from "./api/search";
+import { downloadApi } from "./api/downloads";
+import { promptApi } from "./api/prompts";
+import { API_URL, fetchSeguro } from "./api/client";
+
+const RESERVED_ROUTES = new Set([
+  "login",
+  "register",
+  "join",
+  "admin",
+  "studio",
+  "reprompt",
+  "api",
+  "_next",
+  "favicon.ico",
+]);
+
+export const api = {
+  ...authApi,
+  ...searchApi,
+  ...downloadApi,
+  ...promptApi,
+
+  getPublicProfile: async (username: string) => {
+    if (RESERVED_ROUTES.has(username.toLowerCase())) {
+      return Promise.reject(new Error("Ruta reservada del sistema"));
+    }
+    return fetchSeguro(`${API_URL}/public/profile/${username}`);
+  },
+
+  getPublicCollection: async (username: string, slug: string) => {
+    if (RESERVED_ROUTES.has(username.toLowerCase())) {
+      return Promise.reject(new Error("Ruta reservada del sistema"));
+    }
+    return fetchSeguro(`${API_URL}/public/profile/${username}/${slug}`);
+  },
+
+  getPublicPromptDetail: async (promptId: string) => {
+    return fetchSeguro(`${API_URL}/public/prompt/${promptId}`);
+  },
+
+  getPublicFeed: async (options?: { include_self?: boolean }) => {
+    const queryString = options?.include_self ? "?include_self=true" : "";
+    return fetchSeguro(`${API_URL}/public/feed${queryString}`);
+  },
+
+  createCollection: async (data: { name: string; description?: string; is_private: boolean }) => {
+    return fetchSeguro(`${API_URL}/collections`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  },
+
+  getMyCollections: async () => {
+    return fetchSeguro(`${API_URL}/collections/`);
+  },
+
+  assignPromptToCollection: async (promptId: number, collectionId: number | null) => {
+    return fetchSeguro(`${API_URL}/collections/assign/${promptId}`, {
+      method: "PUT",
+      body: JSON.stringify({ collection_id: collectionId }),
+    });
+  },
+
+  deletePromptsBatch: async (prompt_ids: number[]) => {
+    return fetchSeguro(`${API_URL}/prompts/batch-delete`, {
+      method: "POST",
+      body: JSON.stringify({ prompt_ids }),
+    });
+  },
+
+  verifyGoogleCode: async (data: { code: string }) => {
+    return fetchSeguro(`${API_URL}/auth/google/join`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  },
+
+  getGoogleAuthUrl: async () => {
+    return fetchSeguro(`${API_URL}/auth/google`, {
+      method: "POST",
+    });
+  },
+
+  reportBug: async (data: {
+    message: string;
+    stack?: string;
+    digest?: string;
+    url: string;
+    timestamp: string;
+  }) => {
+    return fetchSeguro(`${API_URL}/admin/bugs`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  },
+};
 </file>
 
 <file path="repomix-backend.xml">
@@ -22317,7 +23072,6 @@ app/
     audit_service.py
     auth_service.py
     downloader.py
-    scraper.py
     security.py
     storage.py
   utils/
@@ -22540,10 +23294,11 @@ async def receive_bug_report(report: BugReport, request: Request):
 </file>
 
 <file path="app/api/routes_auth.py">
+import os
 import secrets
 import redis
 import logging
-from fastapi import APIRouter, Depends, Response, Cookie, HTTPException
+from fastapi import APIRouter, Depends, Response, Cookie, HTTPException, status
 from fastapi.responses import JSONResponse
 from sqlmodel import Session, select
 
@@ -22552,9 +23307,7 @@ from app.services.audit_service import AuditService
 from app.core.db import get_session
 from app.api.deps import get_current_user, get_current_admin, RateLimiter
 from app.models.user import User, InviteCode, AuditLog
-from app.schemas.user import UserRegister, UserLogin, PasswordChange
 
-from fastapi import APIRouter, Depends, Response, Cookie, HTTPException, status
 from app.schemas.user import (
     UserRegister,
     UserLogin,
@@ -22562,6 +23315,8 @@ from app.schemas.user import (
     GoogleAuthRequest,
     GoogleJoinRequest,
 )
+
+IS_PRODUCTION = os.getenv("ENVIRONMENT") == "production"
 
 logger = logging.getLogger("routes_auth")
 redis_client = redis.Redis(host="redis", port=6379, db=0, decode_responses=True)
@@ -22609,6 +23364,7 @@ def login_user(
         key="access_token",
         value=access_token,
         httponly=True,
+        secure=IS_PRODUCTION,
         max_age=60 * 15,
         samesite="lax",
         path="/",
@@ -22617,6 +23373,7 @@ def login_user(
         key="refresh_token",
         value=refresh_token,
         httponly=True,
+        secure=IS_PRODUCTION,
         max_age=60 * 60 * 24 * 7,
         samesite="lax",
         path="/",
@@ -22640,6 +23397,7 @@ def google_auth(
         key="access_token",
         value=result["access_token"],
         httponly=True,
+        secure=IS_PRODUCTION,
         max_age=60 * 15,
         samesite="lax",
         path="/",
@@ -22648,6 +23406,7 @@ def google_auth(
         key="refresh_token",
         value=result["refresh_token"],
         httponly=True,
+        secure=IS_PRODUCTION,
         max_age=60 * 60 * 24 * 7,
         samesite="lax",
         path="/",
@@ -22674,6 +23433,7 @@ def google_join(
         key="access_token",
         value=access_token,
         httponly=True,
+        secure=IS_PRODUCTION,
         max_age=60 * 15,
         samesite="lax",
         path="/",
@@ -22682,6 +23442,7 @@ def google_join(
         key="refresh_token",
         value=refresh_token,
         httponly=True,
+        secure=IS_PRODUCTION,
         max_age=60 * 60 * 24 * 7,
         samesite="lax",
         path="/",
@@ -22698,8 +23459,12 @@ def google_join(
 
 @router.post("/logout")
 def logout_user(response: Response, refresh_token: str | None = Cookie(None)):
-    response.delete_cookie("access_token", path="/")
-    response.delete_cookie("refresh_token", path="/")
+    response.delete_cookie(
+        "access_token", path="/", httponly=True, samesite="lax", secure=IS_PRODUCTION
+    )
+    response.delete_cookie(
+        "refresh_token", path="/", httponly=True, samesite="lax", secure=IS_PRODUCTION
+    )
 
     if refresh_token:
         try:
@@ -22770,6 +23535,7 @@ def refresh_access_token(
             key="access_token",
             value=new_access,
             httponly=True,
+            secure=IS_PRODUCTION,
             max_age=60 * 15,
             samesite="lax",
             path="/",
@@ -22778,6 +23544,7 @@ def refresh_access_token(
             key="refresh_token",
             value=new_refresh,
             httponly=True,
+            secure=IS_PRODUCTION,
             max_age=60 * 60 * 24 * 7,
             samesite="lax",
             path="/",
@@ -22790,55 +23557,32 @@ def refresh_access_token(
             f"🛑 [API_AUTH] /refresh abortado con código {e.status_code}: {e.detail}"
         )
 
-        # 🟢 FIX LEGENDARIO: Capturamos tanto el 401 (caducado) como el 403 (robo)
         if e.status_code in [401, 403]:
             logger.info(
                 "🧹 [API_AUTH] Limpiando cookies del navegador (Sesión muerta)..."
             )
 
-            # 1. Creamos la respuesta de error manualmente para que FastAPI no la descarte
             error_response = JSONResponse(
                 status_code=e.status_code,
                 content={"status": "error", "detail": e.detail},
             )
-            # 2. Inyectamos la orden de destrucción total de cookies
             error_response.delete_cookie(
-                "access_token", path="/", httponly=True, samesite="lax"
+                "access_token",
+                path="/",
+                httponly=True,
+                samesite="lax",
+                secure=IS_PRODUCTION,
             )
             error_response.delete_cookie(
-                "refresh_token", path="/", httponly=True, samesite="lax"
+                "refresh_token",
+                path="/",
+                httponly=True,
+                samesite="lax",
+                secure=IS_PRODUCTION,
             )
 
             return error_response
 
-    # Si el error es otro (ej. un 500), lo dejamos pasar normal
-    except HTTPException as e:
-        logger.warning(
-            f"🛑 [API_AUTH] /refresh abortado con código {e.status_code}: {e.detail}"
-        )
-
-        # 🟢 FIX LEGENDARIO: Capturamos tanto el 401 (caducado) como el 403 (robo)
-        if e.status_code in [401, 403]:
-            logger.info(
-                "🧹 [API_AUTH] Limpiando cookies del navegador (Sesión muerta)..."
-            )
-
-            # 1. Creamos la respuesta de error manualmente para que FastAPI no la descarte
-            error_response = JSONResponse(
-                status_code=e.status_code,
-                content={"status": "error", "detail": e.detail},
-            )
-            # 2. Inyectamos la orden de destrucción total de cookies
-            error_response.delete_cookie(
-                "access_token", path="/", httponly=True, samesite="lax"
-            )
-            error_response.delete_cookie(
-                "refresh_token", path="/", httponly=True, samesite="lax"
-            )
-
-            return error_response
-
-        # Si el error es otro (ej. un 500), lo dejamos pasar normal
         raise e
 
 
@@ -23007,36 +23751,46 @@ def assign_prompt_to_collection(
 from rq import Queue
 from rq.job import Job
 from rq.exceptions import NoSuchJobError
+from sqlmodel import Session, select, func
 from fastapi import APIRouter, Depends, HTTPException
+
 from app.core.redis_config import conn
+from app.core.db import get_session
+from app.models.collection import Collection
+from app.models.prompt import ImagePrompt
 from app.services.downloader import generar_zip_coleccion, ejecutar_descarga_individual
 from app.api.deps import get_current_user
-from app.models.user import User
+from app.models.user import User, UserRole
 
 router = APIRouter()
 
-# 🛡️ Conectamos con la cola exacta que está escuchando worker-1
-downloads_queue = Queue("downloads", connection=conn)
+downloads_queue_premium = Queue("downloads_premium", connection=conn)
+downloads_queue_free = Queue("downloads_free", connection=conn)
 
 
 @router.get("/single/{image_key}")
 def descargar_una_imagen(
-    image_key: str, current_user: User = Depends(get_current_user)
+    image_key: str,
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
 ):
     """Resolución sincrónica instantánea para archivos únicos."""
-    try:
-        url = ejecutar_descarga_individual(image_key)
-        return {"download_url": url}
-    except Exception as e:
+
+    statement = select(ImagePrompt).where(ImagePrompt.image_url.contains(image_key))
+    prompt = session.exec(statement).first()
+
+    if not prompt:
         raise HTTPException(
-            status_code=500, detail="Error al generar el acceso directo en R2"
-        ) @ router.get("/single/{image_key}")
+            status_code=404, detail="Imagen no encontrada en la base de datos."
+        )
 
+    if prompt.collection_id:
+        col = session.get(Collection, prompt.collection_id)
+        if col and col.is_private and col.user_id != current_user.id:
+            raise HTTPException(
+                status_code=403, detail="No tienes permiso. Esta imagen es privada."
+            )
 
-def descargar_una_imagen(
-    image_key: str, current_user: User = Depends(get_current_user)
-):
-    """Resolución sincrónica instantánea para archivos únicos."""
     try:
         url = ejecutar_descarga_individual(image_key)
         return {"download_url": url}
@@ -23048,20 +23802,56 @@ def descargar_una_imagen(
 
 @router.post("/collection/{collection_id}")
 def descargar_coleccion_completa(
-    collection_id: str, current_user: User = Depends(get_current_user)
+    collection_id: int,
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
 ):
     """Delega la generación masiva del ZIP al Worker de Redis para no congelar la API."""
-    try:
-        job = downloads_queue.enqueue(
-            generar_zip_coleccion,
-            collection_id,
-            current_user.email,
-            job_timeout="1h",  # Margen amplio para colecciones enormes
+
+    col = session.get(Collection, collection_id)
+    if not col:
+        raise HTTPException(status_code=404, detail="Colección no encontrada")
+
+    if col.is_private and col.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Esta colección es privada")
+
+    cantidad_imagenes = session.exec(
+        select(func.count(ImagePrompt.id)).where(
+            ImagePrompt.collection_id == collection_id
         )
+    ).one()
+
+    limite_descarga = 50 if current_user.role == UserRole.VOYAGER else 1000
+
+    if cantidad_imagenes > limite_descarga:
+        raise HTTPException(
+            status_code=403,
+            detail=f"Tu plan '{current_user.role}' permite descargar un máximo de {limite_descarga} imágenes de golpe. Esta colección tiene {cantidad_imagenes}. ¡Haz upgrade a Artist!",
+        )
+
+    try:
+        if current_user.role == UserRole.ARTIST:
+            job = downloads_queue_premium.enqueue(
+                generar_zip_coleccion,
+                str(collection_id),
+                current_user.email,
+                job_timeout="1h",
+            )
+            queue_assigned = "premium"
+        else:
+            job = downloads_queue_free.enqueue(
+                generar_zip_coleccion,
+                str(collection_id),
+                current_user.email,
+                job_timeout="1h",
+            )
+            queue_assigned = "free"
+
         return {
             "status": "processing",
             "job_id": job.get_id(),
             "message": "Generando ZIP en segundo plano.",
+            "queue": queue_assigned,
         }
     except Exception as e:
         raise HTTPException(
@@ -23074,7 +23864,7 @@ def verificar_estado_descarga(
     job_id: str, current_user: User = Depends(get_current_user)
 ):
     """
-    El frontend consulta este endpoint cada 2 segundos.
+    El frontend consulta este endpoint cada X segundos.
     Lee directamente de Redis el estado del Worker sin tocar la Base de Datos.
     """
     try:
@@ -23099,6 +23889,7 @@ def verificar_estado_descarga(
 import logging
 
 import uuid
+from typing import List
 from pydantic import BaseModel
 from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session, select
@@ -23117,6 +23908,10 @@ from app.services.storage import s3_client
 
 logger = logging.getLogger("routes_prompt")
 router = APIRouter()
+
+
+class BatchDeleteRequest(BaseModel):
+    prompt_ids: List[int]
 
 
 class PresignedUrlRequest(BaseModel):
@@ -23182,6 +23977,9 @@ def guardar_prompt(
 
     base_url = settings.R2_PUBLIC_URL.rstrip("/") + "/"
     old_key = data.image_url.replace(base_url, "")
+
+    if not old_key.startswith(f"temp/{current_user.id}/"):
+        raise HTTPException(status_code=403, detail="No se puede guardar archivo")
 
     if not is_valid:
         delete_file(old_key)
@@ -23276,6 +24074,43 @@ def eliminar_prompt(
         "status": "success",
         "message": "Prompt y archivo eliminados correctamente del studio",
     }
+
+
+@router.post("/batch-delete")
+def eliminar_prompts_lote(
+    data: BatchDeleteRequest,
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    """Elimina múltiples prompts en una sola petición HTTP para no saturar la red."""
+    if not data.prompt_ids:
+        return {"status": "success", "message": "Ningún ID proporcionado"}
+
+    # Buscamos solo los prompts que pertenecen al usuario actual (Seguridad IDOR)
+    statement = select(ImagePrompt).where(
+        ImagePrompt.id.in_(data.prompt_ids), ImagePrompt.user_id == current_user.id
+    )
+    prompts_a_borrar = session.exec(statement).all()
+
+    if not prompts_a_borrar:
+        raise HTTPException(
+            status_code=404,
+            detail="No se encontraron las imágenes o no tienes permiso.",
+        )
+
+    # Borramos de R2 y de la Base de Datos
+    for prompt in prompts_a_borrar:
+        if prompt.image_url:
+            eliminar_de_r2(prompt.image_url)  # Liberamos espacio en Cloudflare
+        session.delete(prompt)
+
+    session.commit()  # Una sola transacción a Neon.tech
+
+    return {
+        "status": "success",
+        "message": f"{len(prompts_a_borrar)} prompts eliminados correctamente",
+        "deleted_ids": [p.id for p in prompts_a_borrar],
+    }
 </file>
 
 <file path="app/api/routes_public.py">
@@ -23319,7 +24154,10 @@ def get_public_profile(username: str, session: Session = Depends(get_session)):
 
     return {
         "status": "success",
-        "user": {"username": user.username, "role": user.role, "tier": user.tier},
+        "user": {
+            "username": user.username,
+            "role": user.role.value if hasattr(user.role, "value") else user.role
+        },
         "collections": collections,
         "recent_prompts": prompts,
     }
@@ -23696,6 +24534,8 @@ print(f"🔗 [DEBUG DB] Conectando a Neon (Directo al hierro): {safe_log_url}")
 engine = create_engine(
     clean_url,
     echo=False,
+    pool_size=5,
+    max_overflow=10,
     pool_pre_ping=True,
     pool_recycle=300,
     connect_args={
@@ -23834,6 +24674,7 @@ def navegador_seguro():
 </file>
 
 <file path="app/models/collection.py">
+import uuid
 from typing import Optional
 from sqlmodel import Field, SQLModel
 from sqlalchemy import UniqueConstraint
@@ -23849,7 +24690,7 @@ class Collection(SQLModel, table=True):
     )
 
     id: Optional[int] = Field(default=None, primary_key=True)
-    user_id: int = Field(foreign_key="user.id", index=True)
+    user_id: uuid.UUID = Field(foreign_key="user.id", index=True)
 
     name: str = Field(nullable=False)
     slug: str = Field(index=True, nullable=False)
@@ -23862,7 +24703,7 @@ class Collection(SQLModel, table=True):
 </file>
 
 <file path="app/models/gallery.py">
-# backend/app/models/gallery.py
+import uuid
 from typing import Optional
 from sqlmodel import Field, SQLModel
 from datetime import datetime, timezone
@@ -23872,6 +24713,9 @@ class GalleryMetric(SQLModel, table=True):
     """Tabla para almacenar las métricas locales de las galerías scrapeadas"""
 
     id: Optional[int] = Field(default=None, primary_key=True)
+
+    user_id: uuid.UUID = Field(foreign_key="user.id", index=True)
+
     url: str = Field(index=True, unique=True, nullable=False)
     title: str
     thumb: str | None = None
@@ -23886,6 +24730,7 @@ class GalleryMetric(SQLModel, table=True):
 </file>
 
 <file path="app/models/prompt.py">
+import uuid
 from sqlmodel import SQLModel, Field, Column, JSON
 from sqlalchemy import Text
 from typing import Optional, Dict, Any
@@ -23896,7 +24741,8 @@ class ImagePrompt(SQLModel, table=True):
     """Almacenamiento individual de cada generación extraída"""
 
     id: Optional[int] = Field(default=None, primary_key=True)
-    user_id: int = Field(foreign_key="user.id", index=True)
+
+    user_id: uuid.UUID = Field(foreign_key="user.id", index=True)
 
     collection_id: Optional[int] = Field(
         default=None, foreign_key="collection.id", index=True
@@ -23922,9 +24768,17 @@ class ImagePrompt(SQLModel, table=True):
 </file>
 
 <file path="app/models/user.py">
+import uuid
 from typing import Optional
 from sqlmodel import Field, SQLModel
 from datetime import datetime, timezone
+from enum import Enum
+
+
+class UserRole(str, Enum):
+    VOYAGER = "voyager"
+    ARTIST = "artist"
+    ADMIN = "admin"
 
 
 class InviteCode(SQLModel, table=True):
@@ -23933,37 +24787,44 @@ class InviteCode(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     code: str = Field(index=True, unique=True, nullable=False)
     is_used: bool = Field(default=False)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    used_by_id: Optional[int] = Field(default=None, foreign_key="user.id")
+
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+    used_by_id: Optional[uuid.UUID] = Field(default=None, foreign_key="user.id")
 
 
 class User(SQLModel, table=True):
     """Usuarios de la plataforma con soporte Híbrido (Local / OAuth)"""
 
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: uuid.UUID = Field(
+        default_factory=uuid.uuid4,
+        primary_key=True,
+        index=True,
+        nullable=False,
+    )
     username: str = Field(index=True, unique=True, nullable=False)
+    role: UserRole = Field(default=UserRole.VOYAGER)
 
-    # 🟢 NUEVO: Soporte para Google Auth
+    # Soporte para Google Auth
     email: Optional[str] = Field(default=None, index=True, unique=True)
-    auth_provider: str = Field(default="local")  # Puede ser "local" o "google"
+    auth_provider: str = Field(default="local")
     provider_id: Optional[str] = Field(default=None, index=True)
 
-    # 🟢 MODIFICADO: Es opcional porque los usuarios de Google no tendrán contraseña
     hashed_password: Optional[str] = Field(default=None)
 
-    # 🟢 NUEVO: Preparación para monetización
-    tier: str = Field(default="free")  # "free" o "pro"
+    role: str = Field(default="voyager")
 
-    role: str = Field(default="voyager")  # voyager, artist, admin
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     is_active: bool = Field(default=True)
 
 
 class AuditLog(SQLModel, table=True):
-    id: int | None = Field(default=None, primary_key=True)
+    """Registro inmutable de auditoría del sistema"""
+
+    id: Optional[int] = Field(default=None, primary_key=True)
     username: str = Field(index=True)
     action: str
-    details: str | None = None
+    details: Optional[str] = None
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 </file>
 
@@ -23972,31 +24833,33 @@ class AuditLog(SQLModel, table=True):
 </file>
 
 <file path="app/schemas/prompt.py">
-from pydantic import BaseModel
+import uuid
+from pydantic import BaseModel, Field
 from typing import Optional, Dict, Any
 from datetime import datetime
 from fastapi import Form
 
 
 class PromptCreate(BaseModel):
-    title: str = "Generación IA"
-    prompt: str
-    negative_prompt: Optional[str] = None
-    software: Optional[str] = "Desconocido"
-    model: Optional[str] = None
-    sampler: Optional[str] = None
+    title: str = Field(default="Generación IA", max_length=150)
+    prompt: str = Field(..., max_length=20000)
+    negative_prompt: Optional[str] = Field(None, max_length=20000)
 
-    steps: Optional[str] = None
-    cfg_scale: Optional[str] = None
-    seed: Optional[str] = None
-    resolution: Optional[str] = None
-    image_url: Optional[str] = None
+    software: Optional[str] = Field(default="Desconocido", max_length=50)
+    model: Optional[str] = Field(None, max_length=150)
+    sampler: Optional[str] = Field(None, max_length=100)
+    steps: Optional[str] = Field(None, max_length=20)
+    cfg_scale: Optional[str] = Field(None, max_length=20)
+    seed: Optional[str] = Field(None, max_length=50)
+    resolution: Optional[str] = Field(None, max_length=50)
+    image_url: Optional[str] = Field(None, max_length=500)
     extra_data: Dict[str, Any] = {}
 
 
 class PromptResponse(PromptCreate):
     id: int
-    user_id: int
+    user_id: uuid.UUID
+    prompt: str = Field(..., max_length=20000)
     collection_id: Optional[int] = None
     created_at: datetime
 
@@ -24005,16 +24868,16 @@ class PromptResponse(PromptCreate):
 
 
 def prompt_form_dependency(
-    title: str = Form("Generación IA"),
-    prompt: str = Form(...),
-    negative_prompt: Optional[str] = Form(None),
-    software: Optional[str] = Form("Desconocido"),
-    model: Optional[str] = Form(None),
-    sampler: Optional[str] = Form(None),
-    steps: Optional[str] = Form(None),
-    cfg_scale: Optional[str] = Form(None),
-    seed: Optional[str] = Form(None),
-    resolution: Optional[str] = Form(None),
+    title: str = Form("Generación IA", max_length=150),
+    prompt: str = Form(..., max_length=20000),
+    negative_prompt: Optional[str] = Form(None, max_length=20000),
+    software: Optional[str] = Form("Desconocido", max_length=50),
+    model: Optional[str] = Form(None, max_length=150),
+    sampler: Optional[str] = Form(None, max_length=100),
+    steps: Optional[str] = Form(None, max_length=20),
+    cfg_scale: Optional[str] = Form(None, max_length=20),
+    seed: Optional[str] = Form(None, max_length=50),
+    resolution: Optional[str] = Form(None, max_length=50),
 ) -> PromptCreate:
     """Extrae los campos del form-data y los valida contra el esquema"""
     return PromptCreate(
@@ -24236,7 +25099,6 @@ class AuthService:
     @staticmethod
     def register_user(user_data, session: Session):
         """Lógica de negocio pura para registrar un usuario."""
-        import logging
 
         logger = logging.getLogger("auth_service")
 
@@ -24692,276 +25554,10 @@ def ejecutar_descarga_individual(image_key: str) -> str:
     )
 </file>
 
-<file path="app/services/scraper.py">
-# backend/app/services/scraper.py
-import logging
-import re
-import json
-import redis
-from urllib.parse import quote
-from bs4 import BeautifulSoup
-from app.services.security import http_session
-
-logger = logging.getLogger("scraper")
-
-# 🟢 CONFIGURACIÓN DE REDIS PARA CACHÉ
-# Usamos decode_responses=True para que devuelva strings en lugar de bytes
-try:
-    redis_client = redis.Redis(host="redis", port=6379, db=0, decode_responses=True)
-except Exception as e:
-    logger.error(f"⚠️ No se pudo conectar a Redis para Caché: {e}")
-    redis_client = None
-
-
-def limpiar_titulo(titulo_crudo: str) -> str:
-    """Limpia el ruido de los títulos de E-Hentai mediante Regex."""
-    titulo_limpio = re.sub(r"\[.*?\]|\(.*?\)|<.*?>|\{.*?\}", "", titulo_crudo)
-    titulo_limpio = re.sub(r"[-~|,_]+", " ", titulo_limpio)
-    titulo_limpio = re.sub(r"\s+", " ", titulo_limpio).strip()
-
-    if len(titulo_limpio) < 3:
-        return titulo_crudo.strip()
-    return titulo_limpio
-
-
-def calcular_f_cats(categories_json: dict):
-    mapping = {
-        "misc": 1,
-        "doujinshi": 2,
-        "manga": 4,
-        "artistcg": 8,
-        "gamecg": 16,
-        "imageset": 32,
-        "cosplay": 64,
-        "asianporn": 128,
-        "nonh": 256,
-        "western": 512,
-    }
-    f_cats = 0
-    if categories_json:
-        for cat, is_active in categories_json.items():
-            if not is_active:
-                f_cats += mapping.get(cat, 0)
-    return f_cats
-
-
-# ==========================================
-# 🚀 1. CACHÉ DE BÚSQUEDA (TTL: 15 Minutos)
-# ==========================================
-def buscar_galerias(query: str, next_id: str = None, categories: dict = None):
-    f_cats = calcular_f_cats(categories)
-
-    # Generamos una clave única basada en lo que el usuario ha pedido
-    cache_key = f"cache:search:q={query}:next={next_id}:cats={f_cats}"
-
-    # Intentamos recuperar de la Caché primero
-    if redis_client:
-        try:
-            cached_result = redis_client.get(cache_key)
-            if cached_result:
-                logger.info(
-                    f"⚡ [CACHE HIT] Resultados de búsqueda devueltos desde Redis (0.01s)"
-                )
-                return json.loads(cached_result)
-        except Exception:
-            pass
-
-    url = f"https://e-hentai.org/?f_search={quote(query)}&f_cats={f_cats}"
-    if next_id:
-        url += f"&next={next_id}"
-
-    logger.info(f"📡 [SCRAPING] Consultando a E-Hentai: {url}")
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0"
-    }
-    cookies = {"nw": "1"}
-
-    try:
-        r = http_session.get(url, headers=headers, cookies=cookies, timeout=10)
-        r.raise_for_status()
-        soup = BeautifulSoup(r.text, "lxml")
-
-        next_tag = soup.find("a", id="unext")
-        found_next_id = (
-            next_tag["href"].split("next=")[1]
-            if next_tag and "next=" in next_tag["href"]
-            else None
-        )
-
-        tarjetas = soup.select(".itg tr, .itg .gl1t")
-        resultados = []
-        for tarjeta in tarjetas:
-            enlace = tarjeta.select_one("a[href*='/g/']")
-            if enlace:
-                img_tag = tarjeta.select_one("img")
-                thumb = img_tag.get("data-src") or img_tag.get("src") or ""
-                titulo_crudo = enlace.text.strip()
-
-                resultados.append(
-                    {
-                        "url": enlace["href"],
-                        "thumb": thumb,
-                        "title": limpiar_titulo(titulo_crudo),
-                        "title_raw": titulo_crudo,
-                    }
-                )
-
-        final_result = {"data": resultados, "next_id": found_next_id}
-
-        # Guardamos en Caché durante 15 minutos (900 segundos)
-        if redis_client:
-            try:
-                redis_client.setex(cache_key, 900, json.dumps(final_result))
-            except Exception:
-                pass
-
-        return final_result
-
-    except Exception as e:
-        logger.error(f"💥 [ERROR SCRAPING]: {e}")
-        return {"data": [], "next_id": None}
-
-
-# ==========================================
-# 🚀 2. CACHÉ DE GALERÍA (TTL: 24 Horas)
-# ==========================================
-def obtener_enlaces_paginas(url: str, pagina: int = 0):
-    cache_key = f"cache:gallery:{url}:p={pagina}"
-
-    if redis_client:
-        try:
-            cached_result = redis_client.get(cache_key)
-            if cached_result:
-                logger.info(
-                    f"⚡ [CACHE HIT] Página {pagina} de galería devuelta desde Redis"
-                )
-                return json.loads(cached_result)
-        except Exception:
-            pass
-
-    paginas_lista = []
-    logger.info(f"📡 [SCRAPING] Extrayendo página {pagina} de {url}")
-
-    try:
-        cookies = {"nw": "1", "uconfig": "ts_l"}
-        r = http_session.get(f"{url}?p={pagina}", cookies=cookies, timeout=10)
-        r.raise_for_status()
-        soup = BeautifulSoup(r.text, "lxml")
-
-        enlaces = soup.select('a[href*="/s/"]')
-
-        for a in enlaces:
-            href = a.get("href")
-            if not href:
-                continue
-
-            thumb_url, offset, width, height = "", "", None, None
-
-            img = a.find("img")
-            if img:
-                thumb_url = img.get("data-src") or img.get("src", "")
-                if "t.gif" in thumb_url:
-                    thumb_url = ""
-
-            if not thumb_url:
-                parent = a.parent
-                div_style = a.find("div", style=True) or (
-                    parent
-                    if parent and parent.name == "div" and parent.get("style")
-                    else None
-                )
-                if div_style:
-                    style_text = div_style.get("style", "")
-                    match_url = re.search(r"url\((.*?)\)", style_text)
-                    if match_url:
-                        thumb_url = match_url.group(1).strip("'\"")
-
-                    match_offset = re.search(
-                        r"url\(.*?\)\s+([-0-9a-zA-Z]+)\s+([-0-9a-zA-Z]+)", style_text
-                    )
-                    if match_offset:
-                        offset = f"{match_offset.group(1)} {match_offset.group(2)}"
-
-                    match_w = re.search(r"width:\s*(\d+)px", style_text)
-                    match_h = re.search(r"height:\s*(\d+)px", style_text)
-                    if match_w:
-                        width = int(match_w.group(1))
-                    if match_h:
-                        height = int(match_h.group(1))
-
-            if not any(p["page_url"] == href for p in paginas_lista):
-                paginas_lista.append(
-                    {
-                        "page_url": href,
-                        "thumb_url": thumb_url,
-                        "offset": offset,
-                        "width": width,
-                        "height": height,
-                    }
-                )
-
-        has_next = any(">" in a.text for a in soup.select(".ptt a"))
-
-        final_result = {"enlaces": paginas_lista, "has_next": has_next}
-
-        # Guardamos en Caché durante 24 horas (86400 segundos). El contenido de una galería no cambia.
-        if redis_client:
-            try:
-                redis_client.setex(cache_key, 86400, json.dumps(final_result))
-            except Exception:
-                pass
-
-        return final_result
-
-    except Exception as e:
-        logger.error(f"💥 Error crítico en scraper: {str(e)}")
-        return {"enlaces": [], "has_next": False}
-
-
-# ==========================================
-# 🚀 3. CACHÉ DE RESOLUCIÓN FULL HD (TTL: 2 Horas)
-# ==========================================
-def extraer_imagen_real(url_visor: str):
-    cache_key = f"cache:image_res:{url_visor}"
-
-    if redis_client:
-        try:
-            cached_result = redis_client.get(cache_key)
-            if cached_result:
-                return cached_result  # Es un string directo
-        except Exception:
-            pass
-
-    logger.info(f"📡 [SCRAPING] Resolviendo imagen real: {url_visor}")
-    try:
-        cookies = {"nw": "1"}
-        r = http_session.get(url_visor, cookies=cookies, timeout=10)
-        r.raise_for_status()
-        soup = BeautifulSoup(r.text, "lxml")
-        img_tag = soup.find("img", id="img")
-
-        if not img_tag:
-            return None
-
-        real_url = img_tag.get("src")
-
-        # Guardamos la URL resuelta por 2 horas (Las claves de imagen de EHentai suelen expirar)
-        if redis_client and real_url:
-            try:
-                redis_client.setex(cache_key, 7200, real_url)
-            except Exception:
-                pass
-
-        return real_url
-    except Exception as e:
-        logger.error(f"Error extrayendo imagen {url_visor}: {e}")
-        return None
-</file>
-
 <file path="app/services/security.py">
 import logging
 import requests
-import urllib.request
+from app.core.config import settings
 from urllib.error import URLError, HTTPError
 
 logger = logging.getLogger(__name__)
@@ -24988,6 +25584,12 @@ def validate_magic_bytes(file_url: str) -> bool:
     Programación Defensiva: Asume falsedad por defecto.
     """
     if not file_url:
+        return False
+
+    if not file_url.startswith(settings.R2_PUBLIC_URL):
+        logger.error(
+            f"[SECURITY] Intento de SSRF bloqueado: {file_url}"
+        )
         return False
 
     try:
@@ -25337,7 +25939,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.init_db import init_db
 
 from app.api.routes_download import router as download_router
-from app.api.routes_search import router as search_router
+# from app.api.routes_search import router as search_router
 from app.api.routes_auth import router as auth_router
 from app.api.routes_prompt import router as prompt_router
 from app.api.routes_public import router as public_router
@@ -25355,7 +25957,6 @@ security = HTTPBasic()
 
 
 def get_current_username(credentials: HTTPBasicCredentials = Depends(security)):
-    # Usamos secrets.compare_digest para evitar "Timing Attacks" (Ataques de tiempo)
     correct_username = secrets.compare_digest(
         credentials.username.encode("utf8"),
         os.getenv("DOCS_USERNAME", "admin").encode("utf8"),
@@ -25395,9 +25996,18 @@ app = FastAPI(
     openapi_url=None,
 )
 
+ALLOWED_ORIGINS = [
+    "http://localhost:3000",
+    "https://reprompt.studio",
+    "https://www.reprompt.studio",
+]
+
+if os.getenv("ENVIRONMENT") != "production":
+    ALLOWED_ORIGINS.append("http://127.0.0.1:3000")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origin_regex=r"https?://.*",
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -25414,10 +26024,10 @@ async def openapi(username: str = Depends(get_current_username)):
     return app.openapi()
 
 
-app.include_router(search_router, prefix="/api")
+# app.include_router(search_router, prefix="/api")
 app.include_router(admin_router, prefix="/api/admin", tags=["Admin"])
 app.include_router(auth_router, prefix="/api/auth", tags=["Autenticación"])
-app.include_router(public_router, prefix="/api/public", tags=["Feed Público"])
+app.include_router(public_router, prefix="/api/public", tags=["Feed"])
 app.include_router(prompt_router, prefix="/api/prompts", tags=["Reprompt Studio"])
 app.include_router(download_router, prefix="/api/download", tags=["Descargas"])
 app.include_router(collections_router, prefix="/api/collections", tags=["Colecciones"])
@@ -25700,214 +26310,6 @@ if __name__ == '__main__':
 </file>
 
 </files>
-</file>
-
-<file path="backend/app/main.py">
-import os
-import logging
-import secrets
-from contextlib import asynccontextmanager
-from fastapi.openapi.docs import get_swagger_ui_html
-from fastapi import FastAPI, Depends, HTTPException, status
-from fastapi.security import HTTPBasic, HTTPBasicCredentials
-from fastapi.middleware.cors import CORSMiddleware
-
-from app.init_db import init_db
-
-from app.api.routes_download import router as download_router
-# from app.api.routes_search import router as search_router
-from app.api.routes_auth import router as auth_router
-from app.api.routes_prompt import router as prompt_router
-from app.api.routes_public import router as public_router
-from app.api.routes_collections import router as collections_router
-from app.api.routes_admin import router as admin_router
-
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-    handlers=[logging.StreamHandler()],
-)
-logger = logging.getLogger("backend")
-
-security = HTTPBasic()
-
-
-def get_current_username(credentials: HTTPBasicCredentials = Depends(security)):
-    correct_username = secrets.compare_digest(
-        credentials.username.encode("utf8"),
-        os.getenv("DOCS_USERNAME", "admin").encode("utf8"),
-    )
-    correct_password = secrets.compare_digest(
-        credentials.password.encode("utf8"),
-        os.getenv("DOCS_PASSWORD", "admin").encode("utf8"),
-    )
-    if not (correct_username and correct_password):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Acceso denegado a la documentación",
-            headers={"WWW-Authenticate": "Basic"},
-        )
-    return credentials.username
-
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    logger.info("🚀 API Backend iniciada. Sistemas en línea.")
-    try:
-        init_db()
-    except Exception as e:
-        logger.error(f"❌ Error al inicializar la base de datos: {e}")
-
-        raise RuntimeError("Imposible iniciar el servidor sin Base de Datos.") from e
-
-    yield
-    logger.info("🛑 Apagando API Backend limpiamente...")
-
-
-app = FastAPI(
-    title="reprompt FastAPI",
-    lifespan=lifespan,
-    docs_url=None,
-    redoc_url=None,
-    openapi_url=None,
-)
-
-ALLOWED_ORIGINS = [
-    "http://localhost:3000",
-    "https://reprompt.studio",
-    "https://www.reprompt.studio",
-]
-
-if os.getenv("ENVIRONMENT") != "production":
-    ALLOWED_ORIGINS.append("http://127.0.0.1:3000")
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=ALLOWED_ORIGINS,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-
-@app.get("/docs", include_in_schema=False)
-async def get_swagger_documentation(username: str = Depends(get_current_username)):
-    return get_swagger_ui_html(openapi_url="/openapi.json", title="reprompt FastAPI")
-
-
-@app.get("/openapi.json", include_in_schema=False)
-async def openapi(username: str = Depends(get_current_username)):
-    return app.openapi()
-
-
-# app.include_router(search_router, prefix="/api")
-app.include_router(admin_router, prefix="/api/admin", tags=["Admin"])
-app.include_router(auth_router, prefix="/api/auth", tags=["Autenticación"])
-app.include_router(public_router, prefix="/api/public", tags=["Feed"])
-app.include_router(prompt_router, prefix="/api/prompts", tags=["Reprompt Studio"])
-app.include_router(download_router, prefix="/api/download", tags=["Descargas"])
-app.include_router(collections_router, prefix="/api/collections", tags=["Colecciones"])
-</file>
-
-<file path="frontend/src/services/api.ts">
-import { authApi } from "./api/auth";
-import { searchApi } from "./api/search";
-import { downloadApi } from "./api/downloads";
-import { promptApi } from "./api/prompts";
-import { API_URL, fetchSeguro } from "./api/client";
-
-const RESERVED_ROUTES = new Set([
-  "login",
-  "register",
-  "join",
-  "admin",
-  "studio",
-  "reprompt",
-  "api",
-  "_next",
-  "favicon.ico",
-]);
-
-export const api = {
-  ...authApi,
-  ...searchApi,
-  ...downloadApi,
-  ...promptApi,
-
-  getPublicProfile: async (username: string) => {
-    if (RESERVED_ROUTES.has(username.toLowerCase())) {
-      return Promise.reject(new Error("Ruta reservada del sistema"));
-    }
-    return fetchSeguro(`${API_URL}/public/profile/${username}`);
-  },
-
-  getPublicCollection: async (username: string, slug: string) => {
-    if (RESERVED_ROUTES.has(username.toLowerCase())) {
-      return Promise.reject(new Error("Ruta reservada del sistema"));
-    }
-    return fetchSeguro(`${API_URL}/public/profile/${username}/${slug}`);
-  },
-
-  getPublicPromptDetail: async (promptId: string) => {
-    return fetchSeguro(`${API_URL}/public/prompt/${promptId}`);
-  },
-
-  getPublicFeed: async (options?: { include_self?: boolean }) => {
-    const queryString = options?.include_self ? "?include_self=true" : "";
-    return fetchSeguro(`${API_URL}/public/feed${queryString}`);
-  },
-
-  createCollection: async (data: { name: string; description?: string; is_private: boolean }) => {
-    return fetchSeguro(`${API_URL}/collections`, {
-      method: "POST",
-      body: JSON.stringify(data),
-    });
-  },
-
-  getMyCollections: async () => {
-    return fetchSeguro(`${API_URL}/collections/`);
-  },
-
-  assignPromptToCollection: async (promptId: number, collectionId: number | null) => {
-    return fetchSeguro(`${API_URL}/collections/assign/${promptId}`, {
-      method: "PUT",
-      body: JSON.stringify({ collection_id: collectionId }),
-    });
-  },
-
-  deletePromptsBatch: async (prompt_ids: number[]) => {
-    return fetchSeguro(`${API_URL}/prompts/batch-delete`, {
-      method: "POST",
-      body: JSON.stringify({ prompt_ids }),
-    });
-  },
-
-  verifyGoogleCode: async (data: { code: string }) => {
-    return fetchSeguro(`${API_URL}/auth/google/join`, {
-      method: "POST",
-      body: JSON.stringify(data),
-    });
-  },
-
-  getGoogleAuthUrl: async () => {
-    return fetchSeguro(`${API_URL}/auth/google`, {
-      method: "POST",
-    });
-  },
-
-  reportBug: async (data: {
-    message: string;
-    stack?: string;
-    digest?: string;
-    url: string;
-    timestamp: string;
-  }) => {
-    return fetchSeguro(`${API_URL}/admin/bugs`, {
-      method: "POST",
-      body: JSON.stringify(data),
-    });
-  },
-};
 </file>
 
 <file path="frontend/src/system/organisms/Studio/PromptCard.tsx">
@@ -26463,7 +26865,7 @@ def obtener_mis_prompts(
 
 @router.delete("/{prompt_id}")
 def eliminar_prompt(
-    prompt_id: int,
+    prompt_id: uuid.UUID,
     current_user: User = Depends(get_current_user),
     session: Session = Depends(get_session),
 ):
@@ -26495,6 +26897,7 @@ def eliminar_prompt(
 @router.post("/batch-delete")
 def eliminar_prompts_lote(
     data: BatchDeleteRequest,
+    prompt_ids: List[uuid.UUID],
     current_user: User = Depends(get_current_user),
     session: Session = Depends(get_session),
 ):

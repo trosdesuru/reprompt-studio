@@ -37,15 +37,14 @@ export function useAuthForm() {
         toast.success("¡Bienvenido de nuevo!");
         router.push("/es/studio");
       } else {
-        await api.registrar({
+        await api.register({
           email: emailOrUser,
-          username: emailOrUser,
           password,
           invite_code: inviteCode,
         });
         toast.success("Cuenta creada con éxito");
         await api.login({ username: emailOrUser, password });
-        router.push("/es/studio");
+        router.push("/es");
       }
     } catch (error: any) {
       toast.error(error?.response?.data?.detail || "Error en la autenticación");

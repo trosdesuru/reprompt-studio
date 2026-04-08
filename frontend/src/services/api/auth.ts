@@ -6,11 +6,11 @@ export const API_URL = ENV.API_URL;
 console.log("🕵️‍♂️ [DEBUG] Valor real de API_URL inyectado por Next:", API_URL);
 
 export const authApi = {
-  registrar: (userData: UserRegister) =>
+  register: (data: UserRegister) =>
     fetchSeguro(`${API_URL}/auth/register`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(userData),
+      body: JSON.stringify(data),
     }),
   login: (credentials: UserLogin) =>
     fetchSeguro(`${API_URL}/auth/login`, {
