@@ -20,7 +20,7 @@ export default function GlobalError({
   const handleReport = async () => {
     setIsSending(true);
     try {
-      await api.reportBug({
+      await api.admin.reportBug({
         message: error.message,
         stack: error.stack,
         digest: error.digest,

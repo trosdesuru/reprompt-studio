@@ -14,8 +14,8 @@ export function usePublicFeed(query: string) {
     setIsFeedLoading(true);
     setFeedError(null);
 
-    api
-      .getPublicFeed({ include_self: false })
+    api.public
+      .getFeed({ include_self: false })
       .then((res) => setFeed(res.feed || []))
       .catch((err) => {
         console.error("Error cargando feed:", err);

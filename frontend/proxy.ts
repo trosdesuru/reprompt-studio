@@ -28,7 +28,15 @@ export function proxy(request: NextRequest) {
     defaultLocale;
 
   const pathWithoutLocale = pathname.replace(`/${currentLocale}`, "") || "/";
-  const isPublicPath = pathWithoutLocale === "/login" || pathWithoutLocale === "/join";
+
+  // 🟢 LA SOLUCIÓN: Definimos rutas públicas exactas y prefijos públicos
+  const publicExactPaths = ["/login"]; // Quitamos "/join" porque ya purgramos ese código muerto
+  const publicPrefixes = ["/google/callback", "/discord/callback"]; // Vía libre a los OAuth
+
+  // Comprobamos si la ruta actual es pública
+  const isPublicPath =
+    publicExactPaths.includes(pathWithoutLocale) ||
+    publicPrefixes.some((prefix) => pathWithoutLocale.startsWith(prefix));
 
   const hasAnyAuth = !!accessToken || !!refreshToken;
 
@@ -37,7 +45,11 @@ export function proxy(request: NextRequest) {
     return NextResponse.redirect(new URL(`/${currentLocale}/login`, request.url));
   }
 
-  if (hasAnyAuth && isPublicPath) {
+  // 🟢 EVITAMOS REDIRIGIR SI ESTAMOS EN EL CALLBACK.
+  // Si acabamos de loguearnos con Google, el callback necesita ejecutarse aunque ya haya token.
+  const isCallbackPath = publicPrefixes.some((prefix) => pathWithoutLocale.startsWith(prefix));
+
+  if (hasAnyAuth && isPublicPath && !isCallbackPath) {
     console.log(
       `   ♻️ [MIDDLEWARE] Usuario ya logueado o con Refresh vivo. Redirigiendo a la Home.`,
     );

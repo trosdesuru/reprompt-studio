@@ -262,17 +262,52 @@ class AuthService:
             )
 
     @staticmethod
-    def authenticate_google_user(token: str, session: Session, redis_client):
-        """Flujo de decisión: ¿Existe el usuario o es nuevo?"""
-        idinfo = AuthService.verify_google_token(token)
+    def authenticate_google_user(
+        code: str, redirect_uri: str, session: Session, redis_client
+    ):
+        logger = logging.getLogger("auth_service")
+        logger.info("🔍 [AUTH_GOOGLE] Iniciando canje de Code por Token...")
+
+        # 1. Canjear el Code por el Token en los servidores de Google
+        token_url = "https://oauth2.googleapis.com/token"
+        data = {
+            "code": code,
+            "client_id": settings.GOOGLE_CLIENT_ID,
+            "client_secret": settings.GOOGLE_CLIENT_SECRET,
+            "redirect_uri": redirect_uri,
+            "grant_type": "authorization_code",
+        }
+
+        response = requests.post(token_url, data=data)
+        if not response.ok:
+            logger.error(f"❌ [AUTH_GOOGLE] Error de canje: {response.text}")
+            raise HTTPException(
+                status_code=400, detail="El código de Google expiró o es inválido"
+            )
+
+        tokens = response.json()
+        id_token_jwt = tokens.get("id_token")
+
+        # 2. Verificar la firma del JWT que nos dio Google
+        try:
+            idinfo = id_token.verify_oauth2_token(
+                id_token_jwt, google_requests.Request(), settings.GOOGLE_CLIENT_ID
+            )
+        except ValueError:
+            raise HTTPException(
+                status_code=401, detail="Token de Google con firma inválida"
+            )
+
         email = idinfo.get("email")
         name = idinfo.get("name", "").replace(" ", "").lower()
 
-        # Buscamos si ya existe alguien con este correo
+        logger.info(f"✅ [AUTH_GOOGLE] Identidad confirmada: {email}")
+
+        # 3. Flujo de decisión: ¿Existe o es nuevo?
         user = session.exec(select(User).where(User.email == email)).first()
 
         if user:
-            # ESCENARIO A: Ya existe. Generamos sesión silenciosamente.
+            # ESCENARIO A: Ya existe
             access_token = create_access_token(
                 data={"sub": user.username, "role": user.role}
             )
@@ -288,12 +323,12 @@ class AuthService:
                 "username": user.username,
             }
         else:
-            # ESCENARIO B: Es nuevo. Cortamos el flujo y pedimos invitación.
-            # Sugerimos un nombre de usuario basado en su nombre de Google
+            # ESCENARIO B: Es nuevo
             return {
                 "status": "needs_invite",
                 "email": email,
                 "suggested_username": name,
+                "provider_token": id_token_jwt,
             }
 
     @staticmethod

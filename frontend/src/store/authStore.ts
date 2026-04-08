@@ -48,7 +48,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     set({ isLoadingAuth: true });
 
     try {
-      const res = await api.obtenerPerfil();
+      const res = await api.me();
       const username = res?.username || res?.data?.username || res?.user?.username;
       const role = res?.role || res?.data?.role || res?.user?.role || "user";
 

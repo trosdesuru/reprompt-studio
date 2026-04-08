@@ -10,8 +10,8 @@ export function usePublicPrompt(promptId: string) {
   useEffect(() => {
     setIsLoading(true);
 
-    api
-      .getPublicPromptDetail(promptId)
+    api.public
+      .getPromptDetail(promptId)
       .then((res: any) => {
         const promptReal = res.prompt && typeof res.prompt === "object" ? res.prompt : res;
         setData(promptReal);

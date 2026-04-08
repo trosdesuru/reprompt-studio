@@ -23,7 +23,8 @@ class PasswordChange(BaseModel):
 
 
 class GoogleAuthRequest(BaseModel):
-    token: str
+    code: str
+    redirect_uri: str
 
 
 class GoogleJoinRequest(BaseModel):

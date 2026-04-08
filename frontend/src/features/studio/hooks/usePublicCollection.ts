@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { api } from "@/src/services/api";
-import { SavedPrompt } from "@/src/features/studio/hooks/useStudio";
+import { SavedPrompt } from "@/src/types/models";
 
 export interface CollectionDetail {
   collection: {
@@ -20,8 +20,8 @@ export function usePublicCollection(username: string, collection_slug: string) {
 
   useEffect(() => {
     setIsLoading(true);
-    api
-      .getPublicCollection(username, collection_slug)
+    api.public
+      .getCollection(username, collection_slug)
       .then((res) => setData(res))
       .catch((err) => {
         console.error("Error fetching collection:", err);

@@ -2,6 +2,9 @@ import os
 import secrets
 import redis
 import logging
+import urllib.parse
+from app.core.config import settings
+from app.schemas.user import GoogleAuthRequest
 from app.schemas.user import DiscordAuthRequest
 from fastapi import APIRouter, Depends, Response, Cookie, HTTPException, status
 from fastapi.responses import JSONResponse
@@ -88,16 +91,38 @@ def login_user(
     return {"status": "success", "message": f"Bienvenido, {username}"}
 
 
-@router.post("/google")
-def google_auth(
+@router.get("/google/url")
+def get_google_auth_url():
+    """Genera la URL para que el frontend redirija al usuario a Google"""
+    base_url = "https://accounts.google.com/o/oauth2/v2/auth"
+    params = {
+        "client_id": settings.GOOGLE_CLIENT_ID,
+        "response_type": "code",
+        "scope": "openid email profile",
+        # Asegúrate de que esta URL coincida con la que tienes en Google Cloud Console
+        "redirect_uri": "http://localhost:3000/es/google/callback",
+        "access_type": "offline",
+        "prompt": "consent",
+    }
+    url = f"{base_url}?{urllib.parse.urlencode(params)}"
+    return {"auth_url": url}
+
+
+# 🟢 RUTA 2: El Callback que recibe el Code y hace la magia
+@router.post("/google/callback")
+def verify_google_code(
     data: GoogleAuthRequest, response: Response, session: Session = Depends(get_session)
 ):
-    result = AuthService.authenticate_google_user(data.token, session, redis_client)
+    # Aquí llamamos al AuthService que creamos en el paso anterior
+    result = AuthService.authenticate_google_user(
+        data.code, data.redirect_uri, session, redis_client
+    )
 
     if result["status"] == "needs_invite":
         response.status_code = status.HTTP_202_ACCEPTED
         return result
 
+    # Configurar cookies si el login es exitoso
     response.set_cookie(
         key="access_token",
         value=result["access_token"],
@@ -117,9 +142,6 @@ def google_auth(
         path="/",
     )
 
-    AuditService.log_action(
-        session, result["username"], "LOGIN_GOOGLE", "Inicio de sesión con Google"
-    )
     return {
         "status": "success",
         "message": f"Bienvenido de nuevo, {result['username']}",
@@ -127,13 +149,17 @@ def google_auth(
 
 
 @router.post("/google/join")
-def google_join(
-    data: GoogleJoinRequest, response: Response, session: Session = Depends(get_session)
+def register_google_user_route(
+    data: GoogleJoinRequest,
+    response: Response,
+    session: Session = Depends(get_session),
 ):
+    # Llamamos al servicio que ya tenías creado
     access_token, refresh_token, username = AuthService.register_google_user(
         data, session, redis_client
     )
 
+    # Inyectamos las cookies de sesión (igual que en el login normal)
     response.set_cookie(
         key="access_token",
         value=access_token,
@@ -152,13 +178,9 @@ def google_join(
         samesite="lax",
         path="/",
     )
-
-    AuditService.log_action(
-        session, username, "REGISTER_GOOGLE", "Registro híbrido completado"
-    )
     return {
         "status": "success",
-        "message": f"Cuenta creada. Bienvenido a la Resistencia, {username}",
+        "message": f"Cuenta VIP creada con éxito. Bienvenido, {username}",
     }
 
 

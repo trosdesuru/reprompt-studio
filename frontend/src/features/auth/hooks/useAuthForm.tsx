@@ -1,3 +1,4 @@
+// src/features/auth/hooks/useAuthForm.ts
 import { useState, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { api } from "@/src/services/api";
@@ -9,6 +10,7 @@ export function useAuthForm() {
 
   const [isLogin, setIsLogin] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
+  const [oauthPending, setOauthPending] = useState<any>(null);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [isDiscordLoading, setIsDiscordLoading] = useState(false);
 
@@ -17,8 +19,13 @@ export function useAuthForm() {
   const [inviteCode, setInviteCode] = useState("");
   const [isInviteLocked, setIsInviteLocked] = useState(false);
 
-  // Detección de código en la URL
   useEffect(() => {
+    const pendingData = sessionStorage.getItem("oauth_pending");
+    if (pendingData) {
+      setOauthPending(JSON.parse(pendingData));
+      return;
+    }
+
     const codeFromUrl = searchParams.get("code");
     if (codeFromUrl) {
       setIsLogin(false);
@@ -26,6 +33,25 @@ export function useAuthForm() {
       setIsInviteLocked(true);
     }
   }, [searchParams]);
+
+  const handleOauthSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    try {
+      await api.registerGoogleUser({
+        token: oauthPending.token,
+        invite_code: inviteCode,
+        username: oauthPending.username,
+      });
+      sessionStorage.removeItem("oauth_pending");
+      toast.success("¡Cuenta VIP creada con éxito!");
+      window.location.href = "/es/studio"; // Recarga dura obligatoria
+    } catch (error: any) {
+      toast.error(error.message || "Código inválido");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -44,7 +70,7 @@ export function useAuthForm() {
         });
         toast.success("Cuenta creada con éxito");
         await api.login({ username: emailOrUser, password });
-        router.push("/es");
+        router.push("/es/studio");
       }
     } catch (error: any) {
       toast.error(error?.response?.data?.detail || "Error en la autenticación");
@@ -70,6 +96,17 @@ export function useAuthForm() {
     setTimeout(() => setIsDiscordLoading(false), 2000);
   };
 
+  const cancelOauthFlow = () => {
+    setOauthPending(null);
+    sessionStorage.removeItem("oauth_pending");
+
+    // Limpiamos la URL por si tiene el ?step=oauth_invite
+    if (searchParams.get("step") === "oauth_invite") {
+      // Reemplazamos la URL sin recargar la página para que sea fluido
+      router.replace("/es/login");
+    }
+  };
+
   return {
     state: {
       isLogin,
@@ -80,6 +117,7 @@ export function useAuthForm() {
       password,
       inviteCode,
       isInviteLocked,
+      oauthPending,
     },
     actions: {
       setIsLogin,
@@ -89,6 +127,8 @@ export function useAuthForm() {
       handleSubmit,
       handleGoogleLogin,
       handleDiscordLogin,
+      handleOauthSubmit,
+      cancelOauthFlow,
     },
   };
 }

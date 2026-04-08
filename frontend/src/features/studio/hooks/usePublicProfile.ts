@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react"; 
 import { api } from "@/src/services/api";
-import { SavedPrompt } from "@/src/features/studio/hooks/useStudio";
+import { SavedPrompt } from "@/src/types/models";
 
 export interface ProfileData {
   user: { username: string; role: string };
@@ -15,8 +15,8 @@ export function usePublicProfile(username: string) {
 
   useEffect(() => {
     setIsLoading(true);
-    api
-      .getPublicProfile(username)
+    api.public
+      .getProfile(username)
       .then((res) => setData(res))
       .catch((err) => {
         console.error("Error fetching profile:", err);

@@ -23,7 +23,7 @@ router = APIRouter()
 
 
 class BatchDeleteRequest(BaseModel):
-    prompt_ids: List[int]
+    prompt_ids: List[uuid.UUID]
 
 
 class PresignedUrlRequest(BaseModel):
@@ -191,7 +191,6 @@ def eliminar_prompt(
 @router.post("/batch-delete")
 def eliminar_prompts_lote(
     data: BatchDeleteRequest,
-    prompt_ids: List[uuid.UUID],
     current_user: User = Depends(get_current_user),
     session: Session = Depends(get_session),
 ):
@@ -199,7 +198,6 @@ def eliminar_prompts_lote(
     if not data.prompt_ids:
         return {"status": "success", "message": "Ningún ID proporcionado"}
 
-    # Buscamos solo los prompts que pertenecen al usuario actual (Seguridad IDOR)
     statement = select(ImagePrompt).where(
         ImagePrompt.id.in_(data.prompt_ids), ImagePrompt.user_id == current_user.id
     )
@@ -211,13 +209,12 @@ def eliminar_prompts_lote(
             detail="No se encontraron las imágenes o no tienes permiso.",
         )
 
-    # Borramos de R2 y de la Base de Datos
     for prompt in prompts_a_borrar:
         if prompt.image_url:
-            eliminar_de_r2(prompt.image_url)  # Liberamos espacio en Cloudflare
+            eliminar_de_r2(prompt.image_url)
         session.delete(prompt)
 
-    session.commit()  # Una sola transacción a Neon.tech
+    session.commit()
 
     return {
         "status": "success",

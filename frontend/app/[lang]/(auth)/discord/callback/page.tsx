@@ -18,7 +18,7 @@ export default function DiscordCallbackPage() {
     const code = searchParams.get("code");
     if (!code) {
       toast.error("No se recibió código de Discord.");
-      router.push("/es/login");
+      router.push("/es/auth/login");
       return;
     }
 
@@ -35,14 +35,14 @@ export default function DiscordCallbackPage() {
         if (response.status === "needs_invite") {
           toast.success("Cuenta de Discord vinculada. ¡Introduce un código VIP!");
           // Redirigimos a login con un estado para que complete el registro (Fase futura si la necesitas)
-          router.push(`/es/login?discord_email=${response.email}`);
+          router.push(`/es/auth/login?discord_email=${response.email}`);
         } else {
           toast.success(`¡Bienvenido de nuevo, ${response.username}!`);
           router.push("/es/studio");
         }
       } catch (error: any) {
         toast.error(error.message || "Fallo al validar Discord");
-        router.push("/es/login");
+        router.push("/es/auth/login");
       }
     };
 

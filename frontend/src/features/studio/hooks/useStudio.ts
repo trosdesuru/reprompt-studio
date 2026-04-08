@@ -18,7 +18,7 @@ export function useStudio() {
     try {
       const [promptsRes, collectionsRes] = await Promise.all([
         api.getMyPrompt(),
-        api.getMyCollections(),
+        api.collections.getMyCollections(),
       ]);
       setPrompts(promptsRes);
       setCollections(collectionsRes.collections || []);
@@ -32,7 +32,7 @@ export function useStudio() {
 
   const assignToCollection = async (promptId: number, collectionId: number | null) => {
     try {
-      await api.assignPromptToCollection(promptId, collectionId);
+      await api.collections.assignPrompt(promptId, collectionId);
       setPrompts((prev) =>
         prev.map((p) => (p.id === promptId ? { ...p, collection_id: collectionId } : p)),
       );
@@ -56,7 +56,7 @@ export function useStudio() {
   const deletePromptsBatch = async (ids: number[]) => {
     setIsDeletingBatch(true);
     try {
-      await api.deletePromptsBatch(ids);
+      await api.prompts.deleteBatch(ids);
 
       setPrompts((prev) => prev.filter((p) => !ids.includes(p.id)));
       toast.success(`${ids.length} imágenes eliminadas`);

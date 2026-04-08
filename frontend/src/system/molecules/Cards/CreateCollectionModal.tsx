@@ -30,7 +30,7 @@ export function CreateCollectionModal({ isOpen, onClose, onSuccess }: Props) {
 
     setIsLoading(true);
     try {
-      await api.createCollection({ name, description, is_private: isPrivate });
+      await api.collections.create({ name, description, is_private: isPrivate });
       toast.success("Colección creada");
       setName("");
       setDescription("");

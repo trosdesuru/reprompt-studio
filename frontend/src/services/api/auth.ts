@@ -28,7 +28,11 @@ export const authApi = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
     }),
-  obtenerPerfil: () => fetchSeguro(`${API_URL}/auth/me`),
+  me: async () => {
+    return fetchSeguro(`${API_URL}/auth/me`, {
+      method: "GET",
+    });
+  },
   generarInvitacion: (role: string = "voyager") =>
     fetchSeguro(`${API_URL}/auth/invite-codes?role_requested=${role}`, { method: "POST" }),
   obtenerLogsAuditoria: (limit: number = 50) =>
@@ -36,4 +40,29 @@ export const authApi = {
   revocarTodasLasSesiones: () =>
     fetchSeguro(`${API_URL}/auth/admin/sessions/revoke-all`, { method: "POST" }),
   refrescarToken: () => fetchSeguro(`${API_URL}/auth/refresh`, { method: "POST" }),
+
+  getGoogleAuthUrl: async () => {
+    return fetchSeguro(`${API_URL}/auth/google/url`, { method: "GET" });
+  },
+
+  verifyGoogleCode: async (data: { code: string; redirect_uri: string }) => {
+    return fetchSeguro(`${API_URL}/auth/google/callback`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  },
+
+  registerGoogleUser: async (data: { token: string; invite_code: string; username: string }) => {
+    return fetchSeguro(`${API_URL}/auth/google/join`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  },
+
+  verifyDiscordCode: async (data: { code: string; redirect_uri: string }) => {
+    return fetchSeguro(`${API_URL}/auth/discord`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  },
 };
