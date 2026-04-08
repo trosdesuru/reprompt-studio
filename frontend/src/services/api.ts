@@ -13,8 +13,9 @@ export const api = {
   ...downloadApi,
   ...promptApi,
 
-  public: publicApi,
-  collections: collectionsApi,
   admin: adminApi,
+  auth: authApi,
+  public: publicApi,
   prompts: promptApi,
+  collections: collectionsApi,
 };

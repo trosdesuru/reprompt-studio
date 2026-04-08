@@ -20,7 +20,13 @@ const redirectToLogin = () => {
   if (typeof window === "undefined") return;
 
   const currentPath = window.location.pathname;
-  if (currentPath.includes("/login")) return;
+  if (
+    currentPath.includes("/login") ||
+    currentPath.includes("/google/callback") ||
+    currentPath.includes("/discord/callback")
+  ) {
+    return;
+  }
 
   const localeMatch = currentPath.match(/^\/([a-z]{2})(?:\/|$)/);
   const localePrefix = localeMatch ? `/${localeMatch[1]}` : "";
