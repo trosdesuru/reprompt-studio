@@ -2,6 +2,7 @@ import os
 import secrets
 import redis
 import logging
+from app.schemas.user import DiscordAuthRequest
 from fastapi import APIRouter, Depends, Response, Cookie, HTTPException, status
 from fastapi.responses import JSONResponse
 from sqlmodel import Session, select
@@ -158,6 +159,49 @@ def google_join(
     return {
         "status": "success",
         "message": f"Cuenta creada. Bienvenido a la Resistencia, {username}",
+    }
+
+
+@router.post("/discord")
+def discord_auth(
+    data: DiscordAuthRequest,
+    response: Response,
+    session: Session = Depends(get_session),
+):
+    result = AuthService.authenticate_discord_user(
+        data.code, data.redirect_uri, session, redis_client
+    )
+
+    if result["status"] == "needs_invite":
+        response.status_code = status.HTTP_202_ACCEPTED
+        return result
+
+    # Configurar cookies
+    response.set_cookie(
+        key="access_token",
+        value=result["access_token"],
+        httponly=True,
+        secure=IS_PRODUCTION,
+        max_age=60 * 15,
+        samesite="lax",
+        path="/",
+    )
+    response.set_cookie(
+        key="refresh_token",
+        value=result["refresh_token"],
+        httponly=True,
+        secure=IS_PRODUCTION,
+        max_age=60 * 60 * 24 * 7,
+        samesite="lax",
+        path="/",
+    )
+
+    AuditService.log_action(
+        session, result["username"], "LOGIN_DISCORD", "Inicio de sesión con Discord"
+    )
+    return {
+        "status": "success",
+        "message": f"Bienvenido de nuevo, {result['username']}",
     }
 
 

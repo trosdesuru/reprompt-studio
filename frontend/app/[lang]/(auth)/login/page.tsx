@@ -1,34 +1,20 @@
-"use client";
-
-import Link from "next/link";
-import { LoginForm } from "@/src/system/organisms/Auth/LoginForm";
-import { useRedirectIfAuthenticated } from "@/src/features/auth/hooks/useRedirectIfAuthenticated";
-import { PageLoader } from "@/src/system/atoms/PageLoader";
+import { Suspense } from "react";
+import { IconLoader2 } from "@tabler/icons-react";
+import { AuthForm } from "@/src/system/organisms/Auth/AuthForm";
 
 export default function LoginPage() {
-  const { isChecking, isAuthenticated } = useRedirectIfAuthenticated("/");
-
-  if (isChecking || isAuthenticated) {
-    return (
-      <main className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
-        <PageLoader text = "Sincronizando acceso" />
-      </main>
-    );
-  }
-
   return (
-    <main className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
-      <LoginForm />
-
-      <p className="mt-8 text-center text-sm font-mono text-(--text-secondary)">
-        ¿No tienes cuenta?{" "}
-        <Link
-          href="/join"
-          className="text-(--accent-color) font-black hover:underline underline-offset-4"
-        >
-          Registrarte aquí
-        </Link>
-      </p>
+    <main className="min-h-screen flex items-center justify-center p-4 bg-muted/10">
+      <Suspense
+        fallback={
+          <div className="flex flex-col items-center gap-4 text-muted-foreground">
+            <IconLoader2 className="animate-spin" size={32} />
+            <span className="font-mono text-sm tracking-widest uppercase">Cargando acceso...</span>
+          </div>
+        }
+      >
+        <AuthForm />
+      </Suspense>
     </main>
   );
 }

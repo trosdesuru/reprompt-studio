@@ -19,6 +19,11 @@ class Settings(BaseSettings):
     GOOGLE_CLIENT_SECRET: str
     INVITE_ONLY_MODE: bool = True
 
+    # Discord Auth
+    DISCORD_CLIENT_ID: str = ""
+    DISCORD_CLIENT_SECRET: str = ""
+    INVITE_ONLY_MODE: bool = True
+
     class Config:
         env_file = ".env"
         extra = "ignore" # Ignora variables extra en el sistema para no crashear

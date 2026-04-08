@@ -159,7 +159,7 @@ def obtener_mis_prompts(
 
 @router.delete("/{prompt_id}")
 def eliminar_prompt(
-    prompt_id: int,
+    prompt_id: uuid.UUID,
     current_user: User = Depends(get_current_user),
     session: Session = Depends(get_session),
 ):
@@ -191,6 +191,7 @@ def eliminar_prompt(
 @router.post("/batch-delete")
 def eliminar_prompts_lote(
     data: BatchDeleteRequest,
+    prompt_ids: List[uuid.UUID],
     current_user: User = Depends(get_current_user),
     session: Session = Depends(get_session),
 ):

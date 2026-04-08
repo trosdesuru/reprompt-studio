@@ -22,7 +22,7 @@ class PromptCreate(BaseModel):
 
 
 class PromptResponse(PromptCreate):
-    id: int
+    id: uuid.UUID
     user_id: uuid.UUID
     prompt: str = Field(..., max_length=20000)
     collection_id: Optional[int] = None

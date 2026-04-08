@@ -1,6 +1,7 @@
-# backend/app/api/routes_public.py
+import uuid
 from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session, select, or_, func
+from sqlalchemy import select as sa_select
 from app.core.db import get_session
 from app.models.user import User
 from app.models.collection import Collection
@@ -40,7 +41,7 @@ def get_public_profile(username: str, session: Session = Depends(get_session)):
         "status": "success",
         "user": {
             "username": user.username,
-            "role": user.role.value if hasattr(user.role, "value") else user.role
+            "role": user.role.value if hasattr(user.role, "value") else user.role,
         },
         "collections": collections,
         "recent_prompts": prompts,
@@ -93,7 +94,7 @@ def get_public_collection(
 
 @router.get("/prompt/{prompt_id}")
 def get_public_prompt_detail(
-    prompt_id: int,
+    prompt_id: uuid.UUID,
     session: Session = Depends(get_session),
     current_user: User = Depends(get_optional_user),
 ):
@@ -164,8 +165,27 @@ def get_public_feed(
 ):
     """Devuelve un mix de Prompts sueltos y Colecciones para la Home optimizado"""
 
+    subq_count = (
+        sa_select(func.count(ImagePrompt.id))
+        .where(ImagePrompt.collection_id == Collection.id)
+        .scalar_subquery()
+    )
+
+    subq_cover = (
+        sa_select(ImagePrompt.image_url)
+        .where(ImagePrompt.collection_id == Collection.id)
+        .order_by(ImagePrompt.created_at.desc())
+        .limit(1)
+        .scalar_subquery()
+    )
+
     query_col = (
-        select(Collection, User)
+        select(
+            Collection,
+            User,
+            subq_count.label("items_count"),
+            subq_cover.label("cover_url"),
+        )
         .join(User, Collection.user_id == User.id)
         .where(Collection.is_private == False)
     )
@@ -189,19 +209,7 @@ def get_public_feed(
 
     feed = []
 
-    for col, user in collections:
-        count_statement = select(func.count(ImagePrompt.id)).where(
-            ImagePrompt.collection_id == col.id
-        )
-        items_count = session.exec(count_statement).one()
-
-        cover_url = session.exec(
-            select(ImagePrompt.image_url)
-            .where(ImagePrompt.collection_id == col.id)
-            .order_by(ImagePrompt.created_at.desc())
-            .limit(1)
-        ).first()
-
+    for col, user, items_count, cover_url in collections:
         feed.append(
             {
                 "type": "collection",
@@ -212,7 +220,7 @@ def get_public_feed(
                 "slug": col.slug,
                 "username": user.username,
                 "image_url": cover_url,
-                "items_count": items_count,
+                "items_count": items_count or 0,
             }
         )
 

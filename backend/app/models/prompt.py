@@ -8,16 +8,20 @@ from datetime import datetime
 class ImagePrompt(SQLModel, table=True):
     """Almacenamiento individual de cada generación extraída"""
 
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: uuid.UUID = Field(
+        default_factory=uuid.uuid4,
+        primary_key=True,
+        index=True,
+        nullable=False,
+    )
 
     user_id: uuid.UUID = Field(foreign_key="user.id", index=True)
 
-    collection_id: Optional[int] = Field(
+    collection_id: Optional[uuid.UUID] = Field(
         default=None, foreign_key="collection.id", index=True
     )
 
     title: str
-
     prompt: str = Field(sa_column=Column(Text))
     negative_prompt: Optional[str] = Field(default=None, sa_column=Column(Text))
 

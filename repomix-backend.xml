@@ -74,7 +74,6 @@ app/
     audit_service.py
     auth_service.py
     downloader.py
-    scraper.py
     security.py
     storage.py
   utils/
@@ -297,10 +296,11 @@ async def receive_bug_report(report: BugReport, request: Request):
 </file>
 
 <file path="app/api/routes_auth.py">
+import os
 import secrets
 import redis
 import logging
-from fastapi import APIRouter, Depends, Response, Cookie, HTTPException
+from fastapi import APIRouter, Depends, Response, Cookie, HTTPException, status
 from fastapi.responses import JSONResponse
 from sqlmodel import Session, select
 
@@ -309,9 +309,7 @@ from app.services.audit_service import AuditService
 from app.core.db import get_session
 from app.api.deps import get_current_user, get_current_admin, RateLimiter
 from app.models.user import User, InviteCode, AuditLog
-from app.schemas.user import UserRegister, UserLogin, PasswordChange
 
-from fastapi import APIRouter, Depends, Response, Cookie, HTTPException, status
 from app.schemas.user import (
     UserRegister,
     UserLogin,
@@ -319,6 +317,8 @@ from app.schemas.user import (
     GoogleAuthRequest,
     GoogleJoinRequest,
 )
+
+IS_PRODUCTION = os.getenv("ENVIRONMENT") == "production"
 
 logger = logging.getLogger("routes_auth")
 redis_client = redis.Redis(host="redis", port=6379, db=0, decode_responses=True)
@@ -366,6 +366,7 @@ def login_user(
         key="access_token",
         value=access_token,
         httponly=True,
+        secure=IS_PRODUCTION,
         max_age=60 * 15,
         samesite="lax",
         path="/",
@@ -374,6 +375,7 @@ def login_user(
         key="refresh_token",
         value=refresh_token,
         httponly=True,
+        secure=IS_PRODUCTION,
         max_age=60 * 60 * 24 * 7,
         samesite="lax",
         path="/",
@@ -397,6 +399,7 @@ def google_auth(
         key="access_token",
         value=result["access_token"],
         httponly=True,
+        secure=IS_PRODUCTION,
         max_age=60 * 15,
         samesite="lax",
         path="/",
@@ -405,6 +408,7 @@ def google_auth(
         key="refresh_token",
         value=result["refresh_token"],
         httponly=True,
+        secure=IS_PRODUCTION,
         max_age=60 * 60 * 24 * 7,
         samesite="lax",
         path="/",
@@ -431,6 +435,7 @@ def google_join(
         key="access_token",
         value=access_token,
         httponly=True,
+        secure=IS_PRODUCTION,
         max_age=60 * 15,
         samesite="lax",
         path="/",
@@ -439,6 +444,7 @@ def google_join(
         key="refresh_token",
         value=refresh_token,
         httponly=True,
+        secure=IS_PRODUCTION,
         max_age=60 * 60 * 24 * 7,
         samesite="lax",
         path="/",
@@ -455,8 +461,12 @@ def google_join(
 
 @router.post("/logout")
 def logout_user(response: Response, refresh_token: str | None = Cookie(None)):
-    response.delete_cookie("access_token", path="/")
-    response.delete_cookie("refresh_token", path="/")
+    response.delete_cookie(
+        "access_token", path="/", httponly=True, samesite="lax", secure=IS_PRODUCTION
+    )
+    response.delete_cookie(
+        "refresh_token", path="/", httponly=True, samesite="lax", secure=IS_PRODUCTION
+    )
 
     if refresh_token:
         try:
@@ -527,6 +537,7 @@ def refresh_access_token(
             key="access_token",
             value=new_access,
             httponly=True,
+            secure=IS_PRODUCTION,
             max_age=60 * 15,
             samesite="lax",
             path="/",
@@ -535,6 +546,7 @@ def refresh_access_token(
             key="refresh_token",
             value=new_refresh,
             httponly=True,
+            secure=IS_PRODUCTION,
             max_age=60 * 60 * 24 * 7,
             samesite="lax",
             path="/",
@@ -547,55 +559,32 @@ def refresh_access_token(
             f"🛑 [API_AUTH] /refresh abortado con código {e.status_code}: {e.detail}"
         )
 
-        # 🟢 FIX LEGENDARIO: Capturamos tanto el 401 (caducado) como el 403 (robo)
         if e.status_code in [401, 403]:
             logger.info(
                 "🧹 [API_AUTH] Limpiando cookies del navegador (Sesión muerta)..."
             )
 
-            # 1. Creamos la respuesta de error manualmente para que FastAPI no la descarte
             error_response = JSONResponse(
                 status_code=e.status_code,
                 content={"status": "error", "detail": e.detail},
             )
-            # 2. Inyectamos la orden de destrucción total de cookies
             error_response.delete_cookie(
-                "access_token", path="/", httponly=True, samesite="lax"
+                "access_token",
+                path="/",
+                httponly=True,
+                samesite="lax",
+                secure=IS_PRODUCTION,
             )
             error_response.delete_cookie(
-                "refresh_token", path="/", httponly=True, samesite="lax"
+                "refresh_token",
+                path="/",
+                httponly=True,
+                samesite="lax",
+                secure=IS_PRODUCTION,
             )
 
             return error_response
 
-    # Si el error es otro (ej. un 500), lo dejamos pasar normal
-    except HTTPException as e:
-        logger.warning(
-            f"🛑 [API_AUTH] /refresh abortado con código {e.status_code}: {e.detail}"
-        )
-
-        # 🟢 FIX LEGENDARIO: Capturamos tanto el 401 (caducado) como el 403 (robo)
-        if e.status_code in [401, 403]:
-            logger.info(
-                "🧹 [API_AUTH] Limpiando cookies del navegador (Sesión muerta)..."
-            )
-
-            # 1. Creamos la respuesta de error manualmente para que FastAPI no la descarte
-            error_response = JSONResponse(
-                status_code=e.status_code,
-                content={"status": "error", "detail": e.detail},
-            )
-            # 2. Inyectamos la orden de destrucción total de cookies
-            error_response.delete_cookie(
-                "access_token", path="/", httponly=True, samesite="lax"
-            )
-            error_response.delete_cookie(
-                "refresh_token", path="/", httponly=True, samesite="lax"
-            )
-
-            return error_response
-
-        # Si el error es otro (ej. un 500), lo dejamos pasar normal
         raise e
 
 
@@ -764,36 +753,46 @@ def assign_prompt_to_collection(
 from rq import Queue
 from rq.job import Job
 from rq.exceptions import NoSuchJobError
+from sqlmodel import Session, select, func
 from fastapi import APIRouter, Depends, HTTPException
+
 from app.core.redis_config import conn
+from app.core.db import get_session
+from app.models.collection import Collection
+from app.models.prompt import ImagePrompt
 from app.services.downloader import generar_zip_coleccion, ejecutar_descarga_individual
 from app.api.deps import get_current_user
-from app.models.user import User
+from app.models.user import User, UserRole
 
 router = APIRouter()
 
-# 🛡️ Conectamos con la cola exacta que está escuchando worker-1
-downloads_queue = Queue("downloads", connection=conn)
+downloads_queue_premium = Queue("downloads_premium", connection=conn)
+downloads_queue_free = Queue("downloads_free", connection=conn)
 
 
 @router.get("/single/{image_key}")
 def descargar_una_imagen(
-    image_key: str, current_user: User = Depends(get_current_user)
+    image_key: str,
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
 ):
     """Resolución sincrónica instantánea para archivos únicos."""
-    try:
-        url = ejecutar_descarga_individual(image_key)
-        return {"download_url": url}
-    except Exception as e:
+
+    statement = select(ImagePrompt).where(ImagePrompt.image_url.contains(image_key))
+    prompt = session.exec(statement).first()
+
+    if not prompt:
         raise HTTPException(
-            status_code=500, detail="Error al generar el acceso directo en R2"
-        ) @ router.get("/single/{image_key}")
+            status_code=404, detail="Imagen no encontrada en la base de datos."
+        )
 
+    if prompt.collection_id:
+        col = session.get(Collection, prompt.collection_id)
+        if col and col.is_private and col.user_id != current_user.id:
+            raise HTTPException(
+                status_code=403, detail="No tienes permiso. Esta imagen es privada."
+            )
 
-def descargar_una_imagen(
-    image_key: str, current_user: User = Depends(get_current_user)
-):
-    """Resolución sincrónica instantánea para archivos únicos."""
     try:
         url = ejecutar_descarga_individual(image_key)
         return {"download_url": url}
@@ -805,20 +804,56 @@ def descargar_una_imagen(
 
 @router.post("/collection/{collection_id}")
 def descargar_coleccion_completa(
-    collection_id: str, current_user: User = Depends(get_current_user)
+    collection_id: int,
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
 ):
     """Delega la generación masiva del ZIP al Worker de Redis para no congelar la API."""
-    try:
-        job = downloads_queue.enqueue(
-            generar_zip_coleccion,
-            collection_id,
-            current_user.email,
-            job_timeout="1h",  # Margen amplio para colecciones enormes
+
+    col = session.get(Collection, collection_id)
+    if not col:
+        raise HTTPException(status_code=404, detail="Colección no encontrada")
+
+    if col.is_private and col.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Esta colección es privada")
+
+    cantidad_imagenes = session.exec(
+        select(func.count(ImagePrompt.id)).where(
+            ImagePrompt.collection_id == collection_id
         )
+    ).one()
+
+    limite_descarga = 50 if current_user.role == UserRole.VOYAGER else 1000
+
+    if cantidad_imagenes > limite_descarga:
+        raise HTTPException(
+            status_code=403,
+            detail=f"Tu plan '{current_user.role}' permite descargar un máximo de {limite_descarga} imágenes de golpe. Esta colección tiene {cantidad_imagenes}. ¡Haz upgrade a Artist!",
+        )
+
+    try:
+        if current_user.role == UserRole.ARTIST:
+            job = downloads_queue_premium.enqueue(
+                generar_zip_coleccion,
+                str(collection_id),
+                current_user.email,
+                job_timeout="1h",
+            )
+            queue_assigned = "premium"
+        else:
+            job = downloads_queue_free.enqueue(
+                generar_zip_coleccion,
+                str(collection_id),
+                current_user.email,
+                job_timeout="1h",
+            )
+            queue_assigned = "free"
+
         return {
             "status": "processing",
             "job_id": job.get_id(),
             "message": "Generando ZIP en segundo plano.",
+            "queue": queue_assigned,
         }
     except Exception as e:
         raise HTTPException(
@@ -831,7 +866,7 @@ def verificar_estado_descarga(
     job_id: str, current_user: User = Depends(get_current_user)
 ):
     """
-    El frontend consulta este endpoint cada 2 segundos.
+    El frontend consulta este endpoint cada X segundos.
     Lee directamente de Redis el estado del Worker sin tocar la Base de Datos.
     """
     try:
@@ -856,6 +891,7 @@ def verificar_estado_descarga(
 import logging
 
 import uuid
+from typing import List
 from pydantic import BaseModel
 from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session, select
@@ -874,6 +910,10 @@ from app.services.storage import s3_client
 
 logger = logging.getLogger("routes_prompt")
 router = APIRouter()
+
+
+class BatchDeleteRequest(BaseModel):
+    prompt_ids: List[int]
 
 
 class PresignedUrlRequest(BaseModel):
@@ -939,6 +979,9 @@ def guardar_prompt(
 
     base_url = settings.R2_PUBLIC_URL.rstrip("/") + "/"
     old_key = data.image_url.replace(base_url, "")
+
+    if not old_key.startswith(f"temp/{current_user.id}/"):
+        raise HTTPException(status_code=403, detail="No se puede guardar archivo")
 
     if not is_valid:
         delete_file(old_key)
@@ -1033,6 +1076,43 @@ def eliminar_prompt(
         "status": "success",
         "message": "Prompt y archivo eliminados correctamente del studio",
     }
+
+
+@router.post("/batch-delete")
+def eliminar_prompts_lote(
+    data: BatchDeleteRequest,
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    """Elimina múltiples prompts en una sola petición HTTP para no saturar la red."""
+    if not data.prompt_ids:
+        return {"status": "success", "message": "Ningún ID proporcionado"}
+
+    # Buscamos solo los prompts que pertenecen al usuario actual (Seguridad IDOR)
+    statement = select(ImagePrompt).where(
+        ImagePrompt.id.in_(data.prompt_ids), ImagePrompt.user_id == current_user.id
+    )
+    prompts_a_borrar = session.exec(statement).all()
+
+    if not prompts_a_borrar:
+        raise HTTPException(
+            status_code=404,
+            detail="No se encontraron las imágenes o no tienes permiso.",
+        )
+
+    # Borramos de R2 y de la Base de Datos
+    for prompt in prompts_a_borrar:
+        if prompt.image_url:
+            eliminar_de_r2(prompt.image_url)  # Liberamos espacio en Cloudflare
+        session.delete(prompt)
+
+    session.commit()  # Una sola transacción a Neon.tech
+
+    return {
+        "status": "success",
+        "message": f"{len(prompts_a_borrar)} prompts eliminados correctamente",
+        "deleted_ids": [p.id for p in prompts_a_borrar],
+    }
 </file>
 
 <file path="app/api/routes_public.py">
@@ -1076,7 +1156,10 @@ def get_public_profile(username: str, session: Session = Depends(get_session)):
 
     return {
         "status": "success",
-        "user": {"username": user.username, "role": user.role, "tier": user.tier},
+        "user": {
+            "username": user.username,
+            "role": user.role.value if hasattr(user.role, "value") else user.role
+        },
         "collections": collections,
         "recent_prompts": prompts,
     }
@@ -1453,6 +1536,8 @@ print(f"🔗 [DEBUG DB] Conectando a Neon (Directo al hierro): {safe_log_url}")
 engine = create_engine(
     clean_url,
     echo=False,
+    pool_size=5,
+    max_overflow=10,
     pool_pre_ping=True,
     pool_recycle=300,
     connect_args={
@@ -1591,6 +1676,7 @@ def navegador_seguro():
 </file>
 
 <file path="app/models/collection.py">
+import uuid
 from typing import Optional
 from sqlmodel import Field, SQLModel
 from sqlalchemy import UniqueConstraint
@@ -1606,7 +1692,7 @@ class Collection(SQLModel, table=True):
     )
 
     id: Optional[int] = Field(default=None, primary_key=True)
-    user_id: int = Field(foreign_key="user.id", index=True)
+    user_id: uuid.UUID = Field(foreign_key="user.id", index=True)
 
     name: str = Field(nullable=False)
     slug: str = Field(index=True, nullable=False)
@@ -1619,7 +1705,7 @@ class Collection(SQLModel, table=True):
 </file>
 
 <file path="app/models/gallery.py">
-# backend/app/models/gallery.py
+import uuid
 from typing import Optional
 from sqlmodel import Field, SQLModel
 from datetime import datetime, timezone
@@ -1629,6 +1715,9 @@ class GalleryMetric(SQLModel, table=True):
     """Tabla para almacenar las métricas locales de las galerías scrapeadas"""
 
     id: Optional[int] = Field(default=None, primary_key=True)
+
+    user_id: uuid.UUID = Field(foreign_key="user.id", index=True)
+
     url: str = Field(index=True, unique=True, nullable=False)
     title: str
     thumb: str | None = None
@@ -1643,6 +1732,7 @@ class GalleryMetric(SQLModel, table=True):
 </file>
 
 <file path="app/models/prompt.py">
+import uuid
 from sqlmodel import SQLModel, Field, Column, JSON
 from sqlalchemy import Text
 from typing import Optional, Dict, Any
@@ -1653,7 +1743,8 @@ class ImagePrompt(SQLModel, table=True):
     """Almacenamiento individual de cada generación extraída"""
 
     id: Optional[int] = Field(default=None, primary_key=True)
-    user_id: int = Field(foreign_key="user.id", index=True)
+
+    user_id: uuid.UUID = Field(foreign_key="user.id", index=True)
 
     collection_id: Optional[int] = Field(
         default=None, foreign_key="collection.id", index=True
@@ -1679,9 +1770,17 @@ class ImagePrompt(SQLModel, table=True):
 </file>
 
 <file path="app/models/user.py">
+import uuid
 from typing import Optional
 from sqlmodel import Field, SQLModel
 from datetime import datetime, timezone
+from enum import Enum
+
+
+class UserRole(str, Enum):
+    VOYAGER = "voyager"
+    ARTIST = "artist"
+    ADMIN = "admin"
 
 
 class InviteCode(SQLModel, table=True):
@@ -1690,37 +1789,44 @@ class InviteCode(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     code: str = Field(index=True, unique=True, nullable=False)
     is_used: bool = Field(default=False)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    used_by_id: Optional[int] = Field(default=None, foreign_key="user.id")
+
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+    used_by_id: Optional[uuid.UUID] = Field(default=None, foreign_key="user.id")
 
 
 class User(SQLModel, table=True):
     """Usuarios de la plataforma con soporte Híbrido (Local / OAuth)"""
 
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: uuid.UUID = Field(
+        default_factory=uuid.uuid4,
+        primary_key=True,
+        index=True,
+        nullable=False,
+    )
     username: str = Field(index=True, unique=True, nullable=False)
+    role: UserRole = Field(default=UserRole.VOYAGER)
 
-    # 🟢 NUEVO: Soporte para Google Auth
+    # Soporte para Google Auth
     email: Optional[str] = Field(default=None, index=True, unique=True)
-    auth_provider: str = Field(default="local")  # Puede ser "local" o "google"
+    auth_provider: str = Field(default="local")
     provider_id: Optional[str] = Field(default=None, index=True)
 
-    # 🟢 MODIFICADO: Es opcional porque los usuarios de Google no tendrán contraseña
     hashed_password: Optional[str] = Field(default=None)
 
-    # 🟢 NUEVO: Preparación para monetización
-    tier: str = Field(default="free")  # "free" o "pro"
+    role: str = Field(default="voyager")
 
-    role: str = Field(default="voyager")  # voyager, artist, admin
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     is_active: bool = Field(default=True)
 
 
 class AuditLog(SQLModel, table=True):
-    id: int | None = Field(default=None, primary_key=True)
+    """Registro inmutable de auditoría del sistema"""
+
+    id: Optional[int] = Field(default=None, primary_key=True)
     username: str = Field(index=True)
     action: str
-    details: str | None = None
+    details: Optional[str] = None
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 </file>
 
@@ -1729,31 +1835,33 @@ class AuditLog(SQLModel, table=True):
 </file>
 
 <file path="app/schemas/prompt.py">
-from pydantic import BaseModel
+import uuid
+from pydantic import BaseModel, Field
 from typing import Optional, Dict, Any
 from datetime import datetime
 from fastapi import Form
 
 
 class PromptCreate(BaseModel):
-    title: str = "Generación IA"
-    prompt: str
-    negative_prompt: Optional[str] = None
-    software: Optional[str] = "Desconocido"
-    model: Optional[str] = None
-    sampler: Optional[str] = None
+    title: str = Field(default="Generación IA", max_length=150)
+    prompt: str = Field(..., max_length=20000)
+    negative_prompt: Optional[str] = Field(None, max_length=20000)
 
-    steps: Optional[str] = None
-    cfg_scale: Optional[str] = None
-    seed: Optional[str] = None
-    resolution: Optional[str] = None
-    image_url: Optional[str] = None
+    software: Optional[str] = Field(default="Desconocido", max_length=50)
+    model: Optional[str] = Field(None, max_length=150)
+    sampler: Optional[str] = Field(None, max_length=100)
+    steps: Optional[str] = Field(None, max_length=20)
+    cfg_scale: Optional[str] = Field(None, max_length=20)
+    seed: Optional[str] = Field(None, max_length=50)
+    resolution: Optional[str] = Field(None, max_length=50)
+    image_url: Optional[str] = Field(None, max_length=500)
     extra_data: Dict[str, Any] = {}
 
 
 class PromptResponse(PromptCreate):
     id: int
-    user_id: int
+    user_id: uuid.UUID
+    prompt: str = Field(..., max_length=20000)
     collection_id: Optional[int] = None
     created_at: datetime
 
@@ -1762,16 +1870,16 @@ class PromptResponse(PromptCreate):
 
 
 def prompt_form_dependency(
-    title: str = Form("Generación IA"),
-    prompt: str = Form(...),
-    negative_prompt: Optional[str] = Form(None),
-    software: Optional[str] = Form("Desconocido"),
-    model: Optional[str] = Form(None),
-    sampler: Optional[str] = Form(None),
-    steps: Optional[str] = Form(None),
-    cfg_scale: Optional[str] = Form(None),
-    seed: Optional[str] = Form(None),
-    resolution: Optional[str] = Form(None),
+    title: str = Form("Generación IA", max_length=150),
+    prompt: str = Form(..., max_length=20000),
+    negative_prompt: Optional[str] = Form(None, max_length=20000),
+    software: Optional[str] = Form("Desconocido", max_length=50),
+    model: Optional[str] = Form(None, max_length=150),
+    sampler: Optional[str] = Form(None, max_length=100),
+    steps: Optional[str] = Form(None, max_length=20),
+    cfg_scale: Optional[str] = Form(None, max_length=20),
+    seed: Optional[str] = Form(None, max_length=50),
+    resolution: Optional[str] = Form(None, max_length=50),
 ) -> PromptCreate:
     """Extrae los campos del form-data y los valida contra el esquema"""
     return PromptCreate(
@@ -1993,7 +2101,6 @@ class AuthService:
     @staticmethod
     def register_user(user_data, session: Session):
         """Lógica de negocio pura para registrar un usuario."""
-        import logging
 
         logger = logging.getLogger("auth_service")
 
@@ -2449,276 +2556,10 @@ def ejecutar_descarga_individual(image_key: str) -> str:
     )
 </file>
 
-<file path="app/services/scraper.py">
-# backend/app/services/scraper.py
-import logging
-import re
-import json
-import redis
-from urllib.parse import quote
-from bs4 import BeautifulSoup
-from app.services.security import http_session
-
-logger = logging.getLogger("scraper")
-
-# 🟢 CONFIGURACIÓN DE REDIS PARA CACHÉ
-# Usamos decode_responses=True para que devuelva strings en lugar de bytes
-try:
-    redis_client = redis.Redis(host="redis", port=6379, db=0, decode_responses=True)
-except Exception as e:
-    logger.error(f"⚠️ No se pudo conectar a Redis para Caché: {e}")
-    redis_client = None
-
-
-def limpiar_titulo(titulo_crudo: str) -> str:
-    """Limpia el ruido de los títulos de E-Hentai mediante Regex."""
-    titulo_limpio = re.sub(r"\[.*?\]|\(.*?\)|<.*?>|\{.*?\}", "", titulo_crudo)
-    titulo_limpio = re.sub(r"[-~|,_]+", " ", titulo_limpio)
-    titulo_limpio = re.sub(r"\s+", " ", titulo_limpio).strip()
-
-    if len(titulo_limpio) < 3:
-        return titulo_crudo.strip()
-    return titulo_limpio
-
-
-def calcular_f_cats(categories_json: dict):
-    mapping = {
-        "misc": 1,
-        "doujinshi": 2,
-        "manga": 4,
-        "artistcg": 8,
-        "gamecg": 16,
-        "imageset": 32,
-        "cosplay": 64,
-        "asianporn": 128,
-        "nonh": 256,
-        "western": 512,
-    }
-    f_cats = 0
-    if categories_json:
-        for cat, is_active in categories_json.items():
-            if not is_active:
-                f_cats += mapping.get(cat, 0)
-    return f_cats
-
-
-# ==========================================
-# 🚀 1. CACHÉ DE BÚSQUEDA (TTL: 15 Minutos)
-# ==========================================
-def buscar_galerias(query: str, next_id: str = None, categories: dict = None):
-    f_cats = calcular_f_cats(categories)
-
-    # Generamos una clave única basada en lo que el usuario ha pedido
-    cache_key = f"cache:search:q={query}:next={next_id}:cats={f_cats}"
-
-    # Intentamos recuperar de la Caché primero
-    if redis_client:
-        try:
-            cached_result = redis_client.get(cache_key)
-            if cached_result:
-                logger.info(
-                    f"⚡ [CACHE HIT] Resultados de búsqueda devueltos desde Redis (0.01s)"
-                )
-                return json.loads(cached_result)
-        except Exception:
-            pass
-
-    url = f"https://e-hentai.org/?f_search={quote(query)}&f_cats={f_cats}"
-    if next_id:
-        url += f"&next={next_id}"
-
-    logger.info(f"📡 [SCRAPING] Consultando a E-Hentai: {url}")
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0"
-    }
-    cookies = {"nw": "1"}
-
-    try:
-        r = http_session.get(url, headers=headers, cookies=cookies, timeout=10)
-        r.raise_for_status()
-        soup = BeautifulSoup(r.text, "lxml")
-
-        next_tag = soup.find("a", id="unext")
-        found_next_id = (
-            next_tag["href"].split("next=")[1]
-            if next_tag and "next=" in next_tag["href"]
-            else None
-        )
-
-        tarjetas = soup.select(".itg tr, .itg .gl1t")
-        resultados = []
-        for tarjeta in tarjetas:
-            enlace = tarjeta.select_one("a[href*='/g/']")
-            if enlace:
-                img_tag = tarjeta.select_one("img")
-                thumb = img_tag.get("data-src") or img_tag.get("src") or ""
-                titulo_crudo = enlace.text.strip()
-
-                resultados.append(
-                    {
-                        "url": enlace["href"],
-                        "thumb": thumb,
-                        "title": limpiar_titulo(titulo_crudo),
-                        "title_raw": titulo_crudo,
-                    }
-                )
-
-        final_result = {"data": resultados, "next_id": found_next_id}
-
-        # Guardamos en Caché durante 15 minutos (900 segundos)
-        if redis_client:
-            try:
-                redis_client.setex(cache_key, 900, json.dumps(final_result))
-            except Exception:
-                pass
-
-        return final_result
-
-    except Exception as e:
-        logger.error(f"💥 [ERROR SCRAPING]: {e}")
-        return {"data": [], "next_id": None}
-
-
-# ==========================================
-# 🚀 2. CACHÉ DE GALERÍA (TTL: 24 Horas)
-# ==========================================
-def obtener_enlaces_paginas(url: str, pagina: int = 0):
-    cache_key = f"cache:gallery:{url}:p={pagina}"
-
-    if redis_client:
-        try:
-            cached_result = redis_client.get(cache_key)
-            if cached_result:
-                logger.info(
-                    f"⚡ [CACHE HIT] Página {pagina} de galería devuelta desde Redis"
-                )
-                return json.loads(cached_result)
-        except Exception:
-            pass
-
-    paginas_lista = []
-    logger.info(f"📡 [SCRAPING] Extrayendo página {pagina} de {url}")
-
-    try:
-        cookies = {"nw": "1", "uconfig": "ts_l"}
-        r = http_session.get(f"{url}?p={pagina}", cookies=cookies, timeout=10)
-        r.raise_for_status()
-        soup = BeautifulSoup(r.text, "lxml")
-
-        enlaces = soup.select('a[href*="/s/"]')
-
-        for a in enlaces:
-            href = a.get("href")
-            if not href:
-                continue
-
-            thumb_url, offset, width, height = "", "", None, None
-
-            img = a.find("img")
-            if img:
-                thumb_url = img.get("data-src") or img.get("src", "")
-                if "t.gif" in thumb_url:
-                    thumb_url = ""
-
-            if not thumb_url:
-                parent = a.parent
-                div_style = a.find("div", style=True) or (
-                    parent
-                    if parent and parent.name == "div" and parent.get("style")
-                    else None
-                )
-                if div_style:
-                    style_text = div_style.get("style", "")
-                    match_url = re.search(r"url\((.*?)\)", style_text)
-                    if match_url:
-                        thumb_url = match_url.group(1).strip("'\"")
-
-                    match_offset = re.search(
-                        r"url\(.*?\)\s+([-0-9a-zA-Z]+)\s+([-0-9a-zA-Z]+)", style_text
-                    )
-                    if match_offset:
-                        offset = f"{match_offset.group(1)} {match_offset.group(2)}"
-
-                    match_w = re.search(r"width:\s*(\d+)px", style_text)
-                    match_h = re.search(r"height:\s*(\d+)px", style_text)
-                    if match_w:
-                        width = int(match_w.group(1))
-                    if match_h:
-                        height = int(match_h.group(1))
-
-            if not any(p["page_url"] == href for p in paginas_lista):
-                paginas_lista.append(
-                    {
-                        "page_url": href,
-                        "thumb_url": thumb_url,
-                        "offset": offset,
-                        "width": width,
-                        "height": height,
-                    }
-                )
-
-        has_next = any(">" in a.text for a in soup.select(".ptt a"))
-
-        final_result = {"enlaces": paginas_lista, "has_next": has_next}
-
-        # Guardamos en Caché durante 24 horas (86400 segundos). El contenido de una galería no cambia.
-        if redis_client:
-            try:
-                redis_client.setex(cache_key, 86400, json.dumps(final_result))
-            except Exception:
-                pass
-
-        return final_result
-
-    except Exception as e:
-        logger.error(f"💥 Error crítico en scraper: {str(e)}")
-        return {"enlaces": [], "has_next": False}
-
-
-# ==========================================
-# 🚀 3. CACHÉ DE RESOLUCIÓN FULL HD (TTL: 2 Horas)
-# ==========================================
-def extraer_imagen_real(url_visor: str):
-    cache_key = f"cache:image_res:{url_visor}"
-
-    if redis_client:
-        try:
-            cached_result = redis_client.get(cache_key)
-            if cached_result:
-                return cached_result  # Es un string directo
-        except Exception:
-            pass
-
-    logger.info(f"📡 [SCRAPING] Resolviendo imagen real: {url_visor}")
-    try:
-        cookies = {"nw": "1"}
-        r = http_session.get(url_visor, cookies=cookies, timeout=10)
-        r.raise_for_status()
-        soup = BeautifulSoup(r.text, "lxml")
-        img_tag = soup.find("img", id="img")
-
-        if not img_tag:
-            return None
-
-        real_url = img_tag.get("src")
-
-        # Guardamos la URL resuelta por 2 horas (Las claves de imagen de EHentai suelen expirar)
-        if redis_client and real_url:
-            try:
-                redis_client.setex(cache_key, 7200, real_url)
-            except Exception:
-                pass
-
-        return real_url
-    except Exception as e:
-        logger.error(f"Error extrayendo imagen {url_visor}: {e}")
-        return None
-</file>
-
 <file path="app/services/security.py">
 import logging
 import requests
-import urllib.request
+from app.core.config import settings
 from urllib.error import URLError, HTTPError
 
 logger = logging.getLogger(__name__)
@@ -2745,6 +2586,12 @@ def validate_magic_bytes(file_url: str) -> bool:
     Programación Defensiva: Asume falsedad por defecto.
     """
     if not file_url:
+        return False
+
+    if not file_url.startswith(settings.R2_PUBLIC_URL):
+        logger.error(
+            f"[SECURITY] Intento de SSRF bloqueado: {file_url}"
+        )
         return False
 
     try:
@@ -3094,7 +2941,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.init_db import init_db
 
 from app.api.routes_download import router as download_router
-from app.api.routes_search import router as search_router
+# from app.api.routes_search import router as search_router
 from app.api.routes_auth import router as auth_router
 from app.api.routes_prompt import router as prompt_router
 from app.api.routes_public import router as public_router
@@ -3112,7 +2959,6 @@ security = HTTPBasic()
 
 
 def get_current_username(credentials: HTTPBasicCredentials = Depends(security)):
-    # Usamos secrets.compare_digest para evitar "Timing Attacks" (Ataques de tiempo)
     correct_username = secrets.compare_digest(
         credentials.username.encode("utf8"),
         os.getenv("DOCS_USERNAME", "admin").encode("utf8"),
@@ -3152,9 +2998,18 @@ app = FastAPI(
     openapi_url=None,
 )
 
+ALLOWED_ORIGINS = [
+    "http://localhost:3000",
+    "https://reprompt.studio",
+    "https://www.reprompt.studio",
+]
+
+if os.getenv("ENVIRONMENT") != "production":
+    ALLOWED_ORIGINS.append("http://127.0.0.1:3000")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origin_regex=r"https?://.*",
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -3171,10 +3026,10 @@ async def openapi(username: str = Depends(get_current_username)):
     return app.openapi()
 
 
-app.include_router(search_router, prefix="/api")
+# app.include_router(search_router, prefix="/api")
 app.include_router(admin_router, prefix="/api/admin", tags=["Admin"])
 app.include_router(auth_router, prefix="/api/auth", tags=["Autenticación"])
-app.include_router(public_router, prefix="/api/public", tags=["Feed Público"])
+app.include_router(public_router, prefix="/api/public", tags=["Feed"])
 app.include_router(prompt_router, prefix="/api/prompts", tags=["Reprompt Studio"])
 app.include_router(download_router, prefix="/api/download", tags=["Descargas"])
 app.include_router(collections_router, prefix="/api/collections", tags=["Colecciones"])

@@ -1,9 +1,8 @@
-# backend/app/schemas/user.py
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr
 
 
 class UserRegister(BaseModel):
-    username: str
+    email: EmailStr
     password: str
     invite_code: str
 
@@ -31,3 +30,8 @@ class GoogleJoinRequest(BaseModel):
     token: str
     invite_code: str
     username: str
+
+
+class DiscordAuthRequest(BaseModel):
+    code: str
+    redirect_uri: str

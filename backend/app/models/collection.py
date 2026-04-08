@@ -13,7 +13,12 @@ class Collection(SQLModel, table=True):
         UniqueConstraint("user_id", "slug", name="unique_user_collection_slug"),
     )
 
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: uuid.UUID = Field(
+        default_factory=uuid.uuid4,
+        primary_key=True,
+        index=True,
+        nullable=False,
+    )
     user_id: uuid.UUID = Field(foreign_key="user.id", index=True)
 
     name: str = Field(nullable=False)

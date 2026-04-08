@@ -1,3 +1,4 @@
+import uuid
 import re
 import unicodedata
 from typing import Optional
@@ -20,7 +21,7 @@ class CollectionCreate(BaseModel):
 
 
 class AssignPrompt(BaseModel):
-    collection_id: Optional[int]
+    collection_id: Optional[uuid.UUID]
 
 
 def create_unique_slug(name: str, user_id: int, session: Session) -> str:
@@ -90,7 +91,7 @@ def get_my_collections(
 
 @router.put("/assign/{prompt_id}")
 def assign_prompt_to_collection(
-    prompt_id: int,
+    prompt_id: uuid.UUID,
     data: AssignPrompt,
     current_user: User = Depends(get_current_user),
     session: Session = Depends(get_session),

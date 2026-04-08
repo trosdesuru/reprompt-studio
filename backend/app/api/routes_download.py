@@ -1,3 +1,4 @@
+import uuid
 from rq import Queue
 from rq.job import Job
 from rq.exceptions import NoSuchJobError
@@ -52,7 +53,7 @@ def descargar_una_imagen(
 
 @router.post("/collection/{collection_id}")
 def descargar_coleccion_completa(
-    collection_id: int,
+    collection_id: uuid.UUID,
     current_user: User = Depends(get_current_user),
     session: Session = Depends(get_session),
 ):

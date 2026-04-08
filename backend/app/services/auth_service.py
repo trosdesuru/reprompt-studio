@@ -1,5 +1,9 @@
 import os
+import re
 import logging
+import requests
+from app.core.config import settings
+from sqlalchemy import or_
 from google.oauth2 import id_token
 from google.auth.transport import requests as google_requests
 
@@ -27,9 +31,7 @@ class AuthService:
 
         logger = logging.getLogger("auth_service")
 
-        logger.info(
-            f"📝 [AUTH_SERVICE] Intento de registro manual. Username: @{user_data.username}"
-        )
+        logger.info(f"📝 [AUTH_SERVICE] Intento de registro. Email: {user_data.email}")
 
         # 1. Validación de código
         logger.info(
@@ -43,49 +45,54 @@ class AuthService:
         invite = session.exec(statement).first()
 
         if not invite:
-            logger.warning(
-                f"🚫 [AUTH_SERVICE] Registro fallido: Código '{user_data.invite_code}' es inválido o ya fue usado."
-            )
             raise HTTPException(
                 status_code=400, detail="Código de invitación inválido o ya usado"
             )
 
         # 2. Validación de usuario existente
-        user_exists = session.exec(
-            select(User).where(User.username == user_data.username)
+        email_exists = session.exec(
+            select(User).where(User.email == user_data.email)
         ).first()
-
-        if user_exists:
-            logger.warning(
-                f"🚫 [AUTH_SERVICE] Registro fallido: El username '@{user_data.username}' ya está ocupado."
-            )
+        if email_exists:
             raise HTTPException(
-                status_code=400, detail="El nombre de usuario ya está en uso"
+                status_code=400, detail="Este correo electrónico ya está registrado."
             )
 
-        # 3. Asignación de rol y creación
+        base_username = re.sub(r"[^a-z0-9]", "", user_data.email.split("@")[0].lower())
+        if not base_username:
+            base_username = (
+                "user"  # Fallback extremo por si el email era ".-_@gmail.com"
+            )
+
+        username = base_username
+        counter = 1
+
+        while session.exec(select(User).where(User.username == username)).first():
+            username = f"{base_username}{counter}"
+            counter += 1
+
+        # 4. Asignación de rol y creación
         assigned_role = "admin" if invite.code.startswith("TROYA-") else "voyager"
-        logger.info(
-            f"✅ [AUTH_SERVICE] Validaciones pasadas. Creando usuario con rol: {assigned_role}"
-        )
 
         new_user = User(
-            username=user_data.username,
+            email=user_data.email,
+            username=username,
             hashed_password=get_password_hash(user_data.password),
             role=assigned_role,
         )
+
         session.add(new_user)
         session.commit()
         session.refresh(new_user)
 
-        # 4. Quema de código
+        # 5. Quema de código
         invite.is_used = True
         invite.used_by_id = new_user.id
         session.add(invite)
         session.commit()
 
         logger.info(
-            f"✨ [AUTH_SERVICE] ¡Usuario @{new_user.username} registrado exitosamente y código quemado!"
+            f"✨ ¡Usuario registrado! Email: {new_user.email} -> Username asignado: @{new_user.username}"
         )
         return new_user
 
@@ -351,3 +358,84 @@ class AuthService:
         redis_client.setex(redis_key, 60 * 60 * 24 * 7, refresh_data["jti"])
 
         return access_token, refresh_data["token"], new_user.username
+
+    @staticmethod
+    def authenticate_discord_user(
+        code: str, redirect_uri: str, session: Session, redis_client
+    ):
+        """Intercambia el código por el token de Discord y extrae el perfil."""
+
+        # 1. Intercambiar código por Access Token en Discord
+        data = {
+            "client_id": settings.DISCORD_CLIENT_ID,
+            "client_secret": settings.DISCORD_CLIENT_SECRET,
+            "grant_type": "authorization_code",
+            "code": code,
+            "redirect_uri": redirect_uri,
+        }
+        headers = {"Content-Type": "application/x-www-form-urlencoded"}
+
+        try:
+            token_response = requests.post(
+                "https://discord.com/api/oauth2/token", data=data, headers=headers
+            )
+            token_response.raise_for_status()
+            token_json = token_response.json()
+            discord_access_token = token_json["access_token"]
+        except requests.exceptions.RequestException as e:
+            raise HTTPException(
+                status_code=401,
+                detail="El código de Discord ha expirado o es inválido.",
+            )
+
+        # 2. Obtener el perfil del usuario usando el Token
+        try:
+            user_response = requests.get(
+                "https://discord.com/api/users/me",
+                headers={"Authorization": f"Bearer {discord_access_token}"},
+            )
+            user_response.raise_for_status()
+            discord_user = user_response.json()
+        except requests.exceptions.RequestException:
+            raise HTTPException(
+                status_code=401, detail="No se pudo obtener el perfil de Discord."
+            )
+
+        email = discord_user.get("email")
+        provider_id = str(discord_user.get("id"))
+        name = discord_user.get("global_name") or discord_user.get("username")
+
+        if not email:
+            raise HTTPException(
+                status_code=400,
+                detail="Necesitas tener un email verificado en Discord.",
+            )
+
+        # 3. Flujo de decisión: ¿Existe o es nuevo?
+        user = session.exec(select(User).where(User.email == email)).first()
+
+        if user:
+            # ESCENARIO A: Ya existe. Iniciamos sesión.
+            access_token = create_access_token(
+                data={"sub": user.username, "role": user.role}
+            )
+            refresh_data = create_refresh_token(data={"sub": user.username})
+
+            redis_key = f"session:{user.username}:{refresh_data['family_id']}"
+            redis_client.setex(redis_key, 60 * 60 * 24 * 7, refresh_data["jti"])
+
+            return {
+                "status": "success",
+                "access_token": access_token,
+                "refresh_token": refresh_data["token"],
+                "username": user.username,
+            }
+        else:
+            # ESCENARIO B: Es nuevo. Necesita invitación.
+            suggested_username = "".join(e for e in name.lower() if e.isalnum())
+            return {
+                "status": "needs_invite",
+                "email": email,
+                "suggested_username": suggested_username,
+                "provider_id": provider_id,  # Discord ID para enlazar la cuenta
+            }
