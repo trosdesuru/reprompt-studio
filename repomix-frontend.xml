@@ -101,6 +101,7 @@ src/
       admin.types.ts
     auth/
       hooks/
+        useAuthForm.tsx
         useGoogleAuth.ts
         useLoginForm.tsx
         useRedirectIfAuthenticated.ts
@@ -144,7 +145,6 @@ src/
   services/
     api/
       auth.ts
-      client_.ts
       client.ts
       downloads.ts
       prompts.ts
@@ -162,6 +162,7 @@ src/
       icons/
         IconLampOn.tsx
       Login/
+        AuthSeparator.tsx
         FormDivider.tsx
         FormHeader.tsx
       Navbar/
@@ -178,9 +179,15 @@ src/
       ProgressBar.tsx
       Skeleton.tsx
     molecules/
+      Auth/
+        AuthHeader.tsx
+        CredentialsForm.tsx
+        SocialLogins.tsx
       Cards/
+        CreateCollectionModal.tsx
         FeedItemCard.tsx
-        PromptCard.tsx
+        PromptImageViewer.tsx
+        PromptMetadataPanel.tsx
       Feedback/
         FeedState.tsx
       Filters/
@@ -194,6 +201,8 @@ src/
         NotificationDropdown.tsx
         SearchCategorySelector.tsx
         UserDropdown.tsx
+      Tabs/
+        AuthTabs.tsx
       DownloadButton.tsx
       FilterBar.tsx
       FormField.tsx
@@ -207,14 +216,19 @@ src/
         InviteManager.tsx
         SecurityModule.tsx
       Auth/
+        AuthForm.tsx
         ChangePasswordModal.tsx
         LoginForm.tsx
         RegisterForm.tsx
       Extractor/
         Dropzone/
+          DropzoneContent_.tsx
           DropzoneContent.tsx
+          DropzoneError_.tsx
           DropzoneError.tsx
+          DropzoneLoading_.tsx
           DropzoneLoading.tsx
+          index_.tsx
           index.tsx
         Inspector/
           BatchInspector.tsx
@@ -228,8 +242,12 @@ src/
         Hero.tsx
       Media/
         UniversalMediaCard.tsx
+      Modal/
+        UpgradeModal.tsx
       Navbar/
         Navbar.tsx
+      Navigation/
+        Breadcrumbs.tsx
       Search/
         SearchResults/
           SearchResults.tsx
@@ -237,9 +255,8 @@ src/
           index.ts
           TrendingSection.tsx
       Studio/
-        CreateCollectionModal.tsx
-        PromptImageViewer.tsx
-        PromptMetadataPanel.tsx
+        BulkActionBar.tsx
+        PromptCard.tsx
       Viewer/
         ImageViewerModal/
           components/
@@ -337,37 +354,23 @@ export default function JoinPage(props: { params: Promise<{ lang: string }> }) {
 </file>
 
 <file path="app/[lang]/(auth)/login/page.tsx">
-"use client";
-
-import Link from "next/link";
-import { LoginForm } from "@/src/system/organisms/Auth/LoginForm";
-import { useRedirectIfAuthenticated } from "@/src/features/auth/hooks/useRedirectIfAuthenticated";
-import { PageLoader } from "@/src/system/atoms/PageLoader";
+import { Suspense } from "react";
+import { IconLoader2 } from "@tabler/icons-react";
+import { AuthForm } from "@/src/system/organisms/Auth/AuthForm";
 
 export default function LoginPage() {
-  const { isChecking, isAuthenticated } = useRedirectIfAuthenticated("/");
-
-  if (isChecking || isAuthenticated) {
-    return (
-      <main className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
-        <PageLoader text = "Sincronizando acceso" />
-      </main>
-    );
-  }
-
   return (
-    <main className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
-      <LoginForm />
-
-      <p className="mt-8 text-center text-sm font-mono text-(--text-secondary)">
-        ¿No tienes cuenta?{" "}
-        <Link
-          href="/join"
-          className="text-(--accent-color) font-black hover:underline underline-offset-4"
-        >
-          Registrarte aquí
-        </Link>
-      </p>
+    <main className="min-h-screen flex items-center justify-center p-4 bg-muted/10">
+      <Suspense
+        fallback={
+          <div className="flex flex-col items-center gap-4 text-muted-foreground">
+            <IconLoader2 className="animate-spin" size={32} />
+            <span className="font-mono text-sm tracking-widest uppercase">Cargando acceso...</span>
+          </div>
+        }
+      >
+        <AuthForm />
+      </Suspense>
     </main>
   );
 }
@@ -378,11 +381,12 @@ export default function LoginPage() {
 
 import { use } from "react";
 import Link from "next/link";
-import { IconArrowLeft, IconFolder, IconPhotoOff } from "@tabler/icons-react";
+import { IconFolder, IconPhotoOff } from "@tabler/icons-react";
 
-import { PromptCard } from "@/src/system/molecules/Cards/PromptCard";
+import { PromptCard } from "@/src/system/organisms/Studio/PromptCard";
 import { usePublicCollection } from "@/src/features/studio/hooks/usePublicCollection";
 import { FadeIn } from "@/src/system/atoms/FadeIn";
+import { Breadcrumbs } from "@/src/system/organisms/Navigation/Breadcrumbs";
 
 export default function PublicCollectionPage({
   params,
@@ -415,16 +419,18 @@ export default function PublicCollectionPage({
     );
   }
 
+  const breadcrumbItems = [
+    { label: `@${username}`, href: `/${lang}/${username}` },
+    { label: data.collection.name },
+  ];
+
   return (
     <FadeIn duration={0.8}>
       <main className="min-h-screen bg-background p-4 md:p-8">
         <div className="max-w-7xl mx-auto space-y-8">
-          <Link
-            href={`/${lang}/${username}`}
-            className="inline-flex items-center gap-2 text-sm font-mono text-muted-foreground hover:text-(--accent-color) transition-colors uppercase tracking-widest"
-          >
-            <IconArrowLeft size={16} /> Perfil de @{username}
-          </Link>
+          <div>
+            <Breadcrumbs items={breadcrumbItems} />
+          </div>
 
           <header className="flex flex-col gap-2 border-b border-border pb-8">
             <div className="flex items-center gap-3">
@@ -437,6 +443,7 @@ export default function PublicCollectionPage({
               <p className="text-muted-foreground font-mono mt-2">{data.collection.description}</p>
             )}
           </header>
+
           <section>
             {data.prompts.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-20 text-muted-foreground/50 bg-muted/5 rounded-xl border border-dashed border-border/50">
@@ -450,10 +457,12 @@ export default function PublicCollectionPage({
                 {data.prompts.map((prompt, index) => (
                   <FadeIn key={prompt.id} delay={0.3 + index * 0.05} y={15}>
                     <PromptCard
-                      key={prompt.id}
                       item={prompt}
                       index={index}
                       isPriority={index < 6}
+                      lang={lang}
+                      isStudio={false}
+                      authorUsername={username}
                     />
                   </FadeIn>
                 ))}
@@ -480,21 +489,35 @@ export default function PromptLoading() {
 
 import { use } from "react";
 import Link from "next/link";
-import { IconArrowLeft } from "@tabler/icons-react";
-
 import { usePublicPrompt } from "@/src/features/studio/hooks/usePublicPrompt";
-import { PromptImageViewer } from "@/src/system/organisms/Studio/PromptImageViewer";
-import { PromptMetadataPanel } from "@/src/system/organisms/Studio/PromptMetadataPanel";
+import { PromptImageViewer } from "@/src/system/molecules/Cards/PromptImageViewer";
+import { PromptMetadataPanel } from "@/src/system/molecules/Cards/PromptMetadataPanel";
+import { Breadcrumbs } from "@/src/system/organisms/Navigation/Breadcrumbs";
 import { PageLoader } from "@/src/system/atoms/PageLoader";
 
-export default function PromptDetailPage({
-  params,
-}: {
+interface PromptDetailPageProps {
   params: Promise<{ lang: string; username: string; prompt_id: string }>;
-}) {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}
+
+export default function PromptDetailPage({ params, searchParams }: PromptDetailPageProps) {
   const { lang, username, prompt_id } = use(params);
+  const resolvedSearchParams = use(searchParams);
+
+  const from = resolvedSearchParams?.from;
 
   const { data: prompt, isLoading, error } = usePublicPrompt(prompt_id);
+
+  const isFromStudio = from === "studio";
+  const backUrl = isFromStudio ? `/${lang}/studio` : `/${lang}/${username}`;
+  const backText = isFromStudio ? "Volver a Mi Studio" : `Volver a @${username}`;
+
+  const breadcrumbItems = isFromStudio
+    ? [{ label: "Mi Studio", href: `/${lang}/studio` }, { label: prompt?.title || "Detalle" }]
+    : [
+        { label: `@${username}`, href: `/${lang}/${username}` },
+        { label: prompt?.title || "Detalle" },
+      ];
 
   if (isLoading) {
     return <PageLoader text="Desencriptando datos..." />;
@@ -505,10 +528,10 @@ export default function PromptDetailPage({
       <div className="min-h-screen flex flex-col items-center justify-center font-mono gap-4">
         <p className="text-red-500">{error || "No se pudo cargar el prompt."}</p>
         <Link
-          href={`/${lang}/${username}`}
+          href={backUrl}
           className="text-(--accent-color) hover:underline uppercase text-xs tracking-widest"
         >
-          ← Volver al perfil
+          ← {backText}
         </Link>
       </div>
     );
@@ -517,12 +540,9 @@ export default function PromptDetailPage({
   return (
     <main className="min-h-screen bg-background p-4 md:p-8">
       <div className="max-w-6xl mx-auto space-y-8">
-        <Link
-          href={`/${lang}/${username}`}
-          className="inline-flex items-center gap-2 text-sm font-mono text-muted-foreground hover:text-(--accent-color) transition-colors uppercase tracking-widest"
-        >
-          <IconArrowLeft size={16} /> Volver a @{username}
-        </Link>
+        <div className="mb-4">
+          <Breadcrumbs items={breadcrumbItems} />
+        </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 lg:gap-12 items-start">
           <section className="sticky top-24">
@@ -567,8 +587,9 @@ import Link from "next/link";
 import { PageLoader } from "@/src/system/atoms/PageLoader";
 import { IconPhotoOff, IconFolder } from "@tabler/icons-react";
 
-import { PromptCard } from "@/src/system/molecules/Cards/PromptCard";
+import { PromptCard } from "@/src/system/organisms/Studio/PromptCard";
 import { usePublicProfile } from "@/src/features/studio/hooks/usePublicProfile";
+import { Breadcrumbs } from "@/src/system/organisms/Navigation/Breadcrumbs";
 
 export default function PublicProfilePage({
   params,
@@ -585,15 +606,29 @@ export default function PublicProfilePage({
 
   if (error || !data) {
     return (
-      <div className="min-h-screen flex items-center justify-center font-mono text-red-500">
-        {error || "Este usuario no existe o se ha perdido en el vacío."}
+      <div className="min-h-screen flex flex-col items-center justify-center font-mono gap-4">
+        <p className="text-red-500">
+          {error || "Este usuario no existe o se ha perdido en el vacío."}
+        </p>
+        <Link
+          href={`/${lang}`}
+          className="text-(--accent-color) hover:underline uppercase text-xs tracking-widest"
+        >
+          ← Volver al inicio
+        </Link>
       </div>
     );
   }
 
+  const breadcrumbItems = [{ label: `@${data.user.username}` }];
+
   return (
     <main className="min-h-screen bg-background p-4 md:p-8">
-      <div className="max-w-7xl mx-auto space-y-12">
+      <div className="max-w-7xl mx-auto space-y-8">
+        <div>
+          <Breadcrumbs items={breadcrumbItems} />
+        </div>
+
         <header className="flex flex-col gap-2 border-b border-border pb-8">
           <h1 className="text-4xl font-black tracking-tighter">@{data.user.username}</h1>
           <p className="text-muted-foreground font-mono text-sm uppercase tracking-widest">
@@ -626,7 +661,7 @@ export default function PublicProfilePage({
         )}
 
         <section className="space-y-4">
-          <h2 className="text-sm font-mono font-bold uppercase tracking-widest">
+          <h2 className="text-sm text-accent font-mono font-bold uppercase tracking-widest">
             Últimas Generaciones
           </h2>
           {data.recent_prompts.length === 0 ? (
@@ -637,7 +672,14 @@ export default function PublicProfilePage({
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-6">
               {data.recent_prompts.map((prompt, index) => (
-                <PromptCard key={prompt.id} item={prompt} index={index} isPriority={index < 6} />
+                <PromptCard
+                  key={prompt.id}
+                  item={prompt}
+                  index={index}
+                  isPriority={index < 6}
+                  lang={lang}
+                  authorUsername={username}
+                />
               ))}
             </div>
           )}
@@ -743,16 +785,21 @@ import { use } from "react";
 import { usePromptExtractor } from "@/src/features/extractor/hooks/usePromptExtractor";
 import { ExtractorDropzone } from "@/src/system/organisms/Extractor/Dropzone";
 import { BatchInspector } from "@/src/system/organisms/Extractor/Inspector/BatchInspector";
+import { Breadcrumbs } from "@/src/system/organisms/Navigation/Breadcrumbs";
+import { UpgradeModal } from "@/src/system/organisms/Modal/UpgradeModal";
+import { IconScanTraces } from "@tabler/icons-react";
 
 export default function RepromptPage({ params }: { params: Promise<{ lang: string }> }) {
   const { lang } = use(params);
-  
+
   const {
     processFiles,
     isExtracting,
     error,
     batch,
     skippedFiles,
+    upgradeModal,
+    closeUpgradeModal,
     updateItemStatus,
     updateItemData,
     removeItem,
@@ -760,17 +807,30 @@ export default function RepromptPage({ params }: { params: Promise<{ lang: strin
     clearSkipped,
   } = usePromptExtractor();
 
+  const breadcrumbItems = [
+    { label: "Mi Studio", href: `/${lang}/studio` },
+    { label: "Extractor Reprompt" },
+  ];
+
   return (
     <main className="min-h-screen bg-background p-4 md:p-8">
-      <div className="max-w-7xl mx-auto space-y-12">
-        <section className="text-center space-y-6 pt-10 pb-6">
-          <h1 className="text-5xl md:text-7xl font-black uppercase font-mono tracking-tighter text-foreground">
-            Estudio <span className="text-(--accent-color)">REPROMPT</span>
-          </h1>
-          <p className="text-xl md:text-2xl text-(--text-secondary) font-mono max-w-3xl mx-auto leading-relaxed">
-            Arrastra múltiples imágenes o archivos ZIP para extraer metadatos en lote.
-          </p>
-        </section>
+      <UpgradeModal isOpen={upgradeModal} onClose={closeUpgradeModal} />
+      <div className="max-w-7xl mx-auto space-y-8">
+        <div>
+          <Breadcrumbs items={breadcrumbItems} />
+        </div>
+
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-border pb-8 mt-4">
+          <div>
+            <h1 className="text-3xl font-black tracking-tighter flex items-center gap-3">
+              <IconScanTraces className="text-(--accent-color)" size={32} />
+              Extractor <span className="font-mono font-regular">reprompt</span>
+            </h1>
+            <p className="text-muted-foreground mt-1">
+              Arrastra múltiples imágenes o archivos ZIP para extraer metadatos en lote.
+            </p>
+          </div>
+        </div>
 
         <section className="w-full max-w-7xl mx-auto">
           {batch.length === 0 ? (
@@ -802,93 +862,101 @@ export default function RepromptPage({ params }: { params: Promise<{ lang: strin
 
 import { use, useState } from "react";
 import { useStudio } from "@/src/features/studio/hooks/useStudio";
-import { PromptCard } from "@/src/system/molecules/Cards/PromptCard";
-import { CreateCollectionModal } from "@/src/system/organisms/Studio/CreateCollectionModal";
-import { IconWand, IconDatabase, IconPlus, IconLock } from "@tabler/icons-react";
+import { PromptCard } from "@/src/system/organisms/Studio/PromptCard";
+import { CreateCollectionModal } from "@/src/system/molecules/Cards/CreateCollectionModal";
+import { IconPlus, IconAlbum, IconScanTraces } from "@tabler/icons-react";
 import { useAuthStore } from "@/src/store/authStore";
 import Link from "next/link";
 import { PageLoader } from "@/src/system/atoms/PageLoader";
+import { Breadcrumbs } from "@/src/system/organisms/Navigation/Breadcrumbs";
+import { BulkActionBar } from "@/src/system/organisms/Studio/BulkActionBar";
 
 export default function StudioPage({ params }: { params: Promise<{ lang: string }> }) {
   const { lang } = use(params);
   const user = useAuthStore((state: any) => state.user);
-  const { prompts, collections, isLoading, error, deletePrompt, assignToCollection, refetch } =
-    useStudio();
+  const {
+    prompts,
+    collections,
+    isLoading,
+    error,
+    deletePrompt,
+    assignToCollection,
+    refetch,
+    deletePromptsBatch,
+    isDeletingBatch,
+  } = useStudio();
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  if (isLoading) return <PageLoader text="Cargando Metadata ..." />;
+  const [selectedIds, setSelectedIds] = useState<number[]>([]);
 
-  if (error) {
-    throw new Error(error);
-  }
+  const breadcrumbItems = [{ label: "Mi Studio" }];
+
+  if (isLoading) return <PageLoader text="Cargando Metadata ..." />;
+  if (error) throw new Error(error);
+
+  const handleToggleSelect = (id: number) => {
+    setSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((pId) => pId !== id) : [...prev, id],
+    );
+  };
+
+  const handleBatchDelete = async () => {
+    if (
+      window.confirm(
+        `¿Seguro que deseas eliminar estas ${selectedIds.length} imágenes para siempre?`,
+      )
+    ) {
+      const success = await deletePromptsBatch(selectedIds);
+      if (success) {
+        setSelectedIds([]); // Vaciamos la selección para que desaparezca la barra
+      }
+    }
+  };
+
+  const handleClearSelection = () => setSelectedIds([]);
 
   return (
-    <main className="min-h-screen bg-background p-4 md:p-8">
-      <div className="max-w-7xl mx-auto space-y-12">
-        {/* Cabecera y Controles */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-border pb-8">
+    <main className="min-h-screen bg-background p-4 md:p-8 relative pb-24">
+      <BulkActionBar
+        selectedCount={selectedIds.length}
+        onClearSelection={handleClearSelection}
+        onDeleteSelected={handleBatchDelete}
+        onDownloadSelected={() => console.log("Descargando IDs:", selectedIds)}
+        isDeleting={isDeletingBatch}
+      />
+
+      <div className="max-w-7xl mx-auto space-y-8">
+        <div>
+          <Breadcrumbs items={breadcrumbItems} />
+        </div>
+
+        {/* Cabecera ... (se mantiene igual) ... */}
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-border pb-8 mt-4">
           <div>
             <h1 className="text-3xl font-black tracking-tighter flex items-center gap-3">
-              <IconDatabase className="text-(--accent-color)" size={32} /> Mi Studio
+              <IconAlbum className="text-(--accent-color)" size={32} /> Mi Studio
             </h1>
-            <p className="text-muted-foreground mt-1">Gestiona tus prompts y galerías.</p>
+            <p className="text-muted-foreground mt-1">
+              Gestiona tus <span className="font-mono font-medium text-accent">reprompt</span>.
+            </p>
           </div>
+
           <div className="flex gap-3">
             <Link
               href={`/${lang}/reprompt`}
-              className="bg-background border border-border hover:bg-muted/30 text-foreground px-4 py-2 rounded-md font-mono text-sm font-bold uppercase tracking-widest transition-colors flex items-center gap-2"
+              className="bg-background border border-accent hover:bg-accent/20 text-accent px-4 py-2 rounded-md font-mono text-sm font-bold uppercase tracking-widest transition-colors flex items-center gap-2"
             >
-              <IconWand size={18} /> Extraer Más
+              <IconScanTraces className="text-accent" size={18} /> reprompt
             </Link>
             <button
               onClick={() => setIsModalOpen(true)}
-              className="bg-(--accent-color) text-white px-4 py-2 rounded-md font-mono text-sm font-bold uppercase tracking-widest hover:bg-opacity-90 transition-colors flex items-center gap-2"
+              className="bg-(--accent-color) text-foreground px-4 py-2 rounded-md font-mono text-sm font-bold uppercase tracking-widest hover:bg-opacity-90 hover:text-popover transition-colors flex items-center gap-2 cursor-pointer"
             >
-              <IconPlus size={18} /> Nueva Colección
+              <IconPlus size={18} /> Crear Colección
             </button>
           </div>
         </div>
 
-        {/* 📁 Sección de Colecciones */}
-        {collections.length > 0 && (
-          <section className="space-y-4">
-            <h2 className="text-sm font-mono font-bold uppercase tracking-widest text-muted-foreground">
-              Tus Colecciones
-            </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-              {collections.map((col) => (
-                <div
-                  key={col.id}
-                  className="p-4 bg-background border border-border rounded-xl hover:shadow-md transition-shadow relative"
-                >
-                  {col.is_private && (
-                    <IconLock
-                      size={14}
-                      className="absolute top-4 right-4 text-muted-foreground/50"
-                    />
-                  )}
-                  <h3 className="font-bold text-lg">{col.name}</h3>
-                  <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
-                    {col.description || "Sin descripción"}
-                  </p>
-                  <div className="mt-4 pt-4 border-t border-border/50 flex justify-between items-center text-xs font-mono">
-                    <span className="text-muted-foreground">
-                      {prompts.filter((p) => p.collection_id === col.id).length} items
-                    </span>
-                    <Link
-                      href={`/${lang}/${user?.username}/${col.slug}`}
-                      className="text-(--accent-color) hover:underline"
-                    >
-                      Ver Pública &rarr;
-                    </Link>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
-
-        {/* 🖼️ Grid Principal de Prompts */}
         <section className="space-y-4">
           <h2 className="text-sm font-mono font-bold uppercase tracking-widest text-muted-foreground">
             Todos tus Prompts
@@ -908,6 +976,12 @@ export default function StudioPage({ params }: { params: Promise<{ lang: string 
                   isPriority={index < 6}
                   onDelete={deletePrompt}
                   onAssign={assignToCollection}
+                  lang={lang}
+                  isStudio={true}
+                  authorUsername={user?.username}
+                  isSelected={selectedIds.includes(prompt.id)}
+                  onToggleSelect={() => handleToggleSelect(prompt.id)}
+                  selectionModeActive={selectedIds.length > 0}
                 />
               ))}
             </div>
@@ -1122,7 +1196,7 @@ const prompt = Prompt({
   variable: "--font-prompt",
 });
 
-const jetbrainsMono = JetBrains_Mono({ subsets: ["latin"], variable: "--font-mono" });
+const jetbrainsMono = JetBrains_Mono({ weight: ["400", "500", "600", "700"], subsets: ["latin"], variable: "--font-mono" });
 
 export const metadata: Metadata = {
   title: "reprompt",
@@ -1177,189 +1251,161 @@ export default async function RootLayout({
 
 @custom-variant dark (&:is(.dark *));
 
+/* ============================
+   1. VARIABLES DE TEMA
+   ============================ */
 :root {
-  --bg-primary: #ffffff;
-  --bg-secondary: #ffffff;
-  --text-primary: #1d1f21;
-  --text-secondary: #4b5563;
-  --border-color: #1d1f21;
-  --accent-color: #084c51;
-  --shadow-color: #dc3b6e;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --brand-bg: #fefdf3;
+  --brand-text: #1d1f21;
+  --brand-muted: #f4f4f5;
+  
+  --brand-muted-text: #4c4c4c;
+  
+  --brand-border: #1d1f21;
+  
+  --brand-accent: #084c51;
+  
+  --brand-shadow: #dc3b6e;
+
+  --background: var(--brand-bg);
+  --foreground: var(--brand-text);
+
+  --card: var(--brand-bg);
+  --card-foreground: var(--brand-text);
+
+  --popover: var(--brand-bg);
+  --popover-foreground: var(--brand-text);
+
+  --primary: var(--brand-accent);
+  --primary-foreground: #ffffff;
+
+  --secondary: var(--brand-muted);
+  --secondary-foreground: var(--brand-text);
+
+  --muted: var(--brand-muted);
+  --muted-foreground: var(--brand-muted-text);
+
+  --accent: var(--brand-accent);
+  --accent-foreground: #ffffff;
+
+  --destructive: #ef4444;
+
+  --border: var(--brand-border);
+  --input: var(--brand-border);
+  --ring: var(--brand-accent);
+
+  --radius: 0.5rem;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg-primary: #0a0a0a;
-    --bg-secondary: #171717;
-    --text-primary: #f4f5f5;
-    --text-secondary: #a1a1aa;
-    --border-color: #3f3f46;
-    --accent-color: #0d9ca6;
-    --shadow-color: #000000;
+/* ================
+   2. MODO OSCURO
+   ================ */
+.dark {
+  --brand-bg: #111111;
+  --brand-text: #e7e7e7;
+  --brand-muted: #171717;
+  
+  --brand-muted-text: #898989;
+  
+  --brand-border: #3f3f46;
+  
+  --brand-accent: #1bccd8;
+  
+  --brand-shadow: #272727;
+
+  --primary-foreground: #000000;
+  --accent-foreground: #000000;
+}
+
+/* =========================================
+   3. ESTILOS BASE Y ACCESIBILIDAD (WCAG)
+   ========================================= */
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans), Arial, Helvetica, sans-serif;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
   }
 }
 
-.dark {
-  --bg-primary: #0a0a0a;
-  --bg-secondary: #171717;
-  --text-primary: #f4f5f5;
-  --text-secondary: #a1a1aa;
-  --border-color: #3f3f46;
-  --accent-color: #1bccd8;
-  --shadow-color: #000000;
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
-}
-
-body {
-  background: var(--bg-primary);
-  color: var(--text-primary);
-  font-family: var(--font-sans), Arial, Helvetica, sans-serif;
-  scroll-behavior: smooth;
-}
-
+/* =========================================
+   4. CLASES DE UTILIDAD PERSONALIZADAS
+   ========================================= */
 .neo-border {
-  border: 2px solid var(--border-color);
-  border-radius: 0.5rem;
+  border: 2px solid var(--border);
+  border-radius: var(--radius);
 }
 
 .neo-shadow {
-  box-shadow: 4px 4px 0px 0px var(--shadow-color);
+  box-shadow: 4px 4px 0px 0px var(--brand-shadow);
   transition: all 0.2s ease-in-out;
 }
 
-.neo-shadow:hover {
-  transform: translate(2px, 2px);
-  box-shadow: 2px 2px 0px 0px var(--shadow-color);
+@media (prefers-reduced-motion: no-preference) {
+  .neo-shadow:hover {
+    transform: translate(2px, 2px);
+    box-shadow: 2px 2px 0px 0px var(--brand-shadow);
+  }
 }
 
 .neo-shadow-accent {
-  box-shadow: 4px 4px 0px 0px var(--accent-color);
+  box-shadow: 4px 4px 0px 0px var(--brand-accent);
 }
 
+/* ============================
+   5. BARRAS DE DESPLAZAMIENTO
+   ============================ */
 ::-webkit-scrollbar {
   width: 8px;
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--bg-primary);
+  background: var(--background);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--border-color);
+  background: var(--border);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--text-secondary);
+  background: var(--muted-foreground);
 }
 
+/* ============================
+   6. CONFIGURACIÓN DE TAILWIND
+   ============================ */
 @theme inline {
-  --font-heading: var(--font-mono);
-  --font-mono: var(--font-mono);
-  --color-sidebar-ring: var(--sidebar-ring);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar: var(--sidebar);
-  --color-chart-5: var(--chart-5);
-  --color-chart-4: var(--chart-4);
-  --color-chart-3: var(--chart-3);
-  --color-chart-2: var(--chart-2);
-  --color-chart-1: var(--chart-1);
-  --color-ring: var(--ring);
-  --color-input: var(--input);
+
+  --font-prompt: var(--font-prompt);
+
   --color-border: var(--border);
-  --color-destructive: var(--destructive);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-accent: var(--accent);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-muted: var(--muted);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-secondary: var(--secondary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-primary: var(--primary);
-  --color-popover-foreground: var(--popover-foreground);
-  --color-popover: var(--popover);
-  --color-card-foreground: var(--card-foreground);
-  --color-card: var(--card);
-  --color-foreground: var(--foreground);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
   --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-destructive: var(--destructive);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) * 1.4);
-  --radius-2xl: calc(var(--radius) * 1.8);
-  --radius-3xl: calc(var(--radius) * 2.2);
-  --radius-4xl: calc(var(--radius) * 2.6);
-}
 
-/* FLASHLIGHT SHIMMER */
-@theme {
   --animate-ai-shimmer: ai-shimmer 2.5s ease-in-out infinite;
 }
 
@@ -1367,33 +1413,15 @@ body {
   0% {
     background-position: -200% center;
   }
+
   100% {
     background-position: 200% center;
-  }
-}
-
-/* PROGRESS BAR EFFECT */
-@keyframes progress-stripes {
-  from {
-    background-position: 1rem 0;
-  }
-
-  to {
-    background-position: 0 0;
   }
 }
 
 @layer base {
   * {
     @apply border-border outline-ring/50;
-  }
-
-  body {
-    @apply bg-background text-foreground;
-  }
-
-  html {
-    @apply font-mono;
   }
 }
 </file>
@@ -2469,6 +2497,103 @@ export interface AuditLog {
 }
 </file>
 
+<file path="src/features/auth/hooks/useAuthForm.tsx">
+import { useState, useEffect } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
+import { api } from "@/src/services/api";
+import toast from "react-hot-toast";
+
+export function useAuthForm() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  const [isLogin, setIsLogin] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const [isDiscordLoading, setIsDiscordLoading] = useState(false);
+
+  const [emailOrUser, setEmailOrUser] = useState("");
+  const [password, setPassword] = useState("");
+  const [inviteCode, setInviteCode] = useState("");
+  const [isInviteLocked, setIsInviteLocked] = useState(false);
+
+  // Detección de código en la URL
+  useEffect(() => {
+    const codeFromUrl = searchParams.get("code");
+    if (codeFromUrl) {
+      setIsLogin(false);
+      setInviteCode(codeFromUrl);
+      setIsInviteLocked(true);
+    }
+  }, [searchParams]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+
+    try {
+      if (isLogin) {
+        await api.login({ username: emailOrUser, password });
+        toast.success("¡Bienvenido de nuevo!");
+        router.push("/es/studio");
+      } else {
+        await api.register({
+          email: emailOrUser,
+          password,
+          invite_code: inviteCode,
+        });
+        toast.success("Cuenta creada con éxito");
+        await api.login({ username: emailOrUser, password });
+        router.push("/es");
+      }
+    } catch (error: any) {
+      toast.error(error?.response?.data?.detail || "Error en la autenticación");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleGoogleLogin = async () => {
+    setIsGoogleLoading(true);
+    try {
+      const response = await api.getGoogleAuthUrl();
+      if (response?.auth_url) window.location.href = response.auth_url;
+    } catch (error) {
+      toast.error("Error al conectar con Google");
+      setIsGoogleLoading(false);
+    }
+  };
+
+  const handleDiscordLogin = () => {
+    setIsDiscordLoading(true);
+    toast("Iniciando conexión con Discord...", { icon: "👾" });
+    setTimeout(() => setIsDiscordLoading(false), 2000);
+  };
+
+  return {
+    state: {
+      isLogin,
+      isLoading,
+      isGoogleLoading,
+      isDiscordLoading,
+      emailOrUser,
+      password,
+      inviteCode,
+      isInviteLocked,
+    },
+    actions: {
+      setIsLogin,
+      setEmailOrUser,
+      setPassword,
+      setInviteCode,
+      handleSubmit,
+      handleGoogleLogin,
+      handleDiscordLogin,
+    },
+  };
+}
+</file>
+
 <file path="src/features/auth/hooks/useGoogleAuth.ts">
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -2596,6 +2721,7 @@ export function useLoginForm() {
 
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
+    email: "",
     username: "",
     password: "",
   });
@@ -2674,7 +2800,7 @@ export const useRegister = (lang: string) => {
     setError(null);
 
     try {
-      await api.registrar(formData);
+      await api.register(formData);
 
       router.push(`/${lang}/login?registered=true`);
     } catch (err: any) {
@@ -2867,6 +2993,7 @@ import { parsePromptData, ExtractedPromptData } from "../utils/promptParser";
 import { getRawTextFromFile } from "../utils/fileExtractors";
 import { extractFilesFromZip } from "../utils/fileExtractors/zipExtractor";
 import { handleError } from "@/src/utils/errors/ErrorHandler";
+import { useAuthStore } from "@/src/store/authStore";
 
 export interface BatchItem {
   id: string;
@@ -2886,8 +3013,16 @@ export function usePromptExtractor() {
   const [error, setError] = useState<string | null>(null);
   const [batch, setBatch] = useState<BatchItem[]>([]);
   const [skippedFiles, setSkippedFiles] = useState<SkippedFile[]>([]);
+  const [upgradeModal, setUpgradeModal] = useState(false);
+
+  const { user } = useAuthStore();
+
+  const closeUpgradeModal = useCallback(() => {
+    setUpgradeModal(false);
+  }, []);
 
   const processFiles = useCallback(async (files: File[], fileRejections: any[] = []) => {
+    setUpgradeModal(false);
     setIsExtracting(true);
     setError(null);
 
@@ -2897,6 +3032,8 @@ export function usePromptExtractor() {
       reason: "Formato no aceptado o archivo inválido.",
     }));
 
+    const maxFilesAllowed = user?.role === "artist" ? 200 : 10;
+
     try {
       // 1. Expandir ZIPs o aceptar múltiples archivos sueltos
       for (const file of files) {
@@ -2905,11 +3042,20 @@ export function usePromptExtractor() {
           file.name.endsWith(".zip") ||
           file.name.endsWith(".x-zip-compressed")
         ) {
-          const unzipped = await extractFilesFromZip(file);
+          const unzipped = await extractFilesFromZip(file, maxFilesAllowed);
           allFilesToProcess = [...allFilesToProcess, ...unzipped.validFiles];
           currentSkipped.push(...unzipped.rejectedFiles);
+
+          if (unzipped.limitReached && user?.role === "voyager") {
+            setUpgradeModal(true);
+          }
         } else {
-          allFilesToProcess.push(file);
+          if (allFilesToProcess.length < maxFilesAllowed) {
+            allFilesToProcess.push(file);
+          } else {
+            currentSkipped.push({ name: file.name, reason: "Límite de subida alcanzado" });
+            if (user?.role === "voyager") setUpgradeModal(true);
+          }
         }
       }
 
@@ -2924,7 +3070,7 @@ export function usePromptExtractor() {
         try {
           const rawText = await getRawTextFromFile(file);
           let parsedData: ExtractedPromptData;
-          
+
           if (!rawText) {
             // 🛡️ PRAGMATISMO: Si es imagen pero no tiene IA, la dejamos pasar para MODO MANUAL
             if (file.type.startsWith("image/")) {
@@ -2940,7 +3086,7 @@ export function usePromptExtractor() {
                 seed: "",
                 resolution: "",
                 loras: [],
-                triggerWords: []
+                triggerWords: [],
               };
             } else {
               currentSkipped.push({ name: file.name, reason: "Sin metadatos de IA detectados." });
@@ -2951,7 +3097,7 @@ export function usePromptExtractor() {
           }
 
           const previewUrl = file.type.startsWith("image/") ? URL.createObjectURL(file) : null;
-          
+
           newBatchItems.push({
             id: crypto.randomUUID(),
             file,
@@ -2969,7 +3115,9 @@ export function usePromptExtractor() {
       if (newBatchItems.length > 0) {
         setBatch((prev) => [...prev, ...newBatchItems]);
       } else if (currentSkipped.length > 0) {
-        setError(`Se descartaron ${currentSkipped.length} archivos por no ser válidos o no tener metadatos.`);
+        setError(
+          `Se descartaron ${currentSkipped.length} archivos por no ser válidos o no tener metadatos.`,
+        );
       }
     } catch (err: unknown) {
       setError(handleError(err, "ExtractorBatch"));
@@ -2985,7 +3133,7 @@ export function usePromptExtractor() {
   // 🟢 NUEVO: Función para actualizar los datos que el usuario teclee
   const updateItemData = useCallback((id: string, newData: Partial<ExtractedPromptData>) => {
     setBatch((prev) =>
-      prev.map((item) => (item.id === id ? { ...item, data: { ...item.data, ...newData } } : item))
+      prev.map((item) => (item.id === id ? { ...item, data: { ...item.data, ...newData } } : item)),
     );
   }, []);
 
@@ -3018,11 +3166,13 @@ export function usePromptExtractor() {
     batch,
     skippedFiles,
     processFiles,
+    upgradeModal,
     updateItemStatus,
     updateItemData,
     removeItem,
     clearBatch,
     clearSkipped,
+    closeUpgradeModal,
   };
 }
 </file>
@@ -3126,19 +3276,24 @@ import JSZip from "jszip";
 export interface ZipExtractionResult {
   validFiles: File[];
   rejectedFiles: { name: string; reason: string }[];
+  limitReached: boolean;
 }
 
-export async function extractFilesFromZip(zipFile: File): Promise<ZipExtractionResult> {
+export async function extractFilesFromZip(
+  zipFile: File,
+  maxFilesAllowed: number, // 🟢 Usaremos este parámetro dinámico (10 o 200)
+): Promise<ZipExtractionResult> {
   const zip = new JSZip();
   const loadedZip = await zip.loadAsync(zipFile);
 
   const validFiles: File[] = [];
   const rejectedFiles: { name: string; reason: string }[] = [];
+  let limitReached = false;
 
   const supportedRegex = /\.(png|jpe?g|txt|json)$/i;
+  let fileCount = 0;
 
   for (const [filename, zipEntry] of Object.entries(loadedZip.files)) {
-    // Ignoramos carpetas y archivos del sistema silenciosamente (al usuario no le importan)
     if (
       zipEntry.dir ||
       filename.includes("__MACOSX") ||
@@ -3147,7 +3302,16 @@ export async function extractFilesFromZip(zipFile: File): Promise<ZipExtractionR
       continue;
     }
 
-    // Archivos reales pero no soportados: Se reportan
+    // 🟢 CORRECCIÓN 1 Y 2: Usamos maxFilesAllowed y activamos la bandera
+    if (fileCount >= maxFilesAllowed) {
+      rejectedFiles.push({
+        name: filename,
+        reason: `Requiere plan superior. Límite: ${maxFilesAllowed} archivos.`,
+      });
+      limitReached = true; // 🟢 ¡Esto dispara el Pop-up de ventas!
+      continue;
+    }
+
     if (!supportedRegex.test(filename)) {
       rejectedFiles.push({
         name: filename.split("/").pop() || filename,
@@ -3158,15 +3322,23 @@ export async function extractFilesFromZip(zipFile: File): Promise<ZipExtractionR
 
     try {
       const blob = await zipEntry.async("blob");
+
+      if (blob.size > 50 * 1024 * 1024) {
+        rejectedFiles.push({ name: filename, reason: "Archivo demasiado grande (>50MB)." });
+        continue;
+      }
+
       const mimeType = getMimeType(filename);
       const file = new File([blob], filename.split("/").pop() || filename, { type: mimeType });
       validFiles.push(file);
+      fileCount++;
     } catch (e) {
       rejectedFiles.push({ name: filename, reason: "Archivo corrupto dentro del ZIP" });
     }
   }
 
-  return { validFiles, rejectedFiles };
+  // 🟢 CORRECCIÓN 3: Devolvemos las 3 cosas que pide la interfaz
+  return { validFiles, rejectedFiles, limitReached };
 }
 
 function getMimeType(filename: string): string {
@@ -3266,27 +3438,31 @@ export function parseComfy(jsonObj: any, rawText: string): ExtractedPromptData {
   }
 
   // 2. Fallback: Rastreo de nodos manual
-  Object.values(jsonObj).forEach((node: any) => {
-    if (node.class_type?.includes("KSampler")) {
-      result.steps = node.inputs?.steps?.toString() || result.steps;
-      result.seed = node.inputs?.seed?.toString() || result.seed;
-      result.cfgScale = node.inputs?.cfg?.toString() || result.cfgScale;
-      result.sampler = node.inputs?.sampler_name || result.sampler;
-    }
-    if (node.class_type?.includes("CLIPTextEncode")) {
-      const text = node.inputs?.text;
-      const isNeg = node._meta?.title?.toLowerCase().includes("negative");
-      if (isNeg) result.negativePrompt = text;
-      else if (!result.prompt) result.prompt = text;
-    }
-    if (node.class_type === "LoraLoader") {
-      if (!result.loras) result.loras = [];
-      result.loras.push({
-        name: extractFileName(node.inputs?.lora_name),
-        strength: node.inputs?.strength_model,
-      });
-    }
-  });
+  if (jsonObj && typeof jsonObj === "object" && !Array.isArray(jsonObj)) {
+    Object.values(jsonObj).forEach((node: any) => {
+      if (typeof node !== "object" || !node) return;
+
+      if (node.class_type?.includes("KSampler")) {
+        result.steps = node.inputs?.steps?.toString() || result.steps;
+        result.seed = node.inputs?.seed?.toString() || result.seed;
+        result.cfgScale = node.inputs?.cfg?.toString() || result.cfgScale;
+        result.sampler = node.inputs?.sampler_name || result.sampler;
+      }
+      if (node.class_type?.includes("CLIPTextEncode")) {
+        const text = node.inputs?.text;
+        const isNeg = node._meta?.title?.toLowerCase().includes("negative");
+        if (isNeg) result.negativePrompt = text;
+        else if (!result.prompt) result.prompt = text;
+      }
+      if (node.class_type === "LoraLoader") {
+        if (!result.loras) result.loras = [];
+        result.loras.push({
+          name: extractFileName(node.inputs?.lora_name),
+          strength: node.inputs?.strength_model,
+        });
+      }
+    });
+  }
 
   return result;
 }
@@ -3713,7 +3889,7 @@ export function usePublicProfile(username: string) {
 <file path="src/features/studio/hooks/usePublicPrompt.ts">
 import { useState, useEffect } from "react";
 import { api } from "@/src/services/api";
-import { SavedPrompt } from "@/src/features/studio/hooks/useStudio";
+import { SavedPrompt } from "@/src/types/models";
 
 export function usePublicPrompt(promptId: string) {
   const [data, setData] = useState<SavedPrompt | null>(null);
@@ -3746,13 +3922,15 @@ import { useState, useEffect, useCallback } from "react";
 import { api } from "@/src/services/api";
 import { SavedPrompt, Collection } from "@/src/types/models";
 import { handleError } from "@/src/utils/errors/ErrorHandler";
-import { toast } from "react-hot-toast/headless";
+import { toast } from "react-hot-toast"; // o react-hot-toast/headless según tu setup
 
 export function useStudio() {
   const [prompts, setPrompts] = useState<SavedPrompt[]>([]);
   const [collections, setCollections] = useState<Collection[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const [isDeletingBatch, setIsDeletingBatch] = useState(false);
 
   const fetchPrompts = useCallback(async () => {
     setIsLoading(true);
@@ -3764,11 +3942,9 @@ export function useStudio() {
       ]);
       setPrompts(promptsRes);
       setCollections(collectionsRes.collections || []);
-
     } catch (err: unknown) {
       const msg = handleError(err, "useStudio");
       setError(msg);
-      
     } finally {
       setIsLoading(false);
     }
@@ -3790,9 +3966,27 @@ export function useStudio() {
     try {
       await api.deletePrompt(id);
       setPrompts((prev) => prev.filter((p) => p.id !== id));
+      toast.success("Prompt eliminado");
     } catch (err: unknown) {
       handleError(err, "BorrarPrompt");
-      alert("No se pudo eliminar el prompt.");
+      toast.error("No se pudo eliminar el prompt.");
+    }
+  };
+
+  const deletePromptsBatch = async (ids: number[]) => {
+    setIsDeletingBatch(true);
+    try {
+      await api.deletePromptsBatch(ids);
+
+      setPrompts((prev) => prev.filter((p) => !ids.includes(p.id)));
+      toast.success(`${ids.length} imágenes eliminadas`);
+      return true;
+    } catch (err) {
+      handleError(err, "BorrarLote");
+      toast.error("Error al borrar las imágenes");
+      return false;
+    } finally {
+      setIsDeletingBatch(false);
     }
   };
 
@@ -3808,6 +4002,8 @@ export function useStudio() {
     refetch: fetchPrompts,
     assignToCollection,
     deletePrompt,
+    isDeletingBatch,
+    deletePromptsBatch,
   };
 }
 </file>
@@ -3821,11 +4017,11 @@ export const API_URL = ENV.API_URL;
 console.log("🕵️‍♂️ [DEBUG] Valor real de API_URL inyectado por Next:", API_URL);
 
 export const authApi = {
-  registrar: (userData: UserRegister) =>
+  register: (data: UserRegister) =>
     fetchSeguro(`${API_URL}/auth/register`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(userData),
+      body: JSON.stringify(data),
     }),
   login: (credentials: UserLogin) =>
     fetchSeguro(`${API_URL}/auth/login`, {
@@ -3854,71 +4050,6 @@ export const authApi = {
 };
 </file>
 
-<file path="src/services/api/client_.ts">
-import { ENV } from "@/src/services/config/env";
-
-let isRefreshing = false;
-let refreshPromise: Promise<boolean> | null = null;
-
-export const API_URL = ENV.API_URL;
-export async function fetchSeguro(endpoint: string, options: RequestInit = {}) {
-  let response = await fetch(endpoint, {
-    ...options,
-    credentials: "include",
-  });
-
-  if (
-    response.status === 401 &&
-    !endpoint.includes("/auth/login") &&
-    !endpoint.includes("/auth/refresh")
-  ) {
-    console.warn(
-      `🔄 [SECURITY] Access Token expirado en ${endpoint}. Intentando rotación transparente...`,
-    );
-
-    if (!isRefreshing) {
-      isRefreshing = true;
-      refreshPromise = (async () => {
-        try {
-          const refreshRes = await fetch(`${API_URL}/auth/refresh`, {
-            method: "POST",
-            credentials: "include",
-          });
-          return refreshRes.ok;
-        } catch (error) {
-          return false;
-        } finally {
-          isRefreshing = false;
-        }
-      })();
-    }
-
-    const refreshSuccessful = await refreshPromise;
-
-    if (refreshSuccessful) {
-      console.log(`✅ [SECURITY] Rotación exitosa. Reintentando petición original a ${endpoint}`);
-      response = await fetch(endpoint, {
-        ...options,
-        credentials: "include",
-      });
-    } else {
-      console.error("🚷 [SECURITY] Refresh Token inválido. Sesión terminada.");
-      if (typeof window !== "undefined") {
-        window.dispatchEvent(new Event("auth:unauthorized"));
-      }
-      throw new Error("Sesión expirada completamente");
-    }
-  }
-
-  if (!response.ok) {
-    console.error(`❌ [API_ERROR] Fallo en ${endpoint}: ${response.status} ${response.statusText}`);
-    throw new Error(`Error ${response.status}: ${response.statusText}`);
-  }
-
-  return response.json();
-}
-</file>
-
 <file path="src/services/api/client.ts">
 import { ENV } from "@/src/services/config/env";
 
@@ -3929,15 +4060,25 @@ export const API_URL = ENV.API_URL;
 
 export async function fetchSeguro(endpoint: string, options: RequestInit = {}) {
   const headers = new Headers(options.headers || {});
+
   if (!headers.has("Content-Type") && !(options.body instanceof FormData)) {
     headers.set("Content-Type", "application/json");
   }
 
-  let response = await fetch(endpoint, {
-    ...options,
-    headers,
-    credentials: "include",
-  });
+  let response: Response;
+
+  try {
+    response = await fetch(endpoint, {
+      ...options,
+      headers,
+      credentials: "include",
+    });
+  } catch (error) {
+    console.error(`🔌 [NETWORK_ERROR] Imposible conectar con ${endpoint}:`, error);
+    throw new Error(
+      "No hay conexión con el servidor. Revisa tu internet o el estado del servidor.",
+    );
+  }
 
   if (
     response.status === 401 &&
@@ -3947,7 +4088,7 @@ export async function fetchSeguro(endpoint: string, options: RequestInit = {}) {
   ) {
     console.warn(`[API_CLIENT] 🔴 401 Unauthorized detectado en ${endpoint}`);
     console.warn(`[API_CLIENT] 🚑 Iniciando protocolo de rescate (Refresh Token)...`);
-    
+
     if (!isRefreshing) {
       isRefreshing = true;
       refreshPromise = (async () => {
@@ -3956,9 +4097,12 @@ export async function fetchSeguro(endpoint: string, options: RequestInit = {}) {
             method: "POST",
             credentials: "include",
           });
+          
           return refreshRes.ok;
+
         } catch (error) {
           return false;
+
         } finally {
           isRefreshing = false;
         }
@@ -3969,11 +4113,24 @@ export async function fetchSeguro(endpoint: string, options: RequestInit = {}) {
 
     if (refreshSuccessful) {
       console.log(`✅ [SECURITY] Rotación exitosa. Reintentando petición original a ${endpoint}`);
-      response = await fetch(endpoint, {
-        ...options,
-        headers, 
-        credentials: "include",
-      });
+
+      if (options.body && options.body instanceof FormData) {
+        console.warn(
+          "⚠️ No se puede reintentar automáticamente una subida de archivos tras un 401. Cancelando.",
+        );
+        throw new Error("Sesión renovada. Por favor, vuelve a subir tu archivo.");
+      }
+
+      try {
+        response = await fetch(endpoint, {
+          ...options,
+          headers,
+          credentials: "include",
+        });
+      } catch (error) {
+        console.error(`🔌 [NETWORK_ERROR] Falló el reintento hacia ${endpoint}:`, error);
+        throw new Error("Se perdió la conexión durante el reintento.");
+      }
     } else {
       console.error("🚷 [SECURITY] Refresh Token inválido. Sesión terminada.");
       if (typeof window !== "undefined") {
@@ -3999,13 +4156,15 @@ import { ENV } from "@/src/services/config/env";
 export const API_URL = ENV.API_URL;
 export const downloadApi = {
   solicitarZipColeccion: (collectionId: string) =>
-    fetchSeguro(`${API_URL}/download/collection/${collectionId}`, { method: "POST" }),
+    fetchSeguro(`${API_URL}/download/collection/${encodeURIComponent(collectionId)}`, {
+      method: "POST",
+    }),
 
   verificarEstado: (jobId: string) =>
-    fetchSeguro(`${API_URL}/download/status/${jobId}`),
+    fetchSeguro(`${API_URL}/download/status/${encodeURIComponent(jobId)}`),
 
   descargarImagenUnica: (imageKey: string) =>
-    fetchSeguro(`${API_URL}/download/single/${imageKey}`),
+    fetchSeguro(`${API_URL}/download/single/${encodeURIComponent(imageKey)}`),
 };
 </file>
 
@@ -4142,6 +4301,13 @@ export const api = {
     });
   },
 
+  deletePromptsBatch: async (prompt_ids: number[]) => {
+    return fetchSeguro(`${API_URL}/prompts/batch-delete`, {
+      method: "POST",
+      body: JSON.stringify({ prompt_ids }),
+    });
+  },
+
   verifyGoogleCode: async (data: { code: string }) => {
     return fetchSeguro(`${API_URL}/auth/google/join`, {
       method: "POST",
@@ -4154,7 +4320,7 @@ export const api = {
       method: "POST",
     });
   },
-  
+
   reportBug: async (data: {
     message: string;
     stack?: string;
@@ -4162,7 +4328,7 @@ export const api = {
     url: string;
     timestamp: string;
   }) => {
-    return fetchSeguro(`${API_URL}/api/admin/bugs`, {
+    return fetchSeguro(`${API_URL}/admin/bugs`, {
       method: "POST",
       body: JSON.stringify(data),
     });
@@ -4638,6 +4804,20 @@ export const IconLamp2On = forwardRef<SVGSVGElement, SVGProps<SVGSVGElement>>(
 IconLamp2On.displayName = "IconLamp2On";
 </file>
 
+<file path="src/system/atoms/Login/AuthSeparator.tsx">
+export function AuthSeparator() {
+  return (
+    <div className="relative flex items-center py-4">
+      <div className="grow border-t border-border"></div>
+      <span className="shrink-0 mx-4 text-xs font-mono text-muted-foreground uppercase tracking-widest">
+        O con email
+      </span>
+      <div className="grow border-t border-border"></div>
+    </div>
+  );
+}
+</file>
+
 <file path="src/system/atoms/Login/FormDivider.tsx">
 export function FormDivider() {
   return (
@@ -4685,7 +4865,7 @@ import { useAuthStore } from "@/src/store/authStore";
 import { useTheme } from "@/src/utils/hooks/useTheme";
 import { UserDropdown } from "../../molecules/Navbar/UserDropdown";
 import { NotificationDropdown } from "../../molecules/Navbar/NotificationDropdown";
-import { IconWand, IconAlbum, IconSun, IconMoon } from "@tabler/icons-react";
+import { IconAlbum, IconSun, IconMoon, IconScanTraces } from "@tabler/icons-react";
 
 export function NavbarActions() {
   const { user } = useAuthStore();
@@ -4708,7 +4888,7 @@ export function NavbarActions() {
               className="p-2 rounded-md text-muted-foreground hover:text-foreground transition-colors hover:bg-(--bg-secondary) cursor-pointer"
               title="Mi Estudio"
             >
-              <IconWand size={22} />
+              <IconScanTraces size={22} />
             </Link>
           </div>
           <NotificationDropdown />
@@ -4905,9 +5085,9 @@ export function Heading({ level = "h2", children, className, ...props }: Heading
 
   // Jerarquía tipográfica minimalista
   const sizeStyles = {
-    h1: "text-4xl md:text-5xl font-extrabold tracking-tighter",
+    h1: "text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tighter",
     h2: "text-3xl md:text-4xl font-bold",
-    h3: "text-2xl md:text-3xl font-semibold",
+    h3: "text-xl sm:tex-xl md:text-2xl font-semibold",
     h4: "text-xl md:text-2xl font-semibold",
     h5: "text-lg md:text-xl font-medium",
     h6: "text-base md:text-lg font-medium",
@@ -5146,6 +5326,337 @@ export function Skeleton({ className = "" }: { className?: string }) {
 }
 </file>
 
+<file path="src/system/molecules/Auth/AuthHeader.tsx">
+// src/system/molecules/Auth/AuthHeader.tsx
+interface AuthHeaderProps {
+  isLogin: boolean;
+}
+
+export function AuthHeader({ isLogin }: AuthHeaderProps) {
+  return (
+    <div className="mb-8 text-center">
+      <h2 className="text-2xl font-black uppercase font-mono tracking-tighter">
+        {isLogin ? "Bienvenido de" : "Únete a la"}{" "}
+        <span className="text-(--accent-color)">{isLogin ? "Nuevo" : "Resistencia"}</span>
+      </h2>
+      <p className="text-xs font-mono text-(--text-secondary) mt-2 uppercase">
+        {isLogin ? "Accede para gestionar tus prompts" : "Almacena tu arte generado por IA"}
+      </p>
+    </div>
+  );
+}
+</file>
+
+<file path="src/system/molecules/Auth/CredentialsForm.tsx">
+// src/system/molecules/Auth/CredentialsForm.tsx
+import { IconMail, IconLock, IconTicket, IconLoader2 } from "@tabler/icons-react";
+
+interface CredentialsFormProps {
+  // ... (Mismos props de antes, no cambian)
+  isLogin: boolean;
+  isLoading: boolean;
+  isSocialLoading: boolean;
+  emailOrUser: string;
+  password: string;
+  inviteCode: string;
+  isInviteLocked: boolean;
+  onEmailChange: (value: string) => void;
+  onPasswordChange: (value: string) => void;
+  onInviteChange: (value: string) => void;
+  onSubmit: (e: React.FormEvent) => void;
+}
+
+export function CredentialsForm({
+  isLogin, isLoading, isSocialLoading, emailOrUser, password,
+  inviteCode, isInviteLocked, onEmailChange, onPasswordChange, onInviteChange, onSubmit,
+}: CredentialsFormProps) {
+  return (
+    <form onSubmit={onSubmit} className="flex flex-col gap-5">
+      <div className="relative">
+        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-(--text-secondary)">
+          <IconMail size={18} />
+        </div>
+        <input
+          type="text"
+          required
+          placeholder={isLogin ? "EMAIL O USUARIO" : "CORREO ELECTRÓNICO"}
+          value={emailOrUser}
+          onChange={(e) => onEmailChange(e.target.value)}
+          className="w-full h-12 bg-background border border-border pl-10 pr-3 text-sm font-mono focus:outline-none focus:border-(--accent-color) transition-colors placeholder:text-(--text-secondary)/50"
+          disabled={isLoading}
+        />
+      </div>
+
+      <div className="relative">
+        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-(--text-secondary)">
+          <IconLock size={18} />
+        </div>
+        <input
+          type="password"
+          required
+          placeholder="••••••••"
+          value={password}
+          onChange={(e) => onPasswordChange(e.target.value)}
+          className="w-full h-12 bg-background border border-border pl-10 pr-3 text-sm font-mono focus:outline-none focus:border-(--accent-color) transition-colors placeholder:text-(--text-secondary)/50"
+          disabled={isLoading}
+        />
+      </div>
+
+      {!isLogin && (
+        <div className="relative animate-in slide-in-from-top-2 duration-200">
+          <div className={`absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none ${isInviteLocked ? "text-(--accent-color)" : "text-(--text-secondary)"}`}>
+            <IconTicket size={18} />
+          </div>
+          <input
+            type="text"
+            required
+            placeholder="CÓDIGO DE INVITACIÓN"
+            value={inviteCode}
+            onChange={(e) => onInviteChange(e.target.value.toUpperCase())}
+            readOnly={isInviteLocked}
+            className={`w-full h-12 border pl-10 pr-3 text-sm font-mono uppercase focus:outline-none transition-colors placeholder:text-(--text-secondary)/50 ${
+              isInviteLocked
+                ? "bg-(--accent-color)/10 border-(--accent-color) text-(--accent-color) font-black"
+                : "bg-background border-border focus:border-(--accent-color)"
+            }`}
+            disabled={isLoading}
+          />
+        </div>
+      )}
+
+      <button
+        type="submit"
+        disabled={isLoading || isSocialLoading}
+        className="w-full justify-center h-12 mt-2 text-sm font-black uppercase font-mono tracking-widest bg-white text-black hover:bg-gray-200 neo-border transition-all disabled:opacity-50"
+      >
+        {isLoading ? (
+          <IconLoader2 className="animate-spin mx-auto" size={20} />
+        ) : isLogin ? (
+          "Entrar"
+        ) : (
+          "Confirmar Acceso"
+        )}
+      </button>
+    </form>
+  );
+}
+</file>
+
+<file path="src/system/molecules/Auth/SocialLogins.tsx">
+// src/system/molecules/Auth/SocialLogins.tsx
+import { IconBrandGoogleFilled, IconBrandDiscordFilled, IconLoader2 } from "@tabler/icons-react";
+
+interface SocialLoginsProps {
+  isLoading: boolean;
+  isGoogleLoading: boolean;
+  isDiscordLoading: boolean;
+  onGoogle: () => void;
+  onDiscord: () => void;
+}
+
+export function SocialLogins({
+  isLoading,
+  isGoogleLoading,
+  isDiscordLoading,
+  onGoogle,
+  onDiscord,
+}: SocialLoginsProps) {
+  const isDisabled = isLoading || isGoogleLoading || isDiscordLoading;
+
+  return (
+    <div className="flex flex-col gap-4">
+      <button
+        type="button"
+        onClick={onGoogle}
+        disabled={isDisabled}
+        className="flex items-center justify-center gap-3 w-full h-12 bg-transparent text-foreground border border-border hover:bg-muted font-mono uppercase text-xs font-black tracking-widest transition-colors disabled:opacity-50"
+      >
+        {isGoogleLoading ? (
+          <IconLoader2 className="animate-spin" size={18} />
+        ) : (
+          <IconBrandGoogleFilled size={18} className="text-red-500" />
+        )}
+        Continuar con Google
+      </button>
+
+      <button
+        type="button"
+        onClick={onDiscord}
+        disabled={isDisabled}
+        className="flex items-center justify-center gap-3 w-full h-12 bg-[#5865F2] text-white hover:bg-[#4752C4] neo-border font-mono uppercase text-xs font-black tracking-widest transition-colors disabled:opacity-50"
+      >
+        {isDiscordLoading ? (
+          <IconLoader2 className="animate-spin" size={18} />
+        ) : (
+          <IconBrandDiscordFilled size={18} />
+        )}
+        Continuar con Discord
+      </button>
+    </div>
+  );
+}
+</file>
+
+<file path="src/system/molecules/Cards/CreateCollectionModal.tsx">
+"use client";
+
+import { useState } from "react";
+import { api } from "@/src/services/api";
+import toast from "react-hot-toast";
+import { IconX, IconLock, IconWorld } from "@tabler/icons-react";
+import { useAuthStore } from "@/src/store/authStore";
+import { UpgradeModal } from "../../organisms/Modal/UpgradeModal";
+
+interface Props {
+  isOpen: boolean;
+  onClose: () => void;
+  onSuccess: () => void;
+}
+
+export function CreateCollectionModal({ isOpen, onClose, onSuccess }: Props) {
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const [isPrivate, setIsPrivate] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const user = useAuthStore((state: any) => state.user);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+
+  if (!isOpen) return null;
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim()) return toast.error("El nombre es obligatorio");
+
+    setIsLoading(true);
+    try {
+      await api.createCollection({ name, description, is_private: isPrivate });
+      toast.success("Colección creada");
+      setName("");
+      setDescription("");
+      setIsPrivate(false);
+      onSuccess();
+      onClose();
+    } catch (error) {
+      toast.error("Error al crear la colección");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handlePrivacyToggle = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const role = user?.role?.toLowerCase() || "voyager";
+
+    console.log("Rol detectado:", role);
+
+    if (!isPrivate && role === "voyager") {
+      console.log("Bloqueando acción y abriendo Modal de Ventas...");
+      setShowUpgradeModal(true);
+    } else {
+      console.log("Cambiando estado de privacidad...");
+      setIsPrivate(!isPrivate);
+    }
+  };
+
+  return (
+    <>
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-4 animate-fade-in">
+        <div className="bg-background w-full max-w-md rounded-xl border border-border shadow-2xl overflow-hidden relative">
+          <button
+            onClick={onClose}
+            className="absolute top-4 right-4 text-muted-foreground hover:text-foreground"
+          >
+            <IconX size={20} />
+          </button>
+
+          <div className="p-6">
+            <h2 className="text-xl font-mono font-bold tracking-tight mb-6 text-(--accent-color)">
+              Nueva Colección
+            </h2>
+
+            <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-mono uppercase tracking-widest text-muted-foreground">
+                  Nombre
+                </label>
+                <input
+                  type="text"
+                  autoFocus
+                  placeholder="Ej. Cyberpunk Portraits"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="w-full bg-muted/10 border border-border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-(--accent-color)"
+                  disabled={isLoading}
+                />
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-mono uppercase tracking-widest text-muted-foreground">
+                  Descripción (Opcional)
+                </label>
+                <textarea
+                  placeholder="Un breve resumen de esta galería..."
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  className="w-full bg-muted/10 border border-border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-(--accent-color) resize-none h-20"
+                  disabled={isLoading}
+                />
+              </div>
+
+              <div
+                className="flex items-center gap-3 p-3 bg-muted/20 border border-border rounded-md mt-2 cursor-pointer transition-colors hover:bg-muted/30"
+                onClick={handlePrivacyToggle}
+              >
+                <div
+                  className={`p-2 rounded-full transition-colors ${isPrivate ? "bg-red-500/10 text-red-500" : "bg-green-500/10 text-green-500"}`}
+                >
+                  {isPrivate ? <IconLock size={18} /> : <IconWorld size={18} />}
+                </div>
+                <div className="flex flex-col flex-1 select-none">
+                  <span className="text-sm font-bold">
+                    {isPrivate ? "Colección Privada" : "Colección Pública"}
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    {isPrivate
+                      ? "Solo tú podrás verla."
+                      : "Visible en tu perfil para todo el mundo."}
+                  </span>
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="w-full mt-4 bg-accent/20 text-accent font-mono font-bold uppercase tracking-widest py-3 border border-accent rounded-md hover:bg-accent/30 transition-all disabled:opacity-50 cursor-pointer"
+              >
+                {isLoading ? "Creando..." : "Crear Colección"}
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+      <div style={{ position: "relative", zIndex: 99999 }}>
+        <UpgradeModal
+          isOpen={showUpgradeModal}
+          onClose={() => setShowUpgradeModal(false)}
+          title="Mantén tus Prompts en secreto"
+          message={
+            <>
+              Tu plan actual <strong>Voyager</strong> crea colecciones públicas por defecto. Pásate
+              al plan <strong className="text-primary">Artist</strong> para ocultar tus galerías de
+              miradas indiscretas y proteger tus prompts.
+            </>
+          }
+        />
+      </div>
+    </>
+  );
+}
+</file>
+
 <file path="src/system/molecules/Cards/FeedItemCard.tsx">
 import Link from "next/link";
 import { IconStack2, IconUser } from "@tabler/icons-react";
@@ -5211,175 +5722,127 @@ export function FeedItemCard({ item, lang, isPriority = false, index = 0 }: Feed
 }
 </file>
 
-<file path="src/system/molecules/Cards/PromptCard.tsx">
+<file path="src/system/molecules/Cards/PromptImageViewer.tsx">
+"use client";
+
+import { IconPhotoOff } from "@tabler/icons-react";
+import { LazyImage } from "@/src/system/molecules/Media/LazyImage";
+import { FadeIn } from "@/src/system/atoms/FadeIn";
+
+interface PromptImageViewerProps {
+  imageUrl: string | null;
+  altText: string;
+}
+
+export function PromptImageViewer({ imageUrl, altText }: PromptImageViewerProps) {
+  return (
+    <FadeIn delay={0.1}>
+      <div className="relative w-full aspect-square md:aspect-4/5 bg-muted/10 neo-border neo-shadow overflow-hidden group">
+        {imageUrl ? (
+          <LazyImage
+            src={imageUrl}
+            alt={altText}
+            priority={true}
+            className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.02]"
+            sizes="(max-width: 768px) 100vw, 50vw"
+          />
+        ) : (
+          <div className="absolute inset-0 flex flex-col items-center justify-center text-muted-foreground/40 bg-muted/5">
+            <IconPhotoOff size={64} stroke={1} className="mb-4" />
+            <span className="font-mono text-xs uppercase tracking-widest text-center px-4">
+              Metadata sin imagen adjunta
+            </span>
+          </div>
+        )}
+      </div>
+    </FadeIn>
+  );
+}
+</file>
+
+<file path="src/system/molecules/Cards/PromptMetadataPanel.tsx">
 "use client";
 
 import { useState } from "react";
-import { IconCopy, IconTrash, IconCheck, IconPhoto, IconFolderPlus } from "@tabler/icons-react";
-import { SavedPrompt, Collection } from "@/src/types/models";
-import { LazyImage } from "../../molecules/Media/LazyImage";
+import { IconCopy, IconCheck, IconScanTraces, IconWand } from "@tabler/icons-react";
+import { SavedPrompt } from "@/src/types/models";
+import { FadeIn } from "@/src/system/atoms/FadeIn";
 
-interface PromptCardProps {
-  item: SavedPrompt;
-  collections?: Collection[];
-  onDelete?: (id: number) => void;
-  onAssign?: (promptId: number, collectionId: number | null) => void;
-  isPriority: boolean;
-  index: number;
+interface PromptMetadataPanelProps {
+  prompt: SavedPrompt;
 }
 
-export function PromptCard({
-  item,
-  collections = [],
-  onAssign,
-  onDelete,
-  index = 0,
-  isPriority = false,
-}: PromptCardProps) {
-  const [copied, setCopied] = useState(false);
-  const [isHovered, setIsHovered] = useState(false);
+export function PromptMetadataPanel({ prompt }: PromptMetadataPanelProps) {
+  const [copiedSection, setCopiedSection] = useState<"prompt" | "negative" | null>(null);
 
-  const handleCopy = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (item.prompt) {
-      navigator.clipboard.writeText(item.prompt);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    }
+  const handleCopy = (text: string, section: "prompt" | "negative") => {
+    if (!text) return;
+    navigator.clipboard.writeText(text);
+    setCopiedSection(section);
+    setTimeout(() => setCopiedSection(null), 2000);
   };
 
+  // 🛡️ PRAGMATISMO: Mapeamos solo los datos técnicos que existen realmente
+  const techSpecs = [
+    { label: "Modelo", value: prompt.model },
+    { label: "Sampler", value: prompt.sampler },
+    { label: "Software", value: prompt.software },
+    { label: "Resolución", value: prompt.resolution },
+  ].filter((spec) => spec.value); // Filtramos los nulos dinámicamente
+
   return (
-    <div
-      className="group flex flex-col bg-background rounded-xl border border-border shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden"
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
-    >
-      <div className="relative aspect-square sm:aspect-4/5 bg-muted/10 overflow-hidden">
-        {item.image_url ? (
-          <LazyImage
-            src={item.image_url}
-            alt={item.title}
-            className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-101"
-            index={index}
-            priority={isPriority}
-          />
-        ) : (
-          <div className="w-full h-full flex flex-col items-center justify-center text-muted-foreground/50">
-            <IconPhoto size={48} stroke={1} />
-            <span className="text-xs font-mono mt-2">Sin imagen</span>
-          </div>
-        )}
-
-        {/* Capa de oscurecimiento on hover para que resalten los botones */}
-        <div
-          className={`absolute inset-0 bg-black/20 transition-opacity duration-300 ${isHovered ? "opacity-100" : "opacity-0"}`}
-        />
-
-        {onAssign && collections.length > 0 && (
-          <div
-            className={`absolute top-3 left-3 transition-opacity duration-300 ${isHovered ? "opacity-100" : "opacity-0"}`}
-          >
-            <div className="relative flex items-center bg-background/90 backdrop-blur-sm border border-border/50 rounded-md overflow-hidden shadow-sm">
-              <div className="pl-2 text-muted-foreground">
-                <IconFolderPlus size={14} />
-              </div>
-              <select
-                className="bg-transparent text-[10px] font-bold uppercase tracking-widest text-foreground py-1.5 pl-1 pr-4 focus:outline-none cursor-pointer appearance-none"
-                value={item.collection_id || ""}
-                onChange={(e) => onAssign(item.id, e.target.value ? Number(e.target.value) : null)}
-                onClick={(e) => e.stopPropagation()}
+    <FadeIn delay={0.2}>
+      {/* 📝 SECCIÓN 1: El Prompt (La joya de la corona) */}
+      <div className="space-y-4">
+        <div className="group relative bg-(--bg-secondary) neo-border p-4 transition-all hover:neo-shadow">
+          <div className="flex justify-between items-center mb-3 border-b border-border/50 pb-2">
+            <h3 className="font-mono text-xs font-black uppercase tracking-widest flex items-center gap-2 text-(--accent-color)">
+              <IconWand size={16} /> Prompt Principal
+            </h3>
+            {prompt.prompt && (
+              <button
+                onClick={() => handleCopy(prompt.prompt, "prompt")}
+                className="text-muted-foreground hover:text-foreground transition-colors"
+                title="Copiar prompt"
               >
-                <option value="">Suelto</option>
-                {collections.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-        )}
-
-        {/* 🏷️ Badge de Software */}
-        {item.software && (
-          <div
-            className={`absolute top-3 left-3 transition-opacity duration-300 ${isHovered ? "opacity-100" : "opacity-0"}`}
-          >
-            <span className="bg-background/90 backdrop-blur-sm text-foreground text-[10px] font-bold px-2.5 py-1 rounded-md border border-border/50 uppercase tracking-widest shadow-sm">
-              {item.software}
-            </span>
-          </div>
-        )}
-
-        {onDelete && (
-          <div
-            className={`absolute top-3 right-3 transition-opacity duration-300 ${isHovered ? "opacity-100" : "opacity-0"}`}
-          >
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                if (window.confirm("¿Seguro que deseas eliminar este prompt de Mi Studio?")) {
-                  onDelete(item.id);
-                }
-              }}
-              className="bg-background/90 backdrop-blur-sm hover:bg-red-500/10 hover:text-red-500 text-foreground p-2 rounded-full border border-border/50 transition-colors shadow-sm"
-              title="Eliminar"
-            >
-              <IconTrash size={16} stroke={1.5} />
-            </button>
-          </div>
-        )}
-      </div>
-
-      {/* 📝 ÁREA DE CONTENIDO */}
-      <div className="p-5 flex flex-col grow gap-4">
-        {/* Cabecera: Título y Modelo */}
-        <div>
-          <h3 className="font-bold text-base tracking-tight truncate" title={item.title}>
-            {item.title}
-          </h3>
-          <div className="flex items-center gap-2 mt-1">
-            <span className="text-xs text-muted-foreground truncate">
-              {item.model || "Modelo desconocido"}
-            </span>
-            {item.sampler && (
-              <>
-                <span className="text-muted-foreground/30 text-[10px]">•</span>
-                <span className="text-xs text-muted-foreground truncate">{item.sampler}</span>
-              </>
+                {copiedSection === "prompt" ? (
+                  <IconCheck size={18} className="text-green-500" />
+                ) : (
+                  <IconCopy size={18} />
+                )}
+              </button>
             )}
           </div>
-        </div>
-
-        {/* Caja del Prompt */}
-        <div className="relative group/prompt bg-muted/30 rounded-lg p-3 border border-border/50 mt-auto">
-          <p className="text-xs font-mono text-foreground/80 line-clamp-3 leading-relaxed">
-            {item.prompt || <span className="italic opacity-50">Sin prompt</span>}
+          <p className="font-mono text-sm leading-relaxed whitespace-pre-wrap text-foreground/90">
+            {prompt.prompt || <span className="italic opacity-50">No hay prompt registrado.</span>}
           </p>
-
-          {/* Botón de Copiar (Aparece al hacer hover en la caja del prompt) */}
-          {item.prompt && (
-            <button
-              onClick={handleCopy}
-              className="absolute top-2 right-2 p-1.5 bg-background border border-border rounded-md shadow-sm opacity-0 group-hover/prompt:opacity-100 hover:bg-accent hover:text-accent-foreground transition-all"
-              title="Copiar Prompt"
-            >
-              {copied ? (
-                <IconCheck size={14} className="text-green-500" stroke={2} />
-              ) : (
-                <IconCopy size={14} stroke={1.5} />
-              )}
-            </button>
-          )}
         </div>
 
-        {/* Pie de tarjeta (Fecha y dimensiones) */}
-        <div className="flex justify-between items-center text-[10px] text-muted-foreground font-mono uppercase tracking-widest pt-1">
-          <span>{new Date(item.created_at).toLocaleDateString()}</span>
-          {item.resolution && <span>{item.resolution}</span>}
-        </div>
+        {/* Negative Prompt (Opcional, asumiendo que tu modelo lo tenga, si no, se puede omitir) */}
+        {/* Si tu modelo actual de SavedPrompt no tiene negative_prompt, puedes ignorar esta caja, pero en la industria suele existir */}
       </div>
-    </div>
+
+      {/* ⚙️ SECCIÓN 2: Especificaciones Técnicas */}
+      {techSpecs.length > 0 && (
+        <div className="space-y-4">
+          <h3 className="font-mono text-xs font-black uppercase tracking-widest flex items-center gap-2 text-muted-foreground">
+            <IconScanTraces size={16} /> Datos de Generación
+          </h3>
+          <div className="grid grid-cols-2 gap-3">
+            {techSpecs.map((spec, idx) => (
+              <div key={idx} className="bg-muted/10 neo-border p-3 flex flex-col gap-1">
+                <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-widest">
+                  {spec.label}
+                </span>
+                <span className="text-sm font-bold truncate" title={spec.value}>
+                  {spec.value}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </FadeIn>
   );
 }
 </file>
@@ -5525,7 +5988,7 @@ import Link from 'next/link';
 import { useAuthStore } from '@/src/store/authStore';
 import { useTheme } from '@/src/utils/hooks/useTheme';
 import { NavbarSearch } from './NavbarSearch';
-import { IconMenu2, IconX, IconWand, IconArchive, IconSun, IconMoon } from '@tabler/icons-react';
+import { IconMenu2, IconX, IconArchive, IconSun, IconMoon, IconScanTraces } from '@tabler/icons-react';
 
 export function NavbarMobile() {
   const [isOpen, setIsOpen] = useState(false);
@@ -5549,7 +6012,7 @@ export function NavbarMobile() {
             {user ? (
               <>
                 <Link href="/reprompt" onClick={() => setIsOpen(false)} className="flex items-center gap-3 p-3 rounded-md hover:bg-muted font-bold text-sm text-foreground transition-colors">
-                  <IconWand size={20} /> Reprompt Studio
+                  <IconScanTraces size={20} /> Reprompt Studio
                 </Link>
                 <Link href="/studio" onClick={() => setIsOpen(false)} className="flex items-center gap-3 p-3 rounded-md hover:bg-muted font-bold text-sm text-foreground transition-colors">
                   <IconArchive size={20} /> Mi Estudio
@@ -6064,6 +6527,43 @@ export function UserDropdown() {
       )}
 
       {showPwdModal && <ChangePasswordModal onClose={() => setShowPwdModal(false)} />}
+    </div>
+  );
+}
+</file>
+
+<file path="src/system/molecules/Tabs/AuthTabs.tsx">
+// src/system/molecules/Tabs/AuthTabs.tsx
+interface AuthTabsProps {
+  isLogin: boolean;
+  onToggle: (isLogin: boolean) => void;
+}
+
+export function AuthTabs({ isLogin, onToggle }: AuthTabsProps) {
+  return (
+    <div className="flex w-full border-b border-border">
+      <button
+        type="button"
+        onClick={() => onToggle(true)}
+        className={`flex-1 pb-4 text-xs font-black tracking-widest uppercase font-mono transition-colors ${
+          isLogin
+            ? "text-(--accent-color) border-b-2 border-(--accent-color)"
+            : "text-(--text-secondary) hover:text-foreground"
+        }`}
+      >
+        Iniciar Sesión
+      </button>
+      <button
+        type="button"
+        onClick={() => onToggle(false)}
+        className={`flex-1 pb-4 text-xs font-black tracking-widest uppercase font-mono transition-colors ${
+          !isLogin
+            ? "text-(--accent-color) border-b-2 border-(--accent-color)"
+            : "text-(--text-secondary) hover:text-foreground"
+        }`}
+      >
+        Registrarse
+      </button>
     </div>
   );
 }
@@ -6597,6 +7097,57 @@ export function SecurityModule({ onRevokeAll }: { onRevokeAll: () => void }) {
 }
 </file>
 
+<file path="src/system/organisms/Auth/AuthForm.tsx">
+// src/system/organisms/Auth/AuthForm.tsx
+"use client";
+
+import { useAuthForm } from "@/src/features/auth/hooks/useAuthForm";
+import { AuthTabs } from "../../molecules/Tabs/AuthTabs";
+import { AuthHeader } from "../../molecules/Auth/AuthHeader";
+import { SocialLogins } from "../../molecules/Auth/SocialLogins";
+import { AuthSeparator } from "../../atoms/Login/AuthSeparator";
+import { CredentialsForm } from "../../molecules/Auth/CredentialsForm";
+
+export function AuthForm() {
+  const { state, actions } = useAuthForm();
+
+  return (
+    <div className="w-full max-w-md mx-auto p-8 bg-(--bg-secondary) neo-border neo-shadow animate-in fade-in zoom-in-95 duration-300">
+      
+      <AuthTabs isLogin={state.isLogin} onToggle={actions.setIsLogin} />
+
+      <div className="mt-8">
+        <AuthHeader isLogin={state.isLogin} />
+
+        <SocialLogins
+          isLoading={state.isLoading}
+          isGoogleLoading={state.isGoogleLoading}
+          isDiscordLoading={state.isDiscordLoading}
+          onGoogle={actions.handleGoogleLogin}
+          onDiscord={actions.handleDiscordLogin}
+        />
+
+        <AuthSeparator />
+
+        <CredentialsForm
+          isLogin={state.isLogin}
+          isLoading={state.isLoading}
+          isSocialLoading={state.isGoogleLoading || state.isDiscordLoading}
+          emailOrUser={state.emailOrUser}
+          password={state.password}
+          inviteCode={state.inviteCode}
+          isInviteLocked={state.isInviteLocked}
+          onEmailChange={actions.setEmailOrUser}
+          onPasswordChange={actions.setPassword}
+          onInviteChange={actions.setInviteCode}
+          onSubmit={actions.handleSubmit}
+        />
+      </div>
+    </div>
+  );
+}
+</file>
+
 <file path="src/system/organisms/Auth/ChangePasswordModal.tsx">
 "use client";
 
@@ -6891,7 +7442,7 @@ export function RegisterForm({ lang }: RegisterFormProps) {
 }
 </file>
 
-<file path="src/system/organisms/Extractor/Dropzone/DropzoneContent.tsx">
+<file path="src/system/organisms/Extractor/Dropzone/DropzoneContent_.tsx">
 import { IconUpload } from "@tabler/icons-react";
 
 interface DropzoneContentProps {
@@ -6922,7 +7473,120 @@ export function DropzoneContent({ isDragActive }: DropzoneContentProps) {
 }
 </file>
 
-<file path="src/system/organisms/Extractor/Dropzone/DropzoneError.tsx">
+<file path="src/system/organisms/Extractor/Dropzone/DropzoneContent.tsx">
+import {
+  IconUpload,
+  IconFileText,
+  IconPhoto,
+  IconAlertCircle,
+  IconFileZip,
+  IconScanTraces,
+  IconFolderStar,
+  IconCloudUpload,
+} from "@tabler/icons-react";
+
+interface DropzoneContentProps {
+  isDragActive: boolean;
+  isDragReject: boolean;
+}
+
+export function DropzoneContent({ isDragActive, isDragReject }: DropzoneContentProps) {
+  return (
+    <div className="flex flex-col items-center justify-center w-full pt-12 pb-8 pointer-events-none">
+      {/* 🎯 ZONA DE ACCIÓN PRINCIPAL */}
+      <div
+        className={`w-24 h-24 rounded-full flex items-center justify-center mb-6 transition-all duration-300 neo-border
+          ${
+            isDragReject
+              ? "bg-destructive text-destructive-foreground scale-110"
+              : isDragActive
+                ? "bg-(--accent-color) text-white scale-110"
+                : "bg-background text-muted-foreground group-hover:text-foreground group-hover:scale-105"
+          }`}
+      >
+        {isDragReject ? (
+          <IconAlertCircle size={40} stroke={1.5} />
+        ) : (
+          <IconUpload size={40} stroke={1.5} className={isDragActive ? "animate-bounce" : ""} />
+        )}
+      </div>
+
+      <h2 className="text-2xl md:text-3xl font-black font-mono uppercase mb-2 text-center px-4 tracking-tighter">
+        {isDragReject ? (
+          <span className="text-destructive">¡Formato Inválido!</span>
+        ) : isDragActive ? (
+          "¡Suéltalo ahora!"
+        ) : (
+          "Arrastra tus archivos aquí"
+        )}
+      </h2>
+
+      <p className="text-muted-foreground font-mono text-sm max-w-md text-center px-6 mb-6">
+        {isDragReject
+          ? "Solo aceptamos imágenes, textos o zips."
+          : "o haz clic para explorar tu equipo"}
+      </p>
+
+      {/* Píldoras de formato */}
+      <div className="flex flex-wrap justify-center gap-3 text-[10px] font-mono text-muted-foreground uppercase tracking-widest font-bold">
+        <span className="flex items-center gap-1.5 bg-background px-3 py-1.5 neo-border rounded-full shadow-sm">
+          <IconPhoto size={14} /> PNG, JPG
+        </span>
+        <span className="flex items-center gap-1.5 bg-background px-3 py-1.5 neo-border rounded-full shadow-sm">
+          <IconFileZip size={14} /> Lotes .ZIP
+        </span>
+        <span className="flex items-center gap-1.5 bg-background px-3 py-1.5 neo-border rounded-full shadow-sm">
+          <IconFileText size={14} /> .TXT / .JSON
+        </span>
+      </div>
+
+      {/* 🚀 ONBOARDING (ANTES, DURANTE, DESPUÉS) */}
+      <div
+        className={`w-full max-w-3xl mt-12 pt-8 border-t border-border/50 grid grid-cols-1 md:grid-cols-3 gap-8 px-6 transition-opacity duration-500
+          ${isDragActive || isDragReject ? "opacity-10" : "opacity-100"}
+        `}
+      >
+        {/* Paso 1: Antes */}
+        <div className="flex flex-col items-center text-center gap-2">
+          <div className="p-2 bg-muted/10 rounded-lg neo-border mb-1 text-muted-foreground border-accent!">
+            <IconCloudUpload className="text-accent!" size={20} />
+          </div>
+          <h4 className="font-bold text-xs uppercase tracking-widest text-foreground">1. Sube</h4>
+          <p className="text-xs font-mono text-muted-foreground leading-relaxed">
+            Arrastra tus imágenes generadas cono Midjourney, a1111 o ComiFy o un ZIP.
+          </p>
+        </div>
+
+        {/* Paso 2: Durante */}
+        <div className="flex flex-col items-center text-center gap-2">
+          <div className="p-2 bg-muted/10 rounded-lg neo-border mb-1 border-accent!">
+            <IconScanTraces className="text-accent!" size={20} />
+          </div>
+          <h4 className="font-bold text-xs uppercase tracking-widest text-foreground">2. Extrae</h4>
+          <p className="text-xs font-mono text-muted-foreground leading-relaxed">
+            Nuestra IA lee la Metadata oculta een la imagen.
+          </p>
+        </div>
+
+        {/* Paso 3: Después */}
+        <div className="flex flex-col items-center text-center gap-2">
+          <div className="p-2 bg-muted/10 rounded-lg neo-border mb-1 border-accent!">
+            <IconFolderStar className="text-accent!" size={20} />
+          </div>
+          <h4 className="font-bold text-xs uppercase tracking-widest text-foreground">
+            3. Colecciona
+          </h4>
+          <p className="text-xs font-mono text-muted-foreground leading-relaxed">
+            Guarda los prompts en tu Studio, reutiliza y gestiona.
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+</file>
+
+<file path="src/system/organisms/Extractor/Dropzone/DropzoneError_.tsx">
 import { IconAlertTriangle } from "@tabler/icons-react";
 
 interface DropzoneErrorProps {
@@ -6939,7 +7603,24 @@ export function DropzoneError({ message }: DropzoneErrorProps) {
 }
 </file>
 
-<file path="src/system/organisms/Extractor/Dropzone/DropzoneLoading.tsx">
+<file path="src/system/organisms/Extractor/Dropzone/DropzoneError.tsx">
+import { IconAlertTriangle } from "@tabler/icons-react";
+
+interface DropzoneErrorProps {
+  message: string;
+}
+
+export function DropzoneError({ message }: DropzoneErrorProps) {
+  return (
+    <div className="absolute bottom-6 mx-auto bg-destructive text-destructive-foreground font-bold px-6 py-3 neo-border flex items-center gap-3 animate-shake z-20 shadow-lg">
+      <IconAlertTriangle size={20} stroke={2} />
+      <span className="text-xs uppercase font-mono tracking-widest">{message}</span>
+    </div>
+  );
+}
+</file>
+
+<file path="src/system/organisms/Extractor/Dropzone/DropzoneLoading_.tsx">
 import { IconWand } from "@tabler/icons-react";
 
 export function DropzoneLoading() {
@@ -6952,7 +7633,28 @@ export function DropzoneLoading() {
 }
 </file>
 
-<file path="src/system/organisms/Extractor/Dropzone/index.tsx">
+<file path="src/system/organisms/Extractor/Dropzone/DropzoneLoading.tsx">
+import { IconWand } from "@tabler/icons-react";
+
+export function DropzoneLoading() {
+  return (
+    <div className="relative w-full flex flex-col items-center justify-center min-h-[400px] neo-border overflow-hidden bg-muted/5">
+      {/* 🟢 Efecto Shimmer de fondo de IA */}
+      <div className="absolute inset-0 opacity-10 bg-[linear-gradient(110deg,#000,45%,#fff,55%,#000)] bg-[length:200%_100%] animate-ai-shimmer dark:bg-[linear-gradient(110deg,#fff,45%,#000,55%,#fff)]" />
+
+      <IconWand size={64} className="text-(--accent-color) animate-spin relative z-10" />
+      <h2 className="text-xl md:text-2xl font-black font-mono uppercase mt-6 relative z-10 tracking-widest text-center">
+        Analizando ADN de la IA...
+      </h2>
+      <p className="text-muted-foreground font-mono mt-2 relative z-10 text-sm text-center">
+        Extrayendo metadatos y decodificando parámetros
+      </p>
+    </div>
+  );
+}
+</file>
+
+<file path="src/system/organisms/Extractor/Dropzone/index_.tsx">
 "use client";
 
 import { useCallback } from "react";
@@ -7009,6 +7711,73 @@ export function ExtractorDropzone({
     >
       <input {...getInputProps()} />
       <DropzoneContent isDragActive={isDragActive} />
+      {externalError && <DropzoneError message={externalError} />}
+    </div>
+  );
+}
+</file>
+
+<file path="src/system/organisms/Extractor/Dropzone/index.tsx">
+"use client";
+
+import { useCallback } from "react";
+import { useDropzone } from "react-dropzone";
+import { DropzoneLoading } from "./DropzoneLoading";
+import { DropzoneContent } from "./DropzoneContent";
+import { DropzoneError } from "./DropzoneError";
+
+interface ExtractorDropzoneProps {
+  onFileDrop: (acceptedFiles: File[], rejectedFiles: any[]) => void;
+  isExtracting: boolean;
+  error: string | null;
+}
+
+export function ExtractorDropzone({
+  onFileDrop,
+  isExtracting,
+  error: externalError,
+}: ExtractorDropzoneProps) {
+  const onDrop = useCallback(
+    (acceptedFiles: File[], fileRejections: any[]) => {
+      if (acceptedFiles.length > 0 || fileRejections.length > 0) {
+        onFileDrop(acceptedFiles, fileRejections);
+      }
+    },
+    [onFileDrop],
+  );
+
+  // 🟢 Extraemos isDragReject
+  const { getRootProps, getInputProps, isDragActive, isDragReject } = useDropzone({
+    onDrop,
+    accept: {
+      "image/png": [".png"],
+      "image/jpeg": [".jpg", ".jpeg"],
+      "image/webp": [".webp"], // Sugiero añadir webp
+      "text/plain": [".txt"],
+      "application/json": [".json"],
+      "application/zip": [".zip"],
+      "application/x-zip-compressed": [".zip"],
+    },
+    disabled: isExtracting,
+  });
+
+  if (isExtracting) return <DropzoneLoading />;
+
+  return (
+    <div
+      {...getRootProps()}
+      className={`group relative w-full border-4 border-dashed transition-all duration-300 ease-in-out flex flex-col items-center justify-center min-h-400px cursor-pointer neo-border overflow-hidden
+        ${
+          isDragReject
+            ? "border-destructive bg-destructive/5"
+            : isDragActive
+              ? "border-(--accent-color) bg-(--accent-color)/5 scale-[1.01] neo-shadow-accent"
+              : "border-border bg-muted/5 hover:bg-muted/10 hover:border-foreground/30"
+        }`}
+    >
+      <input {...getInputProps()} />
+      <DropzoneContent isDragActive={isDragActive} isDragReject={isDragReject} />
+
       {externalError && <DropzoneError message={externalError} />}
     </div>
   );
@@ -7659,7 +8428,7 @@ export function Hero() {
       <Heading level="h1" className="mb-4">
         Inspírate. Extrae. Crea.
       </Heading>
-      <Heading level="h3" className="text-muted-foreground font-normal max-w-2xl text-balance">
+      <Heading level="h3" className="text-muted-foreground font-normal max-w-3xl text-balance">
         Explora miles de imágenes y descubre los prompts exactos que las generaron. Sin ruido,
         directo a la fuente.
       </Heading>
@@ -7724,6 +8493,64 @@ export function UniversalMediaCard({
 }
 </file>
 
+<file path="src/system/organisms/Modal/UpgradeModal.tsx">
+import { IconSparkles, IconX } from "@tabler/icons-react";
+
+interface UpgradeModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  title?: string;
+  message?: React.ReactNode;
+}
+
+export function UpgradeModal({ 
+  isOpen, 
+  onClose, 
+  title = "¡Acelera tu flujo de trabajo!", 
+  message = "Pásate al plan Artist para desbloquear funcionalidades premium"
+}: UpgradeModalProps) {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-100 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+      <div className="relative w-full max-w-lg bg-background rounded-2xl shadow-2xl border border-border p-8 text-center animate-in fade-in zoom-in-95 duration-200">
+        
+        <button 
+          onClick={onClose}
+          className="absolute top-4 right-4 p-2 text-muted-foreground hover:bg-muted rounded-full transition-colors"
+        >
+          <IconX size={20} />
+        </button>
+
+        <div className="mx-auto w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mb-6">
+          <IconSparkles size={32} className="text-primary" />
+        </div>
+
+        <h2 className="text-2xl font-black text-foreground mb-4">
+          {title}
+        </h2>
+        
+        <div className="text-muted-foreground mb-8">
+          {message}
+        </div>
+
+        <div className="flex flex-col gap-3">
+          <button className="w-full bg-accent/20 font-mono text-accent py-3 rounded-xl font-bold hover:bg-accent/30 neo-border border-accent! transition-all">
+            Desbloquear Plan Artist
+          </button>
+          <button 
+            onClick={onClose}
+            className="w-full text-muted-foreground py-3 font-medium hover:text-foreground transition-colors"
+          >
+            Quizás más tarde
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+</file>
+
 <file path="src/system/organisms/Navbar/Navbar.tsx">
 "use client";
 
@@ -7736,7 +8563,7 @@ import Image from "next/image";
 export function Navbar() {
 
   return (
-    <nav className="sticky top-0 z-50 w-full bg-background/80 backdrop-blur-md border-b border-border shadow-sm">
+    <nav className="sticky top-0 z-50 w-full bg-background/40 backdrop-blur-md border-b border-border shadow-sm">
       <div className="max-w-1600px mx-auto px-4 md:px-8 h-16 flex items-center justify-between gap-4 lg:gap-8">
         <Link href="/" className="shrink-0 flex items-center" aria-label="Ir al inicio">
           <Image
@@ -7766,6 +8593,59 @@ export function Navbar() {
 
         <NavbarMobile />
       </div>
+    </nav>
+  );
+}
+</file>
+
+<file path="src/system/organisms/Navigation/Breadcrumbs.tsx">
+import Link from "next/link";
+import { IconChevronRight, IconHome } from "@tabler/icons-react";
+
+export interface BreadcrumbItem {
+  label: string;
+  href?: string;
+}
+
+interface BreadcrumbsProps {
+  items: BreadcrumbItem[];
+}
+
+export function Breadcrumbs({ items }: BreadcrumbsProps) {
+  return (
+    <nav
+      aria-label="Breadcrumb"
+      className="flex items-center space-x-1 text-xs md:text-sm font-mono text-muted-foreground overflow-x-auto pb-2 scrollbar-none"
+    >
+      <Link href="/" className="hover:text-(--accent-color) transition-colors flex items-center">
+        <IconHome size={16} stroke={1.5} />
+      </Link>
+
+      {items.map((item, index) => {
+        const isLast = index === items.length - 1;
+
+        return (
+          <div key={index} className="flex items-center space-x-1 whitespace-nowrap">
+            <IconChevronRight size={14} className="opacity-50" stroke={1.5} />
+            {isLast || !item.href ? (
+              <span
+                className="font-bold text-foreground tracking-widest uppercase truncate max-w-150px sm:max-w-300px"
+                title={item.label}
+              >
+                {item.label}
+              </span>
+            ) : (
+              <Link
+                href={item.href}
+                className="hover:text-(--accent-color) transition-colors tracking-widest uppercase truncate max-w-150px sm:max-w-200px"
+                title={item.label}
+              >
+                {item.label}
+              </Link>
+            )}
+          </div>
+        );
+      })}
     </nav>
   );
 }
@@ -7917,206 +8797,311 @@ export function TrendingSection({ trending, onOpenVisor, onDownloadTotal }: Tren
 }
 </file>
 
-<file path="src/system/organisms/Studio/CreateCollectionModal.tsx">
+<file path="src/system/organisms/Studio/BulkActionBar.tsx">
+import { IconTrash, IconDownload, IconX } from "@tabler/icons-react";
+import { FadeIn } from "../../atoms/FadeIn"; // Tu atom de animación
+
+interface BulkActionBarProps {
+  selectedCount: number;
+  onClearSelection: () => void;
+  onDeleteSelected: () => void;
+  onDownloadSelected: () => void;
+  isDeleting?: boolean;
+}
+
+export function BulkActionBar({
+  selectedCount,
+  onClearSelection,
+  onDeleteSelected,
+  onDownloadSelected,
+  isDeleting = false,
+}: BulkActionBarProps) {
+  if (selectedCount === 0) return null;
+
+  return (
+    // 🟢 CORRECCIÓN: Usamos tu FadeIn y le pasamos el posicionamiento fixed
+    <FadeIn>
+      <div className="bg-foreground text-background px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-6 border border-border/20">
+        {/* Contador y Cancelar */}
+        <div className="flex items-center gap-3 pr-6 border-r border-background/20">
+          <span className="font-bold whitespace-nowrap">{selectedCount} seleccionadas</span>
+          <button
+            onClick={onClearSelection}
+            className="p-1 hover:bg-background/20 rounded-full transition-colors"
+            title="Cancelar selección"
+          >
+            <IconX size={18} />
+          </button>
+        </div>
+
+        {/* Acciones */}
+        <div className="flex items-center gap-4">
+          <button
+            onClick={onDownloadSelected}
+            className="flex items-center gap-2 text-sm font-medium hover:text-brand-blue transition-colors"
+          >
+            <IconDownload size={20} />
+            Descargar ZIP
+          </button>
+
+          <button
+            onClick={onDeleteSelected}
+            disabled={isDeleting}
+            className="flex items-center gap-2 text-sm font-medium text-red-400 hover:text-red-300 transition-colors disabled:opacity-50"
+          >
+            <IconTrash size={20} />
+            {isDeleting ? "Borrando..." : "Borrar"}
+          </button>
+        </div>
+      </div>
+    </FadeIn>
+  );
+}
+</file>
+
+<file path="src/system/organisms/Studio/PromptCard.tsx">
 "use client";
 
 import { useState } from "react";
-import { api } from "@/src/services/api";
-import toast from "react-hot-toast";
-import { IconX, IconLock, IconWorld } from "@tabler/icons-react";
+import Link from "next/link";
+import {
+  IconCopy,
+  IconTrash,
+  IconCheck,
+  IconPhoto,
+  IconDotsVertical,
+  IconFolder,
+} from "@tabler/icons-react";
+import { SavedPrompt, Collection } from "@/src/types/models";
+import { LazyImage } from "../../molecules/Media/LazyImage";
 
-interface Props {
-  isOpen: boolean;
-  onClose: () => void;
-  onSuccess: () => void;
+interface PromptCardProps {
+  item: SavedPrompt;
+  collections?: Collection[];
+  onDelete?: (id: number) => void;
+  onAssign?: (promptId: number, collectionId: number | null) => void;
+  isPriority: boolean;
+  isSelected?: boolean;
+  onToggleSelect?: () => void;
+  selectionModeActive?: boolean;
+  index: number;
+  lang?: string;
+  isStudio?: boolean;
+  authorUsername?: string;
 }
 
-export function CreateCollectionModal({ isOpen, onClose, onSuccess }: Props) {
-  const [name, setName] = useState("");
-  const [description, setDescription] = useState("");
-  const [isPrivate, setIsPrivate] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+export function PromptCard({
+  item,
+  collections = [],
+  onAssign,
+  onDelete,
+  index = 0,
+  isPriority = false,
+  isSelected = false,
+  onToggleSelect,
+  selectionModeActive = false,
+  lang = "es",
+  isStudio = false,
+  authorUsername = "unknown",
+}: PromptCardProps) {
+  const [copied, setCopied] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
 
-  if (!isOpen) return null;
+  const queryParam = isStudio ? "?from=studio" : "";
+  const href = `/${lang}/${authorUsername}/p/${item.id}${queryParam}`;
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleCopy = (e: React.MouseEvent) => {
     e.preventDefault();
-    if (!name.trim()) return toast.error("El nombre es obligatorio");
-
-    setIsLoading(true);
-    try {
-      await api.createCollection({ name, description, is_private: isPrivate });
-      toast.success("Colección creada");
-      setName("");
-      setDescription("");
-      setIsPrivate(false);
-      onSuccess(); // Refresca los datos en la página padre
-      onClose();
-    } catch (error) {
-      toast.error("Error al crear la colección");
-    } finally {
-      setIsLoading(false);
+    e.stopPropagation();
+    if (item.prompt) {
+      navigator.clipboard.writeText(item.prompt);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
     }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-4 animate-fade-in">
-      <div className="bg-background w-full max-w-md rounded-xl border border-border shadow-2xl overflow-hidden relative">
-        <button
-          onClick={onClose}
-          className="absolute top-4 right-4 text-muted-foreground hover:text-foreground"
+    <div
+      // 🟢 CORRECCIÓN 2: Quitamos "overflow-hidden" del padre para que el menú pueda salirse libremente
+      className="group relative flex flex-col bg-background rounded-xl border border-border shadow-sm hover:shadow-lg transition-all duration-300"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => {
+        setIsHovered(false);
+        setIsMenuOpen(false);
+      }}
+    >
+      <Link href={href} className="absolute inset-0 z-0">
+        <span className="sr-only">Ver detalles del prompt {item.title}</span>
+      </Link>
+
+      {(selectionModeActive || isHovered || isSelected) && (
+        <div
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onToggleSelect?.();
+          }}
+          className="absolute top-3 left-3 z-30 cursor-pointer pointer-events-auto transition-opacity duration-200"
         >
-          <IconX size={20} />
-        </button>
-
-        <div className="p-6">
-          <h2 className="text-xl font-bold tracking-tight mb-6 text-(--accent-color)">
-            Nueva Colección
-          </h2>
-
-          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-mono uppercase tracking-widest text-muted-foreground">
-                Nombre
-              </label>
-              <input
-                type="text"
-                autoFocus
-                placeholder="Ej. Cyberpunk Portraits"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="w-full bg-muted/10 border border-border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-(--accent-color)"
-                disabled={isLoading}
-              />
-            </div>
-
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-mono uppercase tracking-widest text-muted-foreground">
-                Descripción (Opcional)
-              </label>
-              <textarea
-                placeholder="Un breve resumen de esta galería..."
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                className="w-full bg-muted/10 border border-border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-(--accent-color) resize-none h-20"
-                disabled={isLoading}
-              />
-            </div>
-
-            <div
-              className="flex items-center gap-3 p-3 bg-muted/20 border border-border rounded-md mt-2 cursor-pointer"
-              onClick={() => setIsPrivate(!isPrivate)}
-            >
-              <div
-                className={`p-2 rounded-full ${isPrivate ? "bg-red-500/10 text-red-500" : "bg-green-500/10 text-green-500"}`}
-              >
-                {isPrivate ? <IconLock size={18} /> : <IconWorld size={18} />}
-              </div>
-              <div className="flex flex-col flex-1 select-none">
-                <span className="text-sm font-bold">
-                  {isPrivate ? "Colección Privada" : "Colección Pública"}
-                </span>
-                <span className="text-xs text-muted-foreground">
-                  {isPrivate ? "Solo tú podrás verla." : "Visible en tu perfil para todo el mundo."}
-                </span>
-              </div>
-            </div>
-
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="w-full mt-4 bg-(--accent-color) text-white font-mono font-bold uppercase tracking-widest py-3 rounded-md hover:bg-opacity-90 transition-all disabled:opacity-50"
-            >
-              {isLoading ? "Creando..." : "Crear Colección"}
-            </button>
-          </form>
-        </div>
-      </div>
-    </div>
-  );
-}
-</file>
-
-<file path="src/system/organisms/Studio/PromptImageViewer.tsx">
-import { IconPhotoOff } from "@tabler/icons-react";
-import { LazyImage } from "../../molecules/Media/LazyImage";
-import Image from "next/image";
-
-interface PromptImageViewerProps {
-  imageUrl: string | null;
-  altText: string;
-}
-
-export function PromptImageViewer({ imageUrl, altText }: PromptImageViewerProps) {
-  if (!imageUrl) {
-    return (
-      <div className="w-full aspect-square bg-muted/20 flex flex-col items-center justify-center neo-border rounded-xl">
-        <IconPhotoOff size={48} className="text-muted-foreground/50" />
-        <span className="text-xs font-mono text-muted-foreground mt-2 uppercase tracking-widest">
-          Sin imagen adjunta
-        </span>
-      </div>
-    );
-  }
-
-  return (
-    <div className="w-120px h-fit overflow-hidden neo-border neo-shadow rounded-xl bg-muted/10">
-      <Image
-        src={imageUrl}
-        alt={altText}
-        fill
-        quality={75}
-        className="w-full h-auto object-cover hover:scale-[1.02] transition-transform duration-500"
-      />
-    </div>
-  );
-}
-</file>
-
-<file path="src/system/organisms/Studio/PromptMetadataPanel.tsx">
-import { useState } from "react";
-import { IconCopy, IconCheck } from "@tabler/icons-react";
-import { SavedPrompt } from "@/src/features/studio/hooks/useStudio";
-
-export function PromptMetadataPanel({ prompt }: { prompt: SavedPrompt }) {
-  const [copied, setCopied] = useState(false);
-
-  const handleCopy = () => {
-    navigator.clipboard.writeText(prompt.prompt);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  return (
-    <div className="flex flex-col gap-6">
-      <div className="bg-muted/10 p-6 rounded-xl neo-border relative group">
-        <div className="flex justify-between items-start mb-4">
-
-          <h3 className="text-sm font-mono font-bold uppercase tracking-widest text-(--accent-color)">
-            Prompt
-          </h3>
-
-          <button
-            onClick={handleCopy}
-            className="p-2 bg-background neo-border rounded-md hover:bg-muted transition-colors"
-            title="Copiar prompt"
+          <div
+            className={`w-6 h-6 rounded-full border-[1.5px] flex items-center justify-center transition-all shadow-sm ${
+              isSelected
+                ? "bg-(--accent-color) border-(--accent-color) text-white"
+                : "bg-black/40 border-white/80 hover:bg-black/60 text-white/0 hover:text-white/50"
+            }`}
           >
-            {copied ? <IconCheck size={18} className="text-green-500" /> : <IconCopy size={18} />}
-          </button>
-          
+            <IconCheck
+              size={14}
+              stroke={3}
+              className={isSelected ? "opacity-100" : "opacity-0 group-hover:opacity-100"}
+            />
+          </div>
         </div>
-        <p className="font-mono text-sm leading-relaxed text-foreground">{prompt.prompt}</p>
-      </div>
+      )}
 
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-        {prompt.model && (
-          <div className="p-4 bg-background neo-border rounded-lg">
-            <span className="block text-[10px] font-mono uppercase text-muted-foreground mb-1">
-              Modelo
-            </span>
-            <span className="font-bold text-sm truncate">{prompt.model}</span>
+      {(onAssign || onDelete) && !selectionModeActive && (
+        <div
+          className={`absolute top-3 right-3 z-40 pointer-events-auto transition-opacity duration-300 ${isHovered || isMenuOpen ? "opacity-100" : "opacity-0"}`}
+        >
+          <button
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setIsMenuOpen(!isMenuOpen);
+            }}
+            className={`p-1.5 rounded-md backdrop-blur-md border shadow-sm transition-colors ${
+              isMenuOpen
+                ? "bg-background border-border text-foreground"
+                : "bg-black/40 border-white/20 text-white hover:bg-black/60"
+            }`}
+          >
+            <IconDotsVertical size={18} />
+          </button>
+
+          {isMenuOpen && (
+            <div
+              className="absolute top-full right-0 mt-2 w-48 bg-background border border-border rounded-xl shadow-xl overflow-hidden flex flex-col py-1 z-50 animate-in fade-in duration-200"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+              }}
+            >
+              {onAssign && collections.length > 0 && (
+                <div className="px-3 py-2 border-b border-border/10">
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1.5 flex items-center gap-1.5">
+                    <IconFolder size={12} /> Colección
+                  </label>
+                  <select
+                    className="w-full bg-muted/50 text-xs text-foreground p-1.5 rounded border border-border focus:outline-none focus:ring-1 focus:ring-(--accent-color) cursor-pointer"
+                    value={item.collection_id || ""}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                    }}
+                    onChange={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      onAssign(item.id, e.target.value ? Number(e.target.value) : null);
+                      setIsMenuOpen(false);
+                    }}
+                  >
+                    <option value="">Ninguna (Suelto)</option>
+                    {collections.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {onDelete && (
+                <button
+                  // 🟢 CORRECCIÓN 1: Devolvemos la protección del evento al botón y forzamos w-full
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (window.confirm("¿Seguro que deseas eliminar este prompt de Mi Studio?")) {
+                      onDelete(item.id);
+                    }
+                    setIsMenuOpen(false);
+                  }}
+                  className="flex w-full items-center gap-2 px-3 py-2.5 text-xs font-medium text-red-500 hover:bg-red-500/10 text-left transition-colors"
+                >
+                  <IconTrash size={14} /> Borrar del Studio
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      <div className="relative aspect-square sm:aspect-4/5 bg-muted/10 z-10 pointer-events-none rounded-t-xl overflow-hidden">
+        {item.image_url ? (
+          <LazyImage
+            src={item.image_url}
+            alt={item.title}
+            className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-101"
+            index={index}
+            priority={isPriority}
+          />
+        ) : (
+          <div className="w-full h-full flex flex-col items-center justify-center text-muted-foreground/50">
+            <IconPhoto size={48} stroke={1} />
+            <span className="text-xs font-mono mt-2">Sin imagen</span>
           </div>
         )}
+
+        <div
+          className={`absolute inset-0 bg-black/20 transition-opacity duration-300 ${isHovered || isMenuOpen ? "opacity-100" : "opacity-0"}`}
+        />
+      </div>
+
+      <div className="p-5 flex flex-col grow gap-4 z-10 pointer-events-none">
+        <div>
+          <h3 className="font-bold text-base tracking-tight truncate" title={item.title}>
+            {item.title}
+          </h3>
+          <div className="flex items-center gap-2 mt-1">
+            <span className="text-xs text-muted-foreground truncate">
+              {item.model || "Modelo desconocido"}
+            </span>
+            {item.sampler && (
+              <>
+                <span className="text-muted-foreground/30 text-[10px]">•</span>
+                <span className="text-xs text-muted-foreground truncate">{item.sampler}</span>
+              </>
+            )}
+          </div>
+        </div>
+
+        <div className="relative group/prompt bg-muted/30 rounded-lg p-3 border border-border/50 mt-auto pointer-events-auto">
+          <p className="text-xs font-mono text-foreground/80 line-clamp-3 leading-relaxed">
+            {item.prompt || <span className="italic opacity-50">Sin prompt</span>}
+          </p>
+
+          {item.prompt && (
+            <button
+              onClick={handleCopy}
+              className="absolute top-2 right-2 p-1.5 bg-background border border-border rounded-md shadow-sm opacity-0 group-hover/prompt:opacity-100 hover:bg-accent hover:text-accent-foreground transition-all"
+              title="Copiar Prompt"
+            >
+              {copied ? (
+                <IconCheck size={14} className="text-green-500" stroke={2} />
+              ) : (
+                <IconCopy size={14} stroke={1.5} />
+              )}
+            </button>
+          )}
+        </div>
+
+        <div className="flex justify-between items-center text-[10px] text-muted-foreground font-mono uppercase tracking-widest pt-1 pointer-events-auto">
+          <span>
+            {new Date(item.created_at).toLocaleDateString(lang === "es" ? "es-ES" : "en-US")}
+          </span>
+          {item.resolution && <span>{item.resolution}</span>}
+        </div>
       </div>
     </div>
   );
@@ -8613,10 +9598,16 @@ export function PublicFeedGrid({ feed, isLoading, lang }: PublicFeedGridProps) {
           </div>
         </FadeIn>
       ) : (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+        <div className="mx-auto grid grid-cols-1 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
           {feed.map((item, index) => (
             <FadeIn key={item.id} delay={index * 0.05} y={20}>
-              <FeedItemCard key={item.id} item={item} lang={lang} isPriority={index < 6} index={index}/>
+              <FeedItemCard
+                key={item.id}
+                item={item}
+                lang={lang}
+                isPriority={index < 6}
+                index={index}
+              />
             </FadeIn>
           ))}
         </div>
@@ -8629,11 +9620,11 @@ export function PublicFeedGrid({ feed, isLoading, lang }: PublicFeedGridProps) {
 <file path="src/types/auth.types.ts">
 export interface UserLogin {
   username: string;
+  email?: string,
   password?: string;
 }
 
 export interface UserRegister {
-  username: string;
   email?: string;
   password?: string;
   [key: string]: any;
@@ -8646,6 +9637,7 @@ export type AspectRatio = "portrait" | "landscape" | "square" | "auto";
 
 export interface MediaCardData {
   id: string | number;
+  user_id: string;
   imageUrl: string;
   title: string;
   prompt?: string;
@@ -8656,6 +9648,7 @@ export interface MediaCardData {
 
 export interface GalleryItem {
   url: string;
+  user_id: string;
   title: string;
   thumb: string;
   gid?: string;
@@ -8666,6 +9659,7 @@ export interface GalleryItem {
 
 export interface FeedItem {
   id: string;
+  user_id: string;
   raw_id: string;
   slug?: string;
   type: "prompt" | "collection" | "studio";
@@ -8677,6 +9671,7 @@ export interface FeedItem {
 
 export interface Collection {
   id: number;
+  user_id: string;
   name: string;
   slug: string;
   description: string | null;
@@ -8686,6 +9681,7 @@ export interface Collection {
 
 export interface SavedPrompt {
   id: number;
+  user_id: string;
   title: string;
   prompt: string;
   model: string;

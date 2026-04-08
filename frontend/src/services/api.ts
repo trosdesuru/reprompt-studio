@@ -70,16 +70,23 @@ export const api = {
     });
   },
 
+  getGoogleAuthUrl: async () => {
+    return fetchSeguro(`${API_URL}/auth/google`, {
+      method: "POST",
+    });
+  },
+
   verifyGoogleCode: async (data: { code: string }) => {
-    return fetchSeguro(`${API_URL}/auth/google/join`, {
+    return fetchSeguro(`${API_URL}/auth/google/callback`, {
       method: "POST",
       body: JSON.stringify(data),
     });
   },
 
-  getGoogleAuthUrl: async () => {
-    return fetchSeguro(`${API_URL}/auth/google`, {
+  verifyDiscordCode: async (data: { code: string; redirect_uri: string }) => {
+    return fetchSeguro(`${API_URL}/auth/discord`, {
       method: "POST",
+      body: JSON.stringify(data),
     });
   },
 
