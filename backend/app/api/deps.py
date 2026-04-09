@@ -5,6 +5,7 @@ import logging
 from fastapi import Depends, HTTPException, status, Request
 from jose import jwt, JWTError
 from sqlmodel import Session, select
+from app.core.redis_config import conn as redis_client
 from app.core.db import get_session
 from app.models.user import User
 
@@ -93,6 +94,9 @@ def get_current_user(request: Request, session: Session = Depends(get_session)):
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         username: str = payload.get("sub")
+
+        redis_client.setex(f"user:online:{user.id}", 300, "1")
+
         if username is None:
             logger.warning("🛡️ [DEPS] Rechazado: Token válido pero sin campo 'sub'.")
             raise HTTPException(
@@ -110,6 +114,8 @@ def get_current_user(request: Request, session: Session = Depends(get_session)):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="No autenticado"
         )
+    except Exception as e:
+        pass
 
     user = session.exec(select(User).where(User.username == username)).first()
     if user is None:
