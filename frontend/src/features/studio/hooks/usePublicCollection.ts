@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { api } from "@/src/services/api";
 import { SavedPrompt } from "@/src/types/models";
 
-export interface CollectionDetail {
+interface CollectionDetail {
   collection: {
     id: number;
     name: string;

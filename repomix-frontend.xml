@@ -107,9 +107,15 @@ src/
       admin.types.ts
     auth/
       hooks/
+        oauth/
+          useDiscordAuth.ts
+          useGoogleAuth.ts
+          useOAuthPending.ts
         useAuthForm.tsx
+        useCredentialsAuth.ts
         useGoogleAuth.ts
         useLoginForm.tsx
+        useOAuth.ts
         useRedirectIfAuthenticated.ts
         useRegister.ts
       AuthProvider.tsx
@@ -545,7 +551,7 @@ export default function PublicCollectionPage({
 
   if (error || !data) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center font-mono gap-4">
+      <div className="max-h-screen flex flex-col items-center justify-center font-mono gap-4">
         <p className="text-red-500">{error || "Colección no encontrada."}</p>
         <Link
           href={`/${lang}/${username}`}
@@ -564,7 +570,7 @@ export default function PublicCollectionPage({
 
   return (
     <FadeIn duration={0.8}>
-      <main className="min-h-screen bg-background p-4 md:p-8">
+      <main className="max-h-screen bg-background p-4 md:p-8">
         <div className="max-w-7xl mx-auto space-y-8">
           <div>
             <Breadcrumbs items={breadcrumbItems} />
@@ -676,7 +682,7 @@ export default function PromptDetailPage({ params, searchParams }: PromptDetailP
   }
 
   return (
-    <main className="min-h-screen bg-background p-4 md:p-8">
+    <main className="max-h-screen bg-background p-4 md:p-8">
       <div className="max-w-6xl mx-auto space-y-8">
         <div className="mb-4">
           <Breadcrumbs items={breadcrumbItems} />
@@ -744,7 +750,7 @@ export default function PublicProfilePage({
 
   if (error || !data) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center font-mono gap-4">
+      <div className="max-h-screen flex flex-col items-center justify-center font-mono gap-4">
         <p className="text-red-500">
           {error || "Este usuario no existe o se ha perdido en el vacío."}
         </p>
@@ -761,7 +767,7 @@ export default function PublicProfilePage({
   const breadcrumbItems = [{ label: `@${data.user.username}` }];
 
   return (
-    <main className="min-h-screen bg-background p-4 md:p-8">
+    <main className="max-h-screen bg-background p-4 md:p-8">
       <div className="max-w-7xl mx-auto space-y-8">
         <div>
           <Breadcrumbs items={breadcrumbItems} />
@@ -871,7 +877,7 @@ export default function AdminDashboard() {
   // Pantalla de carga mientras verificamos identidad
   if (isLoadingAuth || !user || user.role !== "admin") {
     return (
-      <div className="min-h-screen flex items-center justify-center font-mono text-foreground bg-background">
+      <div className="max-h-screen flex items-center justify-center font-mono text-foreground bg-background">
         <span className="animate-pulse">CARGANDO PROTOCOLOS DE MANDO...</span>
       </div>
     );
@@ -951,7 +957,7 @@ export default function RepromptPage({ params }: { params: Promise<{ lang: strin
   ];
 
   return (
-    <main className="min-h-screen bg-background p-4 md:p-8">
+    <main className="max-h-screen bg-background p-4 md:p-8">
       <UpgradeModal isOpen={upgradeModal} onClose={closeUpgradeModal} />
       <div className="max-w-7xl mx-auto space-y-8">
         <div>
@@ -1052,7 +1058,7 @@ export default function StudioPage({ params }: { params: Promise<{ lang: string 
   const handleClearSelection = () => setSelectedIds([]);
 
   return (
-    <main className="min-h-screen bg-background p-4 md:p-8 relative pb-24">
+    <main className="max-h-screen bg-background p-4 md:p-8 relative pb-24">
       <BulkActionBar
         selectedCount={selectedIds.length}
         onClearSelection={handleClearSelection}
@@ -1217,7 +1223,7 @@ export default function Home({ params }: { params: Promise<{ lang: string }> }) 
   const globalError = search.error || publicFeed.feedError;
 
   return (
-    <main className="min-h-screen bg-background text-foreground font-sans">
+    <main className="max-h-screen bg-background text-foreground font-sans">
       <Hero />
 
       {globalError && <FeedState type="error" message={globalError} />}
@@ -2668,104 +2674,18 @@ export interface AuditLog {
 }
 </file>
 
-<file path="src/features/auth/hooks/useAuthForm.tsx">
-// src/features/auth/hooks/useAuthForm.ts
-import { useState, useEffect } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
+<file path="src/features/auth/hooks/oauth/useDiscordAuth.ts">
+import { useState } from "react";
 import { api } from "@/src/services/api";
 import toast from "react-hot-toast";
 
-export function useAuthForm() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-
-  const [isLogin, setIsLogin] = useState(true);
-  const [isLoading, setIsLoading] = useState(false);
-  const [oauthPending, setOauthPending] = useState<any>(null);
-  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+export function useDiscordAuth() {
   const [isDiscordLoading, setIsDiscordLoading] = useState(false);
-
-  const [emailOrUser, setEmailOrUser] = useState("");
-  const [password, setPassword] = useState("");
-  const [inviteCode, setInviteCode] = useState("");
-  const [isInviteLocked, setIsInviteLocked] = useState(false);
-
-  useEffect(() => {
-    const pendingData = sessionStorage.getItem("oauth_pending");
-    if (pendingData) {
-      setOauthPending(JSON.parse(pendingData));
-      return;
-    }
-
-    const codeFromUrl = searchParams.get("code");
-    if (codeFromUrl) {
-      setIsLogin(false);
-      setInviteCode(codeFromUrl);
-      setIsInviteLocked(true);
-    }
-  }, [searchParams]);
-
-  const handleOauthSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-    try {
-      await api.registerGoogleUser({
-        token: oauthPending.token,
-        invite_code: inviteCode,
-        username: oauthPending.username,
-      });
-      sessionStorage.removeItem("oauth_pending");
-      toast.success("¡Cuenta VIP creada con éxito!");
-      window.location.href = "/es/studio"; // Recarga dura obligatoria
-    } catch (error: any) {
-      toast.error(error.message || "Código inválido");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-
-    try {
-      if (isLogin) {
-        await api.login({ username: emailOrUser, password });
-        toast.success("¡Bienvenido de nuevo!");
-        router.push("/es/studio");
-      } else {
-        await api.register({
-          email: emailOrUser,
-          password,
-          invite_code: inviteCode,
-        });
-        toast.success("Cuenta creada con éxito");
-        await api.login({ username: emailOrUser, password });
-        router.push("/es/studio");
-      }
-    } catch (error: any) {
-      toast.error(error?.response?.data?.detail || "Error en la autenticación");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleGoogleLogin = async () => {
-    setIsGoogleLoading(true);
-    try {
-      const response = await api.getGoogleAuthUrl();
-      if (response?.auth_url) window.location.href = response.auth_url;
-    } catch (error) {
-      toast.error("Error al conectar con Google");
-      setIsGoogleLoading(false);
-    }
-  };
 
   const handleDiscordLogin = async () => {
     setIsDiscordLoading(true);
     try {
       const response = await api.auth.getDiscordAuthUrl();
-
       if (response?.auth_url) {
         window.location.href = response.auth_url;
       } else {
@@ -2779,28 +2699,145 @@ export function useAuthForm() {
     }
   };
 
+  return { isDiscordLoading, handleDiscordLogin };
+}
+</file>
+
+<file path="src/features/auth/hooks/oauth/useGoogleAuth.ts">
+import { useState } from "react";
+import { api } from "@/src/services/api";
+import toast from "react-hot-toast";
+
+export function useGoogleAuth() {
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+
+  const handleGoogleLogin = async () => {
+    setIsGoogleLoading(true);
+    try {
+      const response = await api.getGoogleAuthUrl();
+      if (response?.auth_url) window.location.href = response.auth_url;
+    } catch (error) {
+      toast.error("Error al conectar con Google");
+      setIsGoogleLoading(false);
+    }
+  };
+
+  return { isGoogleLoading, handleGoogleLogin };
+}
+</file>
+
+<file path="src/features/auth/hooks/oauth/useOAuthPending.ts">
+import { useState, useEffect } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
+import { api } from "@/src/services/api";
+import toast from "react-hot-toast";
+
+export function useOAuthPending() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  const [oauthPending, setOauthPending] = useState<any>(null);
+  const [isOauthSubmitting, setIsOauthSubmitting] = useState(false);
+
+  useEffect(() => {
+    const pendingData = sessionStorage.getItem("oauth_pending");
+    if (pendingData) {
+      setOauthPending(JSON.parse(pendingData));
+    }
+  }, []);
+
+  const handleOauthSubmit = async (inviteCode: string) => {
+    if (!oauthPending) return;
+    setIsOauthSubmitting(true);
+    try {
+      await api.registerGoogleUser({
+        token: oauthPending.token,
+        invite_code: inviteCode,
+        username: oauthPending.username,
+      });
+      sessionStorage.removeItem("oauth_pending");
+      toast.success("¡Cuenta VIP creada con éxito!");
+      window.location.href = "/es/studio";
+    } catch (error: any) {
+      toast.error(error.message || "Código inválido");
+    } finally {
+      setIsOauthSubmitting(false);
+    }
+  };
+
   const cancelOauthFlow = () => {
     setOauthPending(null);
     sessionStorage.removeItem("oauth_pending");
-
-    // Limpiamos la URL por si tiene el ?step=oauth_invite
     if (searchParams.get("step") === "oauth_invite") {
-      // Reemplazamos la URL sin recargar la página para que sea fluido
       router.replace("/es/login");
     }
   };
 
   return {
+    oauthPending,
+    isOauthSubmitting,
+    handleOauthSubmit,
+    cancelOauthFlow,
+  };
+}
+</file>
+
+<file path="src/features/auth/hooks/useAuthForm.tsx">
+// src/features/auth/hooks/useAuthForm.ts
+import { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
+import { useOAuth } from "./useOAuth";
+import { useCredentialsAuth } from "./useCredentialsAuth";
+
+export function useAuthForm() {
+  const searchParams = useSearchParams();
+
+  // Dependencias
+  const oauth = useOAuth();
+  const credsAuth = useCredentialsAuth();
+
+  // Estado puro de la UI (Inputs)
+  const [isLogin, setIsLogin] = useState(true);
+  const [emailOrUser, setEmailOrUser] = useState("");
+  const [password, setPassword] = useState("");
+  const [inviteCode, setInviteCode] = useState("");
+  const [isInviteLocked, setIsInviteLocked] = useState(false);
+
+  // Manejo de código de invitación por URL
+  useEffect(() => {
+    const codeFromUrl = searchParams.get("code");
+    if (codeFromUrl) {
+      setIsLogin(false);
+      setInviteCode(codeFromUrl);
+      setIsInviteLocked(true);
+    }
+  }, [searchParams]);
+
+  // Wrappers para inyectar el estado actual en las funciones de los submódulos
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    credsAuth.handleCredentialsSubmit(isLogin, emailOrUser, password, inviteCode);
+  };
+
+  const handleOauthSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    oauth.handleOauthSubmit(inviteCode);
+  };
+
+  // Estado derivado para bloquear la UI si ALGO está cargando
+  const isAnyLoading = credsAuth.isCredsLoading || oauth.isOauthSubmitting;
+
+  return {
     state: {
       isLogin,
-      isLoading,
-      isGoogleLoading,
-      isDiscordLoading,
+      isLoading: isAnyLoading,
+      isGoogleLoading: oauth.isGoogleLoading,
+      isDiscordLoading: oauth.isDiscordLoading,
       emailOrUser,
       password,
       inviteCode,
       isInviteLocked,
-      oauthPending,
+      oauthPending: oauth.oauthPending,
     },
     actions: {
       setIsLogin,
@@ -2808,12 +2845,52 @@ export function useAuthForm() {
       setPassword,
       setInviteCode,
       handleSubmit,
-      handleGoogleLogin,
-      handleDiscordLogin,
       handleOauthSubmit,
-      cancelOauthFlow,
+      handleGoogleLogin: oauth.handleGoogleLogin,
+      handleDiscordLogin: oauth.handleDiscordLogin,
+      cancelOauthFlow: oauth.cancelOauthFlow,
     },
   };
+}
+</file>
+
+<file path="src/features/auth/hooks/useCredentialsAuth.ts">
+// src/features/auth/hooks/useCredentialsAuth.ts
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { api } from "@/src/services/api";
+import toast from "react-hot-toast";
+
+export function useCredentialsAuth() {
+  const router = useRouter();
+  const [isCredsLoading, setIsCredsLoading] = useState(false);
+
+  const handleCredentialsSubmit = async (
+    isLogin: boolean,
+    emailOrUser: string,
+    password: string,
+    inviteCode: string,
+  ) => {
+    setIsCredsLoading(true);
+    try {
+      if (isLogin) {
+        await api.login({ username: emailOrUser, password });
+        toast.success("¡Bienvenido de nuevo!");
+        router.push("/es/studio");
+      } else {
+        await api.register({ email: emailOrUser, password, invite_code: inviteCode });
+        toast.success("Cuenta creada con éxito");
+        await api.login({ username: emailOrUser, password });
+        router.push("/es/studio");
+      }
+    } catch (error: any) {
+      toast.error(error?.response?.data?.detail || "Error en la autenticación");
+    } finally {
+      setIsCredsLoading(false);
+    }
+  };
+
+  return { handleCredentialsSubmit, isCredsLoading };
 }
 </file>
 
@@ -2976,6 +3053,35 @@ export function useLoginForm() {
     isLoading,
     handleChange,
     handleSubmit,
+  };
+}
+</file>
+
+<file path="src/features/auth/hooks/useOAuth.ts">
+// src/features/auth/hooks/useOAuth.ts
+import { useGoogleAuth } from "./oauth/useGoogleAuth";
+import { useDiscordAuth } from "./oauth/useDiscordAuth";
+import { useOAuthPending } from "./oauth/useOAuthPending";
+
+export function useOAuth() {
+  // Inicializamos los micro-hooks
+  const googleAuth = useGoogleAuth();
+  const discordAuth = useDiscordAuth();
+  const pendingAuth = useOAuthPending();
+
+  // Devolvemos el contrato exacto que el useAuthForm espera
+  return {
+    // Estados
+    oauthPending: pendingAuth.oauthPending,
+    isGoogleLoading: googleAuth.isGoogleLoading,
+    isDiscordLoading: discordAuth.isDiscordLoading,
+    isOauthSubmitting: pendingAuth.isOauthSubmitting,
+
+    // Acciones
+    handleGoogleLogin: googleAuth.handleGoogleLogin,
+    handleDiscordLogin: discordAuth.handleDiscordLogin,
+    handleOauthSubmit: pendingAuth.handleOauthSubmit,
+    cancelOauthFlow: pendingAuth.cancelOauthFlow,
   };
 }
 </file>
@@ -5159,35 +5265,37 @@ import { NotificationDropdown } from "../../molecules/Navbar/NotificationDropdow
 import { IconAlbum, IconSun, IconMoon, IconScanTraces } from "@tabler/icons-react";
 
 export function NavbarActions() {
-  const { user, isLoadingAuth } = useAuthStore();
-  const { isDark, toggleTheme } = useTheme();
+  const user = useAuthStore((state) => state.user);
+  const isLoadingAuth = useAuthStore((state) => state.isLoadingAuth);
 
+  const { isDark, toggleTheme } = useTheme();
   const [isMounted, setIsMounted] = useState(false);
+
   useEffect(() => {
     setIsMounted(true);
   }, []);
 
   if (!isMounted) {
-    return <div className="hidden md:block w-24 h-10" />;
+    return <div className="hidden md:flex w-200px h-10 shrink-0" />;
   }
 
   return (
     <div className="hidden md:flex items-center gap-1.5 lg:gap-1.5 shrink-0">
       {isLoadingAuth ? (
-        <div className="w-24 h-10 rounded-lg bg-muted/50 animate-pulse"></div>
+        <div className="w-32 h-9 rounded-lg bg-muted/40 animate-pulse"></div>
       ) : user ? (
         <>
           <div className="flex items-center gap-2">
             <Link
-              href="/studio"
+              href="/es/studio"
               className="flex items-center gap-2 px-4 py-2 bg-foreground text-background rounded-lg text-sm font-bold hover:opacity-90 transition-opacity"
             >
               <IconAlbum size={18} />
               Studio
             </Link>
             <Link
-              href="/reprompt"
-              className="p-2 rounded-md text-muted-foreground hover:text-foreground transition-colors hover:bg-(--bg-secondary) cursor-pointer"
+              href="/es/reprompt"
+              className="p-2 rounded-md text-muted-foreground hover:text-foreground transition-colors hover:bg-muted cursor-pointer"
               title="Mi Estudio"
             >
               <IconScanTraces size={22} />
@@ -5196,7 +5304,7 @@ export function NavbarActions() {
           <NotificationDropdown />
           <button
             onClick={toggleTheme}
-            className="p-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-(--bg-secondary) cursor-pointer transition-colors"
+            className="p-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer transition-colors"
             title="Cambiar tema"
           >
             {isDark ? <IconSun size={24} /> : <IconMoon size={24} />}
@@ -5204,9 +5312,10 @@ export function NavbarActions() {
           <UserDropdown />
         </>
       ) : (
+        /* Usuario NO Autenticado */
         <Link
-          href="/login"
-          className="text-sm font-bold px-4 py-2 bg-foreground text-background rounded-lg hover:opacity-90"
+          href="/es/login"
+          className="text-sm font-bold px-4 py-2 bg-foreground text-background rounded-lg hover:opacity-90 transition-opacity"
         >
           Entrar
         </Link>
@@ -5471,8 +5580,8 @@ export function PageLoader({ text = "Procesando petición..." }: PageLoaderProps
       <p
         className="font-mono text-sm uppercase tracking-widest
                    bg-gradient-to-r from-zinc-600/40 via-zinc-100 to-zinc-600/40
-                   bg-[length:250%_auto] 
-                   bg-clip-text text-transparent 
+                   bg-[length:250%_auto]
+                   bg-clip-text text-transparent
                    animate-ai-shimmer"
       >
         {text}
@@ -5994,13 +6103,13 @@ export function FeedItemCard({ item, lang, isPriority = false, index = 0 }: Feed
       ) : (
         <div className="w-full h-full group-hover:scale-105 transition-transform duration-500">
           <img
-            src="/logo-black.png"
-            className="w-full h-full object-cover block dark:hidden opacity-80"
+            src="/logo-white.png"
+            className="w-full h-full object-scale-down! dark:hidden opacity-80"
             alt="Portada por defecto"
           />
           <img
-            src="/logo-white.png"
-            className="w-full h-full object-cover hidden dark:block opacity-80"
+            src="/logo-black.png"
+            className="w-full h-full object-scale-down hidden dark:block opacity-80"
             alt="Portada por defecto"
           />
         </div>
@@ -10048,11 +10157,14 @@ import { MediaCardData, GalleryItem } from "@/src/types/models";
 
 export const mapSearchToMediaCard = (item: GalleryItem): MediaCardData => {
   // 🚨 SENSOR DE TRANSFORMACIÓN
-  if (!item && process.env.NODE_ENV === "development") console.error("🚨 TELEMETRÍA [ADAPTER]: Item recibido es NULO o UNDEFINED");
-  if (item && !item.thumb && process.env.NODE_ENV === "development") console.warn("🚨 TELEMETRÍA [ADAPTER]: Item no tiene imagen (thumb)", item);
+  if (!item && process.env.NODE_ENV === "development")
+    console.error("🚨 TELEMETRÍA [ADAPTER]: Item recibido es NULO o UNDEFINED");
+  if (item && !item.thumb && process.env.NODE_ENV === "development")
+    console.warn("🚨 TELEMETRÍA [ADAPTER]: Item no tiene imagen (thumb)", item);
 
   return {
-    id: item?.gid || item?.url || crypto.randomUUID(), 
+    id: item?.gid || item?.url || crypto.randomUUID(),
+    user_id: item.user_id,
     imageUrl: item?.thumb || "",
     title: item?.title || "Sin título",
     tags: item?.tags || [],
@@ -10061,7 +10173,15 @@ export const mapSearchToMediaCard = (item: GalleryItem): MediaCardData => {
   };
 };
 
-export const mapViewerToMediaCard = (page: any, index: number): MediaCardData => { /* ... */ return { id: `p-${index}`, imageUrl: page?.image_url || "", title: page?.name || "", aspectRatio: "auto" }; };
+export const mapViewerToMediaCard = (page: any, index: number): MediaCardData => {
+  /* ... */ return {
+    user_id: "",
+    id: `p-${index}`,
+    imageUrl: page?.image_url || "",
+    title: page?.name || "",
+    aspectRatio: "auto",
+  };
+};
 </file>
 
 <file path="src/utils/errors/AppErrors.ts">
@@ -10201,6 +10321,50 @@ import { twMerge } from "tailwind-merge"
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
+</file>
+
+<file path=".gitignore">
+# See https:
+
+# dependencies
+/node_modules
+/.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+# testing
+/coverage
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+
+# misc
+.DS_Store
+*.pem
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# env files (can opt-in for committing if needed)
+.env*
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
 </file>
 
 <file path=".prettierignore">
@@ -10672,54 +10836,9 @@ Check out our [Next.js deployment documentation](https:
 }
 </file>
 
-<file path=".gitignore">
-# See https:
-
-# dependencies
-/node_modules
-/.pnp
-.pnp.*
-.yarn/*
-!.yarn/patches
-!.yarn/plugins
-!.yarn/releases
-!.yarn/versions
-
-# testing
-/coverage
-
-# next.js
-/.next/
-/out/
-
-# production
-/build
-
-# misc
-.DS_Store
-*.pem
-
-# debug
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-.pnpm-debug.log*
-
-# env files (can opt-in for committing if needed)
-.env*
-
-# vercel
-.vercel
-
-# typescript
-*.tsbuildinfo
-next-env.d.ts
-</file>
-
 <file path="docker-compose.yml">
 frontend:
-  build:
-    context: ./frontend
+  build: ./frontend
   volumes:
     - ./frontend:/app
     - /app/node_modules

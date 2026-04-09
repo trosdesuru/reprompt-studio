@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { api } from "@/src/services/api";
 import { SavedPrompt } from "@/src/types/models";
 
-export interface ProfileData {
+interface ProfileData {
   user: { username: string; role: string };
   collections: any[];
   recent_prompts: SavedPrompt[];

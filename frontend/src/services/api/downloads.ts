@@ -1,7 +1,7 @@
 import { fetchSeguro } from "./client";
 import { ENV } from "@/src/services/config/env";
 
-export const API_URL = ENV.API_URL;
+const API_URL = ENV.API_URL;
 export const downloadApi = {
   solicitarZipColeccion: (collectionId: string) =>
     fetchSeguro(`${API_URL}/download/collection/${encodeURIComponent(collectionId)}`, {

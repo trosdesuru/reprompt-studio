@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { IconChevronRight, IconHome } from "@tabler/icons-react";
 
-export interface BreadcrumbItem {
+interface BreadcrumbItem {
   label: string;
   href?: string;
 }
