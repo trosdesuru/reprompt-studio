@@ -51,11 +51,9 @@ export default function GoogleCallbackPage() {
         } else {
           toast.success(`¡Bienvenido de nuevo, ${response.username}!`);
           
-          // 🟢 LA PIEZA CLAVE: Sincronizamos Zustand ANTES de navegar
           await checkAuth();
           
-          // Ahora sí, salto seguro al Studio
-          window.location.href = "/es/studio";
+          window.location.href = "/es";
         }
       } catch (error: any) {
         toast.error(error.message || "Fallo al conectar con Google");

@@ -1,6 +1,6 @@
 "use client";
 
-import { use } from "react";
+import { use, useEffect, useState } from "react";
 import Link from "next/link";
 import { IconFolder, IconPhotoOff } from "@tabler/icons-react";
 
@@ -8,6 +8,7 @@ import { PromptCard } from "@/src/system/organisms/Studio/PromptCard";
 import { usePublicCollection } from "@/src/features/studio/hooks/usePublicCollection";
 import { FadeIn } from "@/src/system/atoms/FadeIn";
 import { Breadcrumbs } from "@/src/system/organisms/Navigation/Breadcrumbs";
+import { useAuthStore } from "@/src/store/authStore";
 
 export default function PublicCollectionPage({
   params,
@@ -15,8 +16,16 @@ export default function PublicCollectionPage({
   params: Promise<{ lang: string; username: string; collection_slug: string }>;
 }) {
   const { lang, username, collection_slug } = use(params);
-
   const { data, isLoading, error } = usePublicCollection(username, collection_slug);
+
+  const user = useAuthStore((state) => state.user);
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  const isOwner = isMounted && user?.username === username;
 
   if (isLoading) {
     return (
@@ -40,17 +49,16 @@ export default function PublicCollectionPage({
     );
   }
 
-  const breadcrumbItems = [
-    { label: `@${username}`, href: `/${lang}/${username}` },
-    { label: data.collection.name },
-  ];
+  const breadcrumbItems = isOwner
+    ? [{ label: "Mi Studio", href: `/${lang}/studio` }, { label: data.collection.name }]
+    : [{ label: `@${username}`, href: `/${lang}/${username}` }, { label: data.collection.name }];
 
   return (
     <FadeIn duration={0.8}>
       <main className="max-h-screen bg-background p-4 md:p-8">
         <div className="max-w-7xl mx-auto space-y-8">
           <div>
-            <Breadcrumbs items={breadcrumbItems} />
+            <Breadcrumbs items={breadcrumbItems} homeHref={`/${lang}/reprompt`} />
           </div>
 
           <header className="flex flex-col gap-2 border-b border-border pb-8">

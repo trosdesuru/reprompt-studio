@@ -36,7 +36,6 @@ export function AuthForm() {
             />
           </div>
 
-          {/* 🟢 LA PUERTA DE ESCAPE: Flexbox para alinear Volver y Completar */}
           <div className="flex flex-col-reverse sm:flex-row gap-4">
             <button
               type="button"

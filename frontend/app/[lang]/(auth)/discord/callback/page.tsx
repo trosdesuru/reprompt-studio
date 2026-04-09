@@ -33,7 +33,7 @@ export default function DiscordCallbackPage() {
         const response = await api.verifyDiscordCode({ code, redirect_uri: redirectUri });
 
         if (response.status === "needs_invite") {
-          toast.success("Cuenta de Discord vinculada. ¡Introduce un código VIP!");
+          toast.success("Cuenta de Discord vinculada. Introduce tu código de inivitación");
           // Redirigimos a login con un estado para que complete el registro (Fase futura si la necesitas)
           router.push(`/es/auth/login?discord_email=${response.email}`);
         } else {

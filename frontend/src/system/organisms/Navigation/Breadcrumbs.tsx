@@ -8,15 +8,16 @@ interface BreadcrumbItem {
 
 interface BreadcrumbsProps {
   items: BreadcrumbItem[];
+  homeHref?: string;
 }
 
-export function Breadcrumbs({ items }: BreadcrumbsProps) {
+export function Breadcrumbs({ items, homeHref = "/" }: BreadcrumbsProps) {
   return (
     <nav
       aria-label="Breadcrumb"
       className="flex items-center space-x-1 text-xs md:text-sm font-mono text-muted-foreground overflow-x-auto pb-2 scrollbar-none"
     >
-      <Link href="/" className="hover:text-(--accent-color) transition-colors flex items-center">
+      <Link href={homeHref} className="hover:text-accent-foreground transition-colors flex items-center">
         <IconHome size={16} stroke={1.5} />
       </Link>
 

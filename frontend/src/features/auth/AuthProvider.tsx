@@ -1,23 +1,25 @@
 "use client";
 
 import { useEffect } from "react";
+import { usePathname } from "next/navigation";
 import { useAuthStore } from "@/src/store/authStore";
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const { checkAuth } = useAuthStore();
+  const { checkAuth, user } = useAuthStore();
+  const pathname = usePathname() || "";
 
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      const isAuthPage =
-        window.location.pathname.includes("/login") || window.location.pathname.includes("/join");
+    const isAuthPage = pathname.includes("/login") || pathname.includes("/join");
 
-      if (!isAuthPage) {
+    if (!isAuthPage) {
+      
+      if (!user) {
         checkAuth();
-      } else {
-        useAuthStore.setState({ isLoadingAuth: false });
       }
+    } else {
+      useAuthStore.setState({ isLoadingAuth: false });
     }
-  }, [checkAuth]);
+  }, [pathname, checkAuth, user]);
 
   return <>{children}</>;
 }

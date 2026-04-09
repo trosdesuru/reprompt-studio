@@ -300,6 +300,10 @@ import os
 import secrets
 import redis
 import logging
+import urllib.parse
+from app.core.config import settings
+from app.schemas.user import GoogleAuthRequest
+from app.schemas.user import DiscordAuthRequest
 from fastapi import APIRouter, Depends, Response, Cookie, HTTPException, status
 from fastapi.responses import JSONResponse
 from sqlmodel import Session, select
@@ -385,16 +389,129 @@ def login_user(
     return {"status": "success", "message": f"Bienvenido, {username}"}
 
 
-@router.post("/google")
-def google_auth(
+@router.get("/google/url")
+def get_google_auth_url():
+    """Genera la URL para que el frontend redirija al usuario a Google"""
+    base_url = "https://accounts.google.com/o/oauth2/v2/auth"
+    params = {
+        "client_id": settings.GOOGLE_CLIENT_ID,
+        "response_type": "code",
+        "scope": "openid email profile",
+        # Asegúrate de que esta URL coincida con la que tienes en Google Cloud Console
+        "redirect_uri": "http://localhost:3000/es/google/callback",
+        "access_type": "offline",
+        "prompt": "consent",
+    }
+    url = f"{base_url}?{urllib.parse.urlencode(params)}"
+    return {"auth_url": url}
+
+
+# 🟢 RUTA 2: El Callback que recibe el Code y hace la magia
+@router.post("/google/callback")
+def verify_google_code(
     data: GoogleAuthRequest, response: Response, session: Session = Depends(get_session)
 ):
-    result = AuthService.authenticate_google_user(data.token, session, redis_client)
+    # Aquí llamamos al AuthService que creamos en el paso anterior
+    result = AuthService.authenticate_google_user(
+        data.code, data.redirect_uri, session, redis_client
+    )
 
     if result["status"] == "needs_invite":
         response.status_code = status.HTTP_202_ACCEPTED
         return result
 
+    # Configurar cookies si el login es exitoso
+    response.set_cookie(
+        key="access_token",
+        value=result["access_token"],
+        httponly=True,
+        secure=IS_PRODUCTION,
+        max_age=60 * 15,
+        samesite="lax",
+        path="/",
+    )
+    response.set_cookie(
+        key="refresh_token",
+        value=result["refresh_token"],
+        httponly=True,
+        secure=IS_PRODUCTION,
+        max_age=60 * 60 * 24 * 7,
+        samesite="lax",
+        path="/",
+    )
+
+    return {
+        "status": "success",
+        "message": f"Bienvenido de nuevo, {result['username']}",
+    }
+
+
+@router.post("/google/join")
+def register_google_user_route(
+    data: GoogleJoinRequest,
+    response: Response,
+    session: Session = Depends(get_session),
+):
+    # Llamamos al servicio que ya tenías creado
+    access_token, refresh_token, username = AuthService.register_google_user(
+        data, session, redis_client
+    )
+
+    # Inyectamos las cookies de sesión (igual que en el login normal)
+    response.set_cookie(
+        key="access_token",
+        value=access_token,
+        httponly=True,
+        secure=IS_PRODUCTION,
+        max_age=60 * 15,
+        samesite="lax",
+        path="/",
+    )
+    response.set_cookie(
+        key="refresh_token",
+        value=refresh_token,
+        httponly=True,
+        secure=IS_PRODUCTION,
+        max_age=60 * 60 * 24 * 7,
+        samesite="lax",
+        path="/",
+    )
+    return {
+        "status": "success",
+        "message": f"Cuenta VIP creada con éxito. Bienvenido, {username}",
+    }
+
+
+@router.get("/discord/url")
+def get_discord_auth_url():
+    """Genera la URL para que el frontend redirija al usuario a Discord"""
+    base_url = "https://discord.com/api/oauth2/authorize"
+    params = {
+        "client_id": settings.DISCORD_CLIENT_ID,
+        "redirect_uri": "http://localhost:3000/es/discord/callback",
+        "response_type": "code",
+        "scope": "identify email",
+        "prompt": "consent",
+    }
+    url = f"{base_url}?{urllib.parse.urlencode(params)}"
+    return {"auth_url": url}
+
+
+@router.post("/discord")
+def discord_auth(
+    data: DiscordAuthRequest,
+    response: Response,
+    session: Session = Depends(get_session),
+):
+    result = AuthService.authenticate_discord_user(
+        data.code, data.redirect_uri, session, redis_client
+    )
+
+    if result["status"] == "needs_invite":
+        response.status_code = status.HTTP_202_ACCEPTED
+        return result
+
+    # Configurar cookies
     response.set_cookie(
         key="access_token",
         value=result["access_token"],
@@ -415,47 +532,11 @@ def google_auth(
     )
 
     AuditService.log_action(
-        session, result["username"], "LOGIN_GOOGLE", "Inicio de sesión con Google"
+        session, result["username"], "LOGIN_DISCORD", "Inicio de sesión con Discord"
     )
     return {
         "status": "success",
         "message": f"Bienvenido de nuevo, {result['username']}",
-    }
-
-
-@router.post("/google/join")
-def google_join(
-    data: GoogleJoinRequest, response: Response, session: Session = Depends(get_session)
-):
-    access_token, refresh_token, username = AuthService.register_google_user(
-        data, session, redis_client
-    )
-
-    response.set_cookie(
-        key="access_token",
-        value=access_token,
-        httponly=True,
-        secure=IS_PRODUCTION,
-        max_age=60 * 15,
-        samesite="lax",
-        path="/",
-    )
-    response.set_cookie(
-        key="refresh_token",
-        value=refresh_token,
-        httponly=True,
-        secure=IS_PRODUCTION,
-        max_age=60 * 60 * 24 * 7,
-        samesite="lax",
-        path="/",
-    )
-
-    AuditService.log_action(
-        session, username, "REGISTER_GOOGLE", "Registro híbrido completado"
-    )
-    return {
-        "status": "success",
-        "message": f"Cuenta creada. Bienvenido a la Resistencia, {username}",
     }
 
 
@@ -626,6 +707,7 @@ def revoke_all_sessions(current_admin: User = Depends(get_current_admin)):
 </file>
 
 <file path="app/api/routes_collections.py">
+import uuid
 import re
 import unicodedata
 from typing import Optional
@@ -648,7 +730,7 @@ class CollectionCreate(BaseModel):
 
 
 class AssignPrompt(BaseModel):
-    collection_id: Optional[int]
+    collection_id: Optional[uuid.UUID]
 
 
 def create_unique_slug(name: str, user_id: int, session: Session) -> str:
@@ -718,7 +800,7 @@ def get_my_collections(
 
 @router.put("/assign/{prompt_id}")
 def assign_prompt_to_collection(
-    prompt_id: int,
+    prompt_id: uuid.UUID,
     data: AssignPrompt,
     current_user: User = Depends(get_current_user),
     session: Session = Depends(get_session),
@@ -750,6 +832,7 @@ def assign_prompt_to_collection(
 </file>
 
 <file path="app/api/routes_download.py">
+import uuid
 from rq import Queue
 from rq.job import Job
 from rq.exceptions import NoSuchJobError
@@ -804,7 +887,7 @@ def descargar_una_imagen(
 
 @router.post("/collection/{collection_id}")
 def descargar_coleccion_completa(
-    collection_id: int,
+    collection_id: uuid.UUID,
     current_user: User = Depends(get_current_user),
     session: Session = Depends(get_session),
 ):
@@ -913,7 +996,7 @@ router = APIRouter()
 
 
 class BatchDeleteRequest(BaseModel):
-    prompt_ids: List[int]
+    prompt_ids: List[uuid.UUID]
 
 
 class PresignedUrlRequest(BaseModel):
@@ -1049,7 +1132,7 @@ def obtener_mis_prompts(
 
 @router.delete("/{prompt_id}")
 def eliminar_prompt(
-    prompt_id: int,
+    prompt_id: uuid.UUID,
     current_user: User = Depends(get_current_user),
     session: Session = Depends(get_session),
 ):
@@ -1088,7 +1171,6 @@ def eliminar_prompts_lote(
     if not data.prompt_ids:
         return {"status": "success", "message": "Ningún ID proporcionado"}
 
-    # Buscamos solo los prompts que pertenecen al usuario actual (Seguridad IDOR)
     statement = select(ImagePrompt).where(
         ImagePrompt.id.in_(data.prompt_ids), ImagePrompt.user_id == current_user.id
     )
@@ -1100,13 +1182,12 @@ def eliminar_prompts_lote(
             detail="No se encontraron las imágenes o no tienes permiso.",
         )
 
-    # Borramos de R2 y de la Base de Datos
     for prompt in prompts_a_borrar:
         if prompt.image_url:
-            eliminar_de_r2(prompt.image_url)  # Liberamos espacio en Cloudflare
+            eliminar_de_r2(prompt.image_url)
         session.delete(prompt)
 
-    session.commit()  # Una sola transacción a Neon.tech
+    session.commit()
 
     return {
         "status": "success",
@@ -1116,9 +1197,10 @@ def eliminar_prompts_lote(
 </file>
 
 <file path="app/api/routes_public.py">
-# backend/app/api/routes_public.py
+import uuid
 from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session, select, or_, func
+from sqlalchemy import select as sa_select
 from app.core.db import get_session
 from app.models.user import User
 from app.models.collection import Collection
@@ -1158,7 +1240,7 @@ def get_public_profile(username: str, session: Session = Depends(get_session)):
         "status": "success",
         "user": {
             "username": user.username,
-            "role": user.role.value if hasattr(user.role, "value") else user.role
+            "role": user.role.value if hasattr(user.role, "value") else user.role,
         },
         "collections": collections,
         "recent_prompts": prompts,
@@ -1211,7 +1293,7 @@ def get_public_collection(
 
 @router.get("/prompt/{prompt_id}")
 def get_public_prompt_detail(
-    prompt_id: int,
+    prompt_id: uuid.UUID,
     session: Session = Depends(get_session),
     current_user: User = Depends(get_optional_user),
 ):
@@ -1282,8 +1364,27 @@ def get_public_feed(
 ):
     """Devuelve un mix de Prompts sueltos y Colecciones para la Home optimizado"""
 
+    subq_count = (
+        sa_select(func.count(ImagePrompt.id))
+        .where(ImagePrompt.collection_id == Collection.id)
+        .scalar_subquery()
+    )
+
+    subq_cover = (
+        sa_select(ImagePrompt.image_url)
+        .where(ImagePrompt.collection_id == Collection.id)
+        .order_by(ImagePrompt.created_at.desc())
+        .limit(1)
+        .scalar_subquery()
+    )
+
     query_col = (
-        select(Collection, User)
+        select(
+            Collection,
+            User,
+            subq_count.label("items_count"),
+            subq_cover.label("cover_url"),
+        )
         .join(User, Collection.user_id == User.id)
         .where(Collection.is_private == False)
     )
@@ -1307,19 +1408,7 @@ def get_public_feed(
 
     feed = []
 
-    for col, user in collections:
-        count_statement = select(func.count(ImagePrompt.id)).where(
-            ImagePrompt.collection_id == col.id
-        )
-        items_count = session.exec(count_statement).one()
-
-        cover_url = session.exec(
-            select(ImagePrompt.image_url)
-            .where(ImagePrompt.collection_id == col.id)
-            .order_by(ImagePrompt.created_at.desc())
-            .limit(1)
-        ).first()
-
+    for col, user, items_count, cover_url in collections:
         feed.append(
             {
                 "type": "collection",
@@ -1330,7 +1419,7 @@ def get_public_feed(
                 "slug": col.slug,
                 "username": user.username,
                 "image_url": cover_url,
-                "items_count": items_count,
+                "items_count": items_count or 0,
             }
         )
 
@@ -1491,6 +1580,11 @@ class Settings(BaseSettings):
     # Google Auth
     GOOGLE_CLIENT_ID: str
     GOOGLE_CLIENT_SECRET: str
+    INVITE_ONLY_MODE: bool = True
+
+    # Discord Auth
+    DISCORD_CLIENT_ID: str = ""
+    DISCORD_CLIENT_SECRET: str = ""
     INVITE_ONLY_MODE: bool = True
 
     class Config:
@@ -1691,7 +1785,12 @@ class Collection(SQLModel, table=True):
         UniqueConstraint("user_id", "slug", name="unique_user_collection_slug"),
     )
 
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: uuid.UUID = Field(
+        default_factory=uuid.uuid4,
+        primary_key=True,
+        index=True,
+        nullable=False,
+    )
     user_id: uuid.UUID = Field(foreign_key="user.id", index=True)
 
     name: str = Field(nullable=False)
@@ -1742,16 +1841,20 @@ from datetime import datetime
 class ImagePrompt(SQLModel, table=True):
     """Almacenamiento individual de cada generación extraída"""
 
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: uuid.UUID = Field(
+        default_factory=uuid.uuid4,
+        primary_key=True,
+        index=True,
+        nullable=False,
+    )
 
     user_id: uuid.UUID = Field(foreign_key="user.id", index=True)
 
-    collection_id: Optional[int] = Field(
+    collection_id: Optional[uuid.UUID] = Field(
         default=None, foreign_key="collection.id", index=True
     )
 
     title: str
-
     prompt: str = Field(sa_column=Column(Text))
     negative_prompt: Optional[str] = Field(default=None, sa_column=Column(Text))
 
@@ -1859,7 +1962,7 @@ class PromptCreate(BaseModel):
 
 
 class PromptResponse(PromptCreate):
-    id: int
+    id: uuid.UUID
     user_id: uuid.UUID
     prompt: str = Field(..., max_length=20000)
     collection_id: Optional[int] = None
@@ -1919,12 +2022,11 @@ class InteractionRequest(BaseModel):
 </file>
 
 <file path="app/schemas/user.py">
-# backend/app/schemas/user.py
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr
 
 
 class UserRegister(BaseModel):
-    username: str
+    email: EmailStr
     password: str
     invite_code: str
 
@@ -1945,13 +2047,19 @@ class PasswordChange(BaseModel):
 
 
 class GoogleAuthRequest(BaseModel):
-    token: str
+    code: str
+    redirect_uri: str
 
 
 class GoogleJoinRequest(BaseModel):
     token: str
     invite_code: str
     username: str
+
+
+class DiscordAuthRequest(BaseModel):
+    code: str
+    redirect_uri: str
 </file>
 
 <file path="app/services/__init__.py">
@@ -2076,7 +2184,11 @@ class AuditService:
 
 <file path="app/services/auth_service.py">
 import os
+import re
 import logging
+import requests
+from app.core.config import settings
+from sqlalchemy import or_
 from google.oauth2 import id_token
 from google.auth.transport import requests as google_requests
 
@@ -2104,9 +2216,7 @@ class AuthService:
 
         logger = logging.getLogger("auth_service")
 
-        logger.info(
-            f"📝 [AUTH_SERVICE] Intento de registro manual. Username: @{user_data.username}"
-        )
+        logger.info(f"📝 [AUTH_SERVICE] Intento de registro. Email: {user_data.email}")
 
         # 1. Validación de código
         logger.info(
@@ -2120,49 +2230,54 @@ class AuthService:
         invite = session.exec(statement).first()
 
         if not invite:
-            logger.warning(
-                f"🚫 [AUTH_SERVICE] Registro fallido: Código '{user_data.invite_code}' es inválido o ya fue usado."
-            )
             raise HTTPException(
                 status_code=400, detail="Código de invitación inválido o ya usado"
             )
 
         # 2. Validación de usuario existente
-        user_exists = session.exec(
-            select(User).where(User.username == user_data.username)
+        email_exists = session.exec(
+            select(User).where(User.email == user_data.email)
         ).first()
-
-        if user_exists:
-            logger.warning(
-                f"🚫 [AUTH_SERVICE] Registro fallido: El username '@{user_data.username}' ya está ocupado."
-            )
+        if email_exists:
             raise HTTPException(
-                status_code=400, detail="El nombre de usuario ya está en uso"
+                status_code=400, detail="Este correo electrónico ya está registrado."
             )
 
-        # 3. Asignación de rol y creación
+        base_username = re.sub(r"[^a-z0-9]", "", user_data.email.split("@")[0].lower())
+        if not base_username:
+            base_username = (
+                "user"  # Fallback extremo por si el email era ".-_@gmail.com"
+            )
+
+        username = base_username
+        counter = 1
+
+        while session.exec(select(User).where(User.username == username)).first():
+            username = f"{base_username}{counter}"
+            counter += 1
+
+        # 4. Asignación de rol y creación
         assigned_role = "admin" if invite.code.startswith("TROYA-") else "voyager"
-        logger.info(
-            f"✅ [AUTH_SERVICE] Validaciones pasadas. Creando usuario con rol: {assigned_role}"
-        )
 
         new_user = User(
-            username=user_data.username,
+            email=user_data.email,
+            username=username,
             hashed_password=get_password_hash(user_data.password),
             role=assigned_role,
         )
+
         session.add(new_user)
         session.commit()
         session.refresh(new_user)
 
-        # 4. Quema de código
+        # 5. Quema de código
         invite.is_used = True
         invite.used_by_id = new_user.id
         session.add(invite)
         session.commit()
 
         logger.info(
-            f"✨ [AUTH_SERVICE] ¡Usuario @{new_user.username} registrado exitosamente y código quemado!"
+            f"✨ ¡Usuario registrado! Email: {new_user.email} -> Username asignado: @{new_user.username}"
         )
         return new_user
 
@@ -2332,17 +2447,52 @@ class AuthService:
             )
 
     @staticmethod
-    def authenticate_google_user(token: str, session: Session, redis_client):
-        """Flujo de decisión: ¿Existe el usuario o es nuevo?"""
-        idinfo = AuthService.verify_google_token(token)
+    def authenticate_google_user(
+        code: str, redirect_uri: str, session: Session, redis_client
+    ):
+        logger = logging.getLogger("auth_service")
+        logger.info("🔍 [AUTH_GOOGLE] Iniciando canje de Code por Token...")
+
+        # 1. Canjear el Code por el Token en los servidores de Google
+        token_url = "https://oauth2.googleapis.com/token"
+        data = {
+            "code": code,
+            "client_id": settings.GOOGLE_CLIENT_ID,
+            "client_secret": settings.GOOGLE_CLIENT_SECRET,
+            "redirect_uri": redirect_uri,
+            "grant_type": "authorization_code",
+        }
+
+        response = requests.post(token_url, data=data)
+        if not response.ok:
+            logger.error(f"❌ [AUTH_GOOGLE] Error de canje: {response.text}")
+            raise HTTPException(
+                status_code=400, detail="El código de Google expiró o es inválido"
+            )
+
+        tokens = response.json()
+        id_token_jwt = tokens.get("id_token")
+
+        # 2. Verificar la firma del JWT que nos dio Google
+        try:
+            idinfo = id_token.verify_oauth2_token(
+                id_token_jwt, google_requests.Request(), settings.GOOGLE_CLIENT_ID
+            )
+        except ValueError:
+            raise HTTPException(
+                status_code=401, detail="Token de Google con firma inválida"
+            )
+
         email = idinfo.get("email")
         name = idinfo.get("name", "").replace(" ", "").lower()
 
-        # Buscamos si ya existe alguien con este correo
+        logger.info(f"✅ [AUTH_GOOGLE] Identidad confirmada: {email}")
+
+        # 3. Flujo de decisión: ¿Existe o es nuevo?
         user = session.exec(select(User).where(User.email == email)).first()
 
         if user:
-            # ESCENARIO A: Ya existe. Generamos sesión silenciosamente.
+            # ESCENARIO A: Ya existe
             access_token = create_access_token(
                 data={"sub": user.username, "role": user.role}
             )
@@ -2358,12 +2508,12 @@ class AuthService:
                 "username": user.username,
             }
         else:
-            # ESCENARIO B: Es nuevo. Cortamos el flujo y pedimos invitación.
-            # Sugerimos un nombre de usuario basado en su nombre de Google
+            # ESCENARIO B: Es nuevo
             return {
                 "status": "needs_invite",
                 "email": email,
                 "suggested_username": name,
+                "provider_token": id_token_jwt,
             }
 
     @staticmethod
@@ -2428,6 +2578,87 @@ class AuthService:
         redis_client.setex(redis_key, 60 * 60 * 24 * 7, refresh_data["jti"])
 
         return access_token, refresh_data["token"], new_user.username
+
+    @staticmethod
+    def authenticate_discord_user(
+        code: str, redirect_uri: str, session: Session, redis_client
+    ):
+        """Intercambia el código por el token de Discord y extrae el perfil."""
+
+        # 1. Intercambiar código por Access Token en Discord
+        data = {
+            "client_id": settings.DISCORD_CLIENT_ID,
+            "client_secret": settings.DISCORD_CLIENT_SECRET,
+            "grant_type": "authorization_code",
+            "code": code,
+            "redirect_uri": redirect_uri,
+        }
+        headers = {"Content-Type": "application/x-www-form-urlencoded"}
+
+        try:
+            token_response = requests.post(
+                "https://discord.com/api/oauth2/token", data=data, headers=headers
+            )
+            token_response.raise_for_status()
+            token_json = token_response.json()
+            discord_access_token = token_json["access_token"]
+        except requests.exceptions.RequestException as e:
+            raise HTTPException(
+                status_code=401,
+                detail="El código de Discord ha expirado o es inválido.",
+            )
+
+        # 2. Obtener el perfil del usuario usando el Token
+        try:
+            user_response = requests.get(
+                "https://discord.com/api/users/me",
+                headers={"Authorization": f"Bearer {discord_access_token}"},
+            )
+            user_response.raise_for_status()
+            discord_user = user_response.json()
+        except requests.exceptions.RequestException:
+            raise HTTPException(
+                status_code=401, detail="No se pudo obtener el perfil de Discord."
+            )
+
+        email = discord_user.get("email")
+        provider_id = str(discord_user.get("id"))
+        name = discord_user.get("global_name") or discord_user.get("username")
+
+        if not email:
+            raise HTTPException(
+                status_code=400,
+                detail="Necesitas tener un email verificado en Discord.",
+            )
+
+        # 3. Flujo de decisión: ¿Existe o es nuevo?
+        user = session.exec(select(User).where(User.email == email)).first()
+
+        if user:
+            # ESCENARIO A: Ya existe. Iniciamos sesión.
+            access_token = create_access_token(
+                data={"sub": user.username, "role": user.role}
+            )
+            refresh_data = create_refresh_token(data={"sub": user.username})
+
+            redis_key = f"session:{user.username}:{refresh_data['family_id']}"
+            redis_client.setex(redis_key, 60 * 60 * 24 * 7, refresh_data["jti"])
+
+            return {
+                "status": "success",
+                "access_token": access_token,
+                "refresh_token": refresh_data["token"],
+                "username": user.username,
+            }
+        else:
+            # ESCENARIO B: Es nuevo. Necesita invitación.
+            suggested_username = "".join(e for e in name.lower() if e.isalnum())
+            return {
+                "status": "needs_invite",
+                "email": email,
+                "suggested_username": suggested_username,
+                "provider_id": provider_id,  # Discord ID para enlazar la cuenta
+            }
 </file>
 
 <file path="app/services/downloader.py">
@@ -3259,6 +3490,7 @@ urllib3==2.6.3
 uvicorn==0.42.0
 websocket-client==1.9.0
 wsproto==1.3.2
+email-validator==2.1.1
 </file>
 
 <file path="reset_db.py">
@@ -3290,22 +3522,23 @@ if __name__ == "__main__":
 
 <file path="worker.py">
 import logging
-
 from rq import Queue, Worker
-
 from app.core.redis_config import conn
 
-# Logs para el proceso worker
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s")
 logger = logging.getLogger("rq_worker")
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     try:
-        # Definimos la cola 'downloads' usando nuestra conexión de Redis
-        queue = Queue('downloads', connection=conn)
-        worker = Worker([queue], connection=conn)
-        
-        logger.info("👷 Worker RQ v2.7.0 online. Esperando tareas en 'downloads'...")
+        premium_queue = Queue("downloads_premium", connection=conn)
+        free_queue = Queue("downloads_free", connection=conn)
+
+        # El orden de la lista importa:
+        # vaciará premium antes de tocar free
+        worker = Worker([premium_queue, free_queue], connection=conn)
+
+        logger.info("👷 Worker RQ v2.7.0 online.")
+        logger.info("🎧 Escuchando colas: 1. downloads_premium | 2. downloads_free")
         worker.work()
     except Exception as e:
         logger.error(f"❌ El Worker ha muerto: {e}")
