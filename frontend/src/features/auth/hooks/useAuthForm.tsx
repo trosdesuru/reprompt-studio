@@ -1,31 +1,25 @@
 // src/features/auth/hooks/useAuthForm.ts
 import { useState, useEffect } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
-import { api } from "@/src/services/api";
-import toast from "react-hot-toast";
+import { useSearchParams } from "next/navigation";
+import { useOAuth } from "./useOAuth";
+import { useCredentialsAuth } from "./useCredentialsAuth";
 
 export function useAuthForm() {
-  const router = useRouter();
   const searchParams = useSearchParams();
 
-  const [isLogin, setIsLogin] = useState(true);
-  const [isLoading, setIsLoading] = useState(false);
-  const [oauthPending, setOauthPending] = useState<any>(null);
-  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
-  const [isDiscordLoading, setIsDiscordLoading] = useState(false);
+  // Dependencias
+  const oauth = useOAuth();
+  const credsAuth = useCredentialsAuth();
 
+  // Estado puro de la UI (Inputs)
+  const [isLogin, setIsLogin] = useState(true);
   const [emailOrUser, setEmailOrUser] = useState("");
   const [password, setPassword] = useState("");
   const [inviteCode, setInviteCode] = useState("");
   const [isInviteLocked, setIsInviteLocked] = useState(false);
 
+  // Manejo de código de invitación por URL
   useEffect(() => {
-    const pendingData = sessionStorage.getItem("oauth_pending");
-    if (pendingData) {
-      setOauthPending(JSON.parse(pendingData));
-      return;
-    }
-
     const codeFromUrl = searchParams.get("code");
     if (codeFromUrl) {
       setIsLogin(false);
@@ -34,102 +28,31 @@ export function useAuthForm() {
     }
   }, [searchParams]);
 
-  const handleOauthSubmit = async (e: React.FormEvent) => {
+  // Wrappers para inyectar el estado actual en las funciones de los submódulos
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
-    try {
-      await api.registerGoogleUser({
-        token: oauthPending.token,
-        invite_code: inviteCode,
-        username: oauthPending.username,
-      });
-      sessionStorage.removeItem("oauth_pending");
-      toast.success("¡Cuenta VIP creada con éxito!");
-      window.location.href = "/es/studio"; // Recarga dura obligatoria
-    } catch (error: any) {
-      toast.error(error.message || "Código inválido");
-    } finally {
-      setIsLoading(false);
-    }
+    credsAuth.handleCredentialsSubmit(isLogin, emailOrUser, password, inviteCode);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleOauthSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
-
-    try {
-      if (isLogin) {
-        await api.login({ username: emailOrUser, password });
-        toast.success("¡Bienvenido de nuevo!");
-        router.push("/es/studio");
-      } else {
-        await api.register({
-          email: emailOrUser,
-          password,
-          invite_code: inviteCode,
-        });
-        toast.success("Cuenta creada con éxito");
-        await api.login({ username: emailOrUser, password });
-        router.push("/es/studio");
-      }
-    } catch (error: any) {
-      toast.error(error?.response?.data?.detail || "Error en la autenticación");
-    } finally {
-      setIsLoading(false);
-    }
+    oauth.handleOauthSubmit(inviteCode);
   };
 
-  const handleGoogleLogin = async () => {
-    setIsGoogleLoading(true);
-    try {
-      const response = await api.getGoogleAuthUrl();
-      if (response?.auth_url) window.location.href = response.auth_url;
-    } catch (error) {
-      toast.error("Error al conectar con Google");
-      setIsGoogleLoading(false);
-    }
-  };
-
-  const handleDiscordLogin = async () => {
-    setIsDiscordLoading(true);
-    try {
-      const response = await api.auth.getDiscordAuthUrl();
-
-      if (response?.auth_url) {
-        window.location.href = response.auth_url;
-      } else {
-        throw new Error("El servidor no devolvió una URL válida");
-      }
-    } catch (error) {
-      console.error("❌ Error al iniciar Discord:", error);
-      toast.error("Servicio de Discord no disponible en este momento.");
-    } finally {
-      setIsDiscordLoading(false);
-    }
-  };
-
-  const cancelOauthFlow = () => {
-    setOauthPending(null);
-    sessionStorage.removeItem("oauth_pending");
-
-    // Limpiamos la URL por si tiene el ?step=oauth_invite
-    if (searchParams.get("step") === "oauth_invite") {
-      // Reemplazamos la URL sin recargar la página para que sea fluido
-      router.replace("/es/login");
-    }
-  };
+  // Estado derivado para bloquear la UI si ALGO está cargando
+  const isAnyLoading = credsAuth.isCredsLoading || oauth.isOauthSubmitting;
 
   return {
     state: {
       isLogin,
-      isLoading,
-      isGoogleLoading,
-      isDiscordLoading,
+      isLoading: isAnyLoading,
+      isGoogleLoading: oauth.isGoogleLoading,
+      isDiscordLoading: oauth.isDiscordLoading,
       emailOrUser,
       password,
       inviteCode,
       isInviteLocked,
-      oauthPending,
+      oauthPending: oauth.oauthPending,
     },
     actions: {
       setIsLogin,
@@ -137,10 +60,10 @@ export function useAuthForm() {
       setPassword,
       setInviteCode,
       handleSubmit,
-      handleGoogleLogin,
-      handleDiscordLogin,
       handleOauthSubmit,
-      cancelOauthFlow,
+      handleGoogleLogin: oauth.handleGoogleLogin,
+      handleDiscordLogin: oauth.handleDiscordLogin,
+      cancelOauthFlow: oauth.cancelOauthFlow,
     },
   };
 }
