@@ -1,0 +1,41 @@
+# trosdesuru-scraper-galerias/.gitignore
+
+# Bloquear carpetas de Next incluso con nombres raros
+.next/
+.next*/
+"frontend/.next 2/"
+
+# Almacenamiento local (EH y Arte Usuario)
+storage/
+**/storage/
+analytics_*.json
+.docs/
+
+# Secretos
+.env
+backend/.env
+frontend/.env.*
+**/.env
+
+# Basura de Next.js y Node
+.next/
+.next*/
+"*.next*"
+node_modules/
+package-lock.json
+
+# Python
+__pycache__/
+venv/
+.venv/
+
+# Base de datos local (por si acaso)
+*.sqlite
+
+# Archivos del Sistema / Nube
+*.icloud
+.DS_Store
+
+# Agentes de IA
+.agents/
+skills-lock.json

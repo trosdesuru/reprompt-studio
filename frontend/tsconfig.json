@@ -1,0 +1,38 @@
+{
+  "compilerOptions": {
+    "strict": true,                         // Activa todas las comprobaciones estrictas
+    "noImplicitAny": true,                 // Prohíbe variables sin tipo definido
+    "strictNullChecks": true,              // Evita errores de "null" no controlados
+    "noUnusedLocals": true,                // Detecta variables que no usas
+    "noUnusedParameters": true,             // Detecta parámetros de funciones que no usas
+    "target": "ES2017",
+    "lib": ["dom", "dom.iterable", "esnext"],
+    "allowJs": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "react-jsx",
+    "incremental": true,
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
+    "paths": {
+      "@/*": ["./*"]
+    }
+  },
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/types/**/*.ts",
+    ".next/dev/types/**/*.ts",
+    "**/*.mts"
+  ],
+  "exclude": ["node_modules"]
+}

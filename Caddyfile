@@ -1,0 +1,14 @@
+# Caddyfile
+tu-dominio.com {
+    encode zstd gzip
+
+    # Redirigir el tráfico de la API al Backend (FastAPI)
+    handle /api/* {
+        reverse_proxy backend:8000
+    }
+
+    # El resto del tráfico va al Frontend (Next.js)
+    handle {
+        reverse_proxy frontend:3000
+    }
+}

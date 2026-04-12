@@ -1,0 +1,17 @@
+{
+  "common": {
+    "loading": "Loading...",
+    "error": "An error occurred",
+    "save": "Save"
+  },
+  "nav": {
+    "studio": "Studio",
+    "gallery": "Gallery",
+    "login": "Log In",
+    "join": "Sign Up"
+  },
+  "auth": {
+    "login_title": "Welcome back",
+    "join_title": "Join Reprompt"
+  }
+}
