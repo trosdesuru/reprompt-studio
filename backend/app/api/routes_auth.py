@@ -33,7 +33,11 @@ COOKIE_PARAMS = {
     "path": "/",
     "secure": IS_PRODUCTION,
     "samesite": "lax",
-    "domain": ".reprompt.studio" if IS_PRODUCTION else None,
+    "domain": (
+        ".reprompt.studio"
+        if IS_PRODUCTION or "reprompt.studio" in os.getenv("FRONTEND_URL", "")
+        else None
+    ),
 }
 
 logger = logging.getLogger("routes_auth")

@@ -75,6 +75,48 @@ clean-docker:
 	@echo "🧹 Realizando limpieza profunda de Docker (Caché, imágenes sin uso, contenedores parados)..."
 	docker system prune -a -f --volumes
 
+
+# ==========================================
+# 📦 GITINGEST: EXTRACCIÓN QUIRÚRGICA PARA IA
+# ==========================================
+.PHONY: ai-front ai-back ai-full
+
+ai-front:
+	@echo "🧠 Extrayendo código limpio del Frontend..."
+	gitingest ./frontend \
+	--exclude-pattern "node_modules/*" \
+	--exclude-pattern ".next/*" \
+	-o ai-digest-frontend.txt
+	@echo "✅ Frontend extraído (ai-digest-frontend.txt)"
+
+ai-system:
+	@echo "🧪 Extrayendo el corazón de Atomic Design (System)..."
+	gitingest ./frontend/src/system \
+	--exclude-pattern "*.test.tsx" \
+	--exclude-pattern "*.spec.ts" \
+	-o ai-digest-system.txt
+	@echo "✅ Sistema extraído (ai-digest-system.txt). Listo para refactorizar UI."
+
+ai-back:
+	@echo "🧠 Extrayendo código limpio del Backend..."
+	gitingest ./backend \
+	--exclude-pattern "venv/*" \
+	--exclude-pattern "__pycache__/*" \
+	-o ai-digest-backend.txt
+	@echo "✅ Backend extraído (ai-digest-backend.txt)"
+
+ai-full:
+	@echo "⚠️ Extrayendo proyecto completo (CUIDADO: +2M Tokens)..."
+	gitingest . \
+	--exclude-pattern "frontend/node_modules/*" \
+	--exclude-pattern "backend/venv/*" \
+	--exclude-pattern "storage/*" \
+	--exclude-pattern ".git/*" \
+	--exclude-pattern "frontend/.next/*" \
+	-o ai-digest-full.txt
+	@echo "✅ Proyecto completo extraído (ai-digest-full.txt)"
+
+
 # ==========================================
 # 📦 REPOMIX: EXTRACCIÓN DE PROYECTO
 # ==========================================
