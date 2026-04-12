@@ -2,7 +2,8 @@ import { Suspense } from "react";
 import { IconLoader2 } from "@tabler/icons-react";
 import { AuthForm } from "@/src/system/organisms/Auth/AuthForm";
 
-export default function LoginPage() {
+export default function LoginPage({ params }: { params: any }) {
+  console.log("🚪 [LOGIN_PAGE] Renderizando con params:", params);
   return (
     <main className="min-h-screen flex items-center justify-center p-4 bg-muted/10">
       <Suspense
