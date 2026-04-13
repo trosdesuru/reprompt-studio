@@ -30,7 +30,10 @@ export default function GoogleCallbackPage() {
 
     const authenticate = async () => {
       try {
-        const redirectUri = `${window.location.origin}${window.location.pathname}`;
+        const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || window.location.origin;
+        const redirectUri = `${baseUrl}${window.location.pathname}`;
+
+        console.log("📤 Canjeando código con Redirect URI oficial:", redirectUri);
 
         const response = await api.auth.verifyGoogleCode({ code, redirect_uri: redirectUri });
 
