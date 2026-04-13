@@ -1,6 +1,5 @@
 import { create } from "zustand";
 import { api } from "@/src/services/api";
-import { handleError } from "../utils/errors/ErrorHandler";
 
 interface User {
   username: string;
@@ -9,6 +8,7 @@ interface User {
 
 interface AuthState {
   user: User | null;
+  isAuthenticated: boolean; // 🟢 FIX: Añadido al contrato
   isLoadingAuth: boolean;
   login: (userData: User) => void;
   logout: () => Promise<void>;
@@ -37,68 +37,73 @@ const redirectToLogin = () => {
 
 export const useAuthStore = create<AuthState>((set) => ({
   user: null,
+  isAuthenticated: false, // 🟢 FIX: Inicializado
   isLoadingAuth: true,
 
   login: (userData) => {
     console.log(`[AUTH_STORE] Sesión iniciada localmente: @${userData.username}`);
-    set({ user: userData, isLoadingAuth: false });
+    set({ user: userData, isAuthenticated: true, isLoadingAuth: false });
   },
 
   logoutSilencioso: () => {
     console.log("🤫 [AUTH_STORE] Limpieza de estado local (Silenciosa).");
-    set({ user: null, isLoadingAuth: false });
+    set({ user: null, isAuthenticated: false, isLoadingAuth: false });
   },
 
   checkAuth: async () => {
-    console.log("🛡️ [AUTH_STORE] Consultando estado real al servidor...");
+    console.log("🔍 [AUTH_STORE] Verificando estado de sesión...");
     set({ isLoadingAuth: true });
 
     try {
-      const res = await api.me();
-      const username = res?.username || res?.data?.username || res?.user?.username;
-      const role = res?.role || res?.data?.role || res?.user?.role || "user";
+      // 🟢 FIX: Consolidado en una sola llamada y con AWAIT
+      const res = await api.auth.me(); 
+      
+      // Mapeo defensivo de la respuesta del backend
+      const userData = res?.user || res?.data || res;
+      const username = userData?.username;
+      const role = userData?.role || "voyager";
 
       if (username) {
         console.log(`✅ [AUTH_STORE] checkAuth exitoso: @${username}`);
-        set({ user: { username, role } });
+        set({ 
+          user: { username, role }, 
+          isAuthenticated: true, 
+          isLoadingAuth: false 
+        });
       } else {
-        console.warn("⚠️ [AUTH_STORE] checkAuth OK, pero sin 'username'.");
-        set({ user: null });
+        console.warn("⚠️ [AUTH_STORE] checkAuth respondió OK pero el cuerpo está vacío.");
+        set({ user: null, isAuthenticated: false, isLoadingAuth: false });
       }
     } catch (error: unknown) {
       console.warn("🛑 [AUTH_STORE] checkAuth falló (No hay sesión activa).");
-      try {
-        handleError(error, "AuthStore");
-      } catch (e) {}
-      set({ user: null });
+      set({ user: null, isAuthenticated: false, isLoadingAuth: false });
+      
+      // No lanzamos el error al ErrorHandler aquí para evitar spam de toasts en el login
     } finally {
       set({ isLoadingAuth: false });
     }
   },
 
   logout: async () => {
-    console.log("🧹 [AUTH_STORE] Ejecutando orden de desconexión API...");
+    console.log("扫 [AUTH_STORE] Ejecutando orden de desconexión API...");
     try {
-      await api.logout();
+      await api.auth.logout();
       console.log("🧹 [AUTH_STORE] Backend confirmó destrucción de sesión.");
     } catch (error) {
       console.error("❌ [AUTH_STORE] Falló llamada al backend para logout:", error);
     } finally {
-      set({ user: null, isLoadingAuth: false });
+      set({ user: null, isAuthenticated: false, isLoadingAuth: false });
       redirectToLogin();
     }
   },
 }));
 
+// Escuchador de eventos globales para expulsión inmediata
 if (typeof window !== "undefined") {
-  console.log("🎧 [AUTH_STORE] Guardián de seguridad montado.");
-
   window.addEventListener("auth:unauthorized", () => {
     console.warn("🚨 [AUTH_STORE] ALERTA: Recibido evento 'auth:unauthorized'.");
-
     const state = useAuthStore.getState();
-
-    if (state.user || state.isLoadingAuth) {
+    if (state.isAuthenticated || state.user) {
       state.logoutSilencioso();
       redirectToLogin();
     }

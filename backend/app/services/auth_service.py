@@ -30,18 +30,15 @@ class AuthService:
         """Lógica de negocio pura para registrar un usuario."""
 
         logger = logging.getLogger("auth_service")
-
         logger.info(f"📝 [AUTH_SERVICE] Intento de registro. Email: {user_data.email}")
+        logger.info(f"🔑 [AUTH_SERVICE] Verificando código de invitación: {user_data.invite_code}")
 
-        # 1. Validación de código
-        logger.info(
-            f"🔑 [AUTH_SERVICE] Verificando código de invitación: {user_data.invite_code}"
-        )
         statement = (
             select(InviteCode)
             .where(InviteCode.code == user_data.invite_code)
             .where(InviteCode.is_used == False)
         )
+
         invite = session.exec(statement).first()
 
         if not invite:
@@ -51,12 +48,10 @@ class AuthService:
 
         # 2. Validación de usuario existente
         email_exists = session.exec(
-            select(User).where(User.email == user_data.email)
-        ).first()
+            select(User).where(User.email == user_data.email)).first()
+        
         if email_exists:
-            raise HTTPException(
-                status_code=400, detail="Este correo electrónico ya está registrado."
-            )
+            raise HTTPException(status_code=400, detail="Este correo electrónico ya está registrado.")
 
         base_username = re.sub(r"[^a-z0-9]", "", user_data.email.split("@")[0].lower())
         if not base_username:
@@ -131,24 +126,33 @@ class AuthService:
 
     @staticmethod
     def authenticate_user(user_data, session: Session, redis_client):
-        # ... (Mantén el código original de authenticate_user que ya tenías) ...
-        user = session.exec(
-            select(User).where(User.username == user_data.username)
-        ).first()
-        if not user or not verify_password(user_data.password, user.hashed_password):
-            raise HTTPException(
-                status_code=401, detail="Usuario o contraseña incorrectos"
-            )
+        logger = logging.getLogger("auth_service")
+        logger.info(f"🔐 [AUTH] Intentando login local para: {user_data.username}")
 
-        access_token = create_access_token(
-            data={"sub": user.username, "role": user.role}
-        )
-        refresh_data = create_refresh_token(data={"sub": user.username})
+        user = session.exec(select(User).where(User.username == user_data.username)).first()
+        
+        if not user:
+            logger.warning(f"❌ [AUTH] Usuario no encontrado en DB: {user_data.username}")
+            raise HTTPException(status_code=401, detail="Usuario o contraseña incorrectos")
 
-        redis_key = f"session:{user.username}:{refresh_data['family_id']}"
-        redis_client.setex(redis_key, 60 * 60 * 24 * 7, refresh_data["jti"])
+        if not verify_password(user_data.password, user.hashed_password):
+            logger.warning(f"❌ [AUTH] Contraseña incorrecta para: {user_data.username}")
+            raise HTTPException(status_code=401, detail="Usuario o contraseña incorrectos")
 
-        return access_token, refresh_data["token"], user.username
+        logger.info(f"✅ [AUTH] Password verificado. Generando tokens para @{user.username}")
+
+        try:
+            access_token = create_access_token(data={"sub": user.username, "role": user.role})
+            refresh_data = create_refresh_token(data={"sub": user.username})
+
+            redis_key = f"session:{user.username}:{refresh_data['family_id']}"
+            redis_client.setex(redis_key, 60 * 60 * 24 * 7, refresh_data["jti"])
+            
+            logger.info(f"🚀 [AUTH] Sesión registrada en Redis. Key: {redis_key}")
+            return access_token, refresh_data["token"], user.username
+        except Exception as e:
+            logger.error(f"💥 [AUTH] Error crítico en el registro de sesión: {str(e)}")
+            raise e
 
     @staticmethod
     def rotate_tokens(refresh_token: str, session: Session, redis_client):

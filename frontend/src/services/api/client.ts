@@ -18,23 +18,29 @@ export async function fetchSeguro(endpoint: string, options: RequestInit = {}) {
     credentials: "include",
   };
 
+  // 🕵️‍♂️ SENSOR 1: El Vigía de Salida
+  console.log(`📡 [API_CLIENT] PETICIÓN -> ${options.method || "GET"} ${endpoint}`);
+
   let response: Response;
 
   try {
     response = await fetch(endpoint, config);
+    // 🕵️‍♂️ SENSOR 2: El Notario de Entrada
+    console.log(`📥 [API_CLIENT] RESPUESTA <- ${endpoint} [Status: ${response.status}]`);
   } catch (error) {
-    console.error(`🔌 [NETWORK_ERROR] Fallo al conectar con ${endpoint}:`, error);
+    console.error(`🔌 [NETWORK_ERROR] Fallo crítico de conexión con ${endpoint}:`, error);
     throw new Error("No hay conexión con el servidor.");
   }
 
   const isAuthFlow = endpoint.includes("/auth/");
 
-  // 🛡️ PROTOCOLO DE RESCATE: Si hay 401 y no es una ruta de login/refresh
+  // 🛡️ PROTOCOLO DE RESCATE: 401 en rutas privadas
   if (response.status === 401 && !isAuthFlow) {
-    console.warn(`[API_CLIENT] 🚑 401 Detectado en ${endpoint}. Iniciando Refresh...`);
+    console.warn(`🚑 [API_CLIENT] 401 Detectado en ${endpoint}. Intentando rescate (Refresh)...`);
 
     if (!isRefreshing) {
       isRefreshing = true;
+      console.log("🔄 [SECURITY] Solicitando nuevo Access Token al servidor...");
       refreshPromise = (async () => {
         try {
           const refreshRes = await fetch(`${API_URL}/auth/refresh`, {
@@ -53,21 +59,21 @@ export async function fetchSeguro(endpoint: string, options: RequestInit = {}) {
     const refreshSuccessful = await refreshPromise;
 
     if (refreshSuccessful) {
-      console.log(`✅ [SECURITY] Sesión renovada. Reintentando petición...`);
+      console.log(`✅ [SECURITY] Sesión renovada con éxito. Reintentando operación original...`);
 
-      // FormData no se puede reintentar fácilmente si el stream ya se leyó
       if (options.body instanceof FormData) {
         throw new Error("Sesión renovada. Por seguridad, vuelve a subir el archivo.");
       }
 
       try {
-        // Reintento final
         response = await fetch(endpoint, config);
+        console.log(`🔁 [API_CLIENT] Reintento tras refresh <- ${endpoint} [Status: ${response.status}]`);
       } catch (error) {
+        console.error("❌ [API_CLIENT] Error en el reintento post-refresh.");
         throw new Error("Error en el reintento de conexión.");
       }
     } else {
-      console.error("🚷 [SECURITY] Refresh fallido. Expulsando usuario...");
+      console.error("🚷 [SECURITY] Refresh fallido. La sesión ha muerto definitivamente.");
       if (typeof window !== "undefined") {
         window.dispatchEvent(new Event("auth:unauthorized"));
       }
@@ -75,25 +81,26 @@ export async function fetchSeguro(endpoint: string, options: RequestInit = {}) {
     }
   }
 
-  // 401 en flujo de Auth, es que las credenciales son malas
-  else if (response.status === 401 && isAuthFlow) {
-    throw new Error("Credenciales inválidas.");
-  }
-
-  // Manejo de Rate Limit
-  if (response.status === 429) {
-    const errorData = await response.json().catch(() => ({}));
-    const mensaje = errorData.detail || "Demasiados intentos. Espera un momento.";
-    if (typeof window !== "undefined") {
-      window.dispatchEvent(
-        new CustomEvent("app:notification", { detail: { type: "warning", message: mensaje } }),
-      );
-    }
-    throw new Error(mensaje);
-  }
-
+  // 🕵️‍♂️ SENSOR 3: El Forense (Analiza el cuerpo del error antes de lanzarlo)
   if (!response.ok) {
-    throw new Error(`Error ${response.status}: ${response.statusText}`);
+    const errorBody = await response.clone().json().catch(() => ({}));
+    console.warn(`🛑 [API_ERROR] ${response.status} en ${endpoint}:`, errorBody);
+
+    if (response.status === 401 && isAuthFlow) {
+      throw new Error("Credenciales inválidas.");
+    }
+
+    if (response.status === 429) {
+      const mensaje = errorBody.detail || "Demasiados intentos. Espera un momento.";
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(
+          new CustomEvent("app:notification", { detail: { type: "warning", message: mensaje } }),
+        );
+      }
+      throw new Error(mensaje);
+    }
+
+    throw new Error(`Error ${response.status}: ${errorBody.detail || response.statusText}`);
   }
 
   return response.json();

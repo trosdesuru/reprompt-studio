@@ -3,26 +3,26 @@
 import { api } from "@/src/services/api";
 import { useAuthStore } from "@/src/store/authStore";
 import { useEffect, useRef } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams, useParams } from "next/navigation";
 import { PageLoader } from "@/src/system/atoms/PageLoader";
 import toast from "react-hot-toast";
 
 export default function GoogleCallbackPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const params = useParams();
+  const lang = params?.lang as string
+
   const processed = useRef(false);
-  
-  // 🟢 Extraemos la función para actualizar el estado global
   const checkAuth = useAuthStore((state) => state.checkAuth);
 
   useEffect(() => {
-    // 1. Evitamos que se ejecute dos veces en React Strict Mode
     if (processed.current) return;
 
     const code = searchParams.get("code");
     if (!code) {
       toast.error("No se recibió código de autenticación de Google.");
-      router.push("/es/auth/login"); // Asegúrate de que esta es tu ruta correcta
+      router.push(`/${lang}/login`);
       return;
     }
 
@@ -47,22 +47,24 @@ export default function GoogleCallbackPage() {
             }),
           );
 
-          router.push(`/es/login?step=oauth_invite`);
+          router.push(`/${lang}/login?step=oauth_invite`);
         } else {
           toast.success(`¡Bienvenido de nuevo, ${response.username}!`);
-          
+
+          await new Promise((resolve) => setTimeout(resolve, 300));
+
           await checkAuth();
-          
-          window.location.href = "/es";
+
+          window.location.href = `/${lang}`;
         }
       } catch (error: any) {
         toast.error(error.message || "Fallo al conectar con Google");
-        router.push("/es/login");
+        router.push(`/${lang}/login`);
       }
     };
 
     authenticate();
-  }, [searchParams, router, checkAuth]);
+  }, [searchParams, router, checkAuth, lang]);
 
   return <PageLoader text="Cifrando conexión segura con Google..." />;
 }

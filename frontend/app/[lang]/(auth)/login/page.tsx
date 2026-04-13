@@ -2,8 +2,15 @@ import { Suspense } from "react";
 import { IconLoader2 } from "@tabler/icons-react";
 import { AuthForm } from "@/src/system/organisms/Auth/AuthForm";
 
-export default function LoginPage({ params }: { params: any }) {
-  console.log("🚪 [LOGIN_PAGE] Renderizando con params:", params);
+interface LoginPageProps {
+  params: Promise<{ lang: string }>;
+}
+
+export default async function LoginPage({ params }: LoginPageProps) {
+  const { lang } = await params;
+
+  console.log(`🚪 [LOGIN_PAGE] Renderizando acceso en: ${lang}`);
+
   return (
     <main className="min-h-screen flex items-center justify-center p-4 bg-muted/10">
       <Suspense
@@ -14,7 +21,7 @@ export default function LoginPage({ params }: { params: any }) {
           </div>
         }
       >
-        <AuthForm />
+        <AuthForm lang={lang} />
       </Suspense>
     </main>
   );

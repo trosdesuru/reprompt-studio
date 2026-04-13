@@ -1,4 +1,3 @@
-// src/system/organisms/Auth/AuthForm.tsx
 "use client";
 
 import { useAuthForm } from "@/src/features/auth/hooks/useAuthForm";
@@ -8,7 +7,11 @@ import { SocialLogins } from "../../molecules/Auth/SocialLogins";
 import { AuthSeparator } from "../../atoms/Login/AuthSeparator";
 import { CredentialsForm } from "../../molecules/Auth/CredentialsForm";
 
-export function AuthForm() {
+interface AuthFormProps {
+  lang: string;
+}
+
+export function AuthForm({lang}: AuthFormProps) {
   const { state, actions } = useAuthForm();
 
   if (state.oauthPending) {
@@ -33,6 +36,7 @@ export function AuthForm() {
               onChange={(e) => actions.setInviteCode(e.target.value.toUpperCase())}
               className="w-full h-12 bg-background border border-border pl-4 pr-3 text-sm font-mono uppercase focus:outline-none focus:border-(--accent-color) transition-colors"
               disabled={state.isLoading}
+              lang={lang}
             />
           </div>
 
@@ -42,6 +46,7 @@ export function AuthForm() {
               onClick={actions.cancelOauthFlow}
               disabled={state.isLoading}
               className="w-full sm:w-1/3 justify-center h-12 bg-transparent text-foreground border border-border hover:bg-muted font-mono uppercase text-xs font-black tracking-widest transition-colors disabled:opacity-50"
+              lang={lang}
             >
               Volver
             </button>
