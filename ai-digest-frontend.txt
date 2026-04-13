@@ -391,7 +391,7 @@ frontend:
   ports:
     - "3000:3000"
   environment:
-    - NEXT_PUBLIC_API_URL=http://localhost:8000
+    - NEXT_PUBLIC_API_URL=http://localhost:3000
 
 
 
@@ -691,7 +691,7 @@ export function proxy(request: NextRequest) {
   const accessToken = request.cookies.get("access_token")?.value;
   const refreshToken = request.cookies.get("refresh_token")?.value;
 
-  console.log(`\n🚦 [MIDDLEWARE] Interceptando navegación hacia: ${pathname}`);
+  console.log(`\n🚦 [PROXY] Interceptando navegación hacia: ${pathname}`);
   console.log(`   👉 Access Token (15m) presente:  ${accessToken ? "✅ SÍ" : "❌ NO"}`);
   console.log(`   👉 Refresh Token (7d) presente: ${refreshToken ? "✅ SÍ" : "❌ NO"}`);
   // ==============================================================
@@ -714,33 +714,27 @@ export function proxy(request: NextRequest) {
   const hasAnyAuth = !!accessToken || !!refreshToken;
 
   if (!hasAnyAuth && !isPublicPath) {
-    console.log(`   🛑 [MIDDLEWARE] Bloqueado. Redirigiendo a /login (Sin sesión)`);
+    console.log(`   🛑 [PROXY] Bloqueado. Redirigiendo a /login (Sin sesión)`);
     return NextResponse.redirect(new URL(`/${currentLocale}/login`, request.url));
   }
 
-  // 🟢 EVITAMOS REDIRIGIR SI ESTAMOS EN EL CALLBACK.
-  // Si acabamos de loguearnos con Google, el callback necesita ejecutarse aunque ya haya token.
   const isCallbackPath = publicPrefixes.some((prefix) => pathWithoutLocale.startsWith(prefix));
 
   if (hasAnyAuth && isPublicPath && !isCallbackPath) {
-    console.log(
-      `   ♻️ [MIDDLEWARE] Usuario ya logueado o con Refresh vivo. Redirigiendo a la Home.`,
-    );
+    console.log(`   ♻️ [PROXY] Usuario ya logueado o con Refresh vivo. Redirigiendo a la Home.`);
     return NextResponse.redirect(new URL(`/${currentLocale}`, request.url));
   }
 
   if (!accessToken && refreshToken && !isPublicPath) {
     console.log(
-      `   🔄 [MIDDLEWARE] Access Token caducado. Permitimos paso para que el cliente haga Silent Refresh.`,
+      `   🔄 [PROXY] Access Token caducado. Permitimos paso para que el cliente haga Silent Refresh.`,
     );
     return NextResponse.next();
   }
 
-  console.log(`   ✅ [MIDDLEWARE] Paso permitido.`);
+  console.log(`   ✅ [PROXY] Paso permitido.`);
   if (pathnameHasLocale) {
-    const url = request.nextUrl.clone();
-    url.pathname = pathWithoutLocale; // Enviamos a /google/callback internamente
-    return NextResponse.rewrite(url);
+    return NextResponse.next();
   }
 
   return NextResponse.next();
@@ -1233,26 +1227,26 @@ FILE: app/[lang]/(auth)/google/callback/page.tsx
 import { api } from "@/src/services/api";
 import { useAuthStore } from "@/src/store/authStore";
 import { useEffect, useRef } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams, useParams } from "next/navigation";
 import { PageLoader } from "@/src/system/atoms/PageLoader";
 import toast from "react-hot-toast";
 
 export default function GoogleCallbackPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const params = useParams();
+  const lang = params?.lang as string
+
   const processed = useRef(false);
-  
-  // 🟢 Extraemos la función para actualizar el estado global
   const checkAuth = useAuthStore((state) => state.checkAuth);
 
   useEffect(() => {
-    // 1. Evitamos que se ejecute dos veces en React Strict Mode
     if (processed.current) return;
 
     const code = searchParams.get("code");
     if (!code) {
       toast.error("No se recibió código de autenticación de Google.");
-      router.push("/es/auth/login"); // Asegúrate de que esta es tu ruta correcta
+      router.push(`/${lang}/login`);
       return;
     }
 
@@ -1277,25 +1271,28 @@ export default function GoogleCallbackPage() {
             }),
           );
 
-          router.push(`/es/login?step=oauth_invite`);
+          router.push(`/${lang}/login?step=oauth_invite`);
         } else {
           toast.success(`¡Bienvenido de nuevo, ${response.username}!`);
-          
+
+          await new Promise((resolve) => setTimeout(resolve, 300));
+
           await checkAuth();
-          
-          window.location.href = "/es";
+
+          window.location.href = `/${lang}`;
         }
       } catch (error: any) {
         toast.error(error.message || "Fallo al conectar con Google");
-        router.push("/es/login");
+        router.push(`/${lang}/login`);
       }
     };
 
     authenticate();
-  }, [searchParams, router, checkAuth]);
+  }, [searchParams, router, checkAuth, lang]);
 
   return <PageLoader text="Cifrando conexión segura con Google..." />;
 }
+
 
 
 ================================================
@@ -1353,7 +1350,15 @@ import { Suspense } from "react";
 import { IconLoader2 } from "@tabler/icons-react";
 import { AuthForm } from "@/src/system/organisms/Auth/AuthForm";
 
-export default function LoginPage() {
+interface LoginPageProps {
+  params: Promise<{ lang: string }>;
+}
+
+export default async function LoginPage({ params }: LoginPageProps) {
+  const { lang } = await params;
+
+  console.log(`🚪 [LOGIN_PAGE] Renderizando acceso en: ${lang}`);
+
   return (
     <main className="min-h-screen flex items-center justify-center p-4 bg-muted/10">
       <Suspense
@@ -1364,11 +1369,12 @@ export default function LoginPage() {
           </div>
         }
       >
-        <AuthForm />
+        <AuthForm lang={lang} />
       </Suspense>
     </main>
   );
 }
+
 
 
 ================================================
@@ -3013,14 +3019,17 @@ import { usePathname } from "next/navigation";
 import { useAuthStore } from "@/src/store/authStore";
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const { checkAuth, user } = useAuthStore();
+  const { checkAuth, user, isLoadingAuth } = useAuthStore();
   const pathname = usePathname() || "";
+
+  useEffect(() => {
+    console.log("🛡️ [AUTH_PROVIDER] Estado actual:", { user: user?.username, isLoadingAuth });
+  }, [user, isLoadingAuth]);
 
   useEffect(() => {
     const isAuthPage = pathname.includes("/login") || pathname.includes("/join");
 
     if (!isAuthPage) {
-      
       if (!user) {
         checkAuth();
       }
@@ -4651,23 +4660,29 @@ export async function fetchSeguro(endpoint: string, options: RequestInit = {}) {
     credentials: "include",
   };
 
+  // 🕵️‍♂️ SENSOR 1: El Vigía de Salida
+  console.log(`📡 [API_CLIENT] PETICIÓN -> ${options.method || "GET"} ${endpoint}`);
+
   let response: Response;
 
   try {
     response = await fetch(endpoint, config);
+    // 🕵️‍♂️ SENSOR 2: El Notario de Entrada
+    console.log(`📥 [API_CLIENT] RESPUESTA <- ${endpoint} [Status: ${response.status}]`);
   } catch (error) {
-    console.error(`🔌 [NETWORK_ERROR] Fallo al conectar con ${endpoint}:`, error);
+    console.error(`🔌 [NETWORK_ERROR] Fallo crítico de conexión con ${endpoint}:`, error);
     throw new Error("No hay conexión con el servidor.");
   }
 
   const isAuthFlow = endpoint.includes("/auth/");
 
-  // 🛡️ PROTOCOLO DE RESCATE: Si hay 401 y no es una ruta de login/refresh
+  // 🛡️ PROTOCOLO DE RESCATE: 401 en rutas privadas
   if (response.status === 401 && !isAuthFlow) {
-    console.warn(`[API_CLIENT] 🚑 401 Detectado en ${endpoint}. Iniciando Refresh...`);
+    console.warn(`🚑 [API_CLIENT] 401 Detectado en ${endpoint}. Intentando rescate (Refresh)...`);
 
     if (!isRefreshing) {
       isRefreshing = true;
+      console.log("🔄 [SECURITY] Solicitando nuevo Access Token al servidor...");
       refreshPromise = (async () => {
         try {
           const refreshRes = await fetch(`${API_URL}/auth/refresh`, {
@@ -4686,21 +4701,21 @@ export async function fetchSeguro(endpoint: string, options: RequestInit = {}) {
     const refreshSuccessful = await refreshPromise;
 
     if (refreshSuccessful) {
-      console.log(`✅ [SECURITY] Sesión renovada. Reintentando petición...`);
+      console.log(`✅ [SECURITY] Sesión renovada con éxito. Reintentando operación original...`);
 
-      // FormData no se puede reintentar fácilmente si el stream ya se leyó
       if (options.body instanceof FormData) {
         throw new Error("Sesión renovada. Por seguridad, vuelve a subir el archivo.");
       }
 
       try {
-        // Reintento final
         response = await fetch(endpoint, config);
+        console.log(`🔁 [API_CLIENT] Reintento tras refresh <- ${endpoint} [Status: ${response.status}]`);
       } catch (error) {
+        console.error("❌ [API_CLIENT] Error en el reintento post-refresh.");
         throw new Error("Error en el reintento de conexión.");
       }
     } else {
-      console.error("🚷 [SECURITY] Refresh fallido. Expulsando usuario...");
+      console.error("🚷 [SECURITY] Refresh fallido. La sesión ha muerto definitivamente.");
       if (typeof window !== "undefined") {
         window.dispatchEvent(new Event("auth:unauthorized"));
       }
@@ -4708,30 +4723,30 @@ export async function fetchSeguro(endpoint: string, options: RequestInit = {}) {
     }
   }
 
-  // 401 en flujo de Auth, es que las credenciales son malas
-  else if (response.status === 401 && isAuthFlow) {
-    throw new Error("Credenciales inválidas.");
-  }
-
-  // Manejo de Rate Limit
-  if (response.status === 429) {
-    const errorData = await response.json().catch(() => ({}));
-    const mensaje = errorData.detail || "Demasiados intentos. Espera un momento.";
-    if (typeof window !== "undefined") {
-      window.dispatchEvent(
-        new CustomEvent("app:notification", { detail: { type: "warning", message: mensaje } }),
-      );
-    }
-    throw new Error(mensaje);
-  }
-
+  // 🕵️‍♂️ SENSOR 3: El Forense (Analiza el cuerpo del error antes de lanzarlo)
   if (!response.ok) {
-    throw new Error(`Error ${response.status}: ${response.statusText}`);
+    const errorBody = await response.clone().json().catch(() => ({}));
+    console.warn(`🛑 [API_ERROR] ${response.status} en ${endpoint}:`, errorBody);
+
+    if (response.status === 401 && isAuthFlow) {
+      throw new Error("Credenciales inválidas.");
+    }
+
+    if (response.status === 429) {
+      const mensaje = errorBody.detail || "Demasiados intentos. Espera un momento.";
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(
+          new CustomEvent("app:notification", { detail: { type: "warning", message: mensaje } }),
+        );
+      }
+      throw new Error(mensaje);
+    }
+
+    throw new Error(`Error ${response.status}: ${errorBody.detail || response.statusText}`);
   }
 
   return response.json();
 }
-
 
 
 ================================================
@@ -4916,7 +4931,6 @@ FILE: src/store/authStore.ts
 ================================================
 import { create } from "zustand";
 import { api } from "@/src/services/api";
-import { handleError } from "../utils/errors/ErrorHandler";
 
 interface User {
   username: string;
@@ -4925,6 +4939,7 @@ interface User {
 
 interface AuthState {
   user: User | null;
+  isAuthenticated: boolean; // 🟢 FIX: Añadido al contrato
   isLoadingAuth: boolean;
   login: (userData: User) => void;
   logout: () => Promise<void>;
@@ -4953,74 +4968,78 @@ const redirectToLogin = () => {
 
 export const useAuthStore = create<AuthState>((set) => ({
   user: null,
+  isAuthenticated: false, // 🟢 FIX: Inicializado
   isLoadingAuth: true,
 
   login: (userData) => {
     console.log(`[AUTH_STORE] Sesión iniciada localmente: @${userData.username}`);
-    set({ user: userData, isLoadingAuth: false });
+    set({ user: userData, isAuthenticated: true, isLoadingAuth: false });
   },
 
   logoutSilencioso: () => {
     console.log("🤫 [AUTH_STORE] Limpieza de estado local (Silenciosa).");
-    set({ user: null, isLoadingAuth: false });
+    set({ user: null, isAuthenticated: false, isLoadingAuth: false });
   },
 
   checkAuth: async () => {
-    console.log("🛡️ [AUTH_STORE] Consultando estado real al servidor...");
+    console.log("🔍 [AUTH_STORE] Verificando estado de sesión...");
     set({ isLoadingAuth: true });
 
     try {
-      const res = await api.me();
-      const username = res?.username || res?.data?.username || res?.user?.username;
-      const role = res?.role || res?.data?.role || res?.user?.role || "user";
+      // 🟢 FIX: Consolidado en una sola llamada y con AWAIT
+      const res = await api.auth.me(); 
+      
+      // Mapeo defensivo de la respuesta del backend
+      const userData = res?.user || res?.data || res;
+      const username = userData?.username;
+      const role = userData?.role || "voyager";
 
       if (username) {
         console.log(`✅ [AUTH_STORE] checkAuth exitoso: @${username}`);
-        set({ user: { username, role } });
+        set({ 
+          user: { username, role }, 
+          isAuthenticated: true, 
+          isLoadingAuth: false 
+        });
       } else {
-        console.warn("⚠️ [AUTH_STORE] checkAuth OK, pero sin 'username'.");
-        set({ user: null });
+        console.warn("⚠️ [AUTH_STORE] checkAuth respondió OK pero el cuerpo está vacío.");
+        set({ user: null, isAuthenticated: false, isLoadingAuth: false });
       }
     } catch (error: unknown) {
       console.warn("🛑 [AUTH_STORE] checkAuth falló (No hay sesión activa).");
-      try {
-        handleError(error, "AuthStore");
-      } catch (e) {}
-      set({ user: null });
+      set({ user: null, isAuthenticated: false, isLoadingAuth: false });
+      
+      // No lanzamos el error al ErrorHandler aquí para evitar spam de toasts en el login
     } finally {
       set({ isLoadingAuth: false });
     }
   },
 
   logout: async () => {
-    console.log("🧹 [AUTH_STORE] Ejecutando orden de desconexión API...");
+    console.log("扫 [AUTH_STORE] Ejecutando orden de desconexión API...");
     try {
-      await api.logout();
+      await api.auth.logout();
       console.log("🧹 [AUTH_STORE] Backend confirmó destrucción de sesión.");
     } catch (error) {
       console.error("❌ [AUTH_STORE] Falló llamada al backend para logout:", error);
     } finally {
-      set({ user: null, isLoadingAuth: false });
+      set({ user: null, isAuthenticated: false, isLoadingAuth: false });
       redirectToLogin();
     }
   },
 }));
 
+// Escuchador de eventos globales para expulsión inmediata
 if (typeof window !== "undefined") {
-  console.log("🎧 [AUTH_STORE] Guardián de seguridad montado.");
-
   window.addEventListener("auth:unauthorized", () => {
     console.warn("🚨 [AUTH_STORE] ALERTA: Recibido evento 'auth:unauthorized'.");
-
     const state = useAuthStore.getState();
-
-    if (state.user || state.isLoadingAuth) {
+    if (state.isAuthenticated || state.user) {
       state.logoutSilencioso();
       redirectToLogin();
     }
   });
 }
-
 
 
 ================================================
@@ -7965,7 +7984,6 @@ export function UserActivityModal({ userId, username, onClose }: UserActivityMod
 ================================================
 FILE: src/system/organisms/Auth/AuthForm.tsx
 ================================================
-// src/system/organisms/Auth/AuthForm.tsx
 "use client";
 
 import { useAuthForm } from "@/src/features/auth/hooks/useAuthForm";
@@ -7975,7 +7993,11 @@ import { SocialLogins } from "../../molecules/Auth/SocialLogins";
 import { AuthSeparator } from "../../atoms/Login/AuthSeparator";
 import { CredentialsForm } from "../../molecules/Auth/CredentialsForm";
 
-export function AuthForm() {
+interface AuthFormProps {
+  lang: string;
+}
+
+export function AuthForm({lang}: AuthFormProps) {
   const { state, actions } = useAuthForm();
 
   if (state.oauthPending) {
@@ -8000,6 +8022,7 @@ export function AuthForm() {
               onChange={(e) => actions.setInviteCode(e.target.value.toUpperCase())}
               className="w-full h-12 bg-background border border-border pl-4 pr-3 text-sm font-mono uppercase focus:outline-none focus:border-(--accent-color) transition-colors"
               disabled={state.isLoading}
+              lang={lang}
             />
           </div>
 
@@ -8009,6 +8032,7 @@ export function AuthForm() {
               onClick={actions.cancelOauthFlow}
               disabled={state.isLoading}
               className="w-full sm:w-1/3 justify-center h-12 bg-transparent text-foreground border border-border hover:bg-muted font-mono uppercase text-xs font-black tracking-widest transition-colors disabled:opacity-50"
+              lang={lang}
             >
               Volver
             </button>

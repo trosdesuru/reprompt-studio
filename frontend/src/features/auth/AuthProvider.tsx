@@ -13,7 +13,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [user, isLoadingAuth]);
 
   useEffect(() => {
-    const isAuthPage = pathname.includes("/login") || pathname.includes("/join");
+    const isAuthPage =
+      pathname.includes("/login") ||
+      pathname.includes("/join") ||
+      pathname.includes("/callback")
 
     if (!isAuthPage) {
       if (!user) {

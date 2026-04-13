@@ -11,7 +11,7 @@ export default function GoogleCallbackPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const params = useParams();
-  const lang = params?.lang as string
+  const lang = params?.lang as string;
 
   const processed = useRef(false);
   const checkAuth = useAuthStore((state) => state.checkAuth);
@@ -30,13 +30,12 @@ export default function GoogleCallbackPage() {
 
     const authenticate = async () => {
       try {
-        const currentUrl = new URL(window.location.href);
-        const redirectUri = `${currentUrl.origin}${currentUrl.pathname}`;
+        const redirectUri = `${window.location.origin}${window.location.pathname}`;
 
         const response = await api.auth.verifyGoogleCode({ code, redirect_uri: redirectUri });
 
         if (response.status === "needs_invite") {
-          toast.success("Cuenta verificada. ¡Solo falta tu código VIP!");
+          toast.success("Cuenta verificada. ¡Solo falta tu código de invitación!");
 
           sessionStorage.setItem(
             "oauth_pending",
@@ -50,8 +49,6 @@ export default function GoogleCallbackPage() {
           router.push(`/${lang}/login?step=oauth_invite`);
         } else {
           toast.success(`¡Bienvenido de nuevo, ${response.username}!`);
-
-          await new Promise((resolve) => setTimeout(resolve, 300));
 
           await checkAuth();
 
