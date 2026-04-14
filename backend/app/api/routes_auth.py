@@ -84,8 +84,12 @@ def login_user(
     redis_client.delete(user_key)
 
     response.set_cookie(
-        key="access_token", value=access_token, max_age=60 * 15, **COOKIE_PARAMS
+        key="access_token", 
+        value=access_token, 
+        max_age=60 * 15, 
+        **COOKIE_PARAMS
     )
+    
     response.set_cookie(
         key="refresh_token",
         value=refresh_token,

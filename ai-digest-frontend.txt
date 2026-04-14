@@ -1235,7 +1235,7 @@ export default function GoogleCallbackPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const params = useParams();
-  const lang = params?.lang as string
+  const lang = params?.lang as string;
 
   const processed = useRef(false);
   const checkAuth = useAuthStore((state) => state.checkAuth);
@@ -1254,13 +1254,15 @@ export default function GoogleCallbackPage() {
 
     const authenticate = async () => {
       try {
-        const currentUrl = new URL(window.location.href);
-        const redirectUri = `${currentUrl.origin}${currentUrl.pathname}`;
+        const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || window.location.origin;
+        const redirectUri = `${baseUrl}${window.location.pathname}`;
+
+        console.log("📤 Canjeando código con Redirect URI oficial:", redirectUri);
 
         const response = await api.auth.verifyGoogleCode({ code, redirect_uri: redirectUri });
 
         if (response.status === "needs_invite") {
-          toast.success("Cuenta verificada. ¡Solo falta tu código VIP!");
+          toast.success("Cuenta verificada. ¡Solo falta tu código de invitación!");
 
           sessionStorage.setItem(
             "oauth_pending",
@@ -1274,8 +1276,6 @@ export default function GoogleCallbackPage() {
           router.push(`/${lang}/login?step=oauth_invite`);
         } else {
           toast.success(`¡Bienvenido de nuevo, ${response.username}!`);
-
-          await new Promise((resolve) => setTimeout(resolve, 300));
 
           await checkAuth();
 
@@ -3027,7 +3027,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [user, isLoadingAuth]);
 
   useEffect(() => {
-    const isAuthPage = pathname.includes("/login") || pathname.includes("/join");
+    const isAuthPage =
+      pathname.includes("/login") ||
+      pathname.includes("/join") ||
+      pathname.includes("/callback")
 
     if (!isAuthPage) {
       if (!user) {

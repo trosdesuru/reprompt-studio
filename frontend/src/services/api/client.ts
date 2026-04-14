@@ -32,7 +32,7 @@ export async function fetchSeguro(endpoint: string, options: RequestInit = {}) {
     throw new Error("No hay conexión con el servidor.");
   }
 
-  const isAuthFlow = endpoint.includes("/auth/");
+  const isAuthFlow = endpoint.includes("/auth");
 
   // 🛡️ PROTOCOLO DE RESCATE: 401 en rutas privadas
   if (response.status === 401 && !isAuthFlow) {
