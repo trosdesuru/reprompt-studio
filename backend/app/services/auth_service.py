@@ -9,7 +9,7 @@ from google.auth.transport import requests as google_requests
 
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
 
-from jose import jwt
+import jwt
 from fastapi import HTTPException
 from sqlmodel import Session, select
 from app.models.user import User, InviteCode

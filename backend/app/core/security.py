@@ -1,9 +1,9 @@
 # backend/app/core/security.py
 import os
-import bcrypt
+import jwt
 import uuid
+import bcrypt
 from datetime import datetime, timedelta
-from jose import jwt
 from dotenv import load_dotenv
 
 # Cargamos el .env

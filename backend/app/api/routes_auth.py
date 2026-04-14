@@ -230,7 +230,7 @@ def logout_user(response: Response, refresh_token: str | None = Cookie(None)):
 
     if refresh_token:
         try:
-            from jose import jwt
+            import jwt
             from app.core.security import SECRET_KEY, ALGORITHM
 
             payload = jwt.decode(refresh_token, SECRET_KEY, algorithms=[ALGORITHM])

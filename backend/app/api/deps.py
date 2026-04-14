@@ -2,8 +2,9 @@
 import os
 import redis
 import logging
+import jwt
 from fastapi import Depends, HTTPException, status, Request
-from jose import jwt, JWTError
+from jwt.exceptions import InvalidTokenError, PyJWTError
 from sqlmodel import Session, select
 from app.core.redis_config import conn as redis_client
 from app.core.db import get_session
@@ -34,7 +35,7 @@ class RateLimiter:
                 payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
                 if payload.get("sub"):
                     client_identifier = f"user:{payload.get('sub')}"
-            except JWTError:
+            except InvalidTokenError:
                 pass
 
         redis_key = f"rate_limit:{client_identifier}:{request.url.path}"
@@ -109,7 +110,7 @@ def get_current_user(request: Request, session: Session = Depends(get_session)):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Token expirado"
         )
-    except JWTError as e:
+    except PyJWTError as e:
         logger.warning(f"🛡️ [DEPS] Rechazado: Error decodificando JWT: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="No autenticado"
@@ -147,6 +148,6 @@ def get_optional_user(request: Request, session: Session = Depends(get_session))
         username: str = payload.get("sub")
         if username:
             return session.exec(select(User).where(User.username == username)).first()
-    except JWTError:
+    except PyJWTError:
         return None
     return None
