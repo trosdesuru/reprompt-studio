@@ -11,7 +11,7 @@ from app.core.db import engine, clean_url
 from app.models.user import InviteCode, User, AuditLog
 from app.models.gallery import GalleryMetric
 from app.models.prompt import ImagePrompt
-from app.models.collection import Collection
+from app.models.directory import Directory
 
 logger = logging.getLogger("init_db")
 

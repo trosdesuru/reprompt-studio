@@ -17,6 +17,7 @@ from app.utils.storage import eliminar_de_r2
 from app.services.storage import move_to_permanent, delete_file
 from app.services.security import validate_magic_bytes
 from app.services.storage import s3_client
+from app.services.embedding_service import EmbeddingService
 
 logger = logging.getLogger("routes_prompt")
 router = APIRouter()
@@ -108,6 +109,10 @@ def guardar_prompt(
 
     final_image_url = f"{base_url}{new_key}"
     data.image_url = final_image_url
+
+    text_to_vectorize = f"Title: {data.title}. Prompt: {data.prompt}. Software: {data.software}. Model: {data.model}"
+    vector_data = EmbeddingService.generate_vector(text_to_vectorize)
+
     try:
         nuevo_prompt = ImagePrompt(
             user_id=current_user.id,
@@ -122,6 +127,7 @@ def guardar_prompt(
             seed=data.seed,
             resolution=data.resolution,
             image_url=data.image_url,
+            embedding=vector_data,
             extra_data=data.extra_data,
         )
         session.add(nuevo_prompt)
@@ -130,7 +136,7 @@ def guardar_prompt(
 
         return {
             "status": "success",
-            "message": "Metadata guardada exitosamente",
+            "message": "Imagen guardada con éxito",
             "data": nuevo_prompt,
         }
     except Exception as e:

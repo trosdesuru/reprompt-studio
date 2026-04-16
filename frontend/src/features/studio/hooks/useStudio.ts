@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { api } from "@/src/services/api";
 import { SavedPrompt, Collection } from "@/src/types/models";
 import { handleError } from "@/src/utils/errors/ErrorHandler";
-import { toast } from "react-hot-toast"; // o react-hot-toast/headless según tu setup
+import { toast } from "react-hot-toast";
 
 export function useStudio() {
   const [prompts, setPrompts] = useState<SavedPrompt[]>([]);

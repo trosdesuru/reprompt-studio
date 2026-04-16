@@ -1,172 +1,94 @@
 "use client";
+import React, { useEffect } from "react";
+import { Plus, Search, FolderPlus, UploadCloud } from "lucide-react";
+import { useStudio } from "@/store/useStudio";
+import { SidebarDirectory } from "@/system/organisms/Studio/SidebarDirectory";
+import PromptGrid from "@/system/organisms/Studio/PromptGrid";
+import { usePromptExtractor } from "@/store/usePromptExtractor";
 
-import { use, useState } from "react";
-import { useStudio } from "@/src/features/studio/hooks/useStudio";
-import { PromptCard } from "@/src/system/organisms/Studio/PromptCard";
-import { CreateCollectionModal } from "@/src/system/molecules/Cards/CreateCollectionModal";
-import { IconPlus, IconAlbum, IconScanTraces, IconLock, IconWorld } from "@tabler/icons-react";
-import { useAuthStore } from "@/src/store/authStore";
-import Link from "next/link";
-import { PageLoader } from "@/src/system/atoms/PageLoader";
-import { Breadcrumbs } from "@/src/system/organisms/Navigation/Breadcrumbs";
-import { BulkActionBar } from "@/src/system/organisms/Studio/BulkActionBar";
+export default function StudioPage() {
+  const { directories, setDirectories, searchQuery, setSearchQuery, setIsSearching } = useStudio();
+  const { processFiles } = usePromptExtractor();
 
-export default function StudioPage({ params }: { params: Promise<{ lang: string }> }) {
-  const { lang } = use(params);
-  const user = useAuthStore((state: any) => state.user);
-  const {
-    prompts,
-    collections,
-    isLoading,
-    error,
-    deletePrompt,
-    assignToCollection,
-    refetch,
-    deletePromptsBatch,
-    isDeletingBatch,
-  } = useStudio();
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedIds, setSelectedIds] = useState<number[]>([]);
-  const breadcrumbItems = [{ label: "Mi Studio" }];
-
-  if (isLoading) return <PageLoader text="Cargando Metadata ..." />;
-  if (error) throw new Error(error);
-
-  const handleToggleSelect = (id: number) => {
-    setSelectedIds((prev) =>
-      prev.includes(id) ? prev.filter((pId) => pId !== id) : [...prev, id],
-    );
-  };
-
-  const handleBatchDelete = async () => {
-    if (
-      window.confirm(
-        `¿Seguro que deseas eliminar estas ${selectedIds.length} imágenes para siempre?`,
-      )
-    ) {
-      const success = await deletePromptsBatch(selectedIds);
-      if (success) {
-        setSelectedIds([]); // Vaciamos la selección para que desaparezca la barra
+  // Carga inicial de directorios desde el búnker
+  useEffect(() => {
+    const fetchDirs = async () => {
+      try {
+        const res = await fetch('/api/directories');
+        const data = await res.json();
+        setDirectories(data);
+      } catch (error) {
+        console.error("Error cargando directorios:", error);
       }
-    }
-  };
+    };
+    fetchDirs();
+  }, [setDirectories]);
 
-  const handleClearSelection = () => setSelectedIds([]);
+  const handleUploadClick = () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.multiple = true;
+    input.onchange = (e) => {
+      const files = (e.target as HTMLInputElement).files;
+      if (files) processFiles(Array.from(files));
+    };
+    input.click();
+  };
 
   return (
-    <main className="max-h-screen bg-background p-4 md:p-8 relative pb-24">
-      <BulkActionBar
-        selectedCount={selectedIds.length}
-        onClearSelection={handleClearSelection}
-        onDeleteSelected={handleBatchDelete}
-        onDownloadSelected={() => console.log("Descargando IDs:", selectedIds)}
-        isDeleting={isDeletingBatch}
-      />
-
-      <div className="max-w-7xl mx-auto space-y-8">
-        <div>
-          <Breadcrumbs items={breadcrumbItems} />
-        </div>
-
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-border pb-8 mt-4">
-          <div>
-            <h1 className="text-3xl font-black tracking-tighter flex items-center gap-3">
-              <IconAlbum className="text-(--accent-color)" size={32} /> Mi Studio
-            </h1>
-            <p className="text-muted-foreground mt-1">
-              Gestiona tus <span className="font-mono font-medium text-accent">reprompt</span>.
-            </p>
+    <div className="flex h-[calc(100vh-64px)] bg-background">
+      {/* SIDEBAR IZQUIERDO: ORGANIZACIÓN */}
+      <aside className="w-72 border-r bg-card/30 backdrop-blur-sm flex flex-col">
+        <div className="p-4 border-b space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Mi Studio</h2>
+            <div className="flex gap-1">
+              <button className="p-1.5 hover:bg-secondary rounded-lg" title="Nueva Carpeta">
+                <FolderPlus size={16} />
+              </button>
+              <button 
+                onClick={handleUploadClick}
+                className="p-1.5 hover:bg-secondary rounded-lg text-primary" 
+                title="Subir Imágenes"
+              >
+                <UploadCloud size={16} />
+              </button>
+            </div>
           </div>
 
-          <div className="flex gap-3">
-            <Link
-              href={`/${lang}/reprompt`}
-              className="bg-background border border-accent hover:bg-accent/20 text-accent px-4 py-2 rounded-md font-mono text-sm font-bold uppercase tracking-widest transition-colors flex items-center gap-2"
-            >
-              <IconScanTraces className="text-accent" size={18} /> reprompt
-            </Link>
-            <button
-              onClick={() => setIsModalOpen(true)}
-              className="bg-(--accent-color) text-foreground px-4 py-2 rounded-md font-mono text-sm font-bold uppercase tracking-widest hover:bg-opacity-90 hover:text-popover transition-colors flex items-center gap-2 cursor-pointer"
-            >
-              <IconPlus size={18} /> Crear Colección
-            </button>
+          {/* Buscador Vectorial */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={14} />
+            <input 
+              type="text"
+              placeholder="Búsqueda semántica..."
+              className="w-full bg-secondary/50 border-none rounded-full py-2 pl-9 pr-4 text-xs focus:ring-1 focus:ring-primary outline-none transition-all"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
           </div>
         </div>
 
-        {collections.length > 0 && (
-          <section className="space-y-4 mb-12">
-            <h2 className="text-sm font-mono font-bold uppercase tracking-widest text-muted-foreground">
-              Tus Colecciones
-            </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-              {collections.map((col) => (
-                <Link
-                  key={col.id}
-                  href={`/${lang}/${user?.username}/${col.slug}`}
-                  className="group relative p-5 bg-(--bg-secondary) neo-border hover:border-accent! hover:bg-accent/15 transition-all neo-shadow flex flex-col justify-between min-h-120px"
-                >
-                  <div className="flex justify-between items-start">
-                    <IconAlbum
-                      size={24}
-                      className="text-muted-foreground group-hover:text-accent transition-colors"
-                    />
-                    <div className="text-muted-foreground hover:text-accent">
-                      {col.is_private ? (
-                        <IconLock size={16} title="Colección Privada" />
-                      ) : (
-                        <IconWorld size={16} title="Colección Pública" />
-                      )}
-                    </div>
-                  </div>
-                  <div>
-                    <h3 className="font-bold text-lg font-mono uppercase tracking-tight truncate mt-4">
-                      {col.name}
-                    </h3>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          </section>
-        )}
-
-        <section className="space-y-4">
-          <h2 className="text-sm font-mono font-bold uppercase tracking-widest text-muted-foreground">
-            Todos tus Prompts
-          </h2>
-          {prompts.length === 0 ? (
-            <div className="text-center py-20 bg-muted/10 border border-dashed border-border rounded-xl">
-              <p className="text-muted-foreground font-mono">Aún no hay prompts guardados.</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-              {prompts.map((prompt, index) => (
-                <PromptCard
-                  key={prompt.id}
-                  item={prompt}
-                  collections={collections}
-                  index={index}
-                  isPriority={index < 6}
-                  onDelete={deletePrompt}
-                  onAssign={assignToCollection}
-                  lang={lang}
-                  isStudio={true}
-                  authorUsername={user?.username}
-                  isSelected={selectedIds.includes(prompt.id)}
-                  onToggleSelect={() => handleToggleSelect(prompt.id)}
-                  selectionModeActive={selectedIds.length > 0}
-                />
-              ))}
+        <div className="flex-1 overflow-y-auto py-4">
+          {/* Solo renderizamos las carpetas raíz */}
+          {directories.filter(d => !d.parent_id).map((dir) => (
+            <SidebarDirectory key={dir.id} directory={dir} />
+          ))}
+          
+          {directories.length === 0 && (
+            <div className="px-6 py-10 text-center space-y-2">
+              <p className="text-xs text-muted-foreground italic">No hay carpetas aún.</p>
             </div>
           )}
-        </section>
-      </div>
+        </div>
+      </aside>
 
-      <CreateCollectionModal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        onSuccess={refetch}
-      />
-    </main>
+      {/* ÁREA PRINCIPAL: GALERÍA */}
+      <main className="flex-1 overflow-y-auto custom-scrollbar">
+        <div className="max-w-7xl mx-auto p-6">
+          <PromptGrid />
+        </div>
+      </main>
+    </div>
   );
 }

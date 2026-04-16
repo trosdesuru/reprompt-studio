@@ -4,8 +4,12 @@ from typing import Optional, Dict, Any
 from fastapi import APIRouter, Query, Depends, Body
 from sqlmodel import Session, select
 from app.services import scraper
+from app.models.user import User
 from app.core.db import get_session
+from app.api.deps import get_current_user
 from app.models.gallery import GalleryMetric
+from app.models.prompt import ImagePrompt
+from app.services.embedding_service import EmbeddingService
 
 router = APIRouter()
 
@@ -62,7 +66,6 @@ def leer_galeria(url: str, p: int = 0):
         return {"status": "error", "message": str(e), "data": []}
 
 
-# 🟢 FIX 1: Cambiamos el guion medio por guion bajo para que coincida con el Frontend
 @router.get("/resolver_imagen")
 def resolver_imagen(url: str):
     try:
@@ -94,7 +97,6 @@ def registrar_interaccion(
             )
             session.add(metric)
         else:
-            # Por si acaso era una galería antigua sin thumb, lo actualizamos
             if thumb and not metric.thumb:
                 metric.thumb = thumb
 
@@ -107,3 +109,30 @@ def registrar_interaccion(
         return {"status": "success"}
     except Exception as e:
         return {"status": "error", "message": str(e)}
+
+
+@router.get("/studio")
+def buscar_en_studio(
+    q: str = Query(..., description="Texto a buscar semánticamente"),
+    limit: int = 20,
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    if not q:
+        return []
+
+    query_vector = EmbeddingService.generate_vector(q)
+
+    if not query_vector:
+        return {"status": "error", "message": "No se pudo procesar la búsqueda"}
+
+    statement = (
+        select(ImagePrompt)
+        .where(ImagePrompt.user_id == current_user.id)
+        .order_by(ImagePrompt.embedding.cosine_distance(query_vector))
+        .limit(limit)
+    )
+
+    resultados = session.exec(statement).all()
+
+    return {"status": "success", "query": q, "results": resultados}

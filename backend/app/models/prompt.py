@@ -1,8 +1,9 @@
 import uuid
 from sqlmodel import SQLModel, Field, Column, JSON
 from sqlalchemy import Text
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 from datetime import datetime
+from pgvector.sqlalchemy import Vector
 
 
 class ImagePrompt(SQLModel, table=True):
@@ -17,13 +18,18 @@ class ImagePrompt(SQLModel, table=True):
 
     user_id: uuid.UUID = Field(foreign_key="user.id", index=True)
 
-    collection_id: Optional[uuid.UUID] = Field(
-        default=None, foreign_key="collection.id", index=True
+    directory_id: Optional[uuid.UUID] = Field(
+        default=None, foreign_key="directory.id", index=True
     )
 
     title: str
     prompt: str = Field(sa_column=Column(Text))
     negative_prompt: Optional[str] = Field(default=None, sa_column=Column(Text))
+
+
+    embedding: Optional[List[float]] = Field(
+        default=None, sa_column=Column(Vector(384))
+    )
 
     software: Optional[str] = Field(default="Desconocido")
     model: Optional[str] = Field(default=None)

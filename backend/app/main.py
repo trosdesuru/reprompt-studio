@@ -17,6 +17,8 @@ from app.api.routes_prompt import router as prompt_router
 from app.api.routes_public import router as public_router
 from app.api.routes_collections import router as collections_router
 from app.api.routes_admin import router as admin_router
+from app.api.routes_search import router as search_router
+from app.api.routes_directories import router as directories_router
 
 logging.basicConfig(
     level=logging.INFO,
@@ -114,3 +116,5 @@ app.include_router(public_router, prefix="/api/public", tags=["Feed"])
 app.include_router(prompt_router, prefix="/api/prompts", tags=["Reprompt Studio"])
 app.include_router(download_router, prefix="/api/download", tags=["Descargas"])
 app.include_router(collections_router, prefix="/api/collections", tags=["Colecciones"])
+app.include_router(search_router, prefix="/api/search", tags=["Búsqueda"])
+app.include_router(directories_router, prefix="/api/directories", tags=["Directorios"])
