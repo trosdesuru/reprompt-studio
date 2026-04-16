@@ -10,9 +10,8 @@ import { useStudioUI, Directory } from "@/src/store/useStudioUI";
 import { SidebarDirectory } from "@/src/system/organisms/Studio/SidebarDirectory";
 import PromptGrid from "@/src/system/organisms/Studio/PromptGrid";
 import { usePromptExtractor } from "@/src/features/extractor/hooks/usePromptExtractor";
-
-// 🟢 NUEVOS IMPORTS DE DND
 import { DndContext, DragEndEvent, closestCenter } from "@dnd-kit/core";
+import { fetchSeguro } from "@/src/services/api/client";
 
 export default function StudioPage() {
   const {
@@ -29,7 +28,11 @@ export default function StudioPage() {
   useEffect(() => {
     const fetchDirs = async () => {
       try {
-        const res = await fetch("/api/directories");
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
+        const res = await fetchSeguro(`${API_URL}/directories/`, {
+          credentials: "include",
+        });
+
         if (res.ok) {
           const data = await res.json();
           setDirectories(data);

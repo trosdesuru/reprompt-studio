@@ -17,6 +17,7 @@ Directory structure:
     │   │   ├── routes_admin.py
     │   │   ├── routes_auth.py
     │   │   ├── routes_collections.py
+    │   │   ├── routes_directories.py
     │   │   ├── routes_download.py
     │   │   ├── routes_prompt.py
     │   │   ├── routes_public.py
@@ -30,6 +31,7 @@ Directory structure:
     │   │   └── webdriver_mgr.py
     │   ├── models/
     │   │   ├── collection.py
+    │   │   ├── directory.py
     │   │   ├── gallery.py
     │   │   ├── prompt.py
     │   │   └── user.py
@@ -44,6 +46,7 @@ Directory structure:
     │   │   ├── audit_service.py
     │   │   ├── auth_service.py
     │   │   ├── downloader.py
+    │   │   ├── embedding_service.py
     │   │   ├── security.py
     │   │   └── storage.py
     │   └── utils/
@@ -160,6 +163,7 @@ cffi==1.17.1
 charset-normalizer==3.4.2
 ckzg==2.1.1
 click==8.2.0
+coloredlogs==15.0.1
 croniter==6.2.2
 cryptography==44.0.3
 cytoolz==1.0.1
@@ -176,11 +180,14 @@ eth-typing==5.2.1
 eth-utils==5.3.0
 eth_abi==5.2.0
 fastapi==0.115.12
+fastembed==0.5.1
 filelock==3.18.0
 fire==0.7.0
 firebase-admin==6.8.0
+flatbuffers==25.12.19
 fonttools==4.58.0
 frozenlist==1.6.0
+fsspec==2026.3.0
 git-filter-repo==2.47.0
 google-api-core==2.24.2
 google-api-python-client==2.169.0
@@ -197,26 +204,35 @@ grpcio==1.71.0
 grpcio-status==1.71.0
 h11==0.16.0
 hexbytes==1.3.1
+hf-xet==1.4.3
 httpcore==1.0.9
 httplib2==0.22.0
 httpx==0.28.1
+huggingface_hub==0.36.2
+humanfriendly==10.0
 idna==3.10
 iniconfig==2.3.0
 jmespath==1.1.0
+loguru==0.7.3
 lxml==5.4.0
 Mako==1.3.10
 MarkupSafe==3.0.3
+mmh3==4.1.0
 Monei==2.3.2
+mpmath==1.3.0
 msgpack==1.1.0
 multidict==6.4.3
 mutagen==1.47.0
 numpy==2.2.5
+onnxruntime==1.23.2
 opencv-python-headless==4.11.0.86
 outcome==1.3.0.post0
 packaging==25.0
 parsimonious==0.10.0
 passlib==1.7.4
 pdf2docx==0.5.8
+pgvector==0.3.6
+pillow==10.4.0
 pipenv==2025.0.2
 platformdirs==4.3.8
 pluggy==1.6.0
@@ -225,6 +241,7 @@ proto-plus==1.26.1
 protobuf==5.29.4
 psutil==7.0.0
 psycopg2-binary==2.9.11
+py_rust_stemmers==0.1.5
 pyasn1==0.6.3
 pyasn1_modules==0.4.1
 pycparser==2.22
@@ -245,6 +262,7 @@ python-dotenv==1.1.0
 python-jose==3.5.0
 python-multipart==0.0.20
 pyunormalize==16.0.0
+PyYAML==6.0.3
 qrcode==8.2
 redis==7.4.0
 regex==2024.11.6
@@ -263,8 +281,11 @@ soupsieve==2.7
 SQLAlchemy==2.0.49
 sqlmodel==0.0.37
 starlette==0.46.2
+sympy==1.14.0
 termcolor==3.1.0
+tokenizers==0.22.2
 toolz==1.0.0
+tqdm==4.67.3
 trio==0.30.0
 trio-websocket==0.12.2
 types-requests==2.32.0.20250515
@@ -291,28 +312,31 @@ FILE: reset_db.py
 # backend/reset_db.py
 from sqlmodel import SQLModel, Session, text
 from app.core.db import engine
+# Asegúrate de importar todos los modelos para que SQLModel los conozca
 from app.models.user import User, InviteCode, AuditLog
-from app.models.collection import Collection
+from app.models.directory import Directory 
 from app.models.prompt import ImagePrompt
 from app.models.gallery import GalleryMetric
 
-
 def reset_database():
-    print("🚨 [1/3] Conectando a Neon y forzando el borrado (CASCADE) de todo...")
+    print("🚨 [1/4] Borrando y recreando el esquema 'public'...")
     with Session(engine) as session:
         session.exec(text("DROP SCHEMA public CASCADE;"))
         session.exec(text("CREATE SCHEMA public;"))
         session.commit()
 
-    print("✨ [2/3] Creando tablas con el nuevo esquema...")
+    print("🧩 [2/4] Activando extensión pgvector...")
+    with Session(engine) as session:
+        session.exec(text("CREATE EXTENSION IF NOT EXISTS vector;"))
+        session.commit()
+
+    print("✨ [3/4] Creando tablas con la nueva arquitectura jerárquica...")
     SQLModel.metadata.create_all(engine)
 
-    print("✅ [3/3] ¡Base de datos limpia y lista para la nueva arquitectura!")
-
+    print("✅ [4/4] ¡Base de Datos Neon alineada y lista!")
 
 if __name__ == "__main__":
     reset_database()
-
 
 
 ================================================
@@ -380,7 +404,7 @@ from app.core.db import engine, clean_url
 from app.models.user import InviteCode, User, AuditLog
 from app.models.gallery import GalleryMetric
 from app.models.prompt import ImagePrompt
-from app.models.collection import Collection
+from app.models.directory import Directory
 
 logger = logging.getLogger("init_db")
 
@@ -496,21 +520,21 @@ import os
 import logging
 import secrets
 from contextlib import asynccontextmanager
-from fastapi.openapi.docs import get_swagger_ui_html
 from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi.openapi.docs import get_swagger_ui_html
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.init_db import init_db
 
-from app.api.routes_download import router as download_router
-
-# from app.api.routes_search import router as search_router
+# 🟢 IMPORTACIÓN DE RUTAS
 from app.api.routes_auth import router as auth_router
-from app.api.routes_prompt import router as prompt_router
-from app.api.routes_public import router as public_router
-from app.api.routes_collections import router as collections_router
 from app.api.routes_admin import router as admin_router
+from app.api.routes_public import router as public_router
+from app.api.routes_prompt import router as prompt_router
+from app.api.routes_download import router as download_router
+from app.api.routes_search import router as search_router
+from app.api.routes_directories import router as directories_router
 
 logging.basicConfig(
     level=logging.INFO,
@@ -523,6 +547,7 @@ security = HTTPBasic()
 
 
 def get_current_username(credentials: HTTPBasicCredentials = Depends(security)):
+    """Protección básica para la documentación de la API"""
     correct_username = secrets.compare_digest(
         credentials.username.encode("utf8"),
         os.getenv("DOCS_USERNAME", "admin").encode("utf8"),
@@ -542,40 +567,35 @@ def get_current_username(credentials: HTTPBasicCredentials = Depends(security)):
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    """Ciclo de vida: Inicializa la base de datos al arrancar"""
     logger.info("🚀 API Backend iniciada. Sistemas en línea.")
     try:
         init_db()
     except Exception as e:
         logger.error(f"❌ Error al inicializar la base de datos: {e}")
-
         raise RuntimeError("Imposible iniciar el servidor sin Base de Datos.") from e
-
     yield
     logger.info("🛑 Apagando API Backend limpiamente...")
 
 
 app = FastAPI(
-    title="reprompt FastAPI",
+    title="Reprompt Studio API",
     lifespan=lifespan,
     docs_url=None,
     redoc_url=None,
     openapi_url=None,
 )
 
+# 🌐 CONFIGURACIÓN DE CORS
 ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "https://reprompt.studio",
     "https://www.reprompt.studio",
-    "http://develop.reprompt.studio:3000",
 ]
 
 frontend_url = os.getenv("FRONTEND_URL")
 if frontend_url and frontend_url not in ALLOWED_ORIGINS:
     ALLOWED_ORIGINS.append(frontend_url)
-
-if os.getenv("ENVIRONMENT") != "production":
-    ALLOWED_ORIGINS.append("http://127.0.0.1:3000")
-    ALLOWED_ORIGINS.append("http://develop.reprompt.studio:3000")
 
 app.add_middleware(
     CORSMiddleware,
@@ -586,14 +606,16 @@ app.add_middleware(
 )
 
 
+# 🩺 HEALTH CHECK
 @app.api_route("/api/health", methods=["GET", "HEAD"], include_in_schema=False)
 async def health_check():
     return {"status": "ok"}
 
 
+# 📚 DOCUMENTACIÓN PROTEGIDA
 @app.get("/docs", include_in_schema=False)
 async def get_swagger_documentation(username: str = Depends(get_current_username)):
-    return get_swagger_ui_html(openapi_url="/openapi.json", title="reprompt FastAPI")
+    return get_swagger_ui_html(openapi_url="/openapi.json", title="Reprompt API Docs")
 
 
 @app.get("/openapi.json", include_in_schema=False)
@@ -601,13 +623,14 @@ async def openapi(username: str = Depends(get_current_username)):
     return app.openapi()
 
 
-# app.include_router(search_router, prefix="/api")
-app.include_router(admin_router, prefix="/api/admin", tags=["Admin"])
+# 🛣️ REGISTRO DE RUTAS (API ENDPOINTS)
 app.include_router(auth_router, prefix="/api/auth", tags=["Autenticación"])
-app.include_router(public_router, prefix="/api/public", tags=["Feed"])
-app.include_router(prompt_router, prefix="/api/prompts", tags=["Reprompt Studio"])
+app.include_router(directories_router, prefix="/api/directories", tags=["Directorios"])
+app.include_router(prompt_router, prefix="/api/prompts", tags=["Studio Prompts"])
+app.include_router(search_router, prefix="/api/search", tags=["Búsqueda Inteligente"])
+app.include_router(public_router, prefix="/api/public", tags=["Feed Público"])
 app.include_router(download_router, prefix="/api/download", tags=["Descargas"])
-app.include_router(collections_router, prefix="/api/collections", tags=["Colecciones"])
+app.include_router(admin_router, prefix="/api/admin", tags=["Administración"])
 
 
 
@@ -1702,6 +1725,143 @@ def assign_prompt_to_collection(
 
 
 ================================================
+FILE: app/api/routes_directories.py
+================================================
+import uuid
+from typing import List, Optional
+from fastapi import APIRouter, Depends, HTTPException
+from sqlmodel import Session, select
+from pydantic import BaseModel
+
+from app.core.db import get_session
+from app.api.deps import get_current_user
+from app.models.user import User
+from app.models.directory import Directory
+
+router = APIRouter()
+
+
+class DirectoryCreate(BaseModel):
+    name: str
+    parent_id: Optional[uuid.UUID] = None
+
+
+class DirectoryMove(BaseModel):
+    parent_id: Optional[uuid.UUID] = None
+
+
+@router.post("/", response_model=Directory)
+def create_directory(
+    data: DirectoryCreate,
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    existing = session.exec(
+        select(Directory).where(
+            Directory.user_id == current_user.id,
+            Directory.parent_id == data.parent_id,
+            Directory.name == data.name,
+        )
+    ).first()
+
+    if existing:
+        raise HTTPException(
+            status_code=400, detail="Ya existe una carpeta con ese nombre aquí."
+        )
+
+    nuevo_dir = Directory(
+        user_id=current_user.id, name=data.name, parent_id=data.parent_id
+    )
+    session.add(nuevo_dir)
+    session.commit()
+    session.refresh(nuevo_dir)
+    return nuevo_dir
+
+
+@router.get("/", response_model=List[Directory])
+def get_directories(
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    return session.exec(
+        select(Directory).where(Directory.user_id == current_user.id)
+    ).all()
+
+
+@router.delete("/{directory_id}")
+def delete_directory(
+    directory_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    dir_to_delete = session.exec(
+        select(Directory).where(
+            Directory.id == directory_id, Directory.user_id == current_user.id
+        )
+    ).first()
+
+    if not dir_to_delete:
+        raise HTTPException(status_code=404, detail="Carpeta no encontrada")
+
+    session.delete(dir_to_delete)
+    session.commit()
+    return {"status": "success", "message": "Carpeta eliminada"}
+
+
+@router.patch("/{directory_id}/move")
+def move_directory(
+    directory_id: uuid.UUID,
+    data: DirectoryMove,
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    """Mueve una carpeta dentro de otra (o a la raíz)"""
+
+    # 1. Buscar la carpeta que queremos mover
+    dir_to_move = session.exec(
+        select(Directory).where(
+            Directory.id == directory_id, Directory.user_id == current_user.id
+        )
+    ).first()
+
+    if not dir_to_move:
+        raise HTTPException(status_code=404, detail="Carpeta no encontrada")
+
+    # 2. Lógica de Seguridad: Evitar ciclos infinitos en el backend
+    # No puedes mover una carpeta dentro de sí misma
+    if data.parent_id == directory_id:
+        raise HTTPException(
+            status_code=400, detail="No puedes mover una carpeta dentro de sí misma"
+        )
+
+    # Si hay un parent_id, verificamos que esa carpeta destino exista y sea del usuario
+    if data.parent_id:
+        target_dir = session.exec(
+            select(Directory).where(
+                Directory.id == data.parent_id, Directory.user_id == current_user.id
+            )
+        ).first()
+        if not target_dir:
+            raise HTTPException(status_code=404, detail="Carpeta destino no encontrada")
+
+        # (Opcional pero recomendado para nivel Pro): Verificar que el target no sea un hijo del directorio actual
+        # Para mantener el código ligero ahora mismo, confiaremos en la prevención del Frontend que ya programamos.
+
+    # 3. Aplicar el cambio y guardar
+    dir_to_move.parent_id = data.parent_id
+    session.add(dir_to_move)
+    session.commit()
+    session.refresh(dir_to_move)
+
+    return {
+        "status": "success",
+        "message": "Carpeta movida correctamente",
+        "data": dir_to_move,
+    }
+
+
+
+================================================
 FILE: app/api/routes_download.py
 ================================================
 import uuid
@@ -1865,6 +2025,7 @@ from app.utils.storage import eliminar_de_r2
 from app.services.storage import move_to_permanent, delete_file
 from app.services.security import validate_magic_bytes
 from app.services.storage import s3_client
+from app.services.embedding_service import EmbeddingService
 
 logger = logging.getLogger("routes_prompt")
 router = APIRouter()
@@ -1956,6 +2117,10 @@ def guardar_prompt(
 
     final_image_url = f"{base_url}{new_key}"
     data.image_url = final_image_url
+
+    text_to_vectorize = f"Title: {data.title}. Prompt: {data.prompt}. Software: {data.software}. Model: {data.model}"
+    vector_data = EmbeddingService.generate_vector(text_to_vectorize)
+
     try:
         nuevo_prompt = ImagePrompt(
             user_id=current_user.id,
@@ -1970,6 +2135,7 @@ def guardar_prompt(
             seed=data.seed,
             resolution=data.resolution,
             image_url=data.image_url,
+            embedding=vector_data,
             extra_data=data.extra_data,
         )
         session.add(nuevo_prompt)
@@ -1978,7 +2144,7 @@ def guardar_prompt(
 
         return {
             "status": "success",
-            "message": "Metadata guardada exitosamente",
+            "message": "Imagen guardada con éxito",
             "data": nuevo_prompt,
         }
     except Exception as e:
@@ -2327,115 +2493,53 @@ def get_public_feed(
 FILE: app/api/routes_search.py
 ================================================
 # backend/app/api/routes_search.py
-import json
-from typing import Optional, Dict, Any
-from fastapi import APIRouter, Query, Depends, Body
+from fastapi import APIRouter, Depends, Query
 from sqlmodel import Session, select
-from app.services import scraper
+from typing import List
+
 from app.core.db import get_session
-from app.models.gallery import GalleryMetric
+from app.api.deps import get_current_user
+
+from app.models.user import User
+from app.models.prompt import ImagePrompt
+from app.services.embedding_service import EmbeddingService
 
 router = APIRouter()
 
-
-@router.get("/buscar")
-def buscar(
-    query: str = Query(""),
-    next_id: Optional[str] = None,
-    categories: Optional[str] = None,
+@router.get("/studio")
+def buscar_en_studio(
+    q: str = Query(..., description="Texto a buscar semánticamente"),
+    limit: int = 20,
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session)
 ):
-    cats_dict = json.loads(categories) if categories else None
-    res = scraper.buscar_galerias(query, next_id, cats_dict)
+    """
+    🔍 Buscador Semántico Local (Studio):
+    1. Convierte la query en un vector.
+    2. Busca en la DB los prompts que más se acerquen a ese significado.
+    """
+    if not q:
+        return {"status": "success", "query": q, "results": []}
+
+    query_vector = EmbeddingService.generate_vector(q)
+
+    if not query_vector:
+        return {"status": "error", "message": "No se pudo procesar la búsqueda"}
+
+    statement = (
+        select(ImagePrompt)
+        .where(ImagePrompt.user_id == current_user.id)
+        .order_by(ImagePrompt.embedding.cosine_distance(query_vector))
+        .limit(limit)
+    )
+    
+    resultados = session.exec(statement).all()
+
     return {
         "status": "success",
-        "data": res.get("data", []),
-        "next_id": res.get("next_id"),
+        "query": q,
+        "results": resultados
     }
-
-
-@router.get("/tendencias")
-def obtener_tendencias(limit: int = 5, session: Session = Depends(get_session)):
-    try:
-        statement = (
-            select(GalleryMetric)
-            .order_by(GalleryMetric.downloads.desc(), GalleryMetric.views.desc())
-            .limit(limit)
-        )
-        results = session.exec(statement).all()
-        data = [
-            {
-                "url": r.url,
-                "title": r.title,
-                "thumb": r.thumb,
-                "downloads": r.downloads,
-                "views": r.views,
-            }
-            for r in results
-        ]
-        return {"status": "success", "data": data}
-    except Exception as e:
-        return {"status": "error", "message": str(e), "data": []}
-
-
-@router.get("/leer")
-def leer_galeria(url: str, p: int = 0):
-    try:
-        res = scraper.obtener_enlaces_paginas(url, p)
-        return {
-            "status": "success",
-            "data": res.get("enlaces", []),
-            "has_next": res.get("has_next", False),
-        }
-    except Exception as e:
-        return {"status": "error", "message": str(e), "data": []}
-
-
-# 🟢 FIX 1: Cambiamos el guion medio por guion bajo para que coincida con el Frontend
-@router.get("/resolver_imagen")
-def resolver_imagen(url: str):
-    try:
-        res = scraper.extraer_imagen_real(url)
-        return {"status": "success", "url_img": res}
-    except Exception as e:
-        return {"status": "error", "message": str(e)}
-
-
-@router.post("/interact")
-def registrar_interaccion(
-    data: dict = Body(...), session: Session = Depends(get_session)
-):
-    try:
-        url = data.get("url")
-        title = data.get("title", "Sin título")
-        thumb = data.get("thumb")
-        i_type = data.get("type") or data.get("interaction_type") or "view"
-
-        if not url:
-            return {"status": "error", "message": "Falta la URL"}
-
-        statement = select(GalleryMetric).where(GalleryMetric.url == url)
-        metric = session.exec(statement).first()
-
-        if not metric:
-            metric = GalleryMetric(
-                url=url, title=title, thumb=thumb, views=0, downloads=0
-            )
-            session.add(metric)
-        else:
-            # Por si acaso era una galería antigua sin thumb, lo actualizamos
-            if thumb and not metric.thumb:
-                metric.thumb = thumb
-
-        if i_type == "view":
-            metric.views += 1
-        elif i_type == "download":
-            metric.downloads += 1
-
-        session.commit()
-        return {"status": "success"}
-    except Exception as e:
-        return {"status": "error", "message": str(e)}
-
 
 
 ================================================
@@ -2731,6 +2835,38 @@ class Collection(SQLModel, table=True):
 
 
 ================================================
+FILE: app/models/directory.py
+================================================
+import uuid
+from typing import Optional
+from sqlmodel import Field, SQLModel
+from datetime import datetime, timezone
+from sqlalchemy import UniqueConstraint
+
+
+class Directory(SQLModel, table=True):
+    """Sistema de carpetas jerárquico tipo VS Code"""
+
+    __table_args__ = (
+        UniqueConstraint(
+            "user_id", "parent_id", "name", name="unique_folder_name_per_level"
+        ),
+    )
+
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True, index=True)
+    user_id: uuid.UUID = Field(foreign_key="user.id", index=True)
+
+    name: str = Field(nullable=False)
+
+    parent_id: Optional[uuid.UUID] = Field(
+        default=None, foreign_key="directory.id", index=True
+    )
+
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+
+================================================
 FILE: app/models/gallery.py
 ================================================
 import uuid
@@ -2766,8 +2902,9 @@ FILE: app/models/prompt.py
 import uuid
 from sqlmodel import SQLModel, Field, Column, JSON
 from sqlalchemy import Text
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 from datetime import datetime
+from pgvector.sqlalchemy import Vector
 
 
 class ImagePrompt(SQLModel, table=True):
@@ -2782,13 +2919,18 @@ class ImagePrompt(SQLModel, table=True):
 
     user_id: uuid.UUID = Field(foreign_key="user.id", index=True)
 
-    collection_id: Optional[uuid.UUID] = Field(
-        default=None, foreign_key="collection.id", index=True
+    directory_id: Optional[uuid.UUID] = Field(
+        default=None, foreign_key="directory.id", index=True
     )
 
     title: str
     prompt: str = Field(sa_column=Column(Text))
     negative_prompt: Optional[str] = Field(default=None, sa_column=Column(Text))
+
+
+    embedding: Optional[List[float]] = Field(
+        default=None, sa_column=Column(Vector(384))
+    )
 
     software: Optional[str] = Field(default="Desconocido")
     model: Optional[str] = Field(default=None)
@@ -2853,6 +2995,7 @@ class User(SQLModel, table=True):
     hashed_password: Optional[str] = Field(default=None)
 
     role: str = Field(default="voyager")
+    storage_used: int = Field(default=0)
 
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     is_active: bool = Field(default=True)
@@ -3747,6 +3890,42 @@ def ejecutar_descarga_individual(image_key: str) -> str:
         Params={"Bucket": settings.R2_BUCKET_NAME, "Key": image_key},
         ExpiresIn=3600,
     )
+
+
+
+================================================
+FILE: app/services/embedding_service.py
+================================================
+import logging
+from typing import List
+from fastembed import TextEmbedding
+
+logger = logging.getLogger("embedding_service")
+
+
+class EmbeddingService:
+    _model = None
+
+    @classmethod
+    def get_model(cls):
+        if cls._model is None:
+            logger.info("📡 Cargando modelo de embeddings local (FastEmbed)...")
+            cls._model = TextEmbedding(model_name="BAAI/bge-small-en-v1.5")
+        return cls._model
+
+    @classmethod
+    def generate_vector(cls, text: str) -> List[float]:
+        """Convierte cualquier texto en un vector de 384 dimensiones"""
+        if not text:
+            return []
+
+        try:
+            model = cls.get_model()
+            embeddings = list(model.embed([text]))
+            return embeddings[0].tolist()
+        except Exception as e:
+            logger.error(f"❌ Error generando vector: {e}")
+            return []
 
 
 

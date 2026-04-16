@@ -1,45 +1,64 @@
 "use client";
-
+import { useEffect, useState } from "react";
 import { useStudioUI } from "@/src/store/useStudioUI";
-import { IconPhotoOff, IconWand } from "@tabler/icons-react";
+import { IconPhotoOff, IconLoader2 } from "@tabler/icons-react";
+import { fetchSeguro } from "@/src/services/api/client";
 
 export default function PromptGrid() {
-  const { activeDirectoryId, directories, searchQuery } = useStudioUI();
+  const { activeDirectoryId, searchQuery } = useStudioUI();
+  const [prompts, setPrompts] = useState([]);
+  const [loading, setLoading] = useState(false);
 
-  const currentDir = directories.find((d) => d.id === activeDirectoryId);
+  useEffect(() => {
+    const fetchPrompts = async () => {
+      setLoading(true);
+      try {
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
+        const endpoint = searchQuery
+          ? `/search/studio?q=${searchQuery}`
+          : `/prompts/studio?directory_id=${activeDirectoryId || ""}`;
 
-  let headerTitle = "Mi Studio";
-  let headerSubtitle = "Selecciona una carpeta o busca una imagen para empezar.";
-
-  if (searchQuery) {
-    headerTitle = `Buscando: "${searchQuery}"`;
-    headerSubtitle = "Resultados de la búsqueda vectorial por IA.";
-  } else if (currentDir) {
-    headerTitle = currentDir.name;
-    headerSubtitle = "Gestiona las imágenes de esta carpeta.";
-  }
+        const res = await fetchSeguro(`${API_URL}${endpoint}`, { credentials: "include" });
+        if (res.ok) {
+          const data = await res.json();
+          setPrompts(data.results || data.data || []);
+        }
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchPrompts();
+  }, [activeDirectoryId, searchQuery]);
 
   return (
-    <div className="h-full flex flex-col animate-in fade-in duration-500">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold tracking-tight">{headerTitle}</h1>
-        <p className="text-sm text-muted-foreground mt-1">{headerSubtitle}</p>
-      </div>
+    <div className="h-full flex flex-col">
 
-      <div className="flex-1 flex flex-col items-center justify-center border-2 border-dashed border-border/60 rounded-2xl bg-card/10 backdrop-blur-sm">
-        <div className="p-4 bg-secondary/50 rounded-full mb-4">
-          <IconPhotoOff size={32} className="text-muted-foreground" stroke={1.5} />
+      {loading ? (
+        <div className="flex-1 flex items-center justify-center">
+          <IconLoader2 className="animate-spin text-primary" size={40} />
         </div>
-        <h3 className="text-lg font-medium">Esta vista está vacía</h3>
-        <p className="text-sm text-muted-foreground mt-2 text-center max-w-sm">
-          Aún no hemos conectado las imágenes de la base de datos a esta carpeta.
-        </p>
-
-        <div className="mt-6 flex items-center text-xs text-primary/60 bg-primary/10 px-3 py-1.5 rounded-full">
-          <IconWand size={14} className="mr-1.5" />
-          Fase de cuadrícula en construcción
+      ) : prompts.length > 0 ? (
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          {prompts.map((p: any) => (
+            <div
+              key={p.id}
+              className="aspect-square bg-secondary rounded-lg overflow-hidden border group relative"
+            >
+              <img src={p.url} className="w-full h-full object-cover" alt={p.prompt} />
+              <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity p-3 flex flex-col justify-end">
+                <p className="text-[10px] text-white line-clamp-2">{p.prompt}</p>
+              </div>
+            </div>
+          ))}
         </div>
-      </div>
+      ) : (
+        <div className="flex-1 border-2 border-dashed rounded-2xl flex flex-col items-center justify-center text-muted-foreground">
+          <IconPhotoOff size={48} stroke={1} />
+          <p className="mt-2 text-sm">No hay imágenes en esta ubicación.</p>
+        </div>
+      )}
     </div>
   );
 }

@@ -139,7 +139,8 @@ Directory structure:
     │   │   ├── notificationStore.tsx
     │   │   ├── progressStore.ts
     │   │   ├── searchStore.ts
-    │   │   └── useStudio.ts
+    │   │   ├── usePromptExtractor.ts
+    │   │   └── useStudioUI.ts
     │   ├── system/
     │   │   ├── atoms/
     │   │   │   ├── Button.tsx
@@ -223,6 +224,7 @@ Directory structure:
     │   │   │   ├── Studio/
     │   │   │   │   ├── BulkActionBar.tsx
     │   │   │   │   ├── PromptCard.tsx
+    │   │   │   │   ├── PromptGrid.tsx
     │   │   │   │   └── SidebarDirectory.tsx
     │   │   │   └── Viewer/
     │   │   │       └── ImageViewerModal/
@@ -533,6 +535,8 @@ FILE: package.json
   },
   "dependencies": {
     "@base-ui/react": "^1.3.0",
+    "@dnd-kit/core": "^6.3.1",
+    "@dnd-kit/utilities": "^3.2.2",
     "@phosphor-icons/react": "^2.1.10",
     "@react-oauth/google": "^0.13.4",
     "@tabler/icons-react": "^3.41.0",
@@ -1982,24 +1986,41 @@ export default function RepromptPage({ params }: { params: Promise<{ lang: strin
 FILE: app/[lang]/(main)/studio/page.tsx
 ================================================
 "use client";
-import React, { useEffect } from "react";
-import { Plus, Search, FolderPlus, UploadCloud } from "lucide-react";
-import { useStudio } from "@/store/useStudio";
-import { SidebarDirectory } from "@/system/organisms/Studio/SidebarDirectory";
-import PromptGrid from "@/system/organisms/Studio/PromptGrid";
-import { usePromptExtractor } from "@/store/usePromptExtractor";
+
+import { useEffect } from "react";
+import {
+  IconSearch as Search,
+  IconFolderPlus as FolderPlus,
+  IconCloudUpload as UploadCloud,
+} from "@tabler/icons-react";
+import { useStudioUI, Directory } from "@/src/store/useStudioUI";
+import { SidebarDirectory } from "@/src/system/organisms/Studio/SidebarDirectory";
+import PromptGrid from "@/src/system/organisms/Studio/PromptGrid";
+import { usePromptExtractor } from "@/src/features/extractor/hooks/usePromptExtractor";
+
+// 🟢 NUEVOS IMPORTS DE DND
+import { DndContext, DragEndEvent, closestCenter } from "@dnd-kit/core";
 
 export default function StudioPage() {
-  const { directories, setDirectories, searchQuery, setSearchQuery, setIsSearching } = useStudio();
+  const {
+    directories,
+    setDirectories,
+    searchQuery,
+    setSearchQuery,
+    createDirectory,
+    moveDirectory,
+  } = useStudioUI();
+
   const { processFiles } = usePromptExtractor();
 
-  // Carga inicial de directorios desde el búnker
   useEffect(() => {
     const fetchDirs = async () => {
       try {
-        const res = await fetch('/api/directories');
-        const data = await res.json();
-        setDirectories(data);
+        const res = await fetch("/api/directories");
+        if (res.ok) {
+          const data = await res.json();
+          setDirectories(data);
+        }
       } catch (error) {
         console.error("Error cargando directorios:", error);
       }
@@ -2008,8 +2029,8 @@ export default function StudioPage() {
   }, [setDirectories]);
 
   const handleUploadClick = () => {
-    const input = document.createElement('input');
-    input.type = 'file';
+    const input = document.createElement("input");
+    input.type = "file";
     input.multiple = true;
     input.onchange = (e) => {
       const files = (e.target as HTMLInputElement).files;
@@ -2018,63 +2039,101 @@ export default function StudioPage() {
     input.click();
   };
 
+  const handleCreateRootFolder = async () => {
+    const name = prompt("Nombre de la nueva carpeta principal:");
+    if (name && name.trim()) {
+      await createDirectory(name.trim(), null);
+    }
+  };
+
+  // 🟢 LÓGICA DE FIN DE ARRASTRE
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    // Si soltamos en la nada, o sobre sí misma, cancelamos
+    if (!over || active.id === `dir-${over.id}`) return;
+
+    const draggedDirId = String(active.id).replace("dir-", "");
+    const targetDirId = String(over.id);
+
+    // Mover la carpeta
+    if (draggedDirId !== targetDirId) {
+      moveDirectory(draggedDirId, targetDirId);
+    }
+  };
+
   return (
-    <div className="flex h-[calc(100vh-64px)] bg-background">
-      {/* SIDEBAR IZQUIERDO: ORGANIZACIÓN */}
-      <aside className="w-72 border-r bg-card/30 backdrop-blur-sm flex flex-col">
-        <div className="p-4 border-b space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Mi Studio</h2>
-            <div className="flex gap-1">
-              <button className="p-1.5 hover:bg-secondary rounded-lg" title="Nueva Carpeta">
-                <FolderPlus size={16} />
-              </button>
-              <button 
-                onClick={handleUploadClick}
-                className="p-1.5 hover:bg-secondary rounded-lg text-primary" 
-                title="Subir Imágenes"
-              >
-                <UploadCloud size={16} />
-              </button>
+    <DndContext collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+      <div className="flex h-[calc(100vh-64px)] bg-background">
+        <aside className="w-72 border-r bg-card/30 backdrop-blur-sm flex flex-col">
+          <div className="p-4 border-b space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+                Mi Studio
+              </h2>
+              <div className="flex gap-1">
+                <button
+                  onClick={handleCreateRootFolder}
+                  className="p-1.5 hover:bg-secondary rounded-lg transition-colors"
+                  title="Nueva Carpeta Principal"
+                >
+                  <FolderPlus size={18} stroke={1.5} />
+                </button>
+                <button
+                  onClick={handleUploadClick}
+                  className="p-1.5 hover:bg-secondary rounded-lg text-primary transition-colors"
+                  title="Subir Imágenes"
+                >
+                  <UploadCloud size={18} stroke={1.5} />
+                </button>
+              </div>
+            </div>
+
+            <div className="relative group">
+              <Search
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground transition-colors group-focus-within:text-primary"
+                size={16}
+                stroke={1.5}
+              />
+              <input
+                type="text"
+                placeholder="Búsqueda semántica..."
+                className="w-full bg-secondary/50 border border-transparent rounded-full py-2 pl-9 pr-4 text-xs focus:bg-background focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
             </div>
           </div>
 
-          {/* Buscador Vectorial */}
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={14} />
-            <input 
-              type="text"
-              placeholder="Búsqueda semántica..."
-              className="w-full bg-secondary/50 border-none rounded-full py-2 pl-9 pr-4 text-xs focus:ring-1 focus:ring-primary outline-none transition-all"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
+          <div className="flex-1 overflow-y-auto py-4 custom-scrollbar">
+            {directories
+              .filter((d: Directory) => d.parent_id === null)
+              .map((dir: Directory) => (
+                <SidebarDirectory key={dir.id} directory={dir} />
+              ))}
+
+            {directories.length === 0 && (
+              <div className="px-6 py-10 text-center space-y-2">
+                <p className="text-xs text-muted-foreground italic">
+                  Aún no tienes carpetas.
+                  <br />
+                  Haz clic en el icono + para empezar.
+                </p>
+              </div>
+            )}
           </div>
-        </div>
+        </aside>
 
-        <div className="flex-1 overflow-y-auto py-4">
-          {/* Solo renderizamos las carpetas raíz */}
-          {directories.filter(d => !d.parent_id).map((dir) => (
-            <SidebarDirectory key={dir.id} directory={dir} />
-          ))}
-          
-          {directories.length === 0 && (
-            <div className="px-6 py-10 text-center space-y-2">
-              <p className="text-xs text-muted-foreground italic">No hay carpetas aún.</p>
-            </div>
-          )}
-        </div>
-      </aside>
-
-      {/* ÁREA PRINCIPAL: GALERÍA */}
-      <main className="flex-1 overflow-y-auto custom-scrollbar">
-        <div className="max-w-7xl mx-auto p-6">
-          <PromptGrid />
-        </div>
-      </main>
-    </div>
+        <main className="flex-1 overflow-y-auto custom-scrollbar bg-accent/5">
+          <div className="max-w-7xl mx-auto p-6 h-full">
+            <PromptGrid />
+          </div>
+        </main>
+      </div>
+    </DndContext>
   );
 }
+
 
 
 ================================================
@@ -5246,7 +5305,41 @@ export const useSearchStore = create<SearchState>((set, get) => ({
 
 
 ================================================
-FILE: src/store/useStudio.ts
+FILE: src/store/usePromptExtractor.ts
+================================================
+import { create } from "zustand";
+
+interface ExtractorState {
+  isExtracting: boolean;
+  processFiles: (files: File[]) => Promise<void>;
+}
+
+export const usePromptExtractor = create<ExtractorState>((set) => ({
+  isExtracting: false,
+
+  processFiles: async (files: File[]) => {
+    if (!files || files.length === 0) return;
+
+    set({ isExtracting: true });
+
+    try {
+      console.log(`📡 Iniciando extracción de ${files.length} archivos...`);
+
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+
+      console.log("✅ Extracción simulada con éxito.");
+    } catch (error) {
+      console.error("❌ Error al procesar archivos:", error);
+    } finally {
+      set({ isExtracting: false });
+    }
+  },
+}));
+
+
+
+================================================
+FILE: src/store/useStudioUI.ts
 ================================================
 import { create } from "zustand";
 
@@ -5256,21 +5349,29 @@ export interface Directory {
   parent_id: string | null;
 }
 
-interface StudioState {
+interface StudioUIState {
   directories: Directory[];
   activeDirectoryId: string | null;
   searchQuery: string;
   isSearching: boolean;
 
+  // Acciones de Estado
   setDirectories: (dirs: Directory[]) => void;
   setActiveDirectory: (id: string | null) => void;
   setSearchQuery: (query: string) => void;
   setIsSearching: (status: boolean) => void;
 
+  // Utilidades
   getChildDirectories: (parentId: string | null) => Directory[];
+
+  // Acciones de API (CRUD)
+  createDirectory: (name: string, parentId: string | null) => Promise<void>;
+  deleteDirectory: (id: string) => Promise<void>;
+  // 🟢 NUEVO: Función para mover carpetas
+  moveDirectory: (directoryId: string, newParentId: string | null) => Promise<void>;
 }
 
-export const useStudio = create<StudioState>((set, get) => ({
+export const useStudioUI = create<StudioUIState>((set, get) => ({
   directories: [],
   activeDirectoryId: null,
   searchQuery: "",
@@ -5282,7 +5383,66 @@ export const useStudio = create<StudioState>((set, get) => ({
   setIsSearching: (isSearching) => set({ isSearching }),
 
   getChildDirectories: (parentId) => {
-    return get().directories.filter((d) => d.parent_id === parentId);
+    return get().directories.filter((d: Directory) => d.parent_id === parentId);
+  },
+
+  createDirectory: async (name, parentId) => {
+    try {
+      const res = await fetch("/api/directories", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, parent_id: parentId }),
+      });
+      if (res.ok) {
+        const newDir = await res.json();
+        set((state) => ({ directories: [...state.directories, newDir] }));
+      }
+    } catch (error) {
+      console.error("Error creando directorio:", error);
+    }
+  },
+
+  deleteDirectory: async (id) => {
+    try {
+      const res = await fetch(`/api/directories/${id}`, { method: "DELETE" });
+      if (res.ok) {
+        set((state) => ({
+          directories: state.directories.filter((d) => d.id !== id),
+          activeDirectoryId: state.activeDirectoryId === id ? null : state.activeDirectoryId,
+        }));
+      }
+    } catch (error) {
+      console.error("Error borrando directorio:", error);
+    }
+  },
+
+  // 🟢 NUEVA LÓGICA: Mover Directorio
+  moveDirectory: async (directoryId, newParentId) => {
+    // 1. Actualización optimista (UI instantánea)
+    set((state) => ({
+      directories: state.directories.map((d) =>
+        d.id === directoryId ? { ...d, parent_id: newParentId } : d,
+      ),
+    }));
+
+    try {
+      // 2. Confirmación con el backend
+      const res = await fetch(`/api/directories/${directoryId}/move`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ parent_id: newParentId }),
+      });
+
+      if (!res.ok) throw new Error("Fallo al mover en el servidor");
+    } catch (error) {
+      console.error("Error moviendo directorio:", error);
+      // 3. Rollback si el backend falla
+      const res = await fetch("/api/directories");
+      if (res.ok) {
+        const data = await res.json();
+        set({ directories: data });
+      }
+    }
   },
 }));
 
@@ -9492,12 +9652,72 @@ export function PromptCard({
 
 
 ================================================
+FILE: src/system/organisms/Studio/PromptGrid.tsx
+================================================
+"use client";
+
+import { useStudioUI } from "@/src/store/useStudioUI";
+import { IconPhotoOff, IconWand } from "@tabler/icons-react";
+
+export default function PromptGrid() {
+  const { activeDirectoryId, directories, searchQuery } = useStudioUI();
+
+  const currentDir = directories.find((d) => d.id === activeDirectoryId);
+
+  let headerTitle = "Mi Studio";
+  let headerSubtitle = "Selecciona una carpeta o busca una imagen para empezar.";
+
+  if (searchQuery) {
+    headerTitle = `Buscando: "${searchQuery}"`;
+    headerSubtitle = "Resultados de la búsqueda vectorial por IA.";
+  } else if (currentDir) {
+    headerTitle = currentDir.name;
+    headerSubtitle = "Gestiona las imágenes de esta carpeta.";
+  }
+
+  return (
+    <div className="h-full flex flex-col animate-in fade-in duration-500">
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold tracking-tight">{headerTitle}</h1>
+        <p className="text-sm text-muted-foreground mt-1">{headerSubtitle}</p>
+      </div>
+
+      <div className="flex-1 flex flex-col items-center justify-center border-2 border-dashed border-border/60 rounded-2xl bg-card/10 backdrop-blur-sm">
+        <div className="p-4 bg-secondary/50 rounded-full mb-4">
+          <IconPhotoOff size={32} className="text-muted-foreground" stroke={1.5} />
+        </div>
+        <h3 className="text-lg font-medium">Esta vista está vacía</h3>
+        <p className="text-sm text-muted-foreground mt-2 text-center max-w-sm">
+          Aún no hemos conectado las imágenes de la base de datos a esta carpeta.
+        </p>
+
+        <div className="mt-6 flex items-center text-xs text-primary/60 bg-primary/10 px-3 py-1.5 rounded-full">
+          <IconWand size={14} className="mr-1.5" />
+          Fase de cuadrícula en construcción
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+
+================================================
 FILE: src/system/organisms/Studio/SidebarDirectory.tsx
 ================================================
 "use client";
-import React, { useState } from 'react';
-import { Folder, FolderOpen, ChevronRight, ChevronDown, MoreVertical } from 'lucide-react';
-import { useStudio, Directory } from '@/src/features/studio/hooks/useStudio';
+
+import React, { useState } from "react";
+import { useStudioUI, Directory } from "@/src/store/useStudioUI";
+import { useDraggable, useDroppable } from "@dnd-kit/core";
+import {
+  IconChevronDown,
+  IconChevronRight,
+  IconFolderOpen,
+  IconFolder,
+  IconFolderPlus,
+  IconTrash,
+} from "@tabler/icons-react";
 
 interface SidebarDirectoryProps {
   directory: Directory;
@@ -9506,10 +9726,42 @@ interface SidebarDirectoryProps {
 
 export const SidebarDirectory = ({ directory, level = 0 }: SidebarDirectoryProps) => {
   const [isOpen, setIsOpen] = useState(false);
-  const { activeDirectoryId, setActiveDirectory, getChildDirectories } = useStudio();
-  
+  const { activeDirectoryId, setActiveDirectory, getChildDirectories, deleteDirectory } =
+    useStudioUI();
+
   const children = getChildDirectories(directory.id);
   const isSelected = activeDirectoryId === directory.id;
+
+  // 🟢 LÓGICA DRAG & DROP
+  const {
+    attributes,
+    listeners,
+    setNodeRef: setDraggableRef,
+    transform,
+    isDragging,
+  } = useDraggable({
+    id: `dir-${directory.id}`,
+    data: { type: "directory", directory },
+  });
+
+  const { setNodeRef: setDroppableRef, isOver } = useDroppable({
+    id: directory.id,
+    data: { type: "directory", directory },
+  });
+
+  // Combinar referencias para que sea arrastrable y zona de soltar
+  const setBothRefs = (node: HTMLElement | null) => {
+    setDraggableRef(node);
+    setDroppableRef(node);
+  };
+
+  const style = transform
+    ? {
+        transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
+        zIndex: 50,
+        opacity: 0.8,
+      }
+    : undefined;
 
   const handleSelect = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -9520,42 +9772,66 @@ export const SidebarDirectory = ({ directory, level = 0 }: SidebarDirectoryProps
   };
 
   return (
-    <div className="select-none">
-      <div 
+    <div className="select-none relative">
+      <div
+        ref={setBothRefs}
+        style={{ ...style, paddingLeft: `${level * 12 + 8}px` }}
+        {...attributes}
+        {...listeners}
         onClick={handleSelect}
         className={`
           group flex items-center py-1.5 px-2 mx-2 rounded-md cursor-pointer transition-all duration-200
-          ${isSelected ? 'bg-primary/10 text-primary' : 'hover:bg-secondary/50 text-muted-foreground hover:text-foreground'}
+          ${isSelected ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground"}
+          ${isOver ? "bg-primary/20 ring-1 ring-primary" : "hover:bg-secondary/50"}
+          ${isDragging ? "shadow-lg bg-background border border-primary/50" : ""}
         `}
-        style={{ paddingLeft: `${(level * 12) + 8}px` }}
       >
-        <span className="w-4 h-4 mr-1 flex items-center justify-center">
-          {children.length > 0 && (
-            isOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />
-          )}
-        </span>
-        
-        <span className="mr-2">
-          {isOpen ? (
-            <FolderOpen size={16} className={isSelected ? 'text-primary' : 'text-blue-400'} />
-          ) : (
-            <Folder size={16} className={isSelected ? 'text-primary' : 'text-blue-400'} />
-          )}
-        </span>
-        
-        <span className="text-sm font-medium truncate flex-1">
-          {directory.name}
+        <span
+          className="w-4 h-4 mr-1 flex items-center justify-center z-10"
+          onClick={(e) => {
+            e.stopPropagation();
+            setIsOpen(!isOpen);
+          }}
+        >
+          {children.length > 0 &&
+            (isOpen ? <IconChevronDown size={14} /> : <IconChevronRight size={14} />)}
         </span>
 
-        {/* Botón de acciones (Aparece al hacer hover) */}
-        <button className="opacity-0 group-hover:opacity-100 p-1 hover:bg-background/80 rounded transition-opacity">
-          <MoreVertical size={14} />
-        </button>
+        <span className="mr-2">
+          {isOpen ? (
+            <IconFolderOpen size={16} className={isSelected ? "text-primary" : "text-blue-400"} />
+          ) : (
+            <IconFolder size={16} className={isSelected ? "text-primary" : "text-blue-400"} />
+          )}
+        </span>
+
+        <span className="text-sm font-medium truncate flex-1">{directory.name}</span>
+
+        {/* Controles: Solo visibles al hacer hover */}
+        <div className="opacity-0 group-hover:opacity-100 flex items-center gap-1 transition-opacity">
+          <button
+            className="p-1 hover:bg-background/80 rounded"
+            onClick={(e) => {
+              e.stopPropagation(); /* Aquí podrías abrir un input para crear subcarpeta */
+            }}
+          >
+            <IconFolderPlus size={14} />
+          </button>
+          <button
+            className="p-1 hover:bg-destructive/20 text-destructive rounded"
+            onClick={(e) => {
+              e.stopPropagation();
+              deleteDirectory(directory.id);
+            }}
+          >
+            <IconTrash size={14} />
+          </button>
+        </div>
       </div>
 
       {isOpen && children.length > 0 && (
         <div className="mt-0.5">
-          {children.map((child) => (
+          {children.map((child: Directory) => (
             <SidebarDirectory key={child.id} directory={child} level={level + 1} />
           ))}
         </div>
@@ -9563,6 +9839,7 @@ export const SidebarDirectory = ({ directory, level = 0 }: SidebarDirectoryProps
     </div>
   );
 };
+
 
 
 ================================================

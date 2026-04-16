@@ -167,7 +167,7 @@ def get_public_feed(
 
     subq_count = (
         sa_select(func.count(ImagePrompt.id))
-        .where(ImagePrompt.collection_id == Collection.id)
+        # .where(ImagePrompt.collection_id == Collection.id)
         .scalar_subquery()
     )
 

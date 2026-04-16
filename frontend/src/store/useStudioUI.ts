@@ -1,4 +1,7 @@
 import { create } from "zustand";
+import { fetchSeguro } from "../services/api/client";
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
 
 export interface Directory {
   id: string;
@@ -12,19 +15,16 @@ interface StudioUIState {
   searchQuery: string;
   isSearching: boolean;
 
-  // Acciones de Estado
   setDirectories: (dirs: Directory[]) => void;
   setActiveDirectory: (id: string | null) => void;
   setSearchQuery: (query: string) => void;
   setIsSearching: (status: boolean) => void;
 
-  // Utilidades
   getChildDirectories: (parentId: string | null) => Directory[];
 
-  // Acciones de API (CRUD)
   createDirectory: (name: string, parentId: string | null) => Promise<void>;
   deleteDirectory: (id: string) => Promise<void>;
-  // 🟢 NUEVO: Función para mover carpetas
+
   moveDirectory: (directoryId: string, newParentId: string | null) => Promise<void>;
 }
 
@@ -45,11 +45,13 @@ export const useStudioUI = create<StudioUIState>((set, get) => ({
 
   createDirectory: async (name, parentId) => {
     try {
-      const res = await fetch("/api/directories", {
+      const res = await fetchSeguro(`${API_URL}/directories/`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name, parent_id: parentId }),
+        credentials: "include",
       });
+
       if (res.ok) {
         const newDir = await res.json();
         set((state) => ({ directories: [...state.directories, newDir] }));
@@ -61,7 +63,11 @@ export const useStudioUI = create<StudioUIState>((set, get) => ({
 
   deleteDirectory: async (id) => {
     try {
-      const res = await fetch(`/api/directories/${id}`, { method: "DELETE" });
+      const res = await fetchSeguro(`${API_URL}/directories/${id}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+
       if (res.ok) {
         set((state) => ({
           directories: state.directories.filter((d) => d.id !== id),
@@ -73,9 +79,7 @@ export const useStudioUI = create<StudioUIState>((set, get) => ({
     }
   },
 
-  // 🟢 NUEVA LÓGICA: Mover Directorio
   moveDirectory: async (directoryId, newParentId) => {
-    // 1. Actualización optimista (UI instantánea)
     set((state) => ({
       directories: state.directories.map((d) =>
         d.id === directoryId ? { ...d, parent_id: newParentId } : d,
@@ -83,18 +87,21 @@ export const useStudioUI = create<StudioUIState>((set, get) => ({
     }));
 
     try {
-      // 2. Confirmación con el backend
-      const res = await fetch(`/api/directories/${directoryId}/move`, {
+      const res = await fetchSeguro(`${API_URL}/directories/${directoryId}/move`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ parent_id: newParentId }),
+        credentials: "include",
       });
 
       if (!res.ok) throw new Error("Fallo al mover en el servidor");
     } catch (error) {
       console.error("Error moviendo directorio:", error);
-      // 3. Rollback si el backend falla
-      const res = await fetch("/api/directories");
+
+      const res = await fetchSeguro(`${API_URL}/directories/`, {
+        credentials: "include",
+      });
+
       if (res.ok) {
         const data = await res.json();
         set({ directories: data });

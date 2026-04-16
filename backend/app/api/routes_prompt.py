@@ -1,22 +1,20 @@
+# backend/app/api/routes_prompt.py
 import logging
-
 import uuid
-from typing import List
+from typing import List, Optional
 from pydantic import BaseModel
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
 from sqlmodel import Session, select
+
 from app.core.db import get_session
-from app.api.deps import get_current_user
+from app.api.deps import get_current_user, RateLimiter
 from app.models.user import User
 from app.models.prompt import ImagePrompt
 from app.schemas.prompt import PromptCreate
-from app.api.deps import get_current_user, RateLimiter
 from app.core.config import settings
-from app.services.storage import s3_client
+from app.services.storage import s3_client, move_to_permanent, delete_file
 from app.utils.storage import eliminar_de_r2
-from app.services.storage import move_to_permanent, delete_file
 from app.services.security import validate_magic_bytes
-from app.services.storage import s3_client
 from app.services.embedding_service import EmbeddingService
 
 logger = logging.getLogger("routes_prompt")
@@ -33,7 +31,93 @@ class PresignedUrlRequest(BaseModel):
 
 
 # ==========================================
-# RUTAS ESTÁTICAS
+# RUTAS DE EXTRACCIÓN Y STUDIO (NUEVAS - FASE 5)
+# ==========================================
+
+
+@router.post("/upload-studio")
+async def upload_to_studio(
+    file: UploadFile = File(...),
+    directory_id: Optional[str] = Form(None),
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    🚀 Dropzone Contextual:
+    Recibe el archivo físico del frontend, lo sube a R2, lo vectoriza
+    y lo asigna directamente a la carpeta indicada.
+    """
+    file_extension = file.filename.split(".")[-1].lower()
+    if file_extension not in ["png", "jpg", "jpeg", "webp"]:
+        raise HTTPException(status_code=400, detail="Extensión no permitida.")
+
+    # 1. Subida real a Cloudflare R2
+    safe_filename = f"{uuid.uuid4().hex}.{file_extension}"
+    s3_key = f"prompts/{current_user.id}/{safe_filename}"
+
+    try:
+        file_content = await file.read()
+        s3_client.put_object(
+            Bucket=settings.R2_BUCKET_NAME,
+            Key=s3_key,
+            Body=file_content,
+            ContentType=f"image/{'jpeg' if file_extension == 'jpg' else file_extension}",
+        )
+        base_url = settings.R2_PUBLIC_URL.rstrip("/")
+        file_url = f"{base_url}/{s3_key}"
+    except Exception as e:
+        logger.error(f"Error subiendo archivo a R2: {e}")
+        raise HTTPException(
+            status_code=500, detail="Error al subir la imagen al servidor."
+        )
+
+    # 2. Vectorización IA (usamos el nombre por ahora como contexto)
+    embedding = EmbeddingService.generate_vector(file.filename)
+
+    # 3. Guardar en Base de Datos asignado a su Carpeta
+    parsed_dir_id = (
+        uuid.UUID(directory_id) if directory_id and directory_id != "null" else None
+    )
+
+    nuevo_prompt = ImagePrompt(
+        user_id=current_user.id,
+        directory_id=parsed_dir_id,
+        image_url=file_url,
+        title=file.filename,
+        prompt=file.filename,
+        embedding=embedding,
+    )
+
+    session.add(nuevo_prompt)
+    session.commit()
+    session.refresh(nuevo_prompt)
+
+    return {"status": "success", "data": nuevo_prompt}
+
+
+@router.get("/studio")
+def obtener_prompts_studio(
+    directory_id: Optional[str] = None,
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    """Obtiene las imágenes de una carpeta específica para el PromptGrid."""
+    statement = select(ImagePrompt).where(ImagePrompt.user_id == current_user.id)
+
+    if directory_id and directory_id != "null":
+        statement = statement.where(ImagePrompt.directory_id == uuid.UUID(directory_id))
+    else:
+        # Si no hay ID, devolvemos solo las de la raíz
+        statement = statement.where(ImagePrompt.directory_id == None)
+
+    statement = statement.order_by(ImagePrompt.created_at.desc())
+    resultados = session.exec(statement).all()
+
+    return {"status": "success", "data": resultados}
+
+
+# ==========================================
+# RUTAS ESTÁTICAS (SISTEMA DE PRE-FIRMADO ANTIGUO/COMPLEMENTARIO)
 # ==========================================
 
 
@@ -85,7 +169,6 @@ def guardar_prompt(
     current_user: User = Depends(get_current_user),
     session: Session = Depends(get_session),
 ):
-
     is_valid = validate_magic_bytes(data.image_url)
 
     base_url = settings.R2_PUBLIC_URL.rstrip("/") + "/"
@@ -182,7 +265,6 @@ def eliminar_prompt(
             detail="Prompt no encontrado o no tienes permiso para borrarlo",
         )
 
-    # 🟢 SANEAMIENTO R2: Destruimos la imagen huérfana de Cloudflare
     if prompt.image_url:
         eliminar_de_r2(prompt.image_url)
 
@@ -200,7 +282,6 @@ def eliminar_prompts_lote(
     current_user: User = Depends(get_current_user),
     session: Session = Depends(get_session),
 ):
-    """Elimina múltiples prompts en una sola petición HTTP para no saturar la red."""
     if not data.prompt_ids:
         return {"status": "success", "message": "Ningún ID proporcionado"}
 
