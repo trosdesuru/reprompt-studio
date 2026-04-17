@@ -79,6 +79,26 @@ def delete_directory(
     return {"status": "success", "message": "Carpeta eliminada"}
 
 
+@router.patch("/{directory_id}")
+def rename_directory(
+    directory_id: uuid.UUID,
+    data: dict,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
+    directory = session.get(Directory, directory_id)
+    if not directory or directory.user_id != current_user.id:
+        raise HTTPException(status_code=404, detail="Directorio no encontrado")
+
+    new_name = data.get("name")
+    if new_name:
+        directory.name = new_name
+        session.add(directory)
+        session.commit()
+
+    return {"status": "success", "message": "Renombrado con éxito"}
+
+
 @router.patch("/{directory_id}/move")
 def move_directory(
     directory_id: uuid.UUID,

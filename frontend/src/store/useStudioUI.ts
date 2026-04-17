@@ -25,6 +25,7 @@ interface StudioUIState {
   createDirectory: (name: string, parentId: string | null) => Promise<void>;
   deleteDirectory: (id: string) => Promise<void>;
 
+  renameDirectory: (id: string, newName: string) => Promise<void>;
   moveDirectory: (directoryId: string, newParentId: string | null) => Promise<void>;
 }
 
@@ -76,6 +77,27 @@ export const useStudioUI = create<StudioUIState>((set, get) => ({
       }
     } catch (error) {
       console.error("Error borrando directorio:", error);
+    }
+  },
+
+  renameDirectory: async (id: string, newName: string) => {
+    try {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
+      const res = await fetchSeguro(`${API_URL}/directories/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ name: newName }),
+      });
+
+      if (!res.ok) throw new Error("No se pudo renombrar la carpeta");
+
+      set((state) => ({
+        directories: state.directories.map((dir) =>
+          dir.id === id ? { ...dir, name: newName } : dir,
+        ),
+      }));
+    } catch (error) {
+      console.error("Error renombrando directorio:", error);
+      throw error;
     }
   },
 

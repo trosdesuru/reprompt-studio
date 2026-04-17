@@ -6,16 +6,30 @@ import { fetchSeguro } from "@/src/services/api/client";
 
 export default function PromptGrid() {
   const { activeDirectoryId, searchQuery } = useStudioUI();
+
+  const [debouncedQuery, setDebouncedQuery] = useState(searchQuery);
   const [prompts, setPrompts] = useState([]);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedQuery(searchQuery);
+    }, 1000);
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [searchQuery]);
 
   useEffect(() => {
     const fetchPrompts = async () => {
       setLoading(true);
       try {
         const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
-        const endpoint = searchQuery
-          ? `/search/studio?q=${searchQuery}`
+
+        // OJO: Usamos debouncedQuery aquí, NO searchQuery
+        const endpoint = debouncedQuery
+          ? `/search/studio?q=${debouncedQuery}`
           : `/prompts/studio?directory_id=${activeDirectoryId || ""}`;
 
         const res = await fetchSeguro(`${API_URL}${endpoint}`, { credentials: "include" });
@@ -29,12 +43,12 @@ export default function PromptGrid() {
         setLoading(false);
       }
     };
+
     fetchPrompts();
-  }, [activeDirectoryId, searchQuery]);
+  }, [activeDirectoryId, debouncedQuery]);
 
   return (
     <div className="h-full flex flex-col">
-
       {loading ? (
         <div className="flex-1 flex items-center justify-center">
           <IconLoader2 className="animate-spin text-primary" size={40} />
@@ -54,9 +68,9 @@ export default function PromptGrid() {
           ))}
         </div>
       ) : (
-        <div className="flex-1 border-2 border-dashed rounded-2xl flex flex-col items-center justify-center text-muted-foreground">
-          <IconPhotoOff size={48} stroke={1} />
-          <p className="mt-2 text-sm">No hay imágenes en esta ubicación.</p>
+        <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground/50">
+          <IconPhotoOff size={48} stroke={1.5} className="mb-4" />
+          <p className="text-sm font-mono uppercase tracking-widest">No se encontraron prompts</p>
         </div>
       )}
     </div>

@@ -1339,12 +1339,9 @@ def login_user(
     redis_client.delete(user_key)
 
     response.set_cookie(
-        key="access_token", 
-        value=access_token, 
-        max_age=60 * 15, 
-        **COOKIE_PARAMS
+        key="access_token", value=access_token, max_age=60 * 15, **COOKIE_PARAMS
     )
-    
+
     response.set_cookie(
         key="refresh_token",
         value=refresh_token,
@@ -1577,10 +1574,41 @@ def generate_invite_code(
 ):
     prefix = "VGR" if role_requested == "voyager" else "ART"
     new_code_str = f"{prefix}-{secrets.token_hex(4).upper()}"
-    new_invite = InviteCode(code=new_code_str)
-    session.add(new_invite)
-    session.commit()
-    return {"status": "success", "message": "Código generado", "code": new_code_str}
+
+    try:
+        new_invite = InviteCode(code=new_code_str)
+        session.add(new_invite)
+        session.commit()
+        session.refresh(new_invite)
+
+        AuditService.log_action(
+            session,
+            current_admin.username,
+            "INVITE_CREATED",
+            f"Generado código {role_requested.upper()}: {new_code_str}",
+        )
+
+        return {"status": "success", "message": "Código generado", "code": new_code_str}
+
+    except Exception as e:
+        session.rollback()
+        logger.error(f"❌ Fallo al insertar InviteCode en Neon: {e}")
+        raise HTTPException(status_code=500, detail=f"Error de base de datos: {str(e)}")
+
+
+@router.get("/admin/invites")
+def list_invite_codes(
+    current_admin: User = Depends(get_current_admin),
+    session: Session = Depends(get_session),
+):
+    statement = (
+        select(InviteCode)
+        .where(InviteCode.is_used == False)
+        .order_by(InviteCode.created_at.desc())
+    )
+    invites = session.exec(statement).all()
+
+    return {"status": "success", "invites": invites}
 
 
 @router.get("/admin/sessions")
@@ -2322,15 +2350,17 @@ def eliminar_prompts_lote(
 ================================================
 FILE: app/api/routes_public.py
 ================================================
+# app/api/routes_public.py
 import uuid
 from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session, select, or_, func
 from sqlalchemy import select as sa_select
 from app.core.db import get_session
 from app.models.user import User
-from app.models.collection import Collection
+
+from app.models.directory import Directory
 from app.models.prompt import ImagePrompt
-from app.api.deps import get_optional_user, get_optional_user
+from app.api.deps import get_optional_user
 from typing import Optional
 
 router = APIRouter()
@@ -2338,26 +2368,23 @@ router = APIRouter()
 
 @router.get("/profile/{username}")
 def get_public_profile(username: str, session: Session = Depends(get_session)):
-    """Devuelve los datos públicos de un usuario, sus colecciones y sus prompts recientes."""
     user = session.exec(select(User).where(User.username == username)).first()
     if not user:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
 
-    # 1. Colecciones Públicas
-    collections = session.exec(
-        select(Collection)
-        .where(Collection.user_id == user.id)
-        .where(Collection.is_private == False)
+    directories = session.exec(
+        select(Directory)
+        .where(Directory.user_id == user.id)
+        .where(Directory.is_private == False)
     ).all()
 
-    # 2. Prompts Públicos (Que no estén en una colección o que su colección sea pública)
     statement = (
         select(ImagePrompt)
-        .outerjoin(Collection, ImagePrompt.collection_id == Collection.id)
+        .outerjoin(Directory, ImagePrompt.directory_id == Directory.id)
         .where(ImagePrompt.user_id == user.id)
-        .where(or_(ImagePrompt.collection_id == None, Collection.is_private == False))
+        .where(or_(ImagePrompt.directory_id == None, Directory.is_private == False))
         .order_by(ImagePrompt.created_at.desc())
-        .limit(50)  # Traemos los últimos 50 para el escaparate
+        .limit(50)
     )
     prompts = session.exec(statement).all()
 
@@ -2367,51 +2394,48 @@ def get_public_profile(username: str, session: Session = Depends(get_session)):
             "username": user.username,
             "role": user.role.value if hasattr(user.role, "value") else user.role,
         },
-        "collections": collections,
+        "directories": directories,
         "recent_prompts": prompts,
     }
 
 
-@router.get("/profile/{username}/{collection_slug}")
-def get_public_collection(
+@router.get("/profile/{username}/{directory_slug}")
+def get_public_directory(
     username: str,
-    collection_slug: str,
+    directory_slug: str,
     session: Session = Depends(get_session),
     current_user: User = Depends(get_optional_user),
 ):
-    """Devuelve una colección específica siempre y cuando sea pública."""
     user = session.exec(select(User).where(User.username == username)).first()
     if not user:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
 
-    collection = session.exec(
-        select(Collection)
-        .where(Collection.user_id == user.id)
-        .where(Collection.slug == collection_slug)
-        .where(Collection.is_private == False)
+    directory = session.exec(
+        select(Directory)
+        .where(Directory.user_id == user.id)
+        .where(Directory.slug == directory_slug)
+        .where(Directory.is_private == False)
     ).first()
 
-    if not collection:
+    if not directory:
         raise HTTPException(
-            status_code=404, detail="Colección no encontrada o es privada"
+            status_code=404, detail="Directorio no encontrado o es privado"
         )
 
-    if collection.is_private:
-        if not current_user or current_user.id != collection.user_id:
-            raise HTTPException(
-                status_code=403, detail="Esta colección es privada o no existe."
-            )
+    if directory.is_private:
+        if not current_user or current_user.id != directory.user_id:
+            raise HTTPException(status_code=403, detail="Este directorio es privado.")
 
     prompts = session.exec(
         select(ImagePrompt)
-        .where(ImagePrompt.collection_id == collection.id)
+        .where(ImagePrompt.directory_id == directory.id)
         .order_by(ImagePrompt.created_at.desc())
     ).all()
 
     return {
         "status": "success",
         "user": {"username": user.username},
-        "collection": collection,
+        "directory": directory,
         "prompts": prompts,
     }
 
@@ -2422,49 +2446,39 @@ def get_public_prompt_detail(
     session: Session = Depends(get_session),
     current_user: User = Depends(get_optional_user),
 ):
-    """Devuelve el detalle de un prompt, su metadata, y las imágenes relacionadas (Colección y Usuario)"""
-
-    # 1. Buscar la imagen
     prompt = session.exec(
         select(ImagePrompt).where(ImagePrompt.id == prompt_id)
     ).first()
     if not prompt:
         raise HTTPException(status_code=404, detail="Imagen no encontrada")
 
-    # 2. Buscar al dueño
     user = session.exec(select(User).where(User.id == prompt.user_id)).first()
 
-    # 3. Validar privacidad y buscar relacionadas de la Colección
-    collection = None
-    related_collection = []
+    directory = None
+    related_directory = []
 
-    if prompt.collection_id:
-        collection = session.exec(
-            select(Collection).where(Collection.id == prompt.collection_id)
+    if prompt.directory_id:
+        directory = session.exec(
+            select(Directory).where(Directory.id == prompt.directory_id)
         ).first()
-        if collection and collection.is_private:
-            if not current_user or current_user.id != collection.user_id:
-                raise HTTPException(
-                    status_code=403,
-                    detail="Esta imagen pertenece a una colección privada",
-                )
+        if directory and directory.is_private:
+            if not current_user or current_user.id != directory.user_id:
+                raise HTTPException(status_code=403, detail="Imagen privada")
 
-        # Otras imágenes de esta misma colección
-        related_collection = session.exec(
+        related_directory = session.exec(
             select(ImagePrompt)
-            .where(ImagePrompt.collection_id == prompt.collection_id)
+            .where(ImagePrompt.directory_id == prompt.directory_id)
             .where(ImagePrompt.id != prompt.id)
             .order_by(ImagePrompt.created_at.desc())
             .limit(6)
         ).all()
 
-    # 4. Otras imágenes públicas del mismo Usuario
     statement = (
         select(ImagePrompt)
-        .outerjoin(Collection, ImagePrompt.collection_id == Collection.id)
+        .outerjoin(Directory, ImagePrompt.directory_id == Directory.id)
         .where(ImagePrompt.user_id == user.id)
         .where(ImagePrompt.id != prompt.id)
-        .where(or_(ImagePrompt.collection_id == None, Collection.is_private == False))
+        .where(or_(ImagePrompt.directory_id == None, Directory.is_private == False))
         .order_by(ImagePrompt.created_at.desc())
         .limit(12)
     )
@@ -2474,8 +2488,8 @@ def get_public_prompt_detail(
         "status": "success",
         "prompt": prompt,
         "user": {"username": user.username, "role": user.role},
-        "collection": collection,
-        "related_collection": related_collection,
+        "directory": directory,
+        "related_directory": related_directory,
         "related_user": related_user,
     }
 
@@ -2487,61 +2501,62 @@ def get_public_feed(
     session: Session = Depends(get_session),
     current_user: Optional[User] = Depends(get_optional_user),
 ):
-    """Devuelve un mix de Prompts sueltos y Colecciones para la Home optimizado"""
-
     subq_count = (
         sa_select(func.count(ImagePrompt.id))
-        # .where(ImagePrompt.collection_id == Collection.id)
+        .where(ImagePrompt.directory_id == Directory.id)
+        .correlate(Directory)
         .scalar_subquery()
     )
 
     subq_cover = (
         sa_select(ImagePrompt.image_url)
-        .where(ImagePrompt.collection_id == Collection.id)
+        .where(ImagePrompt.directory_id == Directory.id)
         .order_by(ImagePrompt.created_at.desc())
         .limit(1)
+        .correlate(Directory)
         .scalar_subquery()
     )
 
-    query_col = (
+    query_dir = (
         select(
-            Collection,
+            Directory,
             User,
             subq_count.label("items_count"),
             subq_cover.label("cover_url"),
         )
-        .join(User, Collection.user_id == User.id)
-        .where(Collection.is_private == False)
+        .join(User, Directory.user_id == User.id)
+        .where(Directory.is_private == False)
     )
 
     query_prompt = (
         select(ImagePrompt, User)
         .join(User, ImagePrompt.user_id == User.id)
-        .where(ImagePrompt.collection_id == None)
+        .where(ImagePrompt.directory_id == None)
     )
 
     if current_user and not include_self:
-        query_col = query_col.where(User.id != current_user.id)
+        query_dir = query_dir.where(User.id != current_user.id)
         query_prompt = query_prompt.where(User.id != current_user.id)
 
-    collections = session.exec(
-        query_col.order_by(Collection.created_at.desc()).limit(limit)
+    directories = session.exec(
+        query_dir.order_by(Directory.created_at.desc()).limit(limit)
     ).all()
+
     prompts = session.exec(
         query_prompt.order_by(ImagePrompt.created_at.desc()).limit(limit)
     ).all()
 
     feed = []
 
-    for col, user, items_count, cover_url in collections:
+    for d, user, items_count, cover_url in directories:
         feed.append(
             {
-                "type": "collection",
-                "id": f"col_{col.id}",
-                "raw_id": col.id,
-                "created_at": str(col.created_at),
-                "title": col.name,
-                "slug": col.slug,
+                "type": "directory",
+                "id": f"dir_{d.id}",
+                "raw_id": d.id,
+                "created_at": str(d.created_at),
+                "title": d.name,
+                "slug": d.slug,
                 "username": user.username,
                 "image_url": cover_url,
                 "items_count": items_count or 0,
@@ -2943,6 +2958,7 @@ class Directory(SQLModel, table=True):
         default=None, foreign_key="directory.id", index=True
     )
 
+    is_private: bool = Field(default=False)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
@@ -3008,7 +3024,6 @@ class ImagePrompt(SQLModel, table=True):
     prompt: str = Field(sa_column=Column(Text))
     negative_prompt: Optional[str] = Field(default=None, sa_column=Column(Text))
 
-
     embedding: Optional[List[float]] = Field(
         default=None, sa_column=Column(Vector(384))
     )
@@ -3045,15 +3060,12 @@ class UserRole(str, Enum):
 
 
 class InviteCode(SQLModel, table=True):
-    """Códigos de un solo uso para acceder a la plataforma"""
-
-    id: Optional[int] = Field(default=None, primary_key=True)
-    code: str = Field(index=True, unique=True, nullable=False)
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    code: str = Field(unique=True, index=True)
     is_used: bool = Field(default=False)
-
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-
+    # Opcionales
     used_by_id: Optional[uuid.UUID] = Field(default=None, foreign_key="user.id")
+    created_at: datetime = Field(default_factory=datetime.utcnow)
 
 
 class User(SQLModel, table=True):
@@ -3392,36 +3404,52 @@ class AuthService:
     @staticmethod
     def register_user(user_data, session: Session):
         """Lógica de negocio pura para registrar un usuario."""
+        from sqlalchemy import func
 
         logger = logging.getLogger("auth_service")
         logger.info(f"📝 [AUTH_SERVICE] Intento de registro. Email: {user_data.email}")
-        logger.info(f"🔑 [AUTH_SERVICE] Verificando código de invitación: {user_data.invite_code}")
 
-        statement = (
-            select(InviteCode)
-            .where(InviteCode.code == user_data.invite_code)
-            .where(InviteCode.is_used == False)
-        )
+        # 👑 1. LÓGICA DEL CREADOR (Bypass del Primer Usuario)
+        user_count = session.exec(select(func.count(User.id))).one()
+        is_first_user = user_count == 0
 
-        invite = session.exec(statement).first()
+        invite = None
 
-        if not invite:
-            raise HTTPException(
-                status_code=400, detail="Código de invitación inválido o ya usado"
+        if is_first_user:
+            assigned_role = "admin"
+            logger.info("👑 Primer usuario detectado (Local). Asignando ADMIN.")
+        else:
+            # 1b. Validación de código para usuarios normales
+            logger.info(
+                f"🔑 [AUTH_SERVICE] Verificando código de invitación: {user_data.invite_code}"
             )
+            statement = (
+                select(InviteCode)
+                .where(InviteCode.code == user_data.invite_code)
+                .where(InviteCode.is_used == False)
+            )
+
+            invite = session.exec(statement).first()
+
+            if not invite:
+                raise HTTPException(
+                    status_code=400, detail="Código de invitación inválido o ya usado"
+                )
+            assigned_role = "admin" if invite.code.startswith("TROYA-") else "voyager"
 
         # 2. Validación de usuario existente
         email_exists = session.exec(
-            select(User).where(User.email == user_data.email)).first()
-        
+            select(User).where(User.email == user_data.email)
+        ).first()
+
         if email_exists:
-            raise HTTPException(status_code=400, detail="Este correo electrónico ya está registrado.")
+            raise HTTPException(
+                status_code=400, detail="Este correo electrónico ya está registrado."
+            )
 
         base_username = re.sub(r"[^a-z0-9]", "", user_data.email.split("@")[0].lower())
         if not base_username:
-            base_username = (
-                "user"  # Fallback extremo por si el email era ".-_@gmail.com"
-            )
+            base_username = "user"
 
         username = base_username
         counter = 1
@@ -3430,9 +3458,7 @@ class AuthService:
             username = f"{base_username}{counter}"
             counter += 1
 
-        # 4. Asignación de rol y creación
-        assigned_role = "admin" if invite.code.startswith("TROYA-") else "voyager"
-
+        # 4. Creación
         new_user = User(
             email=user_data.email,
             username=username,
@@ -3444,11 +3470,12 @@ class AuthService:
         session.commit()
         session.refresh(new_user)
 
-        # 5. Quema de código
-        invite.is_used = True
-        invite.used_by_id = new_user.id
-        session.add(invite)
-        session.commit()
+        # 5. Quema de código SOLO si usó uno
+        if invite:
+            invite.is_used = True
+            invite.used_by_id = new_user.id
+            session.add(invite)
+            session.commit()
 
         logger.info(
             f"✨ ¡Usuario registrado! Email: {new_user.email} -> Username asignado: @{new_user.username}"
@@ -3493,25 +3520,39 @@ class AuthService:
         logger = logging.getLogger("auth_service")
         logger.info(f"🔐 [AUTH] Intentando login local para: {user_data.username}")
 
-        user = session.exec(select(User).where(User.username == user_data.username)).first()
-        
+        user = session.exec(
+            select(User).where(User.username == user_data.username)
+        ).first()
+
         if not user:
-            logger.warning(f"❌ [AUTH] Usuario no encontrado en DB: {user_data.username}")
-            raise HTTPException(status_code=401, detail="Usuario o contraseña incorrectos")
+            logger.warning(
+                f"❌ [AUTH] Usuario no encontrado en DB: {user_data.username}"
+            )
+            raise HTTPException(
+                status_code=401, detail="Usuario o contraseña incorrectos"
+            )
 
         if not verify_password(user_data.password, user.hashed_password):
-            logger.warning(f"❌ [AUTH] Contraseña incorrecta para: {user_data.username}")
-            raise HTTPException(status_code=401, detail="Usuario o contraseña incorrectos")
+            logger.warning(
+                f"❌ [AUTH] Contraseña incorrecta para: {user_data.username}"
+            )
+            raise HTTPException(
+                status_code=401, detail="Usuario o contraseña incorrectos"
+            )
 
-        logger.info(f"✅ [AUTH] Password verificado. Generando tokens para @{user.username}")
+        logger.info(
+            f"✅ [AUTH] Password verificado. Generando tokens para @{user.username}"
+        )
 
         try:
-            access_token = create_access_token(data={"sub": user.username, "role": user.role})
+            access_token = create_access_token(
+                data={"sub": user.username, "role": user.role}
+            )
             refresh_data = create_refresh_token(data={"sub": user.username})
 
             redis_key = f"session:{user.username}:{refresh_data['family_id']}"
             redis_client.setex(redis_key, 60 * 60 * 24 * 7, refresh_data["jti"])
-            
+
             logger.info(f"🚀 [AUTH] Sesión registrada en Redis. Key: {redis_key}")
             return access_token, refresh_data["token"], user.username
         except Exception as e:
@@ -3702,6 +3743,10 @@ class AuthService:
     @staticmethod
     def register_google_user(join_data, session: Session, redis_client):
         """El usuario nuevo nos ha dado su código de invitación. Lo registramos."""
+        from sqlalchemy import (
+            func,
+        )  # Asegúrate de tener esta importación arriba si no la tienes
+
         # 1. Volvemos a validar el token de Google por seguridad extrema
         idinfo = AuthService.verify_google_token(join_data.token)
         email = idinfo.get("email")
@@ -3717,21 +3762,33 @@ class AuthService:
                 detail="El nombre de usuario ya está en uso. Elige otro.",
             )
 
-        # 3. Validar código de invitación (El Muro Físico)
-        statement = (
-            select(InviteCode)
-            .where(InviteCode.code == join_data.invite_code)
-            .where(InviteCode.is_used == False)
-        )
-        invite = session.exec(statement).first()
+        # 👑 3. LÓGICA DEL CREADOR (Bypass del Primer Usuario)
+        user_count = session.exec(select(func.count(User.id))).one()
+        is_first_user = user_count == 0
 
-        if not invite:
-            raise HTTPException(
-                status_code=400,
-                detail="Código de invitación inválido o ya fue utilizado",
+        invite = None
+
+        if is_first_user:
+            assigned_role = "admin"
+            logging.getLogger("auth_service").info(
+                "👑 Primer usuario detectado (Google). Asignando ADMIN."
             )
+        else:
+            # 3b. Validar código de invitación (El Muro Físico para los mortales)
+            statement = (
+                select(InviteCode)
+                .where(InviteCode.code == join_data.invite_code)
+                .where(InviteCode.is_used == False)
+            )
+            invite = session.exec(statement).first()
 
-        assigned_role = "admin" if invite.code.startswith("TROYA-") else "voyager"
+            if not invite:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Código de invitación inválido o ya fue utilizado",
+                )
+
+            assigned_role = "admin" if invite.code.startswith("TROYA-") else "voyager"
 
         # 4. Crear el usuario en PostgreSQL
         new_user = User(
@@ -3745,11 +3802,12 @@ class AuthService:
         session.commit()
         session.refresh(new_user)
 
-        # 5. Quemar la invitación para que no se re-use
-        invite.is_used = True
-        invite.used_by_id = new_user.id
-        session.add(invite)
-        session.commit()
+        # 5. Quemar la invitación SOLO si el usuario usó una
+        if invite:
+            invite.is_used = True
+            invite.used_by_id = new_user.id
+            session.add(invite)
+            session.commit()
 
         # 6. Crear la sesión en Redis
         access_token = create_access_token(

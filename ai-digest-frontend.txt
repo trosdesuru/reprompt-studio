@@ -3263,9 +3263,9 @@ export function useDiscordAuth() {
       } else {
         throw new Error("El servidor no devolvió una URL válida");
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("❌ Error al iniciar Discord:", error);
-      toast.error("Servicio de Discord no disponible en este momento.");
+      toast.error(error.message || "Servicio de Discord no disponible en este momento.");
     } finally {
       setIsDiscordLoading(false);
     }
@@ -3289,10 +3289,11 @@ export function useGoogleAuth() {
   const handleGoogleLogin = async () => {
     setIsGoogleLoading(true);
     try {
-      const response = await api.getGoogleAuthUrl();
+      const response = await api.auth.getGoogleAuthUrl();
       if (response?.auth_url) window.location.href = response.auth_url;
-    } catch (error) {
-      toast.error("Error al conectar con Google");
+    } catch (error: any) {
+      toast.error(error.message || "Error al conectar con Google");
+    } finally {
       setIsGoogleLoading(false);
     }
   };
@@ -3328,7 +3329,7 @@ export function useOAuthPending() {
     if (!oauthPending) return;
     setIsOauthSubmitting(true);
     try {
-      await api.registerGoogleUser({
+      await api.auth.registerGoogleUser({
         token: oauthPending.token,
         invite_code: inviteCode,
         username: oauthPending.username,
@@ -4550,6 +4551,7 @@ export const adminApi = {
 ================================================
 FILE: src/services/api/auth.ts
 ================================================
+// src/services/api/auth.ts
 import { UserLogin, UserRegister } from "@/src/types/auth.types";
 import { fetchSeguro } from "./client";
 import { ENV } from "@/src/services/config/env";
@@ -4557,70 +4559,80 @@ import { ENV } from "@/src/services/config/env";
 const API_URL = ENV.API_URL;
 console.log("🕵️‍♂️ [DEBUG] Valor real de API_URL inyectado por Next:", API_URL);
 
+const JSON_DATA = async (res: Response) => {
+  if (!res.ok) {
+    const errorData = await res
+      .clone()
+      .json()
+      .catch(() => ({}));
+
+    throw new Error(errorData.detail || errorData.message || `Error del servidor (${res.status})`);
+  }
+  if (res.status === 204) return null;
+  return res.json().catch(() => ({}));
+};
+
 export const authApi = {
   register: (data: UserRegister) =>
     fetchSeguro(`${API_URL}/auth/register`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
-    }),
+    }).then(JSON_DATA),
+
   login: (credentials: UserLogin) =>
     fetchSeguro(`${API_URL}/auth/login`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(credentials),
-    }),
+    }).then(JSON_DATA),
+
   logout: async () => {
     await fetchSeguro(`${API_URL}/auth/logout`, { method: "POST" });
     window.location.href = "/login";
   },
+
   cambiarPassword: (data: any) =>
     fetchSeguro(`${API_URL}/auth/change-password`, {
       method: "PUT",
-      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
-    }),
-  me: async () => {
-    return fetchSeguro(`${API_URL}/auth/me`, {
-      method: "GET",
-    });
-  },
+    }).then(JSON_DATA),
+
+  me: () => fetchSeguro(`${API_URL}/auth/me`, { method: "GET" }).then(JSON_DATA),
+
   generarInvitacion: (role: string = "voyager") =>
-    fetchSeguro(`${API_URL}/auth/invite-codes?role_requested=${role}`, { method: "POST" }),
+    fetchSeguro(`${API_URL}/auth/invite-codes?role_requested=${role}`, { method: "POST" }).then(
+      JSON_DATA,
+    ),
+
   obtenerLogsAuditoria: (limit: number = 50) =>
-    fetchSeguro(`${API_URL}/auth/admin/logs?limit=${limit}`),
+    fetchSeguro(`${API_URL}/auth/admin/logs?limit=${limit}`).then(JSON_DATA),
+
   revocarTodasLasSesiones: () =>
-    fetchSeguro(`${API_URL}/auth/admin/sessions/revoke-all`, { method: "POST" }),
-  refrescarToken: () => fetchSeguro(`${API_URL}/auth/refresh`, { method: "POST" }),
+    fetchSeguro(`${API_URL}/auth/admin/sessions/revoke-all`, { method: "POST" }).then(JSON_DATA),
 
-  getGoogleAuthUrl: async () => {
-    return fetchSeguro(`${API_URL}/auth/google/url`, { method: "GET" });
-  },
+  refrescarToken: () => fetchSeguro(`${API_URL}/auth/refresh`, { method: "POST" }).then(JSON_DATA),
 
-  verifyGoogleCode: async (data: { code: string; redirect_uri: string }) => {
-    return fetchSeguro(`${API_URL}/auth/google/callback`, {
+  getGoogleAuthUrl: () => fetchSeguro(`${API_URL}/auth/google/url`, { method: "GET" }).then(JSON_DATA),
+
+  verifyGoogleCode: (data: { code: string; redirect_uri: string }) =>
+    fetchSeguro(`${API_URL}/auth/google/callback`, {
       method: "POST",
       body: JSON.stringify(data),
-    });
-  },
+    }).then(JSON_DATA),
 
-  registerGoogleUser: async (data: { token: string; invite_code: string; username: string }) => {
-    return fetchSeguro(`${API_URL}/auth/google/join`, {
+  registerGoogleUser: (data: { token: string; invite_code: string; username: string }) =>
+    fetchSeguro(`${API_URL}/auth/google/join`, {
       method: "POST",
       body: JSON.stringify(data),
-    });
-  },
+    }).then(JSON_DATA),
 
-  getDiscordAuthUrl: async () => {
-    return fetchSeguro(`${API_URL}/auth/discord/url`, { method: "GET" });
-  },
+  getDiscordAuthUrl: () =>
+    fetchSeguro(`${API_URL}/auth/discord/url`, { method: "GET" }).then(JSON_DATA),
 
-  verifyDiscordCode: async (data: { code: string; redirect_uri: string }) => {
-    return fetchSeguro(`${API_URL}/auth/discord`, {
+  verifyDiscordCode: (data: { code: string; redirect_uri: string }) =>
+    fetchSeguro(`${API_URL}/auth/discord`, {
       method: "POST",
       body: JSON.stringify(data),
-    });
-  },
+    }).then(JSON_DATA),
 };
 
 
@@ -4634,37 +4646,43 @@ let isRefreshing = false;
 let refreshPromise: Promise<boolean> | null = null;
 
 export const API_URL = ENV.API_URL;
+export interface ExtendedRequestInit extends RequestInit {
+  next?: {
+    revalidate?: number;
+    tags?: string[];
+  };
+}
 
-export async function fetchSeguro(endpoint: string, options: RequestInit = {}) {
+export async function fetchSeguro(
+  endpoint: string,
+  options: ExtendedRequestInit = {},
+): Promise<Response> {
   const headers = new Headers(options.headers || {});
 
   if (!headers.has("Content-Type") && !(options.body instanceof FormData)) {
     headers.set("Content-Type", "application/json");
   }
 
-  const config: RequestInit = {
+  const config: ExtendedRequestInit = {
     ...options,
     headers,
     credentials: "include",
   };
 
-  // 🕵️‍♂️ SENSOR 1: El Vigía de Salida
   console.log(`📡 [API_CLIENT] PETICIÓN -> ${options.method || "GET"} ${endpoint}`);
 
   let response: Response;
 
   try {
     response = await fetch(endpoint, config);
-    // 🕵️‍♂️ SENSOR 2: El Notario de Entrada
     console.log(`📥 [API_CLIENT] RESPUESTA <- ${endpoint} [Status: ${response.status}]`);
   } catch (error) {
-    console.error(`🔌 [NETWORK_ERROR] Fallo crítico de conexión con ${endpoint}:`, error);
+    console.error(`🔌 [NETWORK_ERROR] Fallo físico de conexión con ${endpoint}:`, error);
     throw new Error("No hay conexión con el servidor.");
   }
 
   const isAuthFlow = endpoint.includes("/auth");
 
-  // 🛡️ PROTOCOLO DE RESCATE: 401 en rutas privadas
   if (response.status === 401 && !isAuthFlow) {
     console.warn(`🚑 [API_CLIENT] 401 Detectado en ${endpoint}. Intentando rescate (Refresh)...`);
 
@@ -4692,14 +4710,17 @@ export async function fetchSeguro(endpoint: string, options: RequestInit = {}) {
       console.log(`✅ [SECURITY] Sesión renovada con éxito. Reintentando operación original...`);
 
       if (options.body instanceof FormData) {
-        throw new Error("Sesión renovada. Por seguridad, vuelve a subir el archivo.");
+        console.warn("⚠️ [SECURITY] Petición con FormData cancelada tras refresh.");
+        return response;
       }
 
       try {
         response = await fetch(endpoint, config);
-        console.log(`🔁 [API_CLIENT] Reintento tras refresh <- ${endpoint} [Status: ${response.status}]`);
+        console.log(
+          `🔁 [API_CLIENT] Reintento tras refresh <- ${endpoint} [Status: ${response.status}]`,
+        );
       } catch (error) {
-        console.error("❌ [API_CLIENT] Error en el reintento post-refresh.");
+        console.error("❌ [API_CLIENT] Error físico en el reintento post-refresh.");
         throw new Error("Error en el reintento de conexión.");
       }
     } else {
@@ -4707,18 +4728,16 @@ export async function fetchSeguro(endpoint: string, options: RequestInit = {}) {
       if (typeof window !== "undefined") {
         window.dispatchEvent(new Event("auth:unauthorized"));
       }
-      throw new Error("Sesión expirada.");
+      return response;
     }
   }
 
-  // 🕵️‍♂️ SENSOR 3: El Forense (Analiza el cuerpo del error antes de lanzarlo)
   if (!response.ok) {
-    const errorBody = await response.clone().json().catch(() => ({}));
+    const errorBody = await response
+      .clone()
+      .json()
+      .catch(() => ({}));
     console.warn(`🛑 [API_ERROR] ${response.status} en ${endpoint}:`, errorBody);
-
-    if (response.status === 401 && isAuthFlow) {
-      throw new Error("Credenciales inválidas.");
-    }
 
     if (response.status === 429) {
       const mensaje = errorBody.detail || "Demasiados intentos. Espera un momento.";
@@ -4727,14 +4746,11 @@ export async function fetchSeguro(endpoint: string, options: RequestInit = {}) {
           new CustomEvent("app:notification", { detail: { type: "warning", message: mensaje } }),
         );
       }
-      throw new Error(mensaje);
     }
-
-    throw new Error(`Error ${response.status}: ${errorBody.detail || response.statusText}`);
   }
-
-  return response.json();
+  return response;
 }
+
 
 
 ================================================
