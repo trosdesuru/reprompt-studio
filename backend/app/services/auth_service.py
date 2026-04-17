@@ -28,36 +28,52 @@ class AuthService:
     @staticmethod
     def register_user(user_data, session: Session):
         """Lógica de negocio pura para registrar un usuario."""
+        from sqlalchemy import func
 
         logger = logging.getLogger("auth_service")
         logger.info(f"📝 [AUTH_SERVICE] Intento de registro. Email: {user_data.email}")
-        logger.info(f"🔑 [AUTH_SERVICE] Verificando código de invitación: {user_data.invite_code}")
 
-        statement = (
-            select(InviteCode)
-            .where(InviteCode.code == user_data.invite_code)
-            .where(InviteCode.is_used == False)
-        )
+        # 👑 1. LÓGICA DEL CREADOR (Bypass del Primer Usuario)
+        user_count = session.exec(select(func.count(User.id))).one()
+        is_first_user = user_count == 0
 
-        invite = session.exec(statement).first()
+        invite = None
 
-        if not invite:
-            raise HTTPException(
-                status_code=400, detail="Código de invitación inválido o ya usado"
+        if is_first_user:
+            assigned_role = "admin"
+            logger.info("👑 Primer usuario detectado (Local). Asignando ADMIN.")
+        else:
+            # 1b. Validación de código para usuarios normales
+            logger.info(
+                f"🔑 [AUTH_SERVICE] Verificando código de invitación: {user_data.invite_code}"
             )
+            statement = (
+                select(InviteCode)
+                .where(InviteCode.code == user_data.invite_code)
+                .where(InviteCode.is_used == False)
+            )
+
+            invite = session.exec(statement).first()
+
+            if not invite:
+                raise HTTPException(
+                    status_code=400, detail="Código de invitación inválido o ya usado"
+                )
+            assigned_role = "admin" if invite.code.startswith("TROYA-") else "voyager"
 
         # 2. Validación de usuario existente
         email_exists = session.exec(
-            select(User).where(User.email == user_data.email)).first()
-        
+            select(User).where(User.email == user_data.email)
+        ).first()
+
         if email_exists:
-            raise HTTPException(status_code=400, detail="Este correo electrónico ya está registrado.")
+            raise HTTPException(
+                status_code=400, detail="Este correo electrónico ya está registrado."
+            )
 
         base_username = re.sub(r"[^a-z0-9]", "", user_data.email.split("@")[0].lower())
         if not base_username:
-            base_username = (
-                "user"  # Fallback extremo por si el email era ".-_@gmail.com"
-            )
+            base_username = "user"
 
         username = base_username
         counter = 1
@@ -66,9 +82,7 @@ class AuthService:
             username = f"{base_username}{counter}"
             counter += 1
 
-        # 4. Asignación de rol y creación
-        assigned_role = "admin" if invite.code.startswith("TROYA-") else "voyager"
-
+        # 4. Creación
         new_user = User(
             email=user_data.email,
             username=username,
@@ -80,11 +94,12 @@ class AuthService:
         session.commit()
         session.refresh(new_user)
 
-        # 5. Quema de código
-        invite.is_used = True
-        invite.used_by_id = new_user.id
-        session.add(invite)
-        session.commit()
+        # 5. Quema de código SOLO si usó uno
+        if invite:
+            invite.is_used = True
+            invite.used_by_id = new_user.id
+            session.add(invite)
+            session.commit()
 
         logger.info(
             f"✨ ¡Usuario registrado! Email: {new_user.email} -> Username asignado: @{new_user.username}"
@@ -129,25 +144,39 @@ class AuthService:
         logger = logging.getLogger("auth_service")
         logger.info(f"🔐 [AUTH] Intentando login local para: {user_data.username}")
 
-        user = session.exec(select(User).where(User.username == user_data.username)).first()
-        
+        user = session.exec(
+            select(User).where(User.username == user_data.username)
+        ).first()
+
         if not user:
-            logger.warning(f"❌ [AUTH] Usuario no encontrado en DB: {user_data.username}")
-            raise HTTPException(status_code=401, detail="Usuario o contraseña incorrectos")
+            logger.warning(
+                f"❌ [AUTH] Usuario no encontrado en DB: {user_data.username}"
+            )
+            raise HTTPException(
+                status_code=401, detail="Usuario o contraseña incorrectos"
+            )
 
         if not verify_password(user_data.password, user.hashed_password):
-            logger.warning(f"❌ [AUTH] Contraseña incorrecta para: {user_data.username}")
-            raise HTTPException(status_code=401, detail="Usuario o contraseña incorrectos")
+            logger.warning(
+                f"❌ [AUTH] Contraseña incorrecta para: {user_data.username}"
+            )
+            raise HTTPException(
+                status_code=401, detail="Usuario o contraseña incorrectos"
+            )
 
-        logger.info(f"✅ [AUTH] Password verificado. Generando tokens para @{user.username}")
+        logger.info(
+            f"✅ [AUTH] Password verificado. Generando tokens para @{user.username}"
+        )
 
         try:
-            access_token = create_access_token(data={"sub": user.username, "role": user.role})
+            access_token = create_access_token(
+                data={"sub": user.username, "role": user.role}
+            )
             refresh_data = create_refresh_token(data={"sub": user.username})
 
             redis_key = f"session:{user.username}:{refresh_data['family_id']}"
             redis_client.setex(redis_key, 60 * 60 * 24 * 7, refresh_data["jti"])
-            
+
             logger.info(f"🚀 [AUTH] Sesión registrada en Redis. Key: {redis_key}")
             return access_token, refresh_data["token"], user.username
         except Exception as e:
@@ -338,6 +367,10 @@ class AuthService:
     @staticmethod
     def register_google_user(join_data, session: Session, redis_client):
         """El usuario nuevo nos ha dado su código de invitación. Lo registramos."""
+        from sqlalchemy import (
+            func,
+        )  # Asegúrate de tener esta importación arriba si no la tienes
+
         # 1. Volvemos a validar el token de Google por seguridad extrema
         idinfo = AuthService.verify_google_token(join_data.token)
         email = idinfo.get("email")
@@ -353,21 +386,33 @@ class AuthService:
                 detail="El nombre de usuario ya está en uso. Elige otro.",
             )
 
-        # 3. Validar código de invitación (El Muro Físico)
-        statement = (
-            select(InviteCode)
-            .where(InviteCode.code == join_data.invite_code)
-            .where(InviteCode.is_used == False)
-        )
-        invite = session.exec(statement).first()
+        # 👑 3. LÓGICA DEL CREADOR (Bypass del Primer Usuario)
+        user_count = session.exec(select(func.count(User.id))).one()
+        is_first_user = user_count == 0
 
-        if not invite:
-            raise HTTPException(
-                status_code=400,
-                detail="Código de invitación inválido o ya fue utilizado",
+        invite = None
+
+        if is_first_user:
+            assigned_role = "admin"
+            logging.getLogger("auth_service").info(
+                "👑 Primer usuario detectado (Google). Asignando ADMIN."
             )
+        else:
+            # 3b. Validar código de invitación (El Muro Físico para los mortales)
+            statement = (
+                select(InviteCode)
+                .where(InviteCode.code == join_data.invite_code)
+                .where(InviteCode.is_used == False)
+            )
+            invite = session.exec(statement).first()
 
-        assigned_role = "admin" if invite.code.startswith("TROYA-") else "voyager"
+            if not invite:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Código de invitación inválido o ya fue utilizado",
+                )
+
+            assigned_role = "admin" if invite.code.startswith("TROYA-") else "voyager"
 
         # 4. Crear el usuario en PostgreSQL
         new_user = User(
@@ -381,11 +426,12 @@ class AuthService:
         session.commit()
         session.refresh(new_user)
 
-        # 5. Quemar la invitación para que no se re-use
-        invite.is_used = True
-        invite.used_by_id = new_user.id
-        session.add(invite)
-        session.commit()
+        # 5. Quemar la invitación SOLO si el usuario usó una
+        if invite:
+            invite.is_used = True
+            invite.used_by_id = new_user.id
+            session.add(invite)
+            session.commit()
 
         # 6. Crear la sesión en Redis
         access_token = create_access_token(

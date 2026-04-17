@@ -23,4 +23,5 @@ class Directory(SQLModel, table=True):
         default=None, foreign_key="directory.id", index=True
     )
 
+    is_private: bool = Field(default=False)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))

@@ -26,7 +26,6 @@ class ImagePrompt(SQLModel, table=True):
     prompt: str = Field(sa_column=Column(Text))
     negative_prompt: Optional[str] = Field(default=None, sa_column=Column(Text))
 
-
     embedding: Optional[List[float]] = Field(
         default=None, sa_column=Column(Vector(384))
     )

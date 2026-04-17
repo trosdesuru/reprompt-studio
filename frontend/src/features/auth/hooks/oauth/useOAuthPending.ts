@@ -21,7 +21,7 @@ export function useOAuthPending() {
     if (!oauthPending) return;
     setIsOauthSubmitting(true);
     try {
-      await api.registerGoogleUser({
+      await api.auth.registerGoogleUser({
         token: oauthPending.token,
         invite_code: inviteCode,
         username: oauthPending.username,

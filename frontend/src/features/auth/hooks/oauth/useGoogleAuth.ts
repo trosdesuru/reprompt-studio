@@ -8,10 +8,11 @@ export function useGoogleAuth() {
   const handleGoogleLogin = async () => {
     setIsGoogleLoading(true);
     try {
-      const response = await api.getGoogleAuthUrl();
+      const response = await api.auth.getGoogleAuthUrl();
       if (response?.auth_url) window.location.href = response.auth_url;
-    } catch (error) {
-      toast.error("Error al conectar con Google");
+    } catch (error: any) {
+      toast.error(error.message || "Error al conectar con Google");
+    } finally {
       setIsGoogleLoading(false);
     }
   };

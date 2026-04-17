@@ -84,12 +84,9 @@ def login_user(
     redis_client.delete(user_key)
 
     response.set_cookie(
-        key="access_token", 
-        value=access_token, 
-        max_age=60 * 15, 
-        **COOKIE_PARAMS
+        key="access_token", value=access_token, max_age=60 * 15, **COOKIE_PARAMS
     )
-    
+
     response.set_cookie(
         key="refresh_token",
         value=refresh_token,
@@ -322,10 +319,41 @@ def generate_invite_code(
 ):
     prefix = "VGR" if role_requested == "voyager" else "ART"
     new_code_str = f"{prefix}-{secrets.token_hex(4).upper()}"
-    new_invite = InviteCode(code=new_code_str)
-    session.add(new_invite)
-    session.commit()
-    return {"status": "success", "message": "Código generado", "code": new_code_str}
+
+    try:
+        new_invite = InviteCode(code=new_code_str)
+        session.add(new_invite)
+        session.commit()
+        session.refresh(new_invite)
+
+        AuditService.log_action(
+            session,
+            current_admin.username,
+            "INVITE_CREATED",
+            f"Generado código {role_requested.upper()}: {new_code_str}",
+        )
+
+        return {"status": "success", "message": "Código generado", "code": new_code_str}
+
+    except Exception as e:
+        session.rollback()
+        logger.error(f"❌ Fallo al insertar InviteCode en Neon: {e}")
+        raise HTTPException(status_code=500, detail=f"Error de base de datos: {str(e)}")
+
+
+@router.get("/admin/invites")
+def list_invite_codes(
+    current_admin: User = Depends(get_current_admin),
+    session: Session = Depends(get_session),
+):
+    statement = (
+        select(InviteCode)
+        .where(InviteCode.is_used == False)
+        .order_by(InviteCode.created_at.desc())
+    )
+    invites = session.exec(statement).all()
+
+    return {"status": "success", "invites": invites}
 
 
 @router.get("/admin/sessions")

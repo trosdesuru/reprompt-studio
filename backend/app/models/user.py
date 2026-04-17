@@ -12,15 +12,12 @@ class UserRole(str, Enum):
 
 
 class InviteCode(SQLModel, table=True):
-    """Códigos de un solo uso para acceder a la plataforma"""
-
-    id: Optional[int] = Field(default=None, primary_key=True)
-    code: str = Field(index=True, unique=True, nullable=False)
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    code: str = Field(unique=True, index=True)
     is_used: bool = Field(default=False)
-
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-
+    # Opcionales
     used_by_id: Optional[uuid.UUID] = Field(default=None, foreign_key="user.id")
+    created_at: datetime = Field(default_factory=datetime.utcnow)
 
 
 class User(SQLModel, table=True):

@@ -14,9 +14,9 @@ export function useDiscordAuth() {
       } else {
         throw new Error("El servidor no devolvió una URL válida");
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("❌ Error al iniciar Discord:", error);
-      toast.error("Servicio de Discord no disponible en este momento.");
+      toast.error(error.message || "Servicio de Discord no disponible en este momento.");
     } finally {
       setIsDiscordLoading(false);
     }
