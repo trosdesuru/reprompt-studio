@@ -1,6 +1,6 @@
 import { API_URL, fetchSeguro } from "./client";
 
-export const directorysApi = {
+export const directoriesApi = {
   create: async (data: { name: string; description?: string; is_private: boolean }) => {
     return fetchSeguro(`${API_URL}/directories`, {
       method: "POST",
