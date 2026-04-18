@@ -54,13 +54,13 @@ export default function PublicProfilePage({
           </p>
         </header>
 
-        {data.collections.length > 0 && (
+        {data.directories.length > 0 && (
           <section className="space-y-4">
             <h2 className="text-sm font-mono font-bold uppercase tracking-widest flex items-center gap-2">
               <IconFolder size={18} className="text-(--accent-color)" /> Colecciones
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-              {data.collections.map((col) => (
+              {data.directories.map((col) => (
                 <Link
                   key={col.id}
                   href={`/${lang}/${username}/${col.slug}`}

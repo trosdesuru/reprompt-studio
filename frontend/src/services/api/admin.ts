@@ -25,7 +25,7 @@ export interface StorageStatsResponse {
   limit_mb: number;
 }
 
-export interface GarbageCollectionResult {
+export interface GarbageDirectoryResult {
   status: string;
   deleted_logs: number;
   deleted_invites: number;
@@ -91,7 +91,7 @@ export const adminApi = {
     });
   },
 
-  runGarbageCollector: async (): Promise<GarbageCollectionResult> => {
+  runGarbageCollector: async (): Promise<GarbageDirectoryResult> => {
     return fetchSeguro(`${API_URL}/admin/garbage-collect`, {
       method: "POST",
     });

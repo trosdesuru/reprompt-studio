@@ -46,7 +46,7 @@ export function FeedItemCard({ item, lang, isPriority = false, index = 0 }: Feed
 
       <div className="absolute inset-0 z-20 bg-linear-to-t from-black/90 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-4">
         <div className="absolute top-3 left-3 flex gap-2">
-          {item.type === "collection" && (
+          {item.type === "directory" && (
             <span className="bg-foreground-600/60 text-blue-200 text-[10px] font-bold px-2 py-1 flex items-center gap-1 neo-border rounded-md shadow-sm">
               <IconStack2 size={12} stroke={2} /> {item.title}
             </span>

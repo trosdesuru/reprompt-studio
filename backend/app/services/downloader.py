@@ -14,7 +14,7 @@ from selenium.webdriver.support import expected_conditions as EC
 from app.core.db import engine
 from app.core.config import settings
 from app.models.prompt import ImagePrompt
-from app.models.collection import Collection
+from app.models.directory import Directory
 from app.services.security import http_session
 
 # Importamos nuestras utilidades limpias
@@ -23,7 +23,7 @@ from app.utils.storage import guardar_archivo
 logger = logging.getLogger("downloader")
 
 
-def generar_zip_coleccion(collection_id: str, user_email: str):
+def generar_zip_coleccion(directory_id: str, user_email: str):
     """
     Tarea asíncrona para RQ. Empaqueta una colección entera en un ZIP
     usando buffers de memoria y la sube de vuelta a R2 como un enlace temporal.
@@ -37,12 +37,12 @@ def generar_zip_coleccion(collection_id: str, user_email: str):
     )
 
     with Session(engine) as session:
-        coleccion = session.get(Collection, collection_id)
+        coleccion = session.get(Directory, directory_id)
         if not coleccion:
             return
 
         prompts = session.exec(
-            select(ImagePrompt).where(ImagePrompt.collection_id == collection_id)
+            select(ImagePrompt).where(ImagePrompt.directory_id == directory_id)
         ).all()
 
     # Buffer en memoria para no usar el disco SSD del servidor
@@ -85,7 +85,7 @@ def generar_zip_coleccion(collection_id: str, user_email: str):
     zip_buffer.seek(0)
 
     # 6. Subir el ZIP temporal a R2
-    zip_key = f"temp/downloads/{collection_id}.zip"
+    zip_key = f"temp/downloads/{directory_id}.zip"
     s3_client.upload_fileobj(
         zip_buffer,
         settings.R2_BUCKET_NAME,

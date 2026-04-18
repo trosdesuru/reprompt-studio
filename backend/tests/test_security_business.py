@@ -101,8 +101,6 @@ def test_voyager_plan_limit_exploitation(
     session.add(public_col)
     session.commit()
 
-    # 🟢 FIX 3: Pragmatismo Radical. En lugar de Mockear y romper la sesión,
-    # insertamos 51 imágenes en la memoria RAM (Tarda 0.005 segundos).
     fake_prompts = [
         ImagePrompt(
             user_id=normal_user.id,

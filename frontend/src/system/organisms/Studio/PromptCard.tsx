@@ -10,14 +10,14 @@ import {
   IconDotsVertical,
   IconFolder,
 } from "@tabler/icons-react";
-import { SavedPrompt, Collection } from "@/src/types/models";
+import { SavedPrompt, Directory } from "@/src/types/models";
 import { LazyImage } from "../../molecules/Media/LazyImage";
 
 interface PromptCardProps {
   item: SavedPrompt;
-  collections?: Collection[];
+  directories?: Directory[];
   onDelete?: (id: number) => void;
-  onAssign?: (promptId: number, collectionId: number | null) => void;
+  onAssign?: (promptId: number, directoryId: number | null) => void;
   isPriority: boolean;
   isSelected?: boolean;
   onToggleSelect?: () => void;
@@ -30,7 +30,7 @@ interface PromptCardProps {
 
 export function PromptCard({
   item,
-  collections = [],
+  directories = [],
   onAssign,
   onDelete,
   index = 0,
@@ -125,14 +125,14 @@ export function PromptCard({
                 e.stopPropagation();
               }}
             >
-              {onAssign && collections.length > 0 && (
+              {onAssign && directories.length > 0 && (
                 <div className="px-3 py-2 border-b border-border/10">
                   <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1.5 flex items-center gap-1.5">
                     <IconFolder size={12} /> Colección
                   </label>
                   <select
                     className="w-full bg-muted/50 text-xs text-foreground p-1.5 rounded border border-border focus:outline-none focus:ring-1 focus:ring-(--accent-color) cursor-pointer"
-                    value={item.collection_id || ""}
+                    value={item.directory_id || ""}
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
@@ -145,7 +145,7 @@ export function PromptCard({
                     }}
                   >
                     <option value="">Ninguna (Suelto)</option>
-                    {collections.map((c) => (
+                    {directories.map((c) => (
                       <option key={c.id} value={c.id}>
                         {c.name}
                       </option>

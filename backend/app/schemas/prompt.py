@@ -25,7 +25,7 @@ class PromptResponse(PromptCreate):
     id: uuid.UUID
     user_id: uuid.UUID
     prompt: str = Field(..., max_length=20000)
-    collection_id: Optional[int] = None
+    directory_id: Optional[int] = None
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)

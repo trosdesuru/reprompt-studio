@@ -180,9 +180,9 @@ function ComboboxLabel({
   )
 }
 
-function ComboboxCollection({ ...props }: ComboboxPrimitive.Collection.Props) {
+function ComboboxDirectory({ ...props }: ComboboxPrimitive.Directory.Props) {
   return (
-    <ComboboxPrimitive.Collection data-slot="combobox-collection" {...props} />
+    <ComboboxPrimitive.Directory data-slot="combobox-directory" {...props} />
   )
 }
 
@@ -285,7 +285,7 @@ export {
   ComboboxItem,
   ComboboxGroup,
   ComboboxLabel,
-  ComboboxCollection,
+  ComboboxDirectory,
   ComboboxEmpty,
   ComboboxSeparator,
   ComboboxChips,

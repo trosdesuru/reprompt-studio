@@ -1,21 +1,21 @@
 import { API_URL, fetchSeguro } from "./client";
 
-export const collectionsApi = {
+export const directorysApi = {
   create: async (data: { name: string; description?: string; is_private: boolean }) => {
-    return fetchSeguro(`${API_URL}/collections`, {
+    return fetchSeguro(`${API_URL}/directories`, {
       method: "POST",
       body: JSON.stringify(data),
     });
   },
 
-  getMyCollections: async () => {
-    return fetchSeguro(`${API_URL}/collections/`);
+  getMyDirectorys: async () => {
+    return fetchSeguro(`${API_URL}/directories/`);
   },
 
-  assignPrompt: async (promptId: number, collectionId: number | null) => {
-    return fetchSeguro(`${API_URL}/collections/assign/${promptId}`, {
+  assignPrompt: async (promptId: number, directoryId: number | null) => {
+    return fetchSeguro(`${API_URL}/directories/assign/${promptId}`, {
       method: "PUT",
-      body: JSON.stringify({ collection_id: collectionId }),
+      body: JSON.stringify({ directory_id: directoryId }),
     });
   },
 };

@@ -14,7 +14,7 @@ from app.core.redis_config import conn as redis_client
 from app.services.audit_service import AuditService
 from app.core.security import get_password_hash
 from app.models.user import AuditLog
-from app.models.collection import Collection
+from app.models.directory import Directory
 from app.models.gallery import GalleryMetric
 from app.services.storage import s3_client
 from app.models.prompt import ImagePrompt
@@ -314,7 +314,7 @@ def delete_user_completely(
         session.exec(delete(ImagePrompt).where(ImagePrompt.user_id == target_user.id))
 
         # Borramos las colecciones
-        session.exec(delete(Collection).where(Collection.user_id == target_user.id))
+        session.exec(delete(Directory).where(Directory.user_id == target_user.id))
 
         # Finalmente, ejecutamos al usuario
         session.delete(target_user)

@@ -20,7 +20,7 @@ export const publicApi = {
     return fetchSeguro(`${API_URL}/public/profile/${username}`);
   },
 
-  getCollection: async (username: string, slug: string) => {
+  getDirectory: async (username: string, slug: string) => {
     if (RESERVED_ROUTES.has(username.toLowerCase())) {
       return Promise.reject(new Error("Ruta reservada del sistema"));
     }

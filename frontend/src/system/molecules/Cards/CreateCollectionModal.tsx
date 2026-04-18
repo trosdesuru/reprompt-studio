@@ -13,7 +13,7 @@ interface Props {
   onSuccess: () => void;
 }
 
-export function CreateCollectionModal({ isOpen, onClose, onSuccess }: Props) {
+export function CreateDirectoryModal({ isOpen, onClose, onSuccess }: Props) {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [isPrivate, setIsPrivate] = useState(false);
@@ -30,7 +30,7 @@ export function CreateCollectionModal({ isOpen, onClose, onSuccess }: Props) {
 
     setIsLoading(true);
     try {
-      await api.collections.create({ name, description, is_private: isPrivate });
+      await api.directories.create({ name, description, is_private: isPrivate });
       toast.success("Colección creada");
       setName("");
       setDescription("");

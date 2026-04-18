@@ -1,12 +1,12 @@
 import { useState, useEffect, useCallback } from "react";
 import { api } from "@/src/services/api";
-import { SavedPrompt, Collection } from "@/src/types/models";
+import { SavedPrompt, Directory } from "@/src/types/models";
 import { handleError } from "@/src/utils/errors/ErrorHandler";
 import { toast } from "react-hot-toast";
 
 export function useStudio() {
   const [prompts, setPrompts] = useState<SavedPrompt[]>([]);
-  const [collections, setCollections] = useState<Collection[]>([]);
+  const [directories, setDirectorys] = useState<Directory[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -16,20 +16,20 @@ export function useStudio() {
     setIsLoading(true);
     setError(null);
     try {
-      const [promptsRes, collectionsRes] = await Promise.all([
+      const [promptsRes, directorysRes] = await Promise.all([
         api.getMyPrompt(),
-        api.collections.getMyCollections(),
+        api.directories.getMyDirectorys(),
       ]);
 
-      console.log("📦 [DEBUG] Respuesta cruda de Colecciones:", collectionsRes);
+      console.log("📦 [DEBUG] Respuesta cruda de Colecciones:", directorysRes);
 
       setPrompts(promptsRes);
 
-      const collection = Array.isArray(collectionsRes)
-        ? collectionsRes
-        : collectionsRes?.collections || [];
+      const directory = Array.isArray(directorysRes)
+        ? directorysRes
+        : directorysRes?.directories || [];
 
-      setCollections(collection);
+      setDirectorys(directory);
     } catch (err: unknown) {
       const msg = handleError(err, "useStudio");
       setError(msg);
@@ -38,11 +38,11 @@ export function useStudio() {
     }
   }, []);
 
-  const assignToCollection = async (promptId: number, collectionId: number | null) => {
+  const assignToDirectory = async (promptId: number, directoryId: number | null) => {
     try {
-      await api.collections.assignPrompt(promptId, collectionId);
+      await api.directories.assignPrompt(promptId, directoryId);
       setPrompts((prev) =>
-        prev.map((p) => (p.id === promptId ? { ...p, collection_id: collectionId } : p)),
+        prev.map((p) => (p.id === promptId ? { ...p, directory_id: directoryId } : p)),
       );
       toast.success("Imagen movida correctamente");
     } catch (error) {
@@ -84,11 +84,11 @@ export function useStudio() {
 
   return {
     prompts,
-    collections,
+    directories,
     isLoading,
     error,
     refetch: fetchPrompts,
-    assignToCollection,
+    assignToDirectory,
     deletePrompt,
     isDeletingBatch,
     deletePromptsBatch,

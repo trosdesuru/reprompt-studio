@@ -5,18 +5,18 @@ import Link from "next/link";
 import { IconFolder, IconPhotoOff } from "@tabler/icons-react";
 
 import { PromptCard } from "@/src/system/organisms/Studio/PromptCard";
-import { usePublicCollection } from "@/src/features/studio/hooks/usePublicCollection";
+import { usePublicDirectory } from "@/src/features/studio/hooks/usePublicCollection";
 import { FadeIn } from "@/src/system/atoms/FadeIn";
 import { Breadcrumbs } from "@/src/system/organisms/Navigation/Breadcrumbs";
 import { useAuthStore } from "@/src/store/authStore";
 
-export default function PublicCollectionPage({
+export default function PublicDirectoryPage({
   params,
 }: {
-  params: Promise<{ lang: string; username: string; collection_slug: string }>;
+  params: Promise<{ lang: string; username: string; directory_slug: string }>;
 }) {
-  const { lang, username, collection_slug } = use(params);
-  const { data, isLoading, error } = usePublicCollection(username, collection_slug);
+  const { lang, username, directory_slug } = use(params);
+  const { data, isLoading, error } = usePublicDirectory(username, directory_slug);
 
   const user = useAuthStore((state) => state.user);
   const [isMounted, setIsMounted] = useState(false);
@@ -50,8 +50,8 @@ export default function PublicCollectionPage({
   }
 
   const breadcrumbItems = isOwner
-    ? [{ label: "Mi Studio", href: `/${lang}/studio` }, { label: data.collection.name }]
-    : [{ label: `@${username}`, href: `/${lang}/${username}` }, { label: data.collection.name }];
+    ? [{ label: "Mi Studio", href: `/${lang}/studio` }, { label: data.directory.name }]
+    : [{ label: `@${username}`, href: `/${lang}/${username}` }, { label: data.directory.name }];
 
   return (
     <FadeIn duration={0.8}>
@@ -65,11 +65,11 @@ export default function PublicCollectionPage({
             <div className="flex items-center gap-3">
               <IconFolder size={32} className="text-(--accent-color)" />
               <h1 className="text-3xl md:text-4xl font-black tracking-tighter uppercase">
-                {data.collection.name}
+                {data.directory.name}
               </h1>
             </div>
-            {data.collection.description && (
-              <p className="text-muted-foreground font-mono mt-2">{data.collection.description}</p>
+            {data.directory.description && (
+              <p className="text-muted-foreground font-mono mt-2">{data.directory.description}</p>
             )}
           </header>
 

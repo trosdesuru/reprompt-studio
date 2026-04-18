@@ -28,14 +28,14 @@ export interface FeedItem {
   user_id: string;
   raw_id: string;
   slug?: string;
-  type: "prompt" | "collection" | "studio";
+  type: "prompt" | "directory" | "studio";
   title: string;
   username: string;
   image_url?: string;
   items_count: number;
 }
 
-export interface Collection {
+export interface Directory {
   id: number;
   user_id: string;
   name: string;
@@ -55,6 +55,6 @@ export interface SavedPrompt {
   sampler?: string;
   image_url?: string;
   software?: string;
-  collection_id?: number | null;
+  directory_id?: number | null;
   created_at: string;
 }

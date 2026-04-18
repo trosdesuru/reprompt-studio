@@ -1,6 +1,6 @@
 # backend/app/services/analytics.py
 import logging
-from collections import Counter
+from directories import Counter
 
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC

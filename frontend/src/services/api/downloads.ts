@@ -3,8 +3,8 @@ import { ENV } from "@/src/services/config/env";
 
 const API_URL = ENV.API_URL;
 export const downloadApi = {
-  solicitarZipColeccion: (collectionId: string) =>
-    fetchSeguro(`${API_URL}/download/collection/${encodeURIComponent(collectionId)}`, {
+  solicitarZipColeccion: (directoryId: string) =>
+    fetchSeguro(`${API_URL}/download/directory/${encodeURIComponent(directoryId)}`, {
       method: "POST",
     }),
 

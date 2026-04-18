@@ -4,7 +4,7 @@ import { SavedPrompt } from "@/src/types/models";
 
 interface ProfileData {
   user: { username: string; role: string };
-  collections: any[];
+  directories: any[];
   recent_prompts: SavedPrompt[];
 }
 

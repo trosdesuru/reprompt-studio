@@ -2,8 +2,8 @@ import { useState, useEffect } from "react";
 import { api } from "@/src/services/api";
 import { SavedPrompt } from "@/src/types/models";
 
-interface CollectionDetail {
-  collection: {
+interface DirectoryDetail {
+  directory: {
     id: number;
     name: string;
     description: string;
@@ -13,23 +13,23 @@ interface CollectionDetail {
   prompts: SavedPrompt[];
 }
 
-export function usePublicCollection(username: string, collection_slug: string) {
-  const [data, setData] = useState<CollectionDetail | null>(null);
+export function usePublicDirectory(username: string, directory_slug: string) {
+  const [data, setData] = useState<DirectoryDetail | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     setIsLoading(true);
     api.public
-      .getCollection(username, collection_slug)
+      .getDirectory(username, directory_slug)
       .then((res) => setData(res))
       .catch((err) => {
-        console.error("Error fetching collection:", err);
+        console.error("Error fetching directory:", err);
         setError("Colección no encontrada, eliminada o privada.");
         setData(null);
       })
       .finally(() => setIsLoading(false));
-  }, [username, collection_slug]);
+  }, [username, directory_slug]);
 
   return { data, isLoading, error };
 }
