@@ -12,12 +12,13 @@ from app.services.embedding_service import EmbeddingService
 
 router = APIRouter()
 
+
 @router.get("/studio")
 def buscar_en_studio(
     q: str = Query(..., description="Texto a buscar semánticamente"),
     limit: int = 20,
     current_user: User = Depends(get_current_user),
-    session: Session = Depends(get_session)
+    session: Session = Depends(get_session),
 ):
     """
     🔍 Buscador Semántico Local (Studio):
@@ -38,11 +39,10 @@ def buscar_en_studio(
         .order_by(ImagePrompt.embedding.cosine_distance(query_vector))
         .limit(limit)
     )
-    
+
     resultados = session.exec(statement).all()
 
-    return {
-        "status": "success",
-        "query": q,
-        "results": resultados
-    }
+    for r in resultados:
+        r.embedding = []
+
+    return {"status": "success", "query": q, "results": resultados}

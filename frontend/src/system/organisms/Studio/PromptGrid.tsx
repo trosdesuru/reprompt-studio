@@ -60,14 +60,32 @@ export default function PromptGrid() {
               key={p.id}
               className="aspect-square bg-secondary rounded-lg overflow-hidden border group relative"
             >
-              <img src={p.url} className="w-full h-full object-cover" alt={p.prompt} />
+              {/* 🛡️ DEFENSA: Usamos image_url y proveemos un estado de error elegante */}
+              {p.image_url ? (
+                <img
+                  src={p.image_url}
+                  className="w-full h-full object-cover"
+                  alt={p.prompt || "Prompt sin título"}
+                />
+              ) : (
+                <div className="w-full h-full flex flex-col items-center justify-center bg-muted/20 text-muted-foreground/50">
+                  <IconPhotoOff size={32} stroke={1.5} />
+                  <span className="text-[10px] uppercase tracking-widest mt-2 font-mono">
+                    Sin Media
+                  </span>
+                </div>
+              )}
+
               <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity p-3 flex flex-col justify-end">
-                <p className="text-[10px] text-white line-clamp-2">{p.prompt}</p>
+                <p className="text-[10px] text-white line-clamp-2 font-mono">
+                  {p.prompt || "Sin descripción"}
+                </p>
               </div>
             </div>
           ))}
         </div>
       ) : (
+        /* 🛡️ ESTADO DE VACÍO RESTAURADO */
         <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground/50">
           <IconPhotoOff size={48} stroke={1.5} className="mb-4" />
           <p className="text-sm font-mono uppercase tracking-widest">No se encontraron prompts</p>

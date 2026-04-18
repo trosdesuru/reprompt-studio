@@ -92,6 +92,8 @@ async def upload_to_studio(
     session.commit()
     session.refresh(nuevo_prompt)
 
+    nuevo_prompt.embedding = []
+
     return {"status": "success", "data": nuevo_prompt}
 
 
@@ -101,17 +103,24 @@ def obtener_prompts_studio(
     current_user: User = Depends(get_current_user),
     session: Session = Depends(get_session),
 ):
-    """Obtiene las imágenes de una carpeta específica para el PromptGrid."""
+    """Obtiene las imágenes para el PromptGrid."""
+    # Empezamos con todas las imágenes del usuario
     statement = select(ImagePrompt).where(ImagePrompt.user_id == current_user.id)
 
+    # Si nos pasan un ID específico, filtramos. Si no (root), dejamos que devuelva TODO.
     if directory_id and directory_id != "null":
         statement = statement.where(ImagePrompt.directory_id == uuid.UUID(directory_id))
-    else:
-        # Si no hay ID, devolvemos solo las de la raíz
-        statement = statement.where(ImagePrompt.directory_id == None)
+        # ⚠️ RETO FUTURO: Aquí es donde en el futuro (Fase 6) tendrías que hacer una CTE
+        # recursiva en SQL para traer también las subcarpetas. Por ahora, traerá
+        # solo las de esta carpeta exacta.
+        statement = statement.where(ImagePrompt.directory_id == uuid.UUID(directory_id))
 
     statement = statement.order_by(ImagePrompt.created_at.desc())
     resultados = session.exec(statement).all()
+
+    # Limpiar vectores (lo que ya hicimos)
+    for prompt in resultados:
+        prompt.embedding = []
 
     return {"status": "success", "data": resultados}
 
@@ -219,6 +228,8 @@ def guardar_prompt(
         session.commit()
         session.refresh(nuevo_prompt)
 
+        nuevo_prompt.embedding = []
+
         return {
             "status": "success",
             "message": "Imagen guardada con éxito",
@@ -240,6 +251,10 @@ def obtener_mis_prompts(
         .order_by(ImagePrompt.created_at.desc())
     )
     resultados = session.exec(statement).all()
+
+    for prompt in resultados:
+        prompt.embedding = []
+
     return resultados
 
 
