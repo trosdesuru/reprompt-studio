@@ -30,9 +30,9 @@ class PresignedUrlRequest(BaseModel):
     content_type: str
 
 
-# ==========================================
+# ==============================================
 # RUTAS DE EXTRACCIÓN Y STUDIO (NUEVAS - FASE 5)
-# ==========================================
+# ==============================================
 
 
 @router.post("/upload-studio")
@@ -116,9 +116,9 @@ def obtener_prompts_studio(
     return {"status": "success", "data": resultados}
 
 
-# ==========================================
+# ===============================================================
 # RUTAS ESTÁTICAS (SISTEMA DE PRE-FIRMADO ANTIGUO/COMPLEMENTARIO)
-# ==========================================
+# ===============================================================
 
 
 @router.post(
@@ -135,13 +135,15 @@ def get_upload_url(
     safe_filename = f"{uuid.uuid4().hex}.{file_extension}"
     s3_key = f"temp/{current_user.id}/{safe_filename}"
 
+    content_type = data.content_type if data.content_type else "image/png"
+
     try:
         presigned_url = s3_client.generate_presigned_url(
             "put_object",
             Params={
                 "Bucket": settings.R2_BUCKET_NAME,
                 "Key": s3_key,
-                "ContentType": f"image/{'jpeg' if file_extension == 'jpg' else file_extension}",
+                "ContentType": content_type,
             },
             ExpiresIn=300,
         )

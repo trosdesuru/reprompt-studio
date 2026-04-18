@@ -1,6 +1,7 @@
 # backend/app/services/storage.py
 import boto3
 import logging
+from botocore.config import Config
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
@@ -12,6 +13,7 @@ s3_client = boto3.client(
     aws_access_key_id=settings.R2_ACCESS_KEY,
     aws_secret_access_key=settings.R2_SECRET_KEY,
     region_name="auto",
+    config=Config(signature_version="s3v4", s3={"addressing_style": "path"}),
 )
 
 

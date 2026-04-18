@@ -9,7 +9,7 @@ export interface Directory {
   parent_id: string | null;
 }
 
-interface StudioUIState {
+export interface StudioUIState {
   directories: Directory[];
   activeDirectoryId: string | null;
   searchQuery: string;

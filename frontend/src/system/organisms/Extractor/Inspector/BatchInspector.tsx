@@ -6,6 +6,7 @@ import { IconTrash, IconDeviceFloppy, IconAlertTriangle, IconX } from "@tabler/i
 import { api } from "@/src/services/api";
 import { handleError } from "@/src/utils/errors/ErrorHandler";
 import { useNotificationStore } from "@/src/store/notificationStore";
+import { fetchSeguro } from "@/src/services/api/client";
 
 interface Props {
   batch: BatchItem[];
@@ -41,9 +42,8 @@ export function BatchInspector({
         const blob = await response.blob();
 
         const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-        const ticketRes = await fetch(`${API_URL}/prompts/generate-upload-url`, {
+        const ticketRes = await fetchSeguro(`${API_URL}/prompts/generate-upload-url`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
           credentials: "include",
           body: JSON.stringify({
             file_name: item.file.name,
@@ -56,14 +56,39 @@ export function BatchInspector({
         // ✅ MINA 3 DESACTIVADA: Parseamos el JSON plano
         const ticketData = await ticketRes.json();
 
-        // Subida directa a Cloudflare
-        const uploadRes = await fetch(ticketData.upload_url, {
-          method: "PUT",
-          headers: { "Content-Type": blob.type },
-          body: blob,
-        });
+        const uploadUrl = ticketData.upload_url;
+        const contentType = blob.type;
+        const fileSize = blob.size;
 
-        if (!uploadRes.ok) throw new Error("Fallo la subida física a Cloudflare R2");
+        // --- 🕵️‍♂️ LOGS DE DIAGNÓSTICO QUIRÚRGICO ANTES DEL FETCH ---
+        const fetchOptions = {
+          method: "PUT",
+          headers: { "Content-Type": contentType },
+          body: blob,
+        };
+
+        console.log("🔴 === PRE-FLIGHT CHECK (R2 UPLOAD) ===");
+        console.log("👉 Archivo:", item.file.name);
+        console.log("👉 Origen del Navegador:", window.location.origin);
+        console.log("👉 URL Destino (Ticket):", uploadUrl);
+        console.log("👉 Objeto Blob - Type:", contentType, "| Size:", fileSize, "bytes");
+        console.log("👉 Headers exactos a enviar:", fetchOptions.headers);
+        console.log("🔴 ===================================");
+
+        // Subida directa a Cloudflare
+        const uploadRes = await fetch(uploadUrl, fetchOptions);
+
+        // --- 🕵️‍♂️ LOGS DE RESPUESTA DE CLOUDFLARE ---
+        console.log("🟢 === RESPUESTA DE R2 ===");
+        console.log("Status:", uploadRes.status, uploadRes.statusText);
+        console.log("Headers recibidos:", Object.fromEntries(uploadRes.headers.entries()));
+
+        if (!uploadRes.ok) {
+          const errorText = await uploadRes.text();
+          console.error("❌ ERROR RAW DE R2 (XML):", errorText);
+          throw new Error("Fallo la subida física a Cloudflare R2");
+        }
+        console.log("🟢 =======================");
 
         // ✅ MINA 4 DESACTIVADA: Ahora el backend sí nos entrega file_url
         finalImageUrl = ticketData.file_url;
@@ -87,6 +112,8 @@ export function BatchInspector({
         },
       };
 
+      console.log("👉 Payload a guardar en DB:", payload);
+
       await api.savePrompt(payload);
       onUpdateStatus(item.id, "success");
 
@@ -108,6 +135,7 @@ export function BatchInspector({
     setIsGlobalLoading(false);
   };
 
+  // ... EL RESTO DEL CÓDIGO (RETURN, HTML, JSX) SIGUE EXACTAMENTE IGUAL ...
   return (
     <div className="space-y-6 animate-fade-in">
       {/* FEEDBACK DE ARCHIVOS DESCARTADOS INTACTO AQUÍ */}
