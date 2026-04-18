@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from app.core.redis_config import conn
 from app.core.db import get_session
-from app.models.collection import Collection
+from app.models.directory import Directory
 from app.models.prompt import ImagePrompt
 from app.services.downloader import generar_zip_coleccion, ejecutar_descarga_individual
 from app.api.deps import get_current_user
@@ -35,8 +35,8 @@ def descargar_una_imagen(
             status_code=404, detail="Imagen no encontrada en la base de datos."
         )
 
-    if prompt.collection_id:
-        col = session.get(Collection, prompt.collection_id)
+    if prompt.directory_id:
+        col = session.get(Directory, prompt.directory_id)
         if col and col.is_private and col.user_id != current_user.id:
             raise HTTPException(
                 status_code=403, detail="No tienes permiso. Esta imagen es privada."
@@ -51,15 +51,15 @@ def descargar_una_imagen(
         )
 
 
-@router.post("/collection/{collection_id}")
+@router.post("/directory/{directory_id}")
 def descargar_coleccion_completa(
-    collection_id: uuid.UUID,
+    directory_id: uuid.UUID,
     current_user: User = Depends(get_current_user),
     session: Session = Depends(get_session),
 ):
     """Delega la generación masiva del ZIP al Worker de Redis para no congelar la API."""
 
-    col = session.get(Collection, collection_id)
+    col = session.get(Directory, directory_id)
     if not col:
         raise HTTPException(status_code=404, detail="Colección no encontrada")
 
@@ -68,7 +68,7 @@ def descargar_coleccion_completa(
 
     cantidad_imagenes = session.exec(
         select(func.count(ImagePrompt.id)).where(
-            ImagePrompt.collection_id == collection_id
+            ImagePrompt.directory_id == directory_id
         )
     ).one()
 
@@ -84,7 +84,7 @@ def descargar_coleccion_completa(
         if current_user.role == UserRole.ARTIST:
             job = downloads_queue_premium.enqueue(
                 generar_zip_coleccion,
-                str(collection_id),
+                str(directory_id),
                 current_user.email,
                 job_timeout="1h",
             )
@@ -92,7 +92,7 @@ def descargar_coleccion_completa(
         else:
             job = downloads_queue_free.enqueue(
                 generar_zip_coleccion,
-                str(collection_id),
+                str(directory_id),
                 current_user.email,
                 job_timeout="1h",
             )

@@ -1,4 +1,3 @@
-# app/api/routes_public.py
 import uuid
 from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session, select, or_, func

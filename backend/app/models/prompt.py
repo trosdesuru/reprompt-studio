@@ -22,10 +22,6 @@ class ImagePrompt(SQLModel, table=True):
         default=None, foreign_key="directory.id", index=True
     )
 
-    collection_id: Optional[uuid.UUID] = Field(
-        default=None, foreign_key="collection.id"
-    )
-
     title: str
     prompt: str = Field(sa_column=Column(Text))
     negative_prompt: Optional[str] = Field(default=None, sa_column=Column(Text))

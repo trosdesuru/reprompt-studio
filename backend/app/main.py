@@ -9,7 +9,6 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.init_db import init_db
 
-# 🟢 IMPORTACIÓN DE RUTAS
 from app.api.routes_auth import router as auth_router
 from app.api.routes_admin import router as admin_router
 from app.api.routes_public import router as public_router

@@ -2,7 +2,7 @@ from unittest.mock import patch
 from fastapi.testclient import TestClient
 from sqlmodel import Session
 from app.models.user import User
-from app.models.collection import Collection
+from app.models.directory import Directory
 from app.models.prompt import ImagePrompt
 from app.core.config import settings
 
@@ -60,11 +60,11 @@ def test_malicious_file_upload_magic_bytes(client: TestClient, normal_user: User
 # =====================================================================
 # 🛡️ 3. AUTORIZACIÓN ROTA (BOLA / IDOR)
 # =====================================================================
-def test_bola_private_collection_theft(
+def test_bola_private_directory_theft(
     client: TestClient, session: Session, admin_user: User, normal_user: User
 ):
     """Test Defensivo: 'Voyager' intenta descargar la colección oculta del 'Admin'"""
-    private_col = Collection(
+    private_col = Directory(
         user_id=admin_user.id,
         name="Secretos de Estado",
         slug="secretos",
@@ -79,7 +79,7 @@ def test_bola_private_collection_theft(
     )
     client.cookies = login_res.cookies
 
-    response = client.post(f"/api/download/collection/{private_col.id}")
+    response = client.post(f"/api/download/directory/{private_col.id}")
 
     assert response.status_code == 403
     assert "privada" in response.json().get("detail", "").lower()
@@ -95,7 +95,7 @@ def test_voyager_plan_limit_exploitation(
     Test Defensivo: El plan Voyager permite descargar máx 50 imágenes.
     Verificamos que el sistema protege el modelo de negocio.
     """
-    public_col = Collection(
+    public_col = Directory(
         user_id=normal_user.id, name="Masiva", slug="masiva", is_private=False
     )
     session.add(public_col)
@@ -106,7 +106,7 @@ def test_voyager_plan_limit_exploitation(
     fake_prompts = [
         ImagePrompt(
             user_id=normal_user.id,
-            collection_id=public_col.id,
+            directory_id=public_col.id,
             title=f"Imagen {i}",
             prompt="test",
         )
@@ -122,7 +122,7 @@ def test_voyager_plan_limit_exploitation(
     client.cookies = login_res.cookies
 
     # Intentamos descargar la colección
-    response = client.post(f"/api/download/collection/{public_col.id}")
+    response = client.post(f"/api/download/directory/{public_col.id}")
 
     assert response.status_code == 403
     assert "máximo de 50 imágenes" in response.json().get("detail", "").lower()
