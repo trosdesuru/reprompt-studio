@@ -6,7 +6,7 @@ export function PageLoader({ text = "Procesando petición..." }: PageLoaderProps
   return (
     <div className="min-h-[60vh] flex items-center justify-center w-full bg-background">
       <p
-        className="font-mono text-sm uppercase tracking-widest
+        className="font-mono text-sm tracking-widest
                    bg-gradient-to-r from-zinc-600/40 via-zinc-100 to-zinc-600/40
                    bg-[length:250%_auto]
                    bg-clip-text text-transparent

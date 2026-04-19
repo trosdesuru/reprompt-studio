@@ -16,7 +16,6 @@ Directory structure:
     │   │   ├── deps.py
     │   │   ├── routes_admin.py
     │   │   ├── routes_auth.py
-    │   │   ├── routes_collections.py
     │   │   ├── routes_directories.py
     │   │   ├── routes_download.py
     │   │   ├── routes_prompt.py
@@ -30,7 +29,6 @@ Directory structure:
     │   │   ├── security.py
     │   │   └── webdriver_mgr.py
     │   ├── models/
-    │   │   ├── collection.py
     │   │   ├── directory.py
     │   │   ├── gallery.py
     │   │   ├── prompt.py
@@ -527,7 +525,6 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.init_db import init_db
 
-# 🟢 IMPORTACIÓN DE RUTAS
 from app.api.routes_auth import router as auth_router
 from app.api.routes_admin import router as admin_router
 from app.api.routes_public import router as public_router
@@ -818,7 +815,7 @@ from app.core.redis_config import conn as redis_client
 from app.services.audit_service import AuditService
 from app.core.security import get_password_hash
 from app.models.user import AuditLog
-from app.models.collection import Collection
+from app.models.directory import Directory
 from app.models.gallery import GalleryMetric
 from app.services.storage import s3_client
 from app.models.prompt import ImagePrompt
@@ -1118,7 +1115,7 @@ def delete_user_completely(
         session.exec(delete(ImagePrompt).where(ImagePrompt.user_id == target_user.id))
 
         # Borramos las colecciones
-        session.exec(delete(Collection).where(Collection.user_id == target_user.id))
+        session.exec(delete(Directory).where(Directory.user_id == target_user.id))
 
         # Finalmente, ejecutamos al usuario
         session.delete(target_user)
@@ -1625,134 +1622,6 @@ def revoke_all_sessions(current_admin: User = Depends(get_current_admin)):
 
 
 ================================================
-FILE: app/api/routes_collections.py
-================================================
-import uuid
-import re
-import unicodedata
-from typing import Optional
-from pydantic import BaseModel
-from fastapi import APIRouter, Depends, HTTPException
-from sqlmodel import Session, select
-from app.core.db import get_session
-from app.api.deps import get_current_user
-from app.models.user import User
-from app.models.collection import Collection
-from app.models.prompt import ImagePrompt
-
-router = APIRouter()
-
-
-class CollectionCreate(BaseModel):
-    name: str
-    description: Optional[str] = None
-    is_private: bool = False
-
-
-class AssignPrompt(BaseModel):
-    collection_id: Optional[uuid.UUID]
-
-
-def create_unique_slug(name: str, user_id: int, session: Session) -> str:
-    """Genera un slug seguro, quitando tildes y añadiendo número si hay colisión."""
-    name_normalized = (
-        unicodedata.normalize("NFKD", name).encode("ASCII", "ignore").decode("utf-8")
-    )
-
-    # 2. Limpiar caracteres raros y espacios por guiones
-    base_slug = (
-        re.sub(r"[^a-z0-9]+", "-", name_normalized.lower()).strip("-") or "coleccion"
-    )
-
-    slug = base_slug
-    counter = 1
-
-    # 3. Evitar colisiones (si ya tienes otra que se llame igual)
-    while session.exec(
-        select(Collection).where(Collection.user_id == user_id, Collection.slug == slug)
-    ).first():
-        slug = f"{base_slug}-{counter}"
-        counter += 1
-
-    return slug
-
-
-@router.post("/")
-def create_collection(
-    data: CollectionCreate,
-    current_user: User = Depends(get_current_user),
-    session: Session = Depends(get_session),
-):
-    slug = create_unique_slug(data.name, current_user.id, session)
-
-    nueva_coleccion = Collection(
-        user_id=current_user.id,
-        name=data.name,
-        slug=slug,
-        description=data.description,
-        is_private=data.is_private,
-    )
-
-    session.add(nueva_coleccion)
-    session.commit()
-    session.refresh(nueva_coleccion)
-
-    return {
-        "status": "success",
-        "message": "Colección creada",
-        "collection": nueva_coleccion,
-    }
-
-
-@router.get("/")
-def get_my_collections(
-    current_user: User = Depends(get_current_user),
-    session: Session = Depends(get_session),
-):
-    statement = (
-        select(Collection)
-        .where(Collection.user_id == current_user.id)
-        .order_by(Collection.created_at.desc())
-    )
-    colecciones = session.exec(statement).all()
-    return {"status": "success", "collections": colecciones}
-
-
-@router.put("/assign/{prompt_id}")
-def assign_prompt_to_collection(
-    prompt_id: uuid.UUID,
-    data: AssignPrompt,
-    current_user: User = Depends(get_current_user),
-    session: Session = Depends(get_session),
-):
-    prompt = session.exec(
-        select(ImagePrompt).where(
-            ImagePrompt.id == prompt_id, ImagePrompt.user_id == current_user.id
-        )
-    ).first()
-    if not prompt:
-        raise HTTPException(status_code=404, detail="Prompt no encontrado")
-
-    # Validamos que la colección sea suya si no es None
-    if data.collection_id:
-        col = session.exec(
-            select(Collection).where(
-                Collection.id == data.collection_id,
-                Collection.user_id == current_user.id,
-            )
-        ).first()
-        if not col:
-            raise HTTPException(status_code=404, detail="Colección no encontrada")
-
-    prompt.collection_id = data.collection_id
-    session.add(prompt)
-    session.commit()
-
-    return {"status": "success", "message": "Imagen movida correctamente"}
-
-
-
-================================================
 FILE: app/api/routes_directories.py
 ================================================
 import uuid
@@ -1921,7 +1790,7 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from app.core.redis_config import conn
 from app.core.db import get_session
-from app.models.collection import Collection
+from app.models.directory import Directory
 from app.models.prompt import ImagePrompt
 from app.services.downloader import generar_zip_coleccion, ejecutar_descarga_individual
 from app.api.deps import get_current_user
@@ -1949,8 +1818,8 @@ def descargar_una_imagen(
             status_code=404, detail="Imagen no encontrada en la base de datos."
         )
 
-    if prompt.collection_id:
-        col = session.get(Collection, prompt.collection_id)
+    if prompt.directory_id:
+        col = session.get(Directory, prompt.directory_id)
         if col and col.is_private and col.user_id != current_user.id:
             raise HTTPException(
                 status_code=403, detail="No tienes permiso. Esta imagen es privada."
@@ -1965,15 +1834,15 @@ def descargar_una_imagen(
         )
 
 
-@router.post("/collection/{collection_id}")
+@router.post("/directory/{directory_id}")
 def descargar_coleccion_completa(
-    collection_id: uuid.UUID,
+    directory_id: uuid.UUID,
     current_user: User = Depends(get_current_user),
     session: Session = Depends(get_session),
 ):
     """Delega la generación masiva del ZIP al Worker de Redis para no congelar la API."""
 
-    col = session.get(Collection, collection_id)
+    col = session.get(Directory, directory_id)
     if not col:
         raise HTTPException(status_code=404, detail="Colección no encontrada")
 
@@ -1982,7 +1851,7 @@ def descargar_coleccion_completa(
 
     cantidad_imagenes = session.exec(
         select(func.count(ImagePrompt.id)).where(
-            ImagePrompt.collection_id == collection_id
+            ImagePrompt.directory_id == directory_id
         )
     ).one()
 
@@ -1998,7 +1867,7 @@ def descargar_coleccion_completa(
         if current_user.role == UserRole.ARTIST:
             job = downloads_queue_premium.enqueue(
                 generar_zip_coleccion,
-                str(collection_id),
+                str(directory_id),
                 current_user.email,
                 job_timeout="1h",
             )
@@ -2006,7 +1875,7 @@ def descargar_coleccion_completa(
         else:
             job = downloads_queue_free.enqueue(
                 generar_zip_coleccion,
-                str(collection_id),
+                str(directory_id),
                 current_user.email,
                 job_timeout="1h",
             )
@@ -2387,7 +2256,6 @@ def eliminar_prompts_lote(
 ================================================
 FILE: app/api/routes_public.py
 ================================================
-# app/api/routes_public.py
 import uuid
 from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session, select, or_, func
@@ -2932,43 +2800,6 @@ def navegador_seguro():
 
 
 ================================================
-FILE: app/models/collection.py
-================================================
-import uuid
-from typing import Optional
-from sqlmodel import Field, SQLModel
-from sqlalchemy import UniqueConstraint
-from datetime import datetime, timezone
-
-
-class Collection(SQLModel, table=True):
-    """Agrupación lógica de ImagePrompts (Galerías del usuario)"""
-
-    # Pero dos usuarios diferentes SÍ pueden tener la colección "cyberpunk".
-    __table_args__ = (
-        UniqueConstraint("user_id", "slug", name="unique_user_collection_slug"),
-    )
-
-    id: uuid.UUID = Field(
-        default_factory=uuid.uuid4,
-        primary_key=True,
-        index=True,
-        nullable=False,
-    )
-    user_id: uuid.UUID = Field(foreign_key="user.id", index=True)
-
-    name: str = Field(nullable=False)
-    slug: str = Field(index=True, nullable=False)
-    description: Optional[str] = Field(default=None)
-
-    is_private: bool = Field(default=False)
-    share_token: Optional[str] = Field(default=None, index=True, unique=True)
-
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-
-
-
-================================================
 FILE: app/models/directory.py
 ================================================
 import uuid
@@ -3056,10 +2887,6 @@ class ImagePrompt(SQLModel, table=True):
 
     directory_id: Optional[uuid.UUID] = Field(
         default=None, foreign_key="directory.id", index=True
-    )
-
-    collection_id: Optional[uuid.UUID] = Field(
-        default=None, foreign_key="collection.id"
     )
 
     title: str
@@ -3183,7 +3010,7 @@ class PromptResponse(PromptCreate):
     id: uuid.UUID
     user_id: uuid.UUID
     prompt: str = Field(..., max_length=20000)
-    collection_id: Optional[int] = None
+    directory_id: Optional[int] = None
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
@@ -3964,7 +3791,7 @@ from selenium.webdriver.support import expected_conditions as EC
 from app.core.db import engine
 from app.core.config import settings
 from app.models.prompt import ImagePrompt
-from app.models.collection import Collection
+from app.models.directory import Directory
 from app.services.security import http_session
 
 # Importamos nuestras utilidades limpias
@@ -3973,7 +3800,7 @@ from app.utils.storage import guardar_archivo
 logger = logging.getLogger("downloader")
 
 
-def generar_zip_coleccion(collection_id: str, user_email: str):
+def generar_zip_coleccion(directory_id: str, user_email: str):
     """
     Tarea asíncrona para RQ. Empaqueta una colección entera en un ZIP
     usando buffers de memoria y la sube de vuelta a R2 como un enlace temporal.
@@ -3987,12 +3814,12 @@ def generar_zip_coleccion(collection_id: str, user_email: str):
     )
 
     with Session(engine) as session:
-        coleccion = session.get(Collection, collection_id)
+        coleccion = session.get(Directory, directory_id)
         if not coleccion:
             return
 
         prompts = session.exec(
-            select(ImagePrompt).where(ImagePrompt.collection_id == collection_id)
+            select(ImagePrompt).where(ImagePrompt.directory_id == directory_id)
         ).all()
 
     # Buffer en memoria para no usar el disco SSD del servidor
@@ -4035,7 +3862,7 @@ def generar_zip_coleccion(collection_id: str, user_email: str):
     zip_buffer.seek(0)
 
     # 6. Subir el ZIP temporal a R2
-    zip_key = f"temp/downloads/{collection_id}.zip"
+    zip_key = f"temp/downloads/{directory_id}.zip"
     s3_client.upload_fileobj(
         zip_buffer,
         settings.R2_BUCKET_NAME,
@@ -4933,7 +4760,7 @@ from unittest.mock import patch
 from fastapi.testclient import TestClient
 from sqlmodel import Session
 from app.models.user import User
-from app.models.collection import Collection
+from app.models.directory import Directory
 from app.models.prompt import ImagePrompt
 from app.core.config import settings
 
@@ -4991,11 +4818,11 @@ def test_malicious_file_upload_magic_bytes(client: TestClient, normal_user: User
 # =====================================================================
 # 🛡️ 3. AUTORIZACIÓN ROTA (BOLA / IDOR)
 # =====================================================================
-def test_bola_private_collection_theft(
+def test_bola_private_directory_theft(
     client: TestClient, session: Session, admin_user: User, normal_user: User
 ):
     """Test Defensivo: 'Voyager' intenta descargar la colección oculta del 'Admin'"""
-    private_col = Collection(
+    private_col = Directory(
         user_id=admin_user.id,
         name="Secretos de Estado",
         slug="secretos",
@@ -5010,7 +4837,7 @@ def test_bola_private_collection_theft(
     )
     client.cookies = login_res.cookies
 
-    response = client.post(f"/api/download/collection/{private_col.id}")
+    response = client.post(f"/api/download/directory/{private_col.id}")
 
     assert response.status_code == 403
     assert "privada" in response.json().get("detail", "").lower()
@@ -5026,18 +4853,16 @@ def test_voyager_plan_limit_exploitation(
     Test Defensivo: El plan Voyager permite descargar máx 50 imágenes.
     Verificamos que el sistema protege el modelo de negocio.
     """
-    public_col = Collection(
+    public_col = Directory(
         user_id=normal_user.id, name="Masiva", slug="masiva", is_private=False
     )
     session.add(public_col)
     session.commit()
 
-    # 🟢 FIX 3: Pragmatismo Radical. En lugar de Mockear y romper la sesión,
-    # insertamos 51 imágenes en la memoria RAM (Tarda 0.005 segundos).
     fake_prompts = [
         ImagePrompt(
             user_id=normal_user.id,
-            collection_id=public_col.id,
+            directory_id=public_col.id,
             title=f"Imagen {i}",
             prompt="test",
         )
@@ -5053,7 +4878,7 @@ def test_voyager_plan_limit_exploitation(
     client.cookies = login_res.cookies
 
     # Intentamos descargar la colección
-    response = client.post(f"/api/download/collection/{public_col.id}")
+    response = client.post(f"/api/download/directory/{public_col.id}")
 
     assert response.status_code == 403
     assert "máximo de 50 imágenes" in response.json().get("detail", "").lower()

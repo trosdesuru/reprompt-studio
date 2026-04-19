@@ -1,8 +1,9 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useStudioUI } from "@/src/store/useStudioUI";
-import { IconPhotoOff, IconLoader2 } from "@tabler/icons-react";
+import { IconPhotoOff } from "@tabler/icons-react";
 import { fetchSeguro } from "@/src/services/api/client";
+import { PageLoader } from "../../atoms/PageLoader";
 
 export default function PromptGrid() {
   const { activeDirectoryId, searchQuery } = useStudioUI();
@@ -51,7 +52,7 @@ export default function PromptGrid() {
     <div className="h-full flex flex-col">
       {loading ? (
         <div className="flex-1 flex items-center justify-center">
-          <IconLoader2 className="animate-spin text-primary" size={40} />
+          <PageLoader text="Cargando Prompts"/>
         </div>
       ) : prompts.length > 0 ? (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
@@ -60,7 +61,6 @@ export default function PromptGrid() {
               key={p.id}
               className="aspect-square bg-secondary rounded-lg overflow-hidden border group relative"
             >
-              {/* 🛡️ DEFENSA: Usamos image_url y proveemos un estado de error elegante */}
               {p.image_url ? (
                 <img
                   src={p.image_url}
@@ -85,7 +85,6 @@ export default function PromptGrid() {
           ))}
         </div>
       ) : (
-        /* 🛡️ ESTADO DE VACÍO RESTAURADO */
         <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground/50">
           <IconPhotoOff size={48} stroke={1.5} className="mb-4" />
           <p className="text-sm font-mono uppercase tracking-widest">No se encontraron prompts</p>

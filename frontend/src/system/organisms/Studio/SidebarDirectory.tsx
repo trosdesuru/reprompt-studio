@@ -20,11 +20,11 @@ interface SidebarDirectoryProps {
 
 export const SidebarDirectory = ({ directory, level = 0 }: SidebarDirectoryProps) => {
   const [isOpen, setIsOpen] = useState(false);
-  
-  const { 
-    activeDirectoryId, 
-    setActiveDirectory, 
-    getChildDirectories, 
+
+  const {
+    activeDirectoryId,
+    setActiveDirectory,
+    getChildDirectories,
     deleteDirectory,
     createDirectory,
     renameDirectory,
@@ -40,7 +40,7 @@ export const SidebarDirectory = ({ directory, level = 0 }: SidebarDirectoryProps
     isDragging,
   } = useDraggable({
     id: `dir-${directory.id}`,
-    data: { type: "directory", directory }, 
+    data: { type: "directory", directory },
   });
 
   const { setNodeRef: setDroppableRef, isOver } = useDroppable({
@@ -56,7 +56,7 @@ export const SidebarDirectory = ({ directory, level = 0 }: SidebarDirectoryProps
   const style = {
     opacity: isDragging ? 0.4 : 1,
     cursor: isDragging ? "grabbing" : "pointer",
-    paddingLeft: `${level * 12 + 8}px`,
+    paddingLeft: `${level * 12 + 12}px`,
   };
 
   const handleSelect = (e: React.MouseEvent) => {
@@ -76,47 +76,37 @@ export const SidebarDirectory = ({ directory, level = 0 }: SidebarDirectoryProps
     e.stopPropagation();
     const name = window.prompt("Nombre de la nueva subcarpeta:");
     if (!name || name.trim() === "") return;
-
     try {
       await createDirectory(name.trim(), directory.id);
-      toast.success("Subcarpeta creada con éxito");
-      setIsOpen(true); 
+      toast.success("Subcarpeta creada");
+      setIsOpen(true);
     } catch (error: any) {
-      toast.error(error.message || "Error al crear la subcarpeta");
+      toast.error("Error al crear subcarpeta");
     }
   };
 
   const handleDeleteDirectory = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    const confirm = window.confirm(
-      `¿Estás seguro de eliminar "${directory.name}"? Asegúrate de que esté vacía.`
-    );
+    const confirm = window.confirm(`¿Eliminar "${directory.name}"?`);
     if (!confirm) return;
-
     try {
       await deleteDirectory(directory.id);
       toast.success("Carpeta eliminada");
       if (isSelected) setActiveDirectory(null);
     } catch (error: any) {
-      toast.error(error.message || "No se pudo eliminar la carpeta. ¿Está vacía?");
+      toast.error("Error al eliminar");
     }
   };
 
-  // 🎯 NUEVO: Lógica de Doble Clic para Renombrar
   const handleDoubleClick = async (e: React.MouseEvent) => {
-    e.stopPropagation(); // Evitamos que el doble clic burbujee al padre
-    
-    // Abrimos el prompt con el nombre actual ya escrito
+    e.stopPropagation();
     const newName = window.prompt("Renombrar carpeta:", directory.name);
-    
-    // Si cancela, lo deja vacío, o pone exactamente el mismo nombre, no hacemos nada
     if (!newName || newName.trim() === "" || newName.trim() === directory.name) return;
-
     try {
       await renameDirectory(directory.id, newName.trim());
-      toast.success("Carpeta renombrada");
+      toast.success("Renombrada");
     } catch (error: any) {
-      toast.error("Error al renombrar la carpeta");
+      toast.error("Error al renombrar");
     }
   };
 
@@ -128,16 +118,23 @@ export const SidebarDirectory = ({ directory, level = 0 }: SidebarDirectoryProps
         {...attributes}
         {...listeners}
         onClick={handleSelect}
-        onDoubleClick={handleDoubleClick} // 🟢 Añadimos el evento de doble clic aquí
+        onDoubleClick={handleDoubleClick}
         className={`
-          group flex items-center py-1.5 px-2 mx-2 rounded-md transition-all duration-200
-          ${isSelected ? "bg-primary/10 text-primary font-bold" : "text-muted-foreground hover:text-foreground"}
-          ${isOver ? "bg-primary/10 ring-2 ring-primary border-dashed neo-border" : "hover:bg-secondary/50 border border-transparent"}
+          group font-mono flex items-center py-1.5 px-2 mx-2 rounded-md transition-all duration-200 relative
+          ${isSelected ? "bg-primary/5 text-foreground font-medium" : "text-muted-foreground hover:text-foreground"}
+          ${isOver ? "bg-primary/10 ring-2 ring-primary/30 border-dashed" : "hover:bg-secondary/40 border border-transparent"}
           ${isDragging ? "bg-background border-dashed border-primary/50" : ""}
         `}
       >
+        {isSelected && (
+          <div
+            className="absolute left-0 w-1 h-6 bg-primary rounded-r-full shadow-[0_0_8px_rgba(var(--primary-rgb),0.4)]"
+            style={{ top: "50%", transform: "translateY(-50%)" }}
+          />
+        )}
+
         <span
-          className="w-4 h-4 mr-1 flex items-center justify-center z-10 hover:bg-muted/50 rounded"
+          className="w-4 h-4 mr-1 flex items-center justify-center z-10 hover:bg-muted/50 rounded transition-colors"
           onClick={handleToggle}
         >
           {children.length > 0 &&
@@ -146,24 +143,30 @@ export const SidebarDirectory = ({ directory, level = 0 }: SidebarDirectoryProps
 
         <span className="mr-2">
           {isOpen ? (
-            <IconFolderOpen size={16} className={isSelected ? "text-primary" : "text-blue-400"} />
+            <IconFolderOpen
+              size={16}
+              className={isSelected ? "text-primary/70" : "text-foreground/40"}
+            />
           ) : (
-            <IconFolder size={16} className={isSelected ? "text-primary" : "text-blue-400"} />
+            <IconFolder
+              size={16}
+              className={isSelected ? "text-primary/70" : "text-foreground/40"}
+            />
           )}
         </span>
 
         <span className="text-sm truncate flex-1">{directory.name}</span>
 
-        <div className="opacity-0 group-hover:opacity-100 flex items-center gap-1 transition-opacity">
+        <div className="opacity-0 group-hover:opacity-100 flex items-center gap-1 transition-opacity pointer-events-auto">
           <button
-            className="p-1 hover:bg-background/80 rounded transition-colors"
+            className="p-1 hover:bg-primary/20 rounded transition-colors text-primary/70"
             title="Nueva Subcarpeta"
             onClick={handleCreateSubdirectory}
           >
             <IconFolderPlus size={14} />
           </button>
           <button
-            className="p-1 hover:bg-destructive/20 text-destructive rounded transition-colors"
+            className="p-1 hover:bg-destructive/20 hover:text-destructive/90 text-muted-foreground/40 rounded transition-colors"
             title="Eliminar"
             onClick={handleDeleteDirectory}
           >

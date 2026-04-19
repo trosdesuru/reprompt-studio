@@ -16,7 +16,7 @@ export default function StudioPage() {
     <div className="flex flex-col h-[calc(100vh-64px)] w-full bg-background p-4 md:p-6 lg:p-8 gap-4">
       <PageHeader
         title="Mi Studio"
-        description="Gestiona y organiza tus extracciones desde el directorio raíz."
+        description="Gestiona y organiza tus extracciones."
         icon={<IconAlbum size={28} stroke={1.5} />}
         breadcrumbItems={[{ label: "Mi Studio" }]}
       />

@@ -51,7 +51,7 @@ export default function GoogleCallbackPage() {
 
           router.push(`/${lang}/login?step=oauth_invite`);
         } else {
-          toast.success(`¡Bienvenido de nuevo, ${response.username}!`);
+          toast.success(`¡Bienvenido de nuevo, ${response.suggested_username}!`);
 
           await checkAuth();
 

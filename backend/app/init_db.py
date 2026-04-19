@@ -88,7 +88,7 @@ def init_db():
             logger.info(
                 f"⏳ [DB] [Intento {attempt + 1}/{max_retries}] Sincronizando metadata..."
             )
-            SQLModel.metadata.create_all(engine)
+            # SQLModel.metadata.create_all(engine)
             logger.info("✅ [DB] ¡Metadata sincronizada correctamente!")
             connection_successful = True
             break
