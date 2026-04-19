@@ -48,7 +48,13 @@ export function PromptCardActions({
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
-              if (window.confirm("¿Exterminar rastro digital?")) onDelete(item.id);
+              if (window.confirm("¿Exterminar rastro digital?")) {
+                if (typeof onDelete === "function") {
+                  onDelete(item.id);
+                } else {
+                  console.error("❌ Error: onDelete no ha llegado al componente Actions.");
+                }
+              }
             }}
             className="flex w-full items-center gap-2 px-3 py-2.5 text-xs font-medium text-red-500 hover:bg-red-500/10"
           >

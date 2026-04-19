@@ -8,6 +8,7 @@ import { IconPhotoOff } from "@tabler/icons-react";
 import { fetchSeguro } from "@/src/services/api/client";
 import { PageLoader } from "../../atoms/PageLoader";
 import { PromptCard } from "./PromptCard";
+import toast from "react-hot-toast";
 
 export default function PromptGrid() {
   const { activeDirectoryId, searchQuery } = useStudioUI();
@@ -16,7 +17,7 @@ export default function PromptGrid() {
   const lang = (params?.lang as string) || "es";
 
   const [debouncedQuery, setDebouncedQuery] = useState(searchQuery);
-  const [prompts, setPrompts] = useState([]);
+  const [prompts, setPrompts] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -31,7 +32,6 @@ export default function PromptGrid() {
       setLoading(true);
       try {
         const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
-
         const endpoint = debouncedQuery
           ? `/search/studio?q=${debouncedQuery}`
           : `/prompts/studio?directory_id=${activeDirectoryId || ""}`;
@@ -51,6 +51,29 @@ export default function PromptGrid() {
     fetchPrompts();
   }, [activeDirectoryId, debouncedQuery]);
 
+  const handleDeletePrompt = async (promptId: string) => {
+    const toastId = toast.loading("Exterminando rastro digital...");
+    try {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
+
+      const res = await fetchSeguro(`${API_URL}/prompts/${promptId}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+
+      if (res.ok) {
+        setPrompts((prev) => prev.filter((p) => p.id !== promptId));
+        toast.success("Eliminado del Studio", { id: toastId });
+      } else {
+        const errorData = await res.json();
+        throw new Error(errorData.detail || "Fallo de autorización");
+      }
+    } catch (error: any) {
+      console.error("Fallo al borrar:", error);
+      toast.error(error.message || "Error al eliminar", { id: toastId });
+    }
+  };
+
   return (
     <div className="h-full flex flex-col">
       {loading ? (
@@ -68,6 +91,7 @@ export default function PromptGrid() {
               isStudio={true}
               authorUsername={user?.username || "unknown"}
               isPriority={index < 8}
+              onDelete={handleDeletePrompt}
             />
           ))}
         </div>
