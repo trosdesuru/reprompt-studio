@@ -42,6 +42,7 @@ def subir_imagen_a_r2(
             Key=file_name,
             Body=file_bytes,
             ContentType=content_type,
+            CacheControl="public, max-age=31536000, immutable",
         )
 
         # Construir y devolver la URL pública exacta para guardarla en PostgreSQL

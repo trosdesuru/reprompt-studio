@@ -31,8 +31,13 @@ export const publicApi = {
     return fetchSeguro(`${API_URL}/public/prompt/${promptId}`);
   },
 
-  getFeed: async (options?: { include_self?: boolean }) => {
-    const queryString = options?.include_self ? "?include_self=true" : "";
+  getFeed: async (options?: { include_self?: boolean; cursor?: string | null }) => {
+    const params = new URLSearchParams();
+    if (options?.include_self) params.append("include_self", "true");
+    if (options?.cursor) params.append("cursor", options.cursor);
+
+    const queryString = params.toString() ? `?${params.toString()}` : "";
+
     return fetchSeguro(`${API_URL}/public/feed${queryString}`);
   },
 };

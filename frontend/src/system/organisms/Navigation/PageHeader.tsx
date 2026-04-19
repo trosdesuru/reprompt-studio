@@ -1,52 +1,50 @@
 "use client";
 
-import { ReactNode } from "react";
+import { useState, useEffect } from "react";
 import { Breadcrumbs } from "@/src/system/organisms/Navigation/Breadcrumbs";
 
-interface BreadcrumbItem {
-  label: string;
-  href?: string;
-}
+export function PageHeader({ title, subtitle, description, icon, breadcrumbItems }: any) {
+  const [isVisible, setIsVisible] = useState(true);
+  const [lastScrollY, setLastScrollY] = useState(0);
 
-interface PageHeaderProps {
-  title: string;
-  subtitle?: string;
-  description: string;
-  icon: ReactNode;
-  breadcrumbItems: BreadcrumbItem[];
-}
+  useEffect(() => {
+    const handleScroll = () => {
+      const currentScrollY = window.scrollY;
+      if (currentScrollY > lastScrollY && currentScrollY > 150) {
+        setIsVisible(false);
+      } else {
+        setIsVisible(true);
+      }
+      setLastScrollY(currentScrollY);
+    };
 
-export function PageHeader({
-  title,
-  subtitle,
-  description,
-  icon,
-  breadcrumbItems,
-}: PageHeaderProps) {
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, [lastScrollY]);
+
   return (
-    <div className="space-y-8">
-      {/* 1. Navegación */}
-      <div>
+    <header
+      className={`
+        hidden md:block 
+        sticky top-0 z-40 w-full transition-all duration-500 ease-in-out
+        ${isVisible ? "translate-y-0 opacity-100" : "-translate-y-full opacity-0"}
+        bg-background/80 backdrop-blur-xl px-4 md:px-0 py-6
+      `}
+    >
+      <div className="w-full mx-auto space-y-4">
         <Breadcrumbs items={breadcrumbItems} />
-      </div>
-
-      {/* 2. Título y Branding */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-border pb-8 mt-4">
-        <div>
-          <h1 className="text-3xl text-foreground font-bold tracking-tighter flex items-center gap-1">
-            <div className="p-2 text-foreground rounded-lg">
-              {icon}
-            </div>
-            {title}
-            {subtitle && (
-              <span className="font-mono font-medium lowercase text-foreground ml-1">
-                {subtitle}
-              </span>
-            )}
-          </h1>
-          <p className="text-muted-foreground mt-1 font-mono text-sm">{description}</p>
+        <div className="flex justify-between items-center gap-4">
+          <div>
+            <h1 className="text-2xl text-foreground font-black tracking-tighter flex items-center gap-2">
+              <span className="text-(--accent-color)">{icon}</span>
+              {title} {subtitle && <span className="font-mono font-medium opacity-70">{subtitle}</span>}
+            </h1>
+            <p className="text-muted-foreground font-mono text-xs tracking-widest">
+              {description}
+            </p>
+          </div>
         </div>
       </div>
-    </div>
+    </header>
   );
 }

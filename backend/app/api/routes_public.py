@@ -1,5 +1,6 @@
 import uuid
-from fastapi import APIRouter, Depends, HTTPException
+from datetime import datetime
+from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlmodel import Session, select, or_, func
 from sqlalchemy import select as sa_select
 from app.core.db import get_session
@@ -150,74 +151,42 @@ def get_public_prompt_detail(
 
 @router.get("/feed")
 def get_public_feed(
+    response: Response,
     include_self: bool = False,
-    limit: int = 50,
+    limit: int = 24,
+    cursor: Optional[str] = None,
     session: Session = Depends(get_session),
     current_user: Optional[User] = Depends(get_optional_user),
 ):
-    subq_count = (
-        sa_select(func.count(ImagePrompt.id))
-        .where(ImagePrompt.directory_id == Directory.id)
-        .correlate(Directory)
-        .scalar_subquery()
-    )
+    response.headers["Cache-Control"] = "public, max-age=60, stale-while-revalidate=30"
 
-    subq_cover = (
-        sa_select(ImagePrompt.image_url)
-        .where(ImagePrompt.directory_id == Directory.id)
-        .order_by(ImagePrompt.created_at.desc())
-        .limit(1)
-        .correlate(Directory)
-        .scalar_subquery()
-    )
-
-    query_dir = (
-        select(
-            Directory,
-            User,
-            subq_count.label("items_count"),
-            subq_cover.label("cover_url"),
-        )
-        .join(User, Directory.user_id == User.id)
-        .where(Directory.is_private == False)
-    )
-
-    query_prompt = (
+    query = (
         select(ImagePrompt, User)
         .join(User, ImagePrompt.user_id == User.id)
-        .where(ImagePrompt.directory_id == None)
+        .outerjoin(Directory, ImagePrompt.directory_id == Directory.id)
+        .where(
+            or_(
+                ImagePrompt.directory_id == None,
+                Directory.is_private == False,
+            )
+        )
     )
 
     if current_user and not include_self:
-        query_dir = query_dir.where(User.id != current_user.id)
-        query_prompt = query_prompt.where(User.id != current_user.id)
+        query = query.where(User.id != current_user.id)
 
-    directories = session.exec(
-        query_dir.order_by(Directory.created_at.desc()).limit(limit)
-    ).all()
+    if cursor:
+        try:
+            cursor_dt = datetime.fromisoformat(cursor.replace("Z", "+00:00"))
+            query = query.where(ImagePrompt.created_at < cursor_dt)
+        except ValueError:
+            pass
 
-    prompts = session.exec(
-        query_prompt.order_by(ImagePrompt.created_at.desc()).limit(limit)
-    ).all()
+    query = query.order_by(ImagePrompt.created_at.desc()).limit(limit)
+    results = session.exec(query).all()
 
     feed = []
-
-    for d, user, items_count, cover_url in directories:
-        feed.append(
-            {
-                "type": "directory",
-                "id": f"dir_{d.id}",
-                "raw_id": d.id,
-                "created_at": str(d.created_at),
-                "title": d.name,
-                "slug": d.slug,
-                "username": user.username,
-                "image_url": cover_url,
-                "items_count": items_count or 0,
-            }
-        )
-
-    for p, user in prompts:
+    for p, user in results:
         feed.append(
             {
                 "type": "prompt",
@@ -233,6 +202,10 @@ def get_public_feed(
             }
         )
 
-    feed.sort(key=lambda x: x["created_at"], reverse=True)
+    next_cursor = feed[-1]["created_at"] if len(feed) > 0 else None
 
-    return {"status": "success", "feed": feed[:limit]}
+    return {
+        "status": "success",
+        "feed": feed,
+        "next_cursor": next_cursor,
+    }

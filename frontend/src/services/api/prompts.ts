@@ -4,6 +4,8 @@ import { ENV } from "@/src/services/config/env";
 const API_URL = ENV.API_URL;
 
 export const promptApi = {
+  getMyPrompt: () => fetchSeguro(`${API_URL}/prompts/`),
+
   savePrompt: (data: any) =>
     fetchSeguro(`${API_URL}/prompts/save`, {
       method: "POST",
@@ -18,6 +20,9 @@ export const promptApi = {
     });
   },
 
-  getMyPrompt: () => fetchSeguro(`${API_URL}/prompts/`),
-  deletePrompt: (id: number) => fetchSeguro(`${API_URL}/prompts/${id}`, { method: "DELETE" }),
+  deletePrompt: async (promptId: string) => {
+    return fetchSeguro(`${API_URL}/prompts/${promptId}`, {
+      method: "DELETE",
+    });
+  },
 };

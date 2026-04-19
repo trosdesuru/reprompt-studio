@@ -62,6 +62,7 @@ async def upload_to_studio(
             Key=s3_key,
             Body=file_content,
             ContentType=f"image/{'jpeg' if file_extension == 'jpg' else file_extension}",
+            CacheControl="public, max-age=31536000, immutable",
         )
         base_url = settings.R2_PUBLIC_URL.rstrip("/")
         file_url = f"{base_url}/{s3_key}"
@@ -279,17 +280,21 @@ def eliminar_prompt(
     if not prompt:
         raise HTTPException(
             status_code=404,
-            detail="Prompt no encontrado o no tienes permiso para borrarlo",
+            detail="Operación denegada: El recurso no existe o no tienes permisos.",
         )
 
     if prompt.image_url:
-        eliminar_de_r2(prompt.image_url)
+        try:
+            eliminar_de_r2(prompt.image_url)
+        except Exception as e:
+            logger.error(f"⚠️ Error al borrar archivo en R2: {e}")
 
     session.delete(prompt)
     session.commit()
+
     return {
         "status": "success",
-        "message": "Prompt y archivo eliminados correctamente del studio",
+        "message": "Imagen y prompt eliminados permanentemente del multiverso.",
     }
 
 
