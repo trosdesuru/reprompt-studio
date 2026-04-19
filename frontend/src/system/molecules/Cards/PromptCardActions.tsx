@@ -24,7 +24,7 @@ export function PromptCardActions({
       </button>
 
       {isOpen && (
-        <div className="absolute top-full right-0 mt-2 w-48 bg-background border border-border rounded-xl shadow-xl py-1 z-50 animate-in fade-in zoom-in-95">
+        <div className="absolute top-full right-0 w-48 bg-background border border-border rounded-xl shadow-xl z-50 animate-in fade-in zoom-in-95 hover:border-red-500/50">
           {onAssign && directories.length > 0 && (
             <div className="px-3 py-2 border-b border-border/10">
               <label className="text-[10px] font-bold uppercase text-muted-foreground mb-1.5 flex items-center gap-1.5">
@@ -56,9 +56,9 @@ export function PromptCardActions({
                 }
               }
             }}
-            className="flex w-full items-center gap-2 px-3 py-2.5 text-xs font-medium text-red-500 hover:bg-red-500/10"
+            className="flex w-full h-full items-center gap-2 px-3 py-3 text-xs font-mono font-normal text-red-400 hover:bg-red-500/10"
           >
-            <IconTrash size={14} /> Borrar del Studio
+            <IconTrash size={14} /> Eliminar
           </button>
         </div>
       )}

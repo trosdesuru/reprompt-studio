@@ -7,6 +7,8 @@ export interface Directory {
   id: string;
   name: string;
   parent_id: string | null;
+  slug?: string;
+  is_private?: boolean;
 }
 
 export interface StudioUIState {
