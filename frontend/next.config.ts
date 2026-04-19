@@ -15,6 +15,12 @@ const nextConfig: NextConfig = {
         protocol: "https",
         hostname: "**pub-**.r2.dev",
       },
+      {
+        protocol: "https",
+        hostname: "cdn.reprompt.studio",
+        port: "",
+        pathname: "/**",
+      },
     ],
     formats: ["image/avif", "image/webp"],
     minimumCacheTTL: 604800,
