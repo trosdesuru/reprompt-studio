@@ -1,4 +1,5 @@
 import uuid
+import re
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session, select
@@ -36,12 +37,16 @@ def create_directory(
     ).first()
 
     if existing:
-        raise HTTPException(
-            status_code=400, detail="Ya existe una carpeta con ese nombre aquí."
-        )
+        raise HTTPException(status_code=400, detail="Ya existe una carpeta con ese.")
+
+    clean_name = re.sub(r"[^a-z0-9]+", "-", data.name.lower().strip())
+    unique_slug = f"{clean_name.strip('-')}-{uuid.uuid4().hex[:6]}"
 
     nuevo_dir = Directory(
-        user_id=current_user.id, name=data.name, parent_id=data.parent_id
+        user_id=current_user.id,
+        name=data.name,
+        parent_id=data.parent_id,
+        slug=unique_slug,
     )
     session.add(nuevo_dir)
     session.commit()
