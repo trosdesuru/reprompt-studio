@@ -19,9 +19,9 @@ export function StudioSidebar() {
     <aside className="w-72 border-r border-border/30 bg-muted/5 flex-col hidden md:flex">
       <div className="pt-6 flex-1 overflow-y-auto custom-scrollbar flex flex-col gap-1">
         <div className="px-3 mb-1 group relative">
-          <button
+          <div
             onClick={() => setActiveDirectory(null)}
-            className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs transition-all border ${
+            className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs transition-all border cursor-pointer role="button" ${
               activeDirectoryId === null
                 ? "bg-primary/10 text-primary border-primary/20 font-bold"
                 : "text-muted-foreground hover:bg-secondary/40 border-transparent font-medium"
@@ -49,7 +49,7 @@ export function StudioSidebar() {
                 <IconCloudUpload size={14} stroke={2} />
               </button>
             </div>
-          </button>
+          </div>
         </div>
 
         <div className="mx-6 border-t border-border/10 my-2" />

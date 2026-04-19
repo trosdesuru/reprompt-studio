@@ -1,9 +1,8 @@
 import { useState, useEffect } from "react";
 import { api } from "@/src/services/api";
-import { SavedPrompt } from "@/src/types/models";
 
 export function usePublicPrompt(promptId: string) {
-  const [data, setData] = useState<SavedPrompt | null>(null);
+  const [data, setData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -12,9 +11,13 @@ export function usePublicPrompt(promptId: string) {
 
     api.public
       .getPromptDetail(promptId)
-      .then((res: any) => {
-        const promptReal = res.prompt && typeof res.prompt === "object" ? res.prompt : res;
-        setData(promptReal);
+      .then(async (res: Response) => {
+        if (!res.ok) {
+          throw new Error(`HTTP error! status: ${res.status}`);
+        }
+        const jsonData = await res.json();
+        
+        setData(jsonData);
       })
       .catch((err: any) => {
         console.error("Error fetching prompt:", err);

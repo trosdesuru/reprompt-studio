@@ -1,12 +1,19 @@
 "use client";
+
 import { useEffect, useState } from "react";
+import { useParams } from "next/navigation";
 import { useStudioUI } from "@/src/store/useStudioUI";
+import { useAuthStore } from "@/src/store/authStore";
 import { IconPhotoOff } from "@tabler/icons-react";
 import { fetchSeguro } from "@/src/services/api/client";
 import { PageLoader } from "../../atoms/PageLoader";
+import { PromptCard } from "./PromptCard";
 
 export default function PromptGrid() {
   const { activeDirectoryId, searchQuery } = useStudioUI();
+  const user = useAuthStore((state) => state.user);
+  const params = useParams();
+  const lang = (params?.lang as string) || "es";
 
   const [debouncedQuery, setDebouncedQuery] = useState(searchQuery);
   const [prompts, setPrompts] = useState([]);
@@ -16,10 +23,7 @@ export default function PromptGrid() {
     const handler = setTimeout(() => {
       setDebouncedQuery(searchQuery);
     }, 1000);
-
-    return () => {
-      clearTimeout(handler);
-    };
+    return () => clearTimeout(handler);
   }, [searchQuery]);
 
   useEffect(() => {
@@ -28,7 +32,6 @@ export default function PromptGrid() {
       try {
         const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
 
-        // OJO: Usamos debouncedQuery aquí, NO searchQuery
         const endpoint = debouncedQuery
           ? `/search/studio?q=${debouncedQuery}`
           : `/prompts/studio?directory_id=${activeDirectoryId || ""}`;
@@ -39,7 +42,7 @@ export default function PromptGrid() {
           setPrompts(data.results || data.data || []);
         }
       } catch (err) {
-        console.error(err);
+        console.error("Error en Studio Grid:", err);
       } finally {
         setLoading(false);
       }
@@ -52,42 +55,28 @@ export default function PromptGrid() {
     <div className="h-full flex flex-col">
       {loading ? (
         <div className="flex-1 flex items-center justify-center">
-          <PageLoader text="Cargando Prompts"/>
+          <PageLoader text="Sincronizando Studio..." />
         </div>
       ) : prompts.length > 0 ? (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          {prompts.map((p: any) => (
-            <div
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          {prompts.map((p: any, index) => (
+            <PromptCard
               key={p.id}
-              className="aspect-square bg-secondary rounded-lg overflow-hidden border group relative"
-            >
-              {p.image_url ? (
-                <img
-                  src={p.image_url}
-                  className="w-full h-full object-cover"
-                  alt={p.prompt || "Prompt sin título"}
-                />
-              ) : (
-                <div className="w-full h-full flex flex-col items-center justify-center bg-muted/20 text-muted-foreground/50">
-                  <IconPhotoOff size={32} stroke={1.5} />
-                  <span className="text-[10px] uppercase tracking-widest mt-2 font-mono">
-                    Sin Media
-                  </span>
-                </div>
-              )}
-
-              <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity p-3 flex flex-col justify-end">
-                <p className="text-[10px] text-white line-clamp-2 font-mono">
-                  {p.prompt || "Sin descripción"}
-                </p>
-              </div>
-            </div>
+              item={p}
+              index={index}
+              lang={lang}
+              isStudio={true}
+              authorUsername={user?.username || "unknown"}
+              isPriority={index < 8}
+            />
           ))}
         </div>
       ) : (
-        <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground/50">
+        <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground/40">
           <IconPhotoOff size={48} stroke={1.5} className="mb-4" />
-          <p className="text-sm font-mono uppercase tracking-widest">No se encontraron prompts</p>
+          <p className="text-sm font-mono uppercase tracking-widest text-center px-4">
+            No se encontraron prompts en este rincón
+          </p>
         </div>
       )}
     </div>

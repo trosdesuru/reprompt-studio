@@ -117,17 +117,20 @@ Directory structure:
     │   │   │       └── useSearch.ts
     │   │   └── studio/
     │   │       └── hooks/
+    │   │           ├── useFileUploader.ts
     │   │           ├── usePublicCollection.ts
     │   │           ├── usePublicProfile.ts
     │   │           ├── usePublicPrompt.ts
-    │   │           └── useStudio.ts
+    │   │           ├── useStudio.ts
+    │   │           ├── useStudioDnd.ts
+    │   │           └── useStudioSync.ts
     │   ├── services/
     │   │   ├── api.ts
     │   │   ├── api/
     │   │   │   ├── admin.ts
     │   │   │   ├── auth.ts
     │   │   │   ├── client.ts
-    │   │   │   ├── collections.ts
+    │   │   │   ├── directories.ts
     │   │   │   ├── downloads.ts
     │   │   │   ├── prompts.ts
     │   │   │   ├── public.ts
@@ -217,7 +220,8 @@ Directory structure:
     │   │   │   ├── Navbar/
     │   │   │   │   └── Navbar.tsx
     │   │   │   ├── Navigation/
-    │   │   │   │   └── Breadcrumbs.tsx
+    │   │   │   │   ├── Breadcrumbs.tsx
+    │   │   │   │   └── PageHeader.tsx
     │   │   │   ├── Search/
     │   │   │   │   └── SearchResults/
     │   │   │   │       └── SearchResults.tsx
@@ -225,7 +229,9 @@ Directory structure:
     │   │   │   │   ├── BulkActionBar.tsx
     │   │   │   │   ├── PromptCard.tsx
     │   │   │   │   ├── PromptGrid.tsx
-    │   │   │   │   └── SidebarDirectory.tsx
+    │   │   │   │   ├── SidebarDirectory.tsx
+    │   │   │   │   ├── StudioHeader.tsx
+    │   │   │   │   └── StudioSidebar.tsx
     │   │   │   └── Viewer/
     │   │   │       └── ImageViewerModal/
     │   │   │           └── ImageViewerModal.tsx
@@ -1183,7 +1189,6 @@ export default function DiscordCallbackPage() {
   const processed = useRef(false);
 
   useEffect(() => {
-    // Evitamos ejecuciones dobles en React 18 Strict Mode
     if (processed.current) return;
 
     const code = searchParams.get("code");
@@ -1200,12 +1205,10 @@ export default function DiscordCallbackPage() {
         const currentUrl = new URL(window.location.href);
         const redirectUri = `${currentUrl.origin}${currentUrl.pathname}`;
 
-        // Llamamos al nuevo endpoint de Discord que pusimos en la API
         const response = await api.verifyDiscordCode({ code, redirect_uri: redirectUri });
 
         if (response.status === "needs_invite") {
           toast.success("Cuenta de Discord vinculada. Introduce tu código de inivitación");
-          // Redirigimos a login con un estado para que complete el registro (Fase futura si la necesitas)
           router.push(`/es/auth/login?discord_email=${response.email}`);
         } else {
           toast.success(`¡Bienvenido de nuevo, ${response.username}!`);
@@ -1281,7 +1284,7 @@ export default function GoogleCallbackPage() {
 
           router.push(`/${lang}/login?step=oauth_invite`);
         } else {
-          toast.success(`¡Bienvenido de nuevo, ${response.username}!`);
+          toast.success(`¡Bienvenido de nuevo, ${response.suggested_username}!`);
 
           await checkAuth();
 
@@ -1552,13 +1555,13 @@ export default function PublicProfilePage({
           </p>
         </header>
 
-        {data.collections.length > 0 && (
+        {data.directories.length > 0 && (
           <section className="space-y-4">
             <h2 className="text-sm font-mono font-bold uppercase tracking-widest flex items-center gap-2">
               <IconFolder size={18} className="text-(--accent-color)" /> Colecciones
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-              {data.collections.map((col) => (
+              {data.directories.map((col) => (
                 <Link
                   key={col.id}
                   href={`/${lang}/${username}/${col.slug}`}
@@ -1617,18 +1620,18 @@ import Link from "next/link";
 import { IconFolder, IconPhotoOff } from "@tabler/icons-react";
 
 import { PromptCard } from "@/src/system/organisms/Studio/PromptCard";
-import { usePublicCollection } from "@/src/features/studio/hooks/usePublicCollection";
+import { usePublicDirectory } from "@/src/features/studio/hooks/usePublicCollection";
 import { FadeIn } from "@/src/system/atoms/FadeIn";
 import { Breadcrumbs } from "@/src/system/organisms/Navigation/Breadcrumbs";
 import { useAuthStore } from "@/src/store/authStore";
 
-export default function PublicCollectionPage({
+export default function PublicDirectoryPage({
   params,
 }: {
-  params: Promise<{ lang: string; username: string; collection_slug: string }>;
+  params: Promise<{ lang: string; username: string; directory_slug: string }>;
 }) {
-  const { lang, username, collection_slug } = use(params);
-  const { data, isLoading, error } = usePublicCollection(username, collection_slug);
+  const { lang, username, directory_slug } = use(params);
+  const { data, isLoading, error } = usePublicDirectory(username, directory_slug);
 
   const user = useAuthStore((state) => state.user);
   const [isMounted, setIsMounted] = useState(false);
@@ -1662,8 +1665,8 @@ export default function PublicCollectionPage({
   }
 
   const breadcrumbItems = isOwner
-    ? [{ label: "Mi Studio", href: `/${lang}/studio` }, { label: data.collection.name }]
-    : [{ label: `@${username}`, href: `/${lang}/${username}` }, { label: data.collection.name }];
+    ? [{ label: "Mi Studio", href: `/${lang}/studio` }, { label: data.directory.name }]
+    : [{ label: `@${username}`, href: `/${lang}/${username}` }, { label: data.directory.name }];
 
   return (
     <FadeIn duration={0.8}>
@@ -1677,11 +1680,11 @@ export default function PublicCollectionPage({
             <div className="flex items-center gap-3">
               <IconFolder size={32} className="text-(--accent-color)" />
               <h1 className="text-3xl md:text-4xl font-black tracking-tighter uppercase">
-                {data.collection.name}
+                {data.directory.name}
               </h1>
             </div>
-            {data.collection.description && (
-              <p className="text-muted-foreground font-mono mt-2">{data.collection.description}</p>
+            {data.directory.description && (
+              <p className="text-muted-foreground font-mono mt-2">{data.directory.description}</p>
             )}
           </header>
 
@@ -1909,9 +1912,9 @@ import { use } from "react";
 import { usePromptExtractor } from "@/src/features/extractor/hooks/usePromptExtractor";
 import { ExtractorDropzone } from "@/src/system/organisms/Extractor/Dropzone";
 import { BatchInspector } from "@/src/system/organisms/Extractor/Inspector/BatchInspector";
-import { Breadcrumbs } from "@/src/system/organisms/Navigation/Breadcrumbs";
-import { UpgradeModal } from "@/src/system/organisms/Modal/UpgradeModal";
+import { UpgradeModal } from "@/src/system/organisms/Modal/UpgradeModal"; // Importado correctamente
 import { IconScanTraces } from "@tabler/icons-react";
+import { PageHeader } from "@/src/system/organisms/Navigation/PageHeader";
 
 export default function RepromptPage({ params }: { params: Promise<{ lang: string }> }) {
   const { lang } = use(params);
@@ -1931,30 +1934,21 @@ export default function RepromptPage({ params }: { params: Promise<{ lang: strin
     clearSkipped,
   } = usePromptExtractor();
 
-  const breadcrumbItems = [
-    { label: "Mi Studio", href: `/${lang}/studio` },
-    { label: "Extractor Reprompt" },
-  ];
-
   return (
     <main className="max-h-screen bg-background p-4 md:p-8">
       <UpgradeModal isOpen={upgradeModal} onClose={closeUpgradeModal} />
-      <div className="max-w-7xl mx-auto space-y-8">
-        <div>
-          <Breadcrumbs items={breadcrumbItems} />
-        </div>
 
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-border pb-8 mt-4">
-          <div>
-            <h1 className="text-3xl font-black tracking-tighter flex items-center gap-3">
-              <IconScanTraces className="text-(--accent-color)" size={32} />
-              Extractor <span className="font-mono font-regular">reprompt</span>
-            </h1>
-            <p className="text-muted-foreground mt-1">
-              Arrastra múltiples imágenes o archivos ZIP para extraer metadatos en lote.
-            </p>
-          </div>
-        </div>
+      <div className="max-w-7xl mx-auto space-y-8">
+        <PageHeader
+          title="Extractor"
+          subtitle="reprompt"
+          description="Arrastra múltiples imágenes o archivos ZIP para extraer metadatos en lote."
+          icon={<IconScanTraces size={28} stroke={1.5} />}
+          breadcrumbItems={[
+            { label: "Mi Studio", href: `/${lang}/studio` },
+            { label: "Extractor Reprompt" },
+          ]}
+        />
 
         <section className="w-full max-w-7xl mx-auto">
           {batch.length === 0 ? (
@@ -1987,226 +1981,52 @@ FILE: app/[lang]/(main)/studio/page.tsx
 ================================================
 "use client";
 
-import { useEffect, useState } from "react";
-import Link from "next/link";
-import {
-  IconFolderPlus as FolderPlus,
-  IconCloudUpload as UploadCloud,
-  IconAlbum,
-  IconChevronRight,
-  IconLayoutGrid,
-  IconFolder,
-} from "@tabler/icons-react";
-import { useStudioUI, Directory } from "@/src/store/useStudioUI";
-import { SidebarDirectory } from "@/src/system/organisms/Studio/SidebarDirectory";
+import { DndContext, closestCenter, DragOverlay } from "@dnd-kit/core";
+import { IconFolder, IconAlbum } from "@tabler/icons-react";
+import { StudioSidebar } from "@/src/system/organisms/Studio/StudioSidebar";
 import PromptGrid from "@/src/system/organisms/Studio/PromptGrid";
-import { usePromptExtractor } from "@/src/features/extractor/hooks/usePromptExtractor";
-// 🟢 1. IMPORTAMOS LOS SENSORES
-import {
-  DndContext,
-  DragEndEvent,
-  DragStartEvent,
-  closestCenter,
-  DragOverlay,
-  useSensor,
-  useSensors,
-  PointerSensor,
-} from "@dnd-kit/core";
-import { fetchSeguro } from "@/src/services/api/client";
+import { useStudioSync } from "@/src/features/studio/hooks/useStudioSync";
+import { useStudioDnd } from "@/src/features/studio/hooks/useStudioDnd";
+import { PageHeader } from "@/src/system/organisms/Navigation/PageHeader";
 
 export default function StudioPage() {
-  const {
-    directories,
-    setDirectories,
-    createDirectory,
-    moveDirectory,
-    activeDirectoryId,
-    setActiveDirectory,
-  } = useStudioUI();
-
-  const { processFiles } = usePromptExtractor();
-  const [activeDragDir, setActiveDragDir] = useState<Directory | null>(null);
-
-  // 🟢 2. CONFIGURAMOS EL SENSOR (El truco mágico)
-  const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 8, // El ratón debe moverse 8px antes de que se considere "arrastre"
-      },
-    }),
-  );
-
-  useEffect(() => {
-    const fetchDirs = async () => {
-      try {
-        const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
-        const res = await fetchSeguro(`${API_URL}/directories/`, { credentials: "include" });
-        if (res.ok) {
-          const data = await res.json();
-          setDirectories(data);
-        }
-      } catch (error) {
-        console.error("Error cargando directorios:", error);
-      }
-    };
-    fetchDirs();
-  }, [setDirectories]);
-
-  const handleUploadClick = () => {
-    const input = document.createElement("input");
-    input.type = "file";
-    input.multiple = true;
-    input.onchange = (e) => {
-      const files = (e.target as HTMLInputElement).files;
-      if (files) processFiles(Array.from(files));
-    };
-    input.click();
-  };
-
-  const handleCreateRootFolder = async () => {
-    const name = window.prompt("Nombre de la nueva carpeta principal:");
-    if (name && name.trim()) {
-      await createDirectory(name.trim(), null);
-    }
-  };
-
-  const handleDragStart = (event: DragStartEvent) => {
-    const { active } = event;
-    if (active.data.current?.type === "directory") {
-      setActiveDragDir(active.data.current.directory);
-    }
-  };
-
-  const handleDragEnd = (event: DragEndEvent) => {
-    setActiveDragDir(null);
-    const { active, over } = event;
-
-    if (!over || active.id === `dir-${over.id}`) return;
-
-    const draggedDirId = String(active.id).replace("dir-", "");
-    const targetDirId = String(over.id);
-
-    if (draggedDirId !== targetDirId) {
-      moveDirectory(draggedDirId, targetDirId);
-    }
-  };
+  useStudioSync();
+  const { sensors, activeDragDir, handleDragStart, handleDragEnd } = useStudioDnd();
 
   return (
     <div className="flex flex-col h-[calc(100vh-64px)] w-full bg-background p-4 md:p-6 lg:p-8 gap-4">
-      {/* CABECERA (Sin cambios) */}
-      <div className="flex flex-col gap-2">
-        <div className="flex items-center gap-2 text-sm text-muted-foreground font-mono">
-          <Link href="/es" className="hover:text-primary transition-colors cursor-pointer">
-            Inicio
-          </Link>
-          <IconChevronRight size={14} />
-          <span className="text-foreground font-semibold">Mi Studio</span>
-        </div>
+      <PageHeader
+        title="Mi Studio"
+        description="Gestiona y organiza tus extracciones."
+        icon={<IconAlbum size={28} stroke={1.5} />}
+        breadcrumbItems={[{ label: "Mi Studio" }]}
+      />
 
-        <div className="flex items-center gap-3">
-          <div className="p-2 bg-primary/10 rounded-lg border border-primary/20 neo-shadow-sm">
-            <IconAlbum className="text-primary" size={28} stroke={1.5} />
-          </div>
-          <div>
-            <h1 className="text-2xl md:text-3xl font-black tracking-tight uppercase">Mi Studio</h1>
-            <p className="text-muted-foreground text-sm font-mono mt-1">
-              Gestiona y organiza tus extracciones
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* 🟢 3. AÑADIMOS LOS SENSORES AL CONTEXTO */}
       <DndContext
         sensors={sensors}
         collisionDetection={closestCenter}
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
       >
-        <div className="flex flex-1 overflow-hidden border-2 border-border rounded-xl neo-shadow bg-card">
-          {/* Sidebar */}
-          <aside className="w-72 border-r-2 border-border bg-muted/10 flex-col hidden md:flex">
-            <div className="p-4 border-b-2 border-border flex items-center justify-between bg-card">
-              <h2 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
-                Directorios
-              </h2>
-              <div className="flex gap-1">
-                <button
-                  onClick={handleCreateRootFolder}
-                  className="p-1.5 hover:bg-secondary rounded-lg transition-colors"
-                  title="Nueva Carpeta Principal"
-                >
-                  <FolderPlus size={18} stroke={1.5} />
-                </button>
-                <button
-                  onClick={handleUploadClick}
-                  className="p-1.5 hover:bg-secondary rounded-lg text-primary transition-colors"
-                  title="Subir Imágenes"
-                >
-                  <UploadCloud size={18} stroke={1.5} />
-                </button>
-              </div>
-            </div>
-
-            <div className="flex-1 overflow-y-auto py-4 custom-scrollbar flex flex-col gap-1">
-              {/* BOTÓN ROOT */}
-              <div
-                onClick={() => setActiveDirectory(null)}
-                className={`
-                  flex items-center py-2 px-3 mx-2 mb-2 rounded-md cursor-pointer transition-all duration-200 select-none
-                  ${
-                    activeDirectoryId === null
-                      ? "bg-primary/10 text-primary font-bold neo-border border-primary/20"
-                      : "text-foreground hover:bg-secondary/50 border border-transparent"
-                  }
-                `}
-              >
-                <IconLayoutGrid
-                  size={18}
-                  className={`mr-2 ${activeDirectoryId === null ? "text-primary" : "text-muted-foreground"}`}
-                />
-                <span className="text-sm truncate flex-1">Todas las imágenes</span>
-              </div>
-
-              <div className="mx-4 mb-3 border-b-2 border-border/50"></div>
-
-              {/* Lista de Carpetas */}
-              {directories
-                .filter((d: Directory) => d.parent_id === null)
-                .map((dir: Directory) => (
-                  <SidebarDirectory key={dir.id} directory={dir} />
-                ))}
-
-              {directories.length === 0 && (
-                <div className="px-6 py-10 text-center space-y-2">
-                  <p className="text-xs text-muted-foreground italic font-mono">
-                    Aún no tienes carpetas.
-                  </p>
-                </div>
-              )}
-            </div>
-          </aside>
-
-          {/* Main Grid */}
-          <main className="flex-1 overflow-y-auto custom-scrollbar bg-background p-4 md:p-6">
+        <div className="flex flex-1 overflow-hidden border border-border/30 rounded-xl bg-card/20 backdrop-blur-sm">
+          <StudioSidebar />
+          <main className="flex-1 overflow-y-auto custom-scrollbar bg-background/30 p-4 md:p-6">
             <PromptGrid />
           </main>
         </div>
 
-        {/* EL FANTASMA (DragOverlay) */}
         <DragOverlay dropAnimation={null}>
-          {activeDragDir ? (
-            <div className="flex items-center py-2 px-3 bg-card border-2 border-primary border-dashed rounded-lg shadow-2xl opacity-90 cursor-grabbing">
+          {activeDragDir && (
+            <div className="flex items-center py-2 px-3 bg-card border border-primary/40 border-dashed rounded-lg shadow-2xl opacity-90 cursor-grabbing">
               <IconFolder size={18} className="text-primary mr-2" />
               <span className="text-sm font-bold text-foreground">{activeDragDir.name}</span>
             </div>
-          ) : null}
+          )}
         </DragOverlay>
       </DndContext>
     </div>
   );
 }
-
 
 
 ================================================
@@ -2465,9 +2285,9 @@ function ComboboxLabel({
   )
 }
 
-function ComboboxCollection({ ...props }: ComboboxPrimitive.Collection.Props) {
+function ComboboxDirectory({ ...props }: ComboboxPrimitive.Directory.Props) {
   return (
-    <ComboboxPrimitive.Collection data-slot="combobox-collection" {...props} />
+    <ComboboxPrimitive.Directory data-slot="combobox-directory" {...props} />
   )
 }
 
@@ -2570,7 +2390,7 @@ export {
   ComboboxItem,
   ComboboxGroup,
   ComboboxLabel,
-  ComboboxCollection,
+  ComboboxDirectory,
   ComboboxEmpty,
   ComboboxSeparator,
   ComboboxChips,
@@ -4262,14 +4082,38 @@ export function useSearch() {
 
 
 ================================================
+FILE: src/features/studio/hooks/useFileUploader.ts
+================================================
+import { usePromptExtractor } from "@/src/features/extractor/hooks/usePromptExtractor";
+
+export function useFileUploader() {
+  const { processFiles } = usePromptExtractor();
+
+  const handleUploadClick = () => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.multiple = true;
+    input.onchange = (e) => {
+      const files = (e.target as HTMLInputElement).files;
+      if (files) processFiles(Array.from(files));
+    };
+    input.click();
+  };
+
+  return { handleUploadClick };
+}
+
+
+
+================================================
 FILE: src/features/studio/hooks/usePublicCollection.ts
 ================================================
 import { useState, useEffect } from "react";
 import { api } from "@/src/services/api";
 import { SavedPrompt } from "@/src/types/models";
 
-interface CollectionDetail {
-  collection: {
+interface DirectoryDetail {
+  directory: {
     id: number;
     name: string;
     description: string;
@@ -4279,23 +4123,23 @@ interface CollectionDetail {
   prompts: SavedPrompt[];
 }
 
-export function usePublicCollection(username: string, collection_slug: string) {
-  const [data, setData] = useState<CollectionDetail | null>(null);
+export function usePublicDirectory(username: string, directory_slug: string) {
+  const [data, setData] = useState<DirectoryDetail | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     setIsLoading(true);
     api.public
-      .getCollection(username, collection_slug)
+      .getDirectory(username, directory_slug)
       .then((res) => setData(res))
       .catch((err) => {
-        console.error("Error fetching collection:", err);
+        console.error("Error fetching directory:", err);
         setError("Colección no encontrada, eliminada o privada.");
         setData(null);
       })
       .finally(() => setIsLoading(false));
-  }, [username, collection_slug]);
+  }, [username, directory_slug]);
 
   return { data, isLoading, error };
 }
@@ -4311,7 +4155,7 @@ import { SavedPrompt } from "@/src/types/models";
 
 interface ProfileData {
   user: { username: string; role: string };
-  collections: any[];
+  directories: any[];
   recent_prompts: SavedPrompt[];
 }
 
@@ -4377,13 +4221,13 @@ FILE: src/features/studio/hooks/useStudio.ts
 ================================================
 import { useState, useEffect, useCallback } from "react";
 import { api } from "@/src/services/api";
-import { SavedPrompt, Collection } from "@/src/types/models";
+import { SavedPrompt, Directory } from "@/src/types/models";
 import { handleError } from "@/src/utils/errors/ErrorHandler";
 import { toast } from "react-hot-toast";
 
 export function useStudio() {
   const [prompts, setPrompts] = useState<SavedPrompt[]>([]);
-  const [collections, setCollections] = useState<Collection[]>([]);
+  const [directories, setDirectorys] = useState<Directory[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -4393,20 +4237,20 @@ export function useStudio() {
     setIsLoading(true);
     setError(null);
     try {
-      const [promptsRes, collectionsRes] = await Promise.all([
+      const [promptsRes, directorysRes] = await Promise.all([
         api.getMyPrompt(),
-        api.collections.getMyCollections(),
+        api.directories.getMyDirectorys(),
       ]);
 
-      console.log("📦 [DEBUG] Respuesta cruda de Colecciones:", collectionsRes);
+      console.log("📦 [DEBUG] Respuesta cruda de Colecciones:", directorysRes);
 
       setPrompts(promptsRes);
 
-      const collection = Array.isArray(collectionsRes)
-        ? collectionsRes
-        : collectionsRes?.collections || [];
+      const directory = Array.isArray(directorysRes)
+        ? directorysRes
+        : directorysRes?.directories || [];
 
-      setCollections(collection);
+      setDirectorys(directory);
     } catch (err: unknown) {
       const msg = handleError(err, "useStudio");
       setError(msg);
@@ -4415,11 +4259,11 @@ export function useStudio() {
     }
   }, []);
 
-  const assignToCollection = async (promptId: number, collectionId: number | null) => {
+  const assignToDirectory = async (promptId: number, directoryId: number | null) => {
     try {
-      await api.collections.assignPrompt(promptId, collectionId);
+      await api.directories.assignPrompt(promptId, directoryId);
       setPrompts((prev) =>
-        prev.map((p) => (p.id === promptId ? { ...p, collection_id: collectionId } : p)),
+        prev.map((p) => (p.id === promptId ? { ...p, directory_id: directoryId } : p)),
       );
       toast.success("Imagen movida correctamente");
     } catch (error) {
@@ -4461,15 +4305,87 @@ export function useStudio() {
 
   return {
     prompts,
-    collections,
+    directories,
     isLoading,
     error,
     refetch: fetchPrompts,
-    assignToCollection,
+    assignToDirectory,
     deletePrompt,
     isDeletingBatch,
     deletePromptsBatch,
   };
+}
+
+
+
+================================================
+FILE: src/features/studio/hooks/useStudioDnd.ts
+================================================
+import { useState } from "react";
+import { useSensor, useSensors, PointerSensor, DragStartEvent, DragEndEvent } from "@dnd-kit/core";
+import { useStudioUI, Directory } from "@/src/store/useStudioUI";
+
+export function useStudioDnd() {
+  const moveDirectory = useStudioUI((state) => state.moveDirectory);
+  const [activeDragDir, setActiveDragDir] = useState<Directory | null>(null);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 8 },
+    }),
+  );
+
+  const handleDragStart = (event: DragStartEvent) => {
+    const { active } = event;
+    if (active.data.current?.type === "directory") {
+      setActiveDragDir(active.data.current.directory);
+    }
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    setActiveDragDir(null);
+    const { active, over } = event;
+
+    if (!over || active.id === `dir-${over.id}`) return;
+
+    const draggedDirId = String(active.id).replace("dir-", "");
+    const targetDirId = String(over.id);
+
+    if (draggedDirId !== targetDirId) {
+      moveDirectory(draggedDirId, targetDirId);
+    }
+  };
+
+  return { sensors, activeDragDir, handleDragStart, handleDragEnd };
+}
+
+
+
+================================================
+FILE: src/features/studio/hooks/useStudioSync.ts
+================================================
+import { useEffect } from "react";
+import { useStudioUI } from "@/src/store/useStudioUI";
+import { fetchSeguro } from "@/src/services/api/client";
+
+export function useStudioSync() {
+  const setDirectories = useStudioUI((state) => state.setDirectories);
+
+  useEffect(() => {
+    const fetchDirs = async () => {
+      try {
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
+        const res = await fetchSeguro(`${API_URL}/directories/`, { credentials: "include" });
+        if (res.ok) {
+          const data = await res.json();
+          setDirectories(data);
+        }
+      } catch (error) {
+        console.error("Error cargando directorios:", error);
+      }
+    };
+    fetchDirs();
+  }, [setDirectories]);
 }
 
 
@@ -4483,7 +4399,7 @@ import { searchApi } from "./api/search";
 import { downloadApi } from "./api/downloads";
 import { promptApi } from "./api/prompts";
 import { publicApi } from "./api/public";
-import { collectionsApi } from "./api/collections";
+import { directoriesApi } from "./api/directories";
 import { adminApi } from "./api/admin";
 
 export const api = {
@@ -4496,7 +4412,7 @@ export const api = {
   auth: authApi,
   public: publicApi,
   prompts: promptApi,
-  collections: collectionsApi,
+  directories: directoriesApi,
 };
 
 
@@ -4531,7 +4447,7 @@ export interface StorageStatsResponse {
   limit_mb: number;
 }
 
-export interface GarbageCollectionResult {
+export interface GarbageDirectoryResult {
   status: string;
   deleted_logs: number;
   deleted_invites: number;
@@ -4597,7 +4513,7 @@ export const adminApi = {
     });
   },
 
-  runGarbageCollector: async (): Promise<GarbageCollectionResult> => {
+  runGarbageCollector: async (): Promise<GarbageDirectoryResult> => {
     return fetchSeguro(`${API_URL}/admin/garbage-collect`, {
       method: "POST",
     });
@@ -4824,26 +4740,26 @@ export async function fetchSeguro(
 
 
 ================================================
-FILE: src/services/api/collections.ts
+FILE: src/services/api/directories.ts
 ================================================
 import { API_URL, fetchSeguro } from "./client";
 
-export const collectionsApi = {
+export const directoriesApi = {
   create: async (data: { name: string; description?: string; is_private: boolean }) => {
-    return fetchSeguro(`${API_URL}/collections`, {
+    return fetchSeguro(`${API_URL}/directories`, {
       method: "POST",
       body: JSON.stringify(data),
     });
   },
 
-  getMyCollections: async () => {
-    return fetchSeguro(`${API_URL}/collections/`);
+  getMyDirectorys: async () => {
+    return fetchSeguro(`${API_URL}/directories/`);
   },
 
-  assignPrompt: async (promptId: number, collectionId: number | null) => {
-    return fetchSeguro(`${API_URL}/collections/assign/${promptId}`, {
+  assignPrompt: async (promptId: number, directoryId: number | null) => {
+    return fetchSeguro(`${API_URL}/directories/assign/${promptId}`, {
       method: "PUT",
-      body: JSON.stringify({ collection_id: collectionId }),
+      body: JSON.stringify({ directory_id: directoryId }),
     });
   },
 };
@@ -4858,8 +4774,8 @@ import { ENV } from "@/src/services/config/env";
 
 const API_URL = ENV.API_URL;
 export const downloadApi = {
-  solicitarZipColeccion: (collectionId: string) =>
-    fetchSeguro(`${API_URL}/download/collection/${encodeURIComponent(collectionId)}`, {
+  solicitarZipColeccion: (directoryId: string) =>
+    fetchSeguro(`${API_URL}/download/directory/${encodeURIComponent(directoryId)}`, {
       method: "POST",
     }),
 
@@ -4926,7 +4842,7 @@ export const publicApi = {
     return fetchSeguro(`${API_URL}/public/profile/${username}`);
   },
 
-  getCollection: async (username: string, slug: string) => {
+  getDirectory: async (username: string, slug: string) => {
     if (RESERVED_ROUTES.has(username.toLowerCase())) {
       return Promise.reject(new Error("Ruta reservada del sistema"));
     }
@@ -5787,7 +5703,7 @@ export function PageLoader({ text = "Procesando petición..." }: PageLoaderProps
   return (
     <div className="min-h-[60vh] flex items-center justify-center w-full bg-background">
       <p
-        className="font-mono text-sm uppercase tracking-widest
+        className="font-mono text-sm tracking-widest
                    bg-gradient-to-r from-zinc-600/40 via-zinc-100 to-zinc-600/40
                    bg-[length:250%_auto]
                    bg-clip-text text-transparent
@@ -6343,7 +6259,7 @@ interface Props {
   onSuccess: () => void;
 }
 
-export function CreateCollectionModal({ isOpen, onClose, onSuccess }: Props) {
+export function CreateDirectoryModal({ isOpen, onClose, onSuccess }: Props) {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [isPrivate, setIsPrivate] = useState(false);
@@ -6360,7 +6276,7 @@ export function CreateCollectionModal({ isOpen, onClose, onSuccess }: Props) {
 
     setIsLoading(true);
     try {
-      await api.collections.create({ name, description, is_private: isPrivate });
+      await api.directories.create({ name, description, is_private: isPrivate });
       toast.success("Colección creada");
       setName("");
       setDescription("");
@@ -6539,7 +6455,7 @@ export function FeedItemCard({ item, lang, isPriority = false, index = 0 }: Feed
 
       <div className="absolute inset-0 z-20 bg-linear-to-t from-black/90 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-4">
         <div className="absolute top-3 left-3 flex gap-2">
-          {item.type === "collection" && (
+          {item.type === "directory" && (
             <span className="bg-foreground-600/60 text-blue-200 text-[10px] font-bold px-2 py-1 flex items-center gap-1 neo-border rounded-md shadow-sm">
               <IconStack2 size={12} stroke={2} /> {item.title}
             </span>
@@ -9391,6 +9307,64 @@ export function Breadcrumbs({ items, homeHref = "/" }: BreadcrumbsProps) {
 
 
 ================================================
+FILE: src/system/organisms/Navigation/PageHeader.tsx
+================================================
+"use client";
+
+import { ReactNode } from "react";
+import { Breadcrumbs } from "@/src/system/organisms/Navigation/Breadcrumbs";
+
+interface BreadcrumbItem {
+  label: string;
+  href?: string;
+}
+
+interface PageHeaderProps {
+  title: string;
+  subtitle?: string;
+  description: string;
+  icon: ReactNode;
+  breadcrumbItems: BreadcrumbItem[];
+}
+
+export function PageHeader({
+  title,
+  subtitle,
+  description,
+  icon,
+  breadcrumbItems,
+}: PageHeaderProps) {
+  return (
+    <div className="space-y-8">
+      {/* 1. Navegación */}
+      <div>
+        <Breadcrumbs items={breadcrumbItems} />
+      </div>
+
+      {/* 2. Título y Branding */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-border pb-8 mt-4">
+        <div>
+          <h1 className="text-3xl text-foreground font-bold tracking-tighter flex items-center gap-1">
+            <div className="p-2 text-foreground rounded-lg">
+              {icon}
+            </div>
+            {title}
+            {subtitle && (
+              <span className="font-mono font-medium lowercase text-foreground ml-1">
+                {subtitle}
+              </span>
+            )}
+          </h1>
+          <p className="text-muted-foreground mt-1 font-mono text-sm">{description}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+
+================================================
 FILE: src/system/organisms/Search/SearchResults/SearchResults.tsx
 ================================================
 "use client";
@@ -9571,14 +9545,14 @@ import {
   IconDotsVertical,
   IconFolder,
 } from "@tabler/icons-react";
-import { SavedPrompt, Collection } from "@/src/types/models";
+import { SavedPrompt, Directory } from "@/src/types/models";
 import { LazyImage } from "../../molecules/Media/LazyImage";
 
 interface PromptCardProps {
   item: SavedPrompt;
-  collections?: Collection[];
+  directories?: Directory[];
   onDelete?: (id: number) => void;
-  onAssign?: (promptId: number, collectionId: number | null) => void;
+  onAssign?: (promptId: number, directoryId: number | null) => void;
   isPriority: boolean;
   isSelected?: boolean;
   onToggleSelect?: () => void;
@@ -9591,7 +9565,7 @@ interface PromptCardProps {
 
 export function PromptCard({
   item,
-  collections = [],
+  directories = [],
   onAssign,
   onDelete,
   index = 0,
@@ -9686,14 +9660,14 @@ export function PromptCard({
                 e.stopPropagation();
               }}
             >
-              {onAssign && collections.length > 0 && (
+              {onAssign && directories.length > 0 && (
                 <div className="px-3 py-2 border-b border-border/10">
                   <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1.5 flex items-center gap-1.5">
                     <IconFolder size={12} /> Colección
                   </label>
                   <select
                     className="w-full bg-muted/50 text-xs text-foreground p-1.5 rounded border border-border focus:outline-none focus:ring-1 focus:ring-(--accent-color) cursor-pointer"
-                    value={item.collection_id || ""}
+                    value={item.directory_id || ""}
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
@@ -9706,7 +9680,7 @@ export function PromptCard({
                     }}
                   >
                     <option value="">Ninguna (Suelto)</option>
-                    {collections.map((c) => (
+                    {directories.map((c) => (
                       <option key={c.id} value={c.id}>
                         {c.name}
                       </option>
@@ -9812,13 +9786,21 @@ export function PromptCard({
 FILE: src/system/organisms/Studio/PromptGrid.tsx
 ================================================
 "use client";
+
 import { useEffect, useState } from "react";
+import { useParams } from "next/navigation";
 import { useStudioUI } from "@/src/store/useStudioUI";
-import { IconPhotoOff, IconLoader2 } from "@tabler/icons-react";
+import { useAuthStore } from "@/src/store/authStore";
+import { IconPhotoOff } from "@tabler/icons-react";
 import { fetchSeguro } from "@/src/services/api/client";
+import { PageLoader } from "../../atoms/PageLoader";
+import { PromptCard } from "./PromptCard";
 
 export default function PromptGrid() {
   const { activeDirectoryId, searchQuery } = useStudioUI();
+  const user = useAuthStore((state) => state.user);
+  const params = useParams();
+  const lang = (params?.lang as string) || "es";
 
   const [debouncedQuery, setDebouncedQuery] = useState(searchQuery);
   const [prompts, setPrompts] = useState([]);
@@ -9828,10 +9810,7 @@ export default function PromptGrid() {
     const handler = setTimeout(() => {
       setDebouncedQuery(searchQuery);
     }, 1000);
-
-    return () => {
-      clearTimeout(handler);
-    };
+    return () => clearTimeout(handler);
   }, [searchQuery]);
 
   useEffect(() => {
@@ -9840,7 +9819,6 @@ export default function PromptGrid() {
       try {
         const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
 
-        // OJO: Usamos debouncedQuery aquí, NO searchQuery
         const endpoint = debouncedQuery
           ? `/search/studio?q=${debouncedQuery}`
           : `/prompts/studio?directory_id=${activeDirectoryId || ""}`;
@@ -9851,7 +9829,7 @@ export default function PromptGrid() {
           setPrompts(data.results || data.data || []);
         }
       } catch (err) {
-        console.error(err);
+        console.error("Error en Studio Grid:", err);
       } finally {
         setLoading(false);
       }
@@ -9864,26 +9842,28 @@ export default function PromptGrid() {
     <div className="h-full flex flex-col">
       {loading ? (
         <div className="flex-1 flex items-center justify-center">
-          <IconLoader2 className="animate-spin text-primary" size={40} />
+          <PageLoader text="Sincronizando Studio..." />
         </div>
       ) : prompts.length > 0 ? (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          {prompts.map((p: any) => (
-            <div
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          {prompts.map((p: any, index) => (
+            <PromptCard
               key={p.id}
-              className="aspect-square bg-secondary rounded-lg overflow-hidden border group relative"
-            >
-              <img src={p.url} className="w-full h-full object-cover" alt={p.prompt} />
-              <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity p-3 flex flex-col justify-end">
-                <p className="text-[10px] text-white line-clamp-2">{p.prompt}</p>
-              </div>
-            </div>
+              item={p}
+              index={index}
+              lang={lang}
+              isStudio={true}
+              authorUsername={user?.username || "unknown"}
+              isPriority={index < 8}
+            />
           ))}
         </div>
       ) : (
-        <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground/50">
+        <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground/40">
           <IconPhotoOff size={48} stroke={1.5} className="mb-4" />
-          <p className="text-sm font-mono uppercase tracking-widest">No se encontraron prompts</p>
+          <p className="text-sm font-mono uppercase tracking-widest text-center px-4">
+            No se encontraron prompts en este rincón
+          </p>
         </div>
       )}
     </div>
@@ -9917,11 +9897,11 @@ interface SidebarDirectoryProps {
 
 export const SidebarDirectory = ({ directory, level = 0 }: SidebarDirectoryProps) => {
   const [isOpen, setIsOpen] = useState(false);
-  
-  const { 
-    activeDirectoryId, 
-    setActiveDirectory, 
-    getChildDirectories, 
+
+  const {
+    activeDirectoryId,
+    setActiveDirectory,
+    getChildDirectories,
     deleteDirectory,
     createDirectory,
     renameDirectory,
@@ -9937,7 +9917,7 @@ export const SidebarDirectory = ({ directory, level = 0 }: SidebarDirectoryProps
     isDragging,
   } = useDraggable({
     id: `dir-${directory.id}`,
-    data: { type: "directory", directory }, 
+    data: { type: "directory", directory },
   });
 
   const { setNodeRef: setDroppableRef, isOver } = useDroppable({
@@ -9953,7 +9933,7 @@ export const SidebarDirectory = ({ directory, level = 0 }: SidebarDirectoryProps
   const style = {
     opacity: isDragging ? 0.4 : 1,
     cursor: isDragging ? "grabbing" : "pointer",
-    paddingLeft: `${level * 12 + 8}px`,
+    paddingLeft: `${level * 12 + 12}px`,
   };
 
   const handleSelect = (e: React.MouseEvent) => {
@@ -9973,47 +9953,37 @@ export const SidebarDirectory = ({ directory, level = 0 }: SidebarDirectoryProps
     e.stopPropagation();
     const name = window.prompt("Nombre de la nueva subcarpeta:");
     if (!name || name.trim() === "") return;
-
     try {
       await createDirectory(name.trim(), directory.id);
-      toast.success("Subcarpeta creada con éxito");
-      setIsOpen(true); 
+      toast.success("Subcarpeta creada");
+      setIsOpen(true);
     } catch (error: any) {
-      toast.error(error.message || "Error al crear la subcarpeta");
+      toast.error("Error al crear subcarpeta");
     }
   };
 
   const handleDeleteDirectory = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    const confirm = window.confirm(
-      `¿Estás seguro de eliminar "${directory.name}"? Asegúrate de que esté vacía.`
-    );
+    const confirm = window.confirm(`¿Eliminar "${directory.name}"?`);
     if (!confirm) return;
-
     try {
       await deleteDirectory(directory.id);
       toast.success("Carpeta eliminada");
       if (isSelected) setActiveDirectory(null);
     } catch (error: any) {
-      toast.error(error.message || "No se pudo eliminar la carpeta. ¿Está vacía?");
+      toast.error("Error al eliminar");
     }
   };
 
-  // 🎯 NUEVO: Lógica de Doble Clic para Renombrar
   const handleDoubleClick = async (e: React.MouseEvent) => {
-    e.stopPropagation(); // Evitamos que el doble clic burbujee al padre
-    
-    // Abrimos el prompt con el nombre actual ya escrito
+    e.stopPropagation();
     const newName = window.prompt("Renombrar carpeta:", directory.name);
-    
-    // Si cancela, lo deja vacío, o pone exactamente el mismo nombre, no hacemos nada
     if (!newName || newName.trim() === "" || newName.trim() === directory.name) return;
-
     try {
       await renameDirectory(directory.id, newName.trim());
-      toast.success("Carpeta renombrada");
+      toast.success("Renombrada");
     } catch (error: any) {
-      toast.error("Error al renombrar la carpeta");
+      toast.error("Error al renombrar");
     }
   };
 
@@ -10025,16 +9995,23 @@ export const SidebarDirectory = ({ directory, level = 0 }: SidebarDirectoryProps
         {...attributes}
         {...listeners}
         onClick={handleSelect}
-        onDoubleClick={handleDoubleClick} // 🟢 Añadimos el evento de doble clic aquí
+        onDoubleClick={handleDoubleClick}
         className={`
-          group flex items-center py-1.5 px-2 mx-2 rounded-md transition-all duration-200
-          ${isSelected ? "bg-primary/10 text-primary font-bold" : "text-muted-foreground hover:text-foreground"}
-          ${isOver ? "bg-primary/10 ring-2 ring-primary border-dashed neo-border" : "hover:bg-secondary/50 border border-transparent"}
+          group font-mono flex items-center py-1.5 px-2 mx-2 rounded-md transition-all duration-200 relative
+          ${isSelected ? "bg-primary/5 text-foreground font-medium" : "text-muted-foreground hover:text-foreground"}
+          ${isOver ? "bg-primary/10 ring-2 ring-primary/30 border-dashed" : "hover:bg-secondary/40 border border-transparent"}
           ${isDragging ? "bg-background border-dashed border-primary/50" : ""}
         `}
       >
+        {isSelected && (
+          <div
+            className="absolute left-0 w-1 h-6 bg-primary rounded-r-full shadow-[0_0_8px_rgba(var(--primary-rgb),0.4)]"
+            style={{ top: "50%", transform: "translateY(-50%)" }}
+          />
+        )}
+
         <span
-          className="w-4 h-4 mr-1 flex items-center justify-center z-10 hover:bg-muted/50 rounded"
+          className="w-4 h-4 mr-1 flex items-center justify-center z-10 hover:bg-muted/50 rounded transition-colors"
           onClick={handleToggle}
         >
           {children.length > 0 &&
@@ -10043,24 +10020,30 @@ export const SidebarDirectory = ({ directory, level = 0 }: SidebarDirectoryProps
 
         <span className="mr-2">
           {isOpen ? (
-            <IconFolderOpen size={16} className={isSelected ? "text-primary" : "text-blue-400"} />
+            <IconFolderOpen
+              size={16}
+              className={isSelected ? "text-primary/70" : "text-foreground/40"}
+            />
           ) : (
-            <IconFolder size={16} className={isSelected ? "text-primary" : "text-blue-400"} />
+            <IconFolder
+              size={16}
+              className={isSelected ? "text-primary/70" : "text-foreground/40"}
+            />
           )}
         </span>
 
         <span className="text-sm truncate flex-1">{directory.name}</span>
 
-        <div className="opacity-0 group-hover:opacity-100 flex items-center gap-1 transition-opacity">
+        <div className="opacity-0 group-hover:opacity-100 flex items-center gap-1 transition-opacity pointer-events-auto">
           <button
-            className="p-1 hover:bg-background/80 rounded transition-colors"
+            className="p-1 hover:bg-primary/20 rounded transition-colors text-primary/70"
             title="Nueva Subcarpeta"
             onClick={handleCreateSubdirectory}
           >
             <IconFolderPlus size={14} />
           </button>
           <button
-            className="p-1 hover:bg-destructive/20 text-destructive rounded transition-colors"
+            className="p-1 hover:bg-destructive/20 hover:text-destructive/90 text-muted-foreground/40 rounded transition-colors"
             title="Eliminar"
             onClick={handleDeleteDirectory}
           >
@@ -10079,6 +10062,114 @@ export const SidebarDirectory = ({ directory, level = 0 }: SidebarDirectoryProps
     </div>
   );
 };
+
+
+
+================================================
+FILE: src/system/organisms/Studio/StudioHeader.tsx
+================================================
+import Link from "next/link";
+import { IconAlbum, IconChevronRight } from "@tabler/icons-react";
+
+export function StudioHeader() {
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="flex items-center gap-2 text-sm text-muted-foreground font-mono">
+        <Link href="/es" className="hover:text-primary transition-colors cursor-pointer">
+          Inicio
+        </Link>
+        <IconChevronRight size={14} />
+        <span className="text-foreground font-semibold">Mi Studio</span>
+      </div>
+
+      <div className="flex items-center gap-3">
+        <div className="p-2 bg-primary/10 rounded-lg border border-primary/20 neo-shadow-sm">
+          <IconAlbum className="text-primary" size={28} stroke={1.5} />
+        </div>
+        <div>
+          <h1 className="text-2xl md:text-3xl font-black tracking-tight uppercase">Mi Studio</h1>
+          <p className="text-muted-foreground text-sm font-mono mt-1">
+            Gestiona y organiza tus extracciones
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+
+================================================
+FILE: src/system/organisms/Studio/StudioSidebar.tsx
+================================================
+"use client";
+
+import { IconFolderPlus, IconCloudUpload, IconFolder } from "@tabler/icons-react";
+import { useStudioUI, Directory } from "@/src/store/useStudioUI";
+import { SidebarDirectory } from "@/src/system/organisms/Studio/SidebarDirectory";
+import { useFileUploader } from "@/src/features/studio/hooks/useFileUploader";
+
+export function StudioSidebar() {
+  const { directories, createDirectory, activeDirectoryId, setActiveDirectory } = useStudioUI();
+  const { handleUploadClick } = useFileUploader();
+
+  const handleCreateRootFolder = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const name = window.prompt("Nombre de la nueva carpeta principal:");
+    if (name?.trim()) await createDirectory(name.trim(), null);
+  };
+
+  return (
+    <aside className="w-72 border-r border-border/30 bg-muted/5 flex-col hidden md:flex">
+      <div className="pt-6 flex-1 overflow-y-auto custom-scrollbar flex flex-col gap-1">
+        <div className="px-3 mb-1 group relative">
+          <div
+            onClick={() => setActiveDirectory(null)}
+            className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs transition-all border cursor-pointer role="button" ${
+              activeDirectoryId === null
+                ? "bg-primary/10 text-primary border-primary/20 font-bold"
+                : "text-muted-foreground hover:bg-secondary/40 border-transparent font-medium"
+            }`}
+          >
+            <IconFolder size={18} stroke={1.5} />
+            <span className="tracking-widest flex-1 text-left">
+              <span className="font-mono font-medium lowercase text-foreground/70">reprompt</span>{" "}
+              root
+            </span>
+
+            <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+              <button
+                onClick={handleCreateRootFolder}
+                className="p-1 hover:bg-primary/20 rounded text-primary/80 transition-colors"
+                title="Nueva carpeta en Root"
+              >
+                <IconFolderPlus size={14} stroke={2} />
+              </button>
+              <button
+                onClick={handleUploadClick}
+                className="p-1 hover:bg-primary/20 rounded text-primary/80 transition-colors"
+                title="Subir a Root"
+              >
+                <IconCloudUpload size={14} stroke={2} />
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div className="mx-6 border-t border-border/10 my-2" />
+
+        <div className="px-3 flex flex-col gap-1">
+          {directories
+            .filter((d: Directory) => d.parent_id === null)
+            .map((dir: Directory) => (
+              <SidebarDirectory key={dir.id} directory={dir} />
+            ))}
+        </div>
+      </div>
+    </aside>
+  );
+}
+
 
 
 ================================================
@@ -10289,14 +10380,14 @@ export interface FeedItem {
   user_id: string;
   raw_id: string;
   slug?: string;
-  type: "prompt" | "collection" | "studio";
+  type: "prompt" | "directory" | "studio";
   title: string;
   username: string;
   image_url?: string;
   items_count: number;
 }
 
-export interface Collection {
+export interface Directory {
   id: number;
   user_id: string;
   name: string;
@@ -10316,7 +10407,7 @@ export interface SavedPrompt {
   sampler?: string;
   image_url?: string;
   software?: string;
-  collection_id?: number | null;
+  directory_id?: number | null;
   created_at: string;
 }
 

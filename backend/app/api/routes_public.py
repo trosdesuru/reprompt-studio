@@ -131,13 +131,20 @@ def get_public_prompt_detail(
     )
     related_user = session.exec(statement).all()
 
+    def safe_extract(obj):
+        if not obj:
+            return None
+        data = {k: v for k, v in obj.__dict__.items() if not k.startswith("_")}
+        data.pop("embedding", None)
+        return data
+
     return {
         "status": "success",
-        "prompt": prompt,
+        "prompt": safe_extract(prompt),
         "user": {"username": user.username, "role": user.role},
-        "directory": directory,
-        "related_directory": related_directory,
-        "related_user": related_user,
+        "directory": safe_extract(directory),
+        "related_directory": [safe_extract(p) for p in related_directory],
+        "related_user": [safe_extract(p) for p in related_user],
     }
 
 

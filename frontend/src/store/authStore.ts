@@ -56,8 +56,8 @@ export const useAuthStore = create<AuthState>((set) => ({
 
     try {
       // 🟢 FIX: Consolidado en una sola llamada y con AWAIT
-      const res = await api.auth.me(); 
-      
+      const res = await api.auth.me();
+
       // Mapeo defensivo de la respuesta del backend
       const userData = res?.user || res?.data || res;
       const username = userData?.username;
@@ -65,10 +65,10 @@ export const useAuthStore = create<AuthState>((set) => ({
 
       if (username) {
         console.log(`✅ [AUTH_STORE] checkAuth exitoso: @${username}`);
-        set({ 
-          user: { username, role }, 
-          isAuthenticated: true, 
-          isLoadingAuth: false 
+        set({
+          user: { username, role },
+          isAuthenticated: true,
+          isLoadingAuth: false,
         });
       } else {
         console.warn("⚠️ [AUTH_STORE] checkAuth respondió OK pero el cuerpo está vacío.");
@@ -77,7 +77,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     } catch (error: unknown) {
       console.warn("🛑 [AUTH_STORE] checkAuth falló (No hay sesión activa).");
       set({ user: null, isAuthenticated: false, isLoadingAuth: false });
-      
+
       // No lanzamos el error al ErrorHandler aquí para evitar spam de toasts en el login
     } finally {
       set({ isLoadingAuth: false });
@@ -98,14 +98,20 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
 }));
 
-// Escuchador de eventos globales para expulsión inmediata
 if (typeof window !== "undefined") {
+  window.addEventListener("auth:session_recovered", () => {
+    console.log("♻️ [AUTH_STORE] Sesión recuperada. Sincronizando interfaz...");
+    useAuthStore.getState().checkAuth();
+  });
+
   window.addEventListener("auth:unauthorized", () => {
-    console.warn("🚨 [AUTH_STORE] ALERTA: Recibido evento 'auth:unauthorized'.");
     const state = useAuthStore.getState();
-    if (state.isAuthenticated || state.user) {
+    if (state.isAuthenticated) {
       state.logoutSilencioso();
-      redirectToLogin();
+      const currentPath = window.location.pathname;
+      if (!currentPath.includes("/login")) {
+        window.location.href = `/${currentPath.split("/")[1] || "es"}/login`;
+      }
     }
   });
 }

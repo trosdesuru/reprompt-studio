@@ -1,1 +1,98 @@
-Generic single-database configuration.
+#### 1. Generar el "Plano" de la Migración
+Este comando compara tus modelos de Python con la base de datos y crea un archivo de instrucciones en `alembic/versions/`.
+```bash
+alembic revision --autogenerate -m "descripcion_del_cambio"
+
+Revisión Obligatoria (Fix SQLModel): Abre el archivo generado en alembic/versions/ y añade el import de SQLModel para evitar el NameError:
+
+Python
+import sqlalchemy as sa
+import sqlmodel # 🟢 Añadir manualmente
+
+Aplicar en Local/Neon:
+
+Bash
+alembic upgrade head
+🚀 Despliegue Automático (Render + CI/CD)
+El backend está configurado para que, tras cada git push, se sincronicen los datos automáticamente antes de arrancar la API.
+
+Start Command en Render:
+
+Bash
+alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port $PORT
+🖼️ Cloudflare R2 & CDN (Producción)
+Para evitar límites de velocidad y mejorar la carga de imágenes, usamos un dominio personalizado como CDN.
+
+URL de Producción: https://cdn.reprompt.studio
+
+Configuración:
+
+En Cloudflare: Bucket R2 > Settings > Custom Domains > Connect cdn.reprompt.studio.
+
+En Render: Variable de entorno R2_PUBLIC_URL actualizada.
+
+Seguridad: El "Public Development URL" (r2.dev) debe estar Disabled en producción.
+
+🧹 Backfilling (Limpieza de Datos del Pasado)
+Si añades una columna nueva (como slug) y los registros antiguos aparecen como NULL, ejecuta este comando en el SQL Editor de Neon:
+
+SQL
+UPDATE directory 
+SET slug = TRIM(BOTH '-' FROM LOWER(REGEXP_REPLACE(name, '[^a-zA-Z0-9]+', '-', 'g'))) 
+    || '-' || SUBSTRING(MD5(RANDOM()::TEXT) FROM 1 FOR 6)
+WHERE slug IS NULL;
+⚛️ Frontend: Reglas de Oro
+Error de Hidratación (Nested Buttons)
+Error: In HTML, <button> cannot be a descendant of <button>.
+Solución: Si necesitas un elemento clicable que contenga otros botones (como en la Sidebar), el contenedor debe ser un div con comportamiento de botón:
+
+TypeScript
+<div 
+  onClick={handleAction} 
+  role="button" 
+  className="cursor-pointer ..."
+>
+</div>Aplicar en Local/Neon:
+
+Bash
+alembic upgrade head
+🚀 Despliegue Automático (Render + CI/CD)
+El backend está configurado para que, tras cada git push, se sincronicen los datos automáticamente antes de arrancar la API.
+
+Start Command en Render:
+
+Bash
+alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port $PORT
+🖼️ Cloudflare R2 & CDN (Producción)
+Para evitar límites de velocidad y mejorar la carga de imágenes, usamos un dominio personalizado como CDN.
+
+URL de Producción: https://cdn.reprompt.studio
+
+Configuración:
+
+En Cloudflare: Bucket R2 > Settings > Custom Domains > Connect cdn.reprompt.studio.
+
+En Render: Variable de entorno R2_PUBLIC_URL actualizada.
+
+Seguridad: El "Public Development URL" (r2.dev) debe estar Disabled en producción.
+
+🧹 Backfilling (Limpieza de Datos del Pasado)
+Si añades una columna nueva (como slug) y los registros antiguos aparecen como NULL, ejecuta este comando en el SQL Editor de Neon:
+
+SQL
+UPDATE directory 
+SET slug = TRIM(BOTH '-' FROM LOWER(REGEXP_REPLACE(name, '[^a-zA-Z0-9]+', '-', 'g'))) 
+    || '-' || SUBSTRING(MD5(RANDOM()::TEXT) FROM 1 FOR 6)
+WHERE slug IS NULL;
+⚛️ Frontend: Reglas de Oro
+Error de Hidratación (Nested Buttons)
+Error: In HTML, <button> cannot be a descendant of <button>.
+Solución: Si necesitas un elemento clicable que contenga otros botones (como en la Sidebar), el contenedor debe ser un div con comportamiento de botón:
+
+TypeScript
+<div 
+  onClick={handleAction} 
+  role="button" 
+  className="cursor-pointer ..."
+>
+</div>

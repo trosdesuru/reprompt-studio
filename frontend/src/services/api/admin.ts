@@ -57,55 +57,63 @@ export const adminApi = {
     url: string;
     timestamp: string;
   }) => {
-    return fetchSeguro(`${API_URL}/admin/bugs`, {
+    const res = await fetchSeguro(`${API_URL}/admin/bugs`, {
       method: "POST",
       body: JSON.stringify(data),
     });
+    return await res.json();
   },
 
   manageUser: async (
     userId: string,
     action: "upgrade" | "deactivate" | "activate" | "reset_password",
   ) => {
-    return fetchSeguro(`${API_URL}/admin/users/action`, {
+    const res = await fetchSeguro(`${API_URL}/admin/users/action`, {
       method: "POST",
       body: JSON.stringify({ user_id: userId, action }),
     });
+    return await res.json();
   },
 
   deleteUser: async (userId: string) => {
-    return fetchSeguro(`${API_URL}/admin/users/${userId}`, {
+    const res = await fetchSeguro(`${API_URL}/admin/users/${userId}`, {
       method: "DELETE",
     });
+    return await res.json();
   },
 
   getDatabaseStats: async (): Promise<DatabaseStatsResponse> => {
-    return fetchSeguro(`${API_URL}/admin/database-stats`, {
+    const res = await fetchSeguro(`${API_URL}/admin/database-stats`, {
       method: "GET",
     });
+    return await res.json();
   },
 
   getStorageStats: async (): Promise<StorageStatsResponse> => {
-    return fetchSeguro(`${API_URL}/admin/storage-stats`, {
+    const res = await fetchSeguro(`${API_URL}/admin/storage-stats`, {
       method: "GET",
     });
+    return await res.json();
   },
 
   runGarbageCollector: async (): Promise<GarbageDirectoryResult> => {
-    return fetchSeguro(`${API_URL}/admin/garbage-collect`, {
+    const res = await fetchSeguro(`${API_URL}/admin/garbage-collect`, {
       method: "POST",
     });
+    return await res.json();
   },
 
   purgeStorage: async (): Promise<PurgeResult> => {
-    return fetchSeguro(`${API_URL}/admin/storage/purge-all`, {
+    const res = await fetchSeguro(`${API_URL}/admin/storage/purge-all`, {
       method: "POST",
     });
+    return await res.json();
   },
 
   getUserActivity: async (userId: string): Promise<UserActivityResponse> => {
-    return fetchSeguro(`${API_URL}/admin/users/${userId}/activity`, {
+    const res = await fetchSeguro(`${API_URL}/admin/users/${userId}/activity`, {
       method: "GET",
     });
+    return await res.json();
   },
 };

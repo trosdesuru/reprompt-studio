@@ -16,37 +16,29 @@ export async function fetchSeguro(
   options: ExtendedRequestInit = {},
 ): Promise<Response> {
   const headers = new Headers(options.headers || {});
-
   if (!headers.has("Content-Type") && !(options.body instanceof FormData)) {
     headers.set("Content-Type", "application/json");
   }
 
-  const config: ExtendedRequestInit = {
-    ...options,
-    headers,
-    credentials: "include",
-  };
-
-  console.log(`📡 [API_CLIENT] PETICIÓN -> ${options.method || "GET"} ${endpoint}`);
-
+  const config: ExtendedRequestInit = { ...options, headers, credentials: "include" };
   let response: Response;
 
   try {
     response = await fetch(endpoint, config);
-    console.log(`📥 [API_CLIENT] RESPUESTA <- ${endpoint} [Status: ${response.status}]`);
   } catch (error) {
-    console.error(`🔌 [NETWORK_ERROR] Fallo físico de conexión con ${endpoint}:`, error);
     throw new Error("No hay conexión con el servidor.");
   }
 
-  const isAuthFlow = endpoint.includes("/auth");
+  const isCriticalAuthPath =
+    endpoint.includes("/auth/login") ||
+    endpoint.includes("/auth/register") ||
+    endpoint.includes("/auth/refresh");
 
-  if (response.status === 401 && !isAuthFlow) {
-    console.warn(`🚑 [API_CLIENT] 401 Detectado en ${endpoint}. Intentando rescate (Refresh)...`);
+  if (response.status === 401 && !isCriticalAuthPath) {
+    console.warn(`🚑 [RESCATE] 401 en ${endpoint}. Iniciando Silent Refresh...`);
 
     if (!isRefreshing) {
       isRefreshing = true;
-      console.log("🔄 [SECURITY] Solicitando nuevo Access Token al servidor...");
       refreshPromise = (async () => {
         try {
           const refreshRes = await fetch(`${API_URL}/auth/refresh`, {
@@ -65,24 +57,16 @@ export async function fetchSeguro(
     const refreshSuccessful = await refreshPromise;
 
     if (refreshSuccessful) {
-      console.log(`✅ [SECURITY] Sesión renovada con éxito. Reintentando operación original...`);
-
-      if (options.body instanceof FormData) {
-        console.warn("⚠️ [SECURITY] Petición con FormData cancelada tras refresh.");
-        return response;
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new Event("auth:session_recovered"));
       }
 
       try {
-        response = await fetch(endpoint, config);
-        console.log(
-          `🔁 [API_CLIENT] Reintento tras refresh <- ${endpoint} [Status: ${response.status}]`,
-        );
+        return await fetch(endpoint, config);
       } catch (error) {
-        console.error("❌ [API_CLIENT] Error físico en el reintento post-refresh.");
         throw new Error("Error en el reintento de conexión.");
       }
     } else {
-      console.error("🚷 [SECURITY] Refresh fallido. La sesión ha muerto definitivamente.");
       if (typeof window !== "undefined") {
         window.dispatchEvent(new Event("auth:unauthorized"));
       }
@@ -90,21 +74,5 @@ export async function fetchSeguro(
     }
   }
 
-  if (!response.ok) {
-    const errorBody = await response
-      .clone()
-      .json()
-      .catch(() => ({}));
-    console.warn(`🛑 [API_ERROR] ${response.status} en ${endpoint}:`, errorBody);
-
-    if (response.status === 429) {
-      const mensaje = errorBody.detail || "Demasiados intentos. Espera un momento.";
-      if (typeof window !== "undefined") {
-        window.dispatchEvent(
-          new CustomEvent("app:notification", { detail: { type: "warning", message: mensaje } }),
-        );
-      }
-    }
-  }
   return response;
 }

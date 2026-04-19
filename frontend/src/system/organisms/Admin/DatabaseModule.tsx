@@ -15,11 +15,11 @@ import {
   IconStar,
   IconBan,
   IconExternalLink,
-  IconActivity, // 🟢 Importamos el icono para la Actividad
+  IconActivity,
 } from "@tabler/icons-react";
 import { MetricCard } from "../../molecules/Admin/MetricCard";
 import { QuotaBar } from "../../molecules/Admin/QuotaBar";
-import { UserActivityModal } from "./UserActivityModal"; // 🟢 Importamos el nuevo Modal
+import { UserActivityModal } from "./UserActivityModal";
 
 export function DatabaseModule() {
   const [stats, setStats] = useState<DatabaseStatsResponse | null>(null);
@@ -27,7 +27,6 @@ export function DatabaseModule() {
   const [error, setError] = useState<string | null>(null);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
 
-  // 🟢 ESTADO PARA EL MODAL DE ACTIVIDAD
   const [activityModalUser, setActivityModalUser] = useState<{
     id: string;
     username: string;
@@ -48,7 +47,6 @@ export function DatabaseModule() {
     fetchStats();
   }, []);
 
-  // --- ARSENAL TÁCTICO ---
   const handleAction = async (
     userId: string,
     action: "upgrade" | "deactivate" | "activate" | "reset_password",
@@ -94,7 +92,6 @@ export function DatabaseModule() {
   return (
     <>
       <div className="space-y-6">
-        {/* SECCIÓN 1: KPIs y Cuota */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <MetricCard
             title="Usuarios Totales"
@@ -113,7 +110,6 @@ export function DatabaseModule() {
           />
         </div>
 
-        {/* SECCIÓN 2: Tabla de Usuarios */}
         <div className="bg-background border border-border rounded-xl shadow-sm overflow-hidden pb-32">
           <div className="p-4 border-b border-border flex items-center gap-2 bg-muted/20">
             <IconDatabaseShare size={18} className="text-muted-foreground" />
@@ -189,7 +185,6 @@ export function DatabaseModule() {
                             <IconExternalLink size={14} /> Ver Perfil Público
                           </Link>
 
-                          {/* 🟢 NUEVO BOTÓN: Rastro de Actividad */}
                           <button
                             onClick={() => {
                               setActivityModalUser({ id: user.id, username: user.username });
@@ -249,7 +244,6 @@ export function DatabaseModule() {
         </div>
       </div>
 
-      {/* 🟢 RENDERIZADO DEL MODAL (Fuera del flujo de la tabla) */}
       {activityModalUser && (
         <UserActivityModal
           userId={activityModalUser.id}

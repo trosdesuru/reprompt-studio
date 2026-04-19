@@ -19,24 +19,17 @@ export default function PromptDetailPage({ params, searchParams }: PromptDetailP
 
   const from = resolvedSearchParams?.from;
 
-  const { data: prompt, isLoading, error } = usePublicPrompt(prompt_id);
+  const { data, isLoading, error } = usePublicPrompt(prompt_id);
 
   const isFromStudio = from === "studio";
   const backUrl = isFromStudio ? `/${lang}/studio` : `/${lang}/${username}`;
   const backText = isFromStudio ? "Volver a Mi Studio" : `Volver a @${username}`;
 
-  const breadcrumbItems = isFromStudio
-    ? [{ label: "Mi Studio", href: `/${lang}/studio` }, { label: prompt?.title || "Detalle" }]
-    : [
-        { label: `@${username}`, href: `/${lang}/${username}` },
-        { label: prompt?.title || "Detalle" },
-      ];
-
   if (isLoading) {
     return <PageLoader text="Desencriptando datos..." />;
   }
 
-  if (error || !prompt) {
+  if (error || !data || !data.prompt) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center font-mono gap-4">
         <p className="text-red-500">{error || "No se pudo cargar el prompt."}</p>
@@ -49,6 +42,15 @@ export default function PromptDetailPage({ params, searchParams }: PromptDetailP
       </div>
     );
   }
+
+  const prompt = data.prompt;
+
+  const breadcrumbItems = isFromStudio
+    ? [{ label: "Mi Studio", href: `/${lang}/studio` }, { label: prompt.title || "Detalle" }]
+    : [
+        { label: `@${username}`, href: `/${lang}/${username}` },
+        { label: prompt.title || "Detalle" },
+      ];
 
   return (
     <main className="max-h-screen bg-background p-4 md:p-8">
