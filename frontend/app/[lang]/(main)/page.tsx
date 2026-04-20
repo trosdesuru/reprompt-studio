@@ -41,6 +41,8 @@ export default function Home({ params }: { params: Promise<{ lang: string }> }) 
             feed={publicFeed.feed}
             isLoading={publicFeed.isFeedLoading}
             lang={lang}
+            hasMore={publicFeed.hasMore}
+            onLoadMore={publicFeed.loadMore}
           />
         ) : search.isLoading && search.results.length === 0 ? (
           <FeedState type="loading" />

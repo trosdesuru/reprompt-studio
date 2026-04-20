@@ -10,7 +10,6 @@ export function parseA1111(rawText: string): ExtractedPromptData {
 
   const cleanText = cleanA1111Prefixes(rawText);
 
-  // Extracción de Prompts
   const negativePromptRegex = /Negative prompt:\s*([\s\S]*?)(?=\nSteps:|$)/i;
   const negativeMatch = cleanText.match(negativePromptRegex);
 
@@ -21,7 +20,6 @@ export function parseA1111(rawText: string): ExtractedPromptData {
     result.prompt = cleanText.split(/\nSteps:/i)[0].trim();
   }
 
-  // Extracción de metadatos técnicos
   const matchers = {
     steps: /Steps:\s*([^,]+)/i,
     sampler: /Sampler:\s*([^,]+)/i,

@@ -4,18 +4,16 @@ export function parseMidjourney(description: string, rawText: string): Extracted
   const result: ExtractedPromptData = {
     prompt: description,
     rawText,
-    software: "Desconocido", // Midjourney no suele poner su nombre, pero lo identificaremos por los comandos
+    software: "Desconocido",
   };
 
-  // Si contiene comandos típicos de Midjourney
   if (description.includes("--") || description.includes("Job ID:")) {
-    result.software = "Desconocido"; // Podrías añadir "Midjourney" a la interfaz de tipos si quieres
+    result.software = "Desconocido";
 
     // Extraer resolución de --ar
     const arMatch = description.match(/--ar\s+([0-9:]+)/);
     if (arMatch) result.resolution = arMatch[1];
 
-    // Extraer Negativo (lo que va después de --no)
     const noMatch = description.match(/--no\s+([^--]+)/);
     if (noMatch) {
       result.negativePrompt = noMatch[1].trim();

@@ -116,8 +116,12 @@ Directory structure:
     │   │   │   └── hooks/
     │   │   │       └── useSearch.ts
     │   │   └── studio/
+    │   │       ├── usePromptCard.ts
     │   │       └── hooks/
+    │   │           ├── useDirectoryActions.ts
+    │   │           ├── useDirectoryDnd.ts
     │   │           ├── useFileUploader.ts
+    │   │           ├── usePromptActions.ts
     │   │           ├── usePublicCollection.ts
     │   │           ├── usePublicProfile.ts
     │   │           ├── usePublicPrompt.ts
@@ -173,6 +177,8 @@ Directory structure:
     │   │   │   ├── Cards/
     │   │   │   │   ├── CreateCollectionModal.tsx
     │   │   │   │   ├── FeedItemCard.tsx
+    │   │   │   │   ├── PromptCardActions.tsx
+    │   │   │   │   ├── PromptCardMenu.tsx
     │   │   │   │   ├── PromptImageViewer.tsx
     │   │   │   │   └── PromptMetadataPanel.tsx
     │   │   │   ├── Feedback/
@@ -186,6 +192,8 @@ Directory structure:
     │   │   │   │   ├── NotificationDropdown.tsx
     │   │   │   │   ├── SearchCategorySelector.tsx
     │   │   │   │   └── UserDropdown.tsx
+    │   │   │   ├── Studio/
+    │   │   │   │   └── SidebarDirectoryItem.tsx
     │   │   │   └── Tabs/
     │   │   │       └── AuthTabs.tsx
     │   │   ├── organisms/
@@ -495,6 +503,12 @@ const nextConfig: NextConfig = {
       {
         protocol: "https",
         hostname: "**pub-**.r2.dev",
+      },
+      {
+        protocol: "https",
+        hostname: "cdn.reprompt.studio",
+        port: "",
+        pathname: "/**",
       },
     ],
     formats: ["image/avif", "image/webp"],
@@ -1389,10 +1403,21 @@ export default async function LoginPage({ params }: LoginPageProps) {
 ================================================
 FILE: app/[lang]/(main)/layout.tsx
 ================================================
+// src/app/[lang]/(main)/layout.tsx
+"use client";
+
+import { useEffect } from "react";
+import { useAuthStore } from "@/src/store/authStore";
 import { Navbar } from "@/src/system/organisms/Navbar/Navbar";
 import { FadeIn } from "@/src/system/atoms/FadeIn";
 
 export default function MainLayout({ children }: { children: React.ReactNode }) {
+  const checkAuth = useAuthStore((state) => state.checkAuth);
+
+  useEffect(() => {
+    checkAuth();
+  }, [checkAuth]);
+
   return (
     <>
       <Navbar />
@@ -1756,24 +1781,17 @@ export default function PromptDetailPage({ params, searchParams }: PromptDetailP
 
   const from = resolvedSearchParams?.from;
 
-  const { data: prompt, isLoading, error } = usePublicPrompt(prompt_id);
+  const { data, isLoading, error } = usePublicPrompt(prompt_id);
 
   const isFromStudio = from === "studio";
   const backUrl = isFromStudio ? `/${lang}/studio` : `/${lang}/${username}`;
   const backText = isFromStudio ? "Volver a Mi Studio" : `Volver a @${username}`;
 
-  const breadcrumbItems = isFromStudio
-    ? [{ label: "Mi Studio", href: `/${lang}/studio` }, { label: prompt?.title || "Detalle" }]
-    : [
-        { label: `@${username}`, href: `/${lang}/${username}` },
-        { label: prompt?.title || "Detalle" },
-      ];
-
   if (isLoading) {
     return <PageLoader text="Desencriptando datos..." />;
   }
 
-  if (error || !prompt) {
+  if (error || !data || !data.prompt) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center font-mono gap-4">
         <p className="text-red-500">{error || "No se pudo cargar el prompt."}</p>
@@ -1786,6 +1804,15 @@ export default function PromptDetailPage({ params, searchParams }: PromptDetailP
       </div>
     );
   }
+
+  const prompt = data.prompt;
+
+  const breadcrumbItems = isFromStudio
+    ? [{ label: "Mi Studio", href: `/${lang}/studio` }, { label: prompt.title || "Detalle" }]
+    : [
+        { label: `@${username}`, href: `/${lang}/${username}` },
+        { label: prompt.title || "Detalle" },
+      ];
 
   return (
     <main className="max-h-screen bg-background p-4 md:p-8">
@@ -3909,32 +3936,59 @@ export function useHomeInteraction() {
 FILE: src/features/home/hooks/usePublicFeed.ts
 ================================================
 import { FeedItem } from "@/src/types/models";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { api } from "@/src/services/api";
 
 export function usePublicFeed(query: string) {
   const [feed, setFeed] = useState<FeedItem[]>([]);
-  const [isFeedLoading, setIsFeedLoading] = useState(true);
+  const [isFeedLoading, setIsFeedLoading] = useState(false);
   const [feedError, setFeedError] = useState<string | null>(null);
-  const [showMyArt, setShowMyArt] = useState(false);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [hasMore, setHasMore] = useState(true);
+
+  const loadFeed = useCallback(
+    async (isInitial: boolean = false) => {
+      if (isFeedLoading || (!isInitial && !hasMore)) return;
+
+      setIsFeedLoading(true);
+      setFeedError(null);
+
+      try {
+        const currentCursor = isInitial ? null : nextCursor;
+        const res = await api.public.getFeed({
+          include_self: false,
+          cursor: currentCursor,
+        });
+
+        const data = await res.json();
+
+        if (data.status === "success") {
+          setFeed((prev) => (isInitial ? data.feed : [...prev, ...data.feed]));
+          setNextCursor(data.next_cursor);
+          setHasMore(!!data.next_cursor);
+        }
+      } catch (err) {
+        console.error("Error cargando feed:", err);
+        setFeedError("Hubo un problema al cargar el arte.");
+      } finally {
+        setIsFeedLoading(false);
+      }
+    },
+    [nextCursor, hasMore, isFeedLoading],
+  );
 
   useEffect(() => {
     if (query) return;
+    loadFeed(true);
+  }, [query]);
 
-    setIsFeedLoading(true);
-    setFeedError(null);
-
-    api.public
-      .getFeed({ include_self: false })
-      .then((res) => setFeed(res.feed || []))
-      .catch((err) => {
-        console.error("Error cargando feed:", err);
-        setFeedError("Hubo un problema al cargar el arte de la comunidad.");
-      })
-      .finally(() => setIsFeedLoading(false));
-  }, [query, showMyArt]);
-
-  return { feed, isFeedLoading, showMyArt, setShowMyArt, feedError };
+  return {
+    feed,
+    isFeedLoading,
+    feedError,
+    hasMore,
+    loadMore: () => loadFeed(false),
+  };
 }
 
 
@@ -4082,6 +4136,125 @@ export function useSearch() {
 
 
 ================================================
+FILE: src/features/studio/usePromptCard.ts
+================================================
+import { useState } from "react";
+import toast from "react-hot-toast";
+
+export function usePromptCard() {
+  const [isHovered, setIsHovered] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = (text: string) => {
+    if (!text) return;
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    toast.success("Prompt copiado");
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return {
+    isHovered,
+    setIsHovered,
+    isMenuOpen,
+    setIsMenuOpen,
+    copied,
+    handleCopy,
+  };
+}
+
+
+
+================================================
+FILE: src/features/studio/hooks/useDirectoryActions.ts
+================================================
+import { useStudioUI } from "@/src/store/useStudioUI";
+import toast from "react-hot-toast";
+
+export function useDirectoryActions(directoryId: string | number, directoryName: string) {
+  const { setActiveDirectory, deleteDirectory, createDirectory, renameDirectory } = useStudioUI();
+
+  const safeId = String(directoryId);
+
+  const handleCreateSubdirectory = async (onSuccess: () => void) => {
+    const name = window.prompt("Nombre de la nueva subcarpeta:");
+    if (!name || name.trim() === "") return;
+    try {
+      await createDirectory(name.trim(), safeId);
+      toast.success("Subcarpeta creada");
+      onSuccess();
+    } catch (error: any) {
+      toast.error("Error al crear subcarpeta");
+    }
+  };
+
+  const handleDeleteDirectory = async (isSelected: boolean) => {
+    const confirm = window.confirm(`¿Eliminar "${directoryName}" y todo su contenido?`);
+    if (!confirm) return;
+    try {
+      await deleteDirectory(safeId);
+      toast.success("Carpeta eliminada");
+      if (isSelected) setActiveDirectory(null);
+    } catch (error: any) {
+      toast.error("Error al eliminar");
+    }
+  };
+
+  const handleRenameDirectory = async () => {
+    const newName = window.prompt("Renombrar carpeta:", directoryName);
+    if (!newName || newName.trim() === "" || newName.trim() === directoryName) return;
+    try {
+      await renameDirectory(safeId, newName.trim());
+      toast.success("Carpeta renombrada");
+    } catch (error: any) {
+      toast.error("Error al renombrar");
+    }
+  };
+
+  return {
+    setActiveDirectory,
+    handleCreateSubdirectory,
+    handleDeleteDirectory,
+    handleRenameDirectory,
+  };
+}
+
+
+
+================================================
+FILE: src/features/studio/hooks/useDirectoryDnd.ts
+================================================
+import { useDraggable, useDroppable } from "@dnd-kit/core";
+import { Directory } from "@/src/store/useStudioUI";
+
+export function useDirectoryDnd(directory: Directory) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef: setDraggableRef,
+    isDragging,
+  } = useDraggable({
+    id: `dir-${directory.id}`,
+    data: { type: "directory", directory },
+  });
+
+  const { setNodeRef: setDroppableRef, isOver } = useDroppable({
+    id: directory.id,
+    data: { type: "directory", directory },
+  });
+
+  const setBothRefs = (node: HTMLElement | null) => {
+    setDraggableRef(node);
+    setDroppableRef(node);
+  };
+
+  return { attributes, listeners, setBothRefs, isDragging, isOver };
+}
+
+
+
+================================================
 FILE: src/features/studio/hooks/useFileUploader.ts
 ================================================
 import { usePromptExtractor } from "@/src/features/extractor/hooks/usePromptExtractor";
@@ -4101,6 +4274,32 @@ export function useFileUploader() {
   };
 
   return { handleUploadClick };
+}
+
+
+
+================================================
+FILE: src/features/studio/hooks/usePromptActions.ts
+================================================
+import { useState } from "react";
+
+export function usePromptActions() {
+  const [copied, setCopied] = useState(false);
+
+  const copyToClipboard = (text: string) => {
+    if (!text) return;
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const confirmDeletion = (onConfirm: () => void) => {
+    if (window.confirm("¿Seguro que deseas eliminar este rastro digital?")) {
+      onConfirm();
+    }
+  };
+
+  return { copied, copyToClipboard, confirmDeletion };
 }
 
 
@@ -4187,10 +4386,9 @@ FILE: src/features/studio/hooks/usePublicPrompt.ts
 ================================================
 import { useState, useEffect } from "react";
 import { api } from "@/src/services/api";
-import { SavedPrompt } from "@/src/types/models";
 
 export function usePublicPrompt(promptId: string) {
-  const [data, setData] = useState<SavedPrompt | null>(null);
+  const [data, setData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -4199,9 +4397,13 @@ export function usePublicPrompt(promptId: string) {
 
     api.public
       .getPromptDetail(promptId)
-      .then((res: any) => {
-        const promptReal = res.prompt && typeof res.prompt === "object" ? res.prompt : res;
-        setData(promptReal);
+      .then(async (res: Response) => {
+        if (!res.ok) {
+          throw new Error(`HTTP error! status: ${res.status}`);
+        }
+        const jsonData = await res.json();
+        
+        setData(jsonData);
       })
       .catch((err: any) => {
         console.error("Error fetching prompt:", err);
@@ -4213,7 +4415,6 @@ export function usePublicPrompt(promptId: string) {
 
   return { data, isLoading, error };
 }
-
 
 
 ================================================
@@ -4479,56 +4680,64 @@ export const adminApi = {
     url: string;
     timestamp: string;
   }) => {
-    return fetchSeguro(`${API_URL}/admin/bugs`, {
+    const res = await fetchSeguro(`${API_URL}/admin/bugs`, {
       method: "POST",
       body: JSON.stringify(data),
     });
+    return await res.json();
   },
 
   manageUser: async (
     userId: string,
     action: "upgrade" | "deactivate" | "activate" | "reset_password",
   ) => {
-    return fetchSeguro(`${API_URL}/admin/users/action`, {
+    const res = await fetchSeguro(`${API_URL}/admin/users/action`, {
       method: "POST",
       body: JSON.stringify({ user_id: userId, action }),
     });
+    return await res.json();
   },
 
   deleteUser: async (userId: string) => {
-    return fetchSeguro(`${API_URL}/admin/users/${userId}`, {
+    const res = await fetchSeguro(`${API_URL}/admin/users/${userId}`, {
       method: "DELETE",
     });
+    return await res.json();
   },
 
   getDatabaseStats: async (): Promise<DatabaseStatsResponse> => {
-    return fetchSeguro(`${API_URL}/admin/database-stats`, {
+    const res = await fetchSeguro(`${API_URL}/admin/database-stats`, {
       method: "GET",
     });
+    return await res.json();
   },
 
   getStorageStats: async (): Promise<StorageStatsResponse> => {
-    return fetchSeguro(`${API_URL}/admin/storage-stats`, {
+    const res = await fetchSeguro(`${API_URL}/admin/storage-stats`, {
       method: "GET",
     });
+    return await res.json();
   },
 
   runGarbageCollector: async (): Promise<GarbageDirectoryResult> => {
-    return fetchSeguro(`${API_URL}/admin/garbage-collect`, {
+    const res = await fetchSeguro(`${API_URL}/admin/garbage-collect`, {
       method: "POST",
     });
+    return await res.json();
   },
 
   purgeStorage: async (): Promise<PurgeResult> => {
-    return fetchSeguro(`${API_URL}/admin/storage/purge-all`, {
+    const res = await fetchSeguro(`${API_URL}/admin/storage/purge-all`, {
       method: "POST",
     });
+    return await res.json();
   },
 
   getUserActivity: async (userId: string): Promise<UserActivityResponse> => {
-    return fetchSeguro(`${API_URL}/admin/users/${userId}/activity`, {
+    const res = await fetchSeguro(`${API_URL}/admin/users/${userId}/activity`, {
       method: "GET",
     });
+    return await res.json();
   },
 };
 
@@ -4644,37 +4853,29 @@ export async function fetchSeguro(
   options: ExtendedRequestInit = {},
 ): Promise<Response> {
   const headers = new Headers(options.headers || {});
-
   if (!headers.has("Content-Type") && !(options.body instanceof FormData)) {
     headers.set("Content-Type", "application/json");
   }
 
-  const config: ExtendedRequestInit = {
-    ...options,
-    headers,
-    credentials: "include",
-  };
-
-  console.log(`📡 [API_CLIENT] PETICIÓN -> ${options.method || "GET"} ${endpoint}`);
-
+  const config: ExtendedRequestInit = { ...options, headers, credentials: "include" };
   let response: Response;
 
   try {
     response = await fetch(endpoint, config);
-    console.log(`📥 [API_CLIENT] RESPUESTA <- ${endpoint} [Status: ${response.status}]`);
   } catch (error) {
-    console.error(`🔌 [NETWORK_ERROR] Fallo físico de conexión con ${endpoint}:`, error);
     throw new Error("No hay conexión con el servidor.");
   }
 
-  const isAuthFlow = endpoint.includes("/auth");
+  const isCriticalAuthPath =
+    endpoint.includes("/auth/login") ||
+    endpoint.includes("/auth/register") ||
+    endpoint.includes("/auth/refresh");
 
-  if (response.status === 401 && !isAuthFlow) {
-    console.warn(`🚑 [API_CLIENT] 401 Detectado en ${endpoint}. Intentando rescate (Refresh)...`);
+  if (response.status === 401 && !isCriticalAuthPath) {
+    console.warn(`🚑 [RESCATE] 401 en ${endpoint}. Iniciando Silent Refresh...`);
 
     if (!isRefreshing) {
       isRefreshing = true;
-      console.log("🔄 [SECURITY] Solicitando nuevo Access Token al servidor...");
       refreshPromise = (async () => {
         try {
           const refreshRes = await fetch(`${API_URL}/auth/refresh`, {
@@ -4693,24 +4894,16 @@ export async function fetchSeguro(
     const refreshSuccessful = await refreshPromise;
 
     if (refreshSuccessful) {
-      console.log(`✅ [SECURITY] Sesión renovada con éxito. Reintentando operación original...`);
-
-      if (options.body instanceof FormData) {
-        console.warn("⚠️ [SECURITY] Petición con FormData cancelada tras refresh.");
-        return response;
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new Event("auth:session_recovered"));
       }
 
       try {
-        response = await fetch(endpoint, config);
-        console.log(
-          `🔁 [API_CLIENT] Reintento tras refresh <- ${endpoint} [Status: ${response.status}]`,
-        );
+        return await fetch(endpoint, config);
       } catch (error) {
-        console.error("❌ [API_CLIENT] Error físico en el reintento post-refresh.");
         throw new Error("Error en el reintento de conexión.");
       }
     } else {
-      console.error("🚷 [SECURITY] Refresh fallido. La sesión ha muerto definitivamente.");
       if (typeof window !== "undefined") {
         window.dispatchEvent(new Event("auth:unauthorized"));
       }
@@ -4718,22 +4911,6 @@ export async function fetchSeguro(
     }
   }
 
-  if (!response.ok) {
-    const errorBody = await response
-      .clone()
-      .json()
-      .catch(() => ({}));
-    console.warn(`🛑 [API_ERROR] ${response.status} en ${endpoint}:`, errorBody);
-
-    if (response.status === 429) {
-      const mensaje = errorBody.detail || "Demasiados intentos. Espera un momento.";
-      if (typeof window !== "undefined") {
-        window.dispatchEvent(
-          new CustomEvent("app:notification", { detail: { type: "warning", message: mensaje } }),
-        );
-      }
-    }
-  }
   return response;
 }
 
@@ -4797,6 +4974,8 @@ import { ENV } from "@/src/services/config/env";
 const API_URL = ENV.API_URL;
 
 export const promptApi = {
+  getMyPrompt: () => fetchSeguro(`${API_URL}/prompts/`),
+
   savePrompt: (data: any) =>
     fetchSeguro(`${API_URL}/prompts/save`, {
       method: "POST",
@@ -4811,8 +4990,11 @@ export const promptApi = {
     });
   },
 
-  getMyPrompt: () => fetchSeguro(`${API_URL}/prompts/`),
-  deletePrompt: (id: number) => fetchSeguro(`${API_URL}/prompts/${id}`, { method: "DELETE" }),
+  deletePrompt: async (promptId: string) => {
+    return fetchSeguro(`${API_URL}/prompts/${promptId}`, {
+      method: "DELETE",
+    });
+  },
 };
 
 
@@ -4853,8 +5035,13 @@ export const publicApi = {
     return fetchSeguro(`${API_URL}/public/prompt/${promptId}`);
   },
 
-  getFeed: async (options?: { include_self?: boolean }) => {
-    const queryString = options?.include_self ? "?include_self=true" : "";
+  getFeed: async (options?: { include_self?: boolean; cursor?: string | null }) => {
+    const params = new URLSearchParams();
+    if (options?.include_self) params.append("include_self", "true");
+    if (options?.cursor) params.append("cursor", options.cursor);
+
+    const queryString = params.toString() ? `?${params.toString()}` : "";
+
     return fetchSeguro(`${API_URL}/public/feed${queryString}`);
   },
 };
@@ -4977,8 +5164,8 @@ export const useAuthStore = create<AuthState>((set) => ({
 
     try {
       // 🟢 FIX: Consolidado en una sola llamada y con AWAIT
-      const res = await api.auth.me(); 
-      
+      const res = await api.auth.me();
+
       // Mapeo defensivo de la respuesta del backend
       const userData = res?.user || res?.data || res;
       const username = userData?.username;
@@ -4986,10 +5173,10 @@ export const useAuthStore = create<AuthState>((set) => ({
 
       if (username) {
         console.log(`✅ [AUTH_STORE] checkAuth exitoso: @${username}`);
-        set({ 
-          user: { username, role }, 
-          isAuthenticated: true, 
-          isLoadingAuth: false 
+        set({
+          user: { username, role },
+          isAuthenticated: true,
+          isLoadingAuth: false,
         });
       } else {
         console.warn("⚠️ [AUTH_STORE] checkAuth respondió OK pero el cuerpo está vacío.");
@@ -4998,7 +5185,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     } catch (error: unknown) {
       console.warn("🛑 [AUTH_STORE] checkAuth falló (No hay sesión activa).");
       set({ user: null, isAuthenticated: false, isLoadingAuth: false });
-      
+
       // No lanzamos el error al ErrorHandler aquí para evitar spam de toasts en el login
     } finally {
       set({ isLoadingAuth: false });
@@ -5019,17 +5206,24 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
 }));
 
-// Escuchador de eventos globales para expulsión inmediata
 if (typeof window !== "undefined") {
+  window.addEventListener("auth:session_recovered", () => {
+    console.log("♻️ [AUTH_STORE] Sesión recuperada. Sincronizando interfaz...");
+    useAuthStore.getState().checkAuth();
+  });
+
   window.addEventListener("auth:unauthorized", () => {
-    console.warn("🚨 [AUTH_STORE] ALERTA: Recibido evento 'auth:unauthorized'.");
     const state = useAuthStore.getState();
-    if (state.isAuthenticated || state.user) {
+    if (state.isAuthenticated) {
       state.logoutSilencioso();
-      redirectToLogin();
+      const currentPath = window.location.pathname;
+      if (!currentPath.includes("/login")) {
+        window.location.href = `/${currentPath.split("/")[1] || "es"}/login`;
+      }
     }
   });
 }
+
 
 
 ================================================
@@ -5366,6 +5560,8 @@ export interface Directory {
   id: string;
   name: string;
   parent_id: string | null;
+  slug?: string;
+  is_private?: boolean;
 }
 
 export interface StudioUIState {
@@ -6473,6 +6669,121 @@ export function FeedItemCard({ item, lang, isPriority = false, index = 0 }: Feed
 
 
 ================================================
+FILE: src/system/molecules/Cards/PromptCardActions.tsx
+================================================
+import { IconDotsVertical, IconFolder, IconTrash } from "@tabler/icons-react";
+
+export function PromptCardActions({
+  item,
+  directories,
+  onAssign,
+  onDelete,
+  isOpen,
+  setIsOpen,
+}: any) {
+  return (
+    <div className="absolute top-3 right-3 z-50">
+      <button
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          setIsOpen(!isOpen);
+        }}
+        className={`p-1.5 rounded-md backdrop-blur-md border shadow-sm transition-colors ${
+          isOpen ? "bg-background border-border" : "bg-black/40 border-white/20 text-white"
+        }`}
+      >
+        <IconDotsVertical size={18} />
+      </button>
+
+      {isOpen && (
+        <div className="absolute top-full right-0 w-48 bg-background border border-border rounded-xl shadow-xl z-50 animate-in fade-in zoom-in-95 hover:border-red-500/50">
+          {onAssign && directories.length > 0 && (
+            <div className="px-3 py-2 border-b border-border/10">
+              <label className="text-[10px] font-bold uppercase text-muted-foreground mb-1.5 flex items-center gap-1.5">
+                <IconFolder size={12} /> Colección
+              </label>
+              <select
+                className="w-full bg-muted/50 text-xs p-1.5 rounded border border-border"
+                value={item.directory_id || ""}
+                onChange={(e) => onAssign(item.id, e.target.value ? Number(e.target.value) : null)}
+              >
+                <option value="">Suelto</option>
+                {directories.map((d: any) => (
+                  <option key={d.id} value={d.id}>
+                    {d.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+          <button
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              if (window.confirm("¿Exterminar rastro digital?")) {
+                if (typeof onDelete === "function") {
+                  onDelete(item.id);
+                } else {
+                  console.error("❌ Error: onDelete no ha llegado al componente Actions.");
+                }
+              }
+            }}
+            className="flex w-full h-full items-center gap-2 px-3 py-3 text-xs font-mono font-normal text-red-400 hover:bg-red-500/10"
+          >
+            <IconTrash size={14} /> Eliminar
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+
+
+================================================
+FILE: src/system/molecules/Cards/PromptCardMenu.tsx
+================================================
+// src/system/molecules/Cards/PromptCardMenu.tsx
+import { IconFolder, IconTrash } from "@tabler/icons-react";
+
+export function PromptCardMenu({ item, directories, onAssign, onDelete, isOpen }: any) {
+  if (!isOpen) return null;
+
+  return (
+    <div className="absolute top-full right-0 mt-2 w-48 bg-background border border-border rounded-xl shadow-xl z-50 py-1">
+      {onAssign && directories.length > 0 && (
+        <div className="px-3 py-2 border-b border-border/10">
+          <label className="text-[10px] font-bold uppercase text-muted-foreground flex items-center gap-1.5 mb-1.5">
+            <IconFolder size={12} /> Colección
+          </label>
+          <select
+            value={item.directory_id || ""}
+            onChange={(e) => onAssign(item.id, e.target.value ? Number(e.target.value) : null)}
+            className="w-full bg-muted/50 text-xs p-1.5 rounded border border-border focus:ring-1 focus:ring-(--accent-color)"
+          >
+            <option value="">Ninguna (Suelto)</option>
+            {directories.map((d: any) => (
+              <option key={d.id} value={d.id}>
+                {d.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+      <button
+        onClick={onDelete}
+        className="flex w-full items-center gap-2 px-3 py-2.5 text-xs text-red-500 hover:bg-red-500/10"
+      >
+        <IconTrash size={14} /> Eliminar
+      </button>
+    </div>
+  );
+}
+
+
+
+================================================
 FILE: src/system/molecules/Cards/PromptImageViewer.tsx
 ================================================
 "use client";
@@ -7286,6 +7597,125 @@ export function UserDropdown() {
 
 
 ================================================
+FILE: src/system/molecules/Studio/SidebarDirectoryItem.tsx
+================================================
+import React from "react";
+import { Directory } from "@/src/store/useStudioUI";
+import {
+  IconChevronDown,
+  IconChevronRight,
+  IconFolderOpen,
+  IconFolder,
+  IconFolderPlus,
+  IconTrash,
+  IconCloudLock,
+} from "@tabler/icons-react";
+
+interface SidebarDirectoryItemProps {
+  directory: Directory;
+  level: number;
+  isOpen: boolean;
+  isSelected: boolean;
+  isDragging: boolean;
+  isOver: boolean;
+  isEffectivelyPrivate: boolean;
+  hasChildren: boolean;
+  setBothRefs: (node: HTMLElement | null) => void;
+  attributes: any;
+  listeners: any;
+  onSelect: (e: React.MouseEvent) => void;
+  onToggle: (e: React.MouseEvent) => void;
+  onRename: (e: React.MouseEvent) => void;
+  onCreateSub: (e: React.MouseEvent) => void;
+  onDelete: (e: React.MouseEvent) => void;
+}
+
+export const SidebarDirectoryItem = ({
+  directory,
+  level,
+  isOpen,
+  isSelected,
+  isDragging,
+  isOver,
+  isEffectivelyPrivate,
+  hasChildren,
+  setBothRefs,
+  attributes,
+  listeners,
+  onSelect,
+  onToggle,
+  onRename,
+  onCreateSub,
+  onDelete,
+}: SidebarDirectoryItemProps) => {
+  return (
+    <div
+      ref={setBothRefs}
+      style={{
+        opacity: isDragging ? 0.4 : 1,
+        cursor: isDragging ? "grabbing" : "pointer",
+        paddingLeft: `${level * 12 + 12}px`,
+      }}
+      {...attributes}
+      {...listeners}
+      onClick={onSelect}
+      onDoubleClick={onRename}
+      className={`
+        group font-mono flex items-center py-1.5 px-2 mx-2 rounded-md transition-all duration-200 relative
+        ${isSelected ? "bg-primary/5 text-foreground font-medium" : "text-muted-foreground hover:text-foreground"}
+        ${isOver ? "bg-primary/10 ring-2 ring-primary/30 border-dashed" : "hover:bg-secondary/40 border border-transparent"}
+        ${isDragging ? "bg-background border-dashed border-primary/50" : ""}
+      `}
+    >
+      {isSelected && (
+        <div className="absolute left-0 w-1 h-6 bg-primary rounded-r-full shadow-[0_0_8px_rgba(var(--primary-rgb),0.4)] top-1/2 -translate-y-1/2" />
+      )}
+
+      <span
+        className="w-4 h-4 mr-1 flex items-center justify-center z-10 hover:bg-muted/50 rounded transition-colors"
+        onClick={onToggle}
+      >
+        {hasChildren && (isOpen ? <IconChevronDown size={14} /> : <IconChevronRight size={14} />)}
+      </span>
+
+      <span className="mr-2 relative flex items-center justify-center">
+        {isOpen ? (
+          <IconFolderOpen size={16} className={isSelected ? "text-primary/70" : "text-foreground/40"} />
+        ) : (
+          <IconFolder size={16} className={isSelected ? "text-primary/70" : "text-foreground/40"} />
+        )}
+
+        {isEffectivelyPrivate && (
+          <div className="absolute -bottom-1 -right-1.5 bg-background rounded-full p-px">
+            <IconCloudLock size={12} className="text-red-300" stroke={2} />
+          </div>
+        )}
+      </span>
+
+      <span className="text-sm truncate flex-1">{directory.name}</span>
+
+      <div className="opacity-0 group-hover:opacity-100 flex items-center gap-1 transition-opacity pointer-events-auto">
+        <button
+          className="p-1 hover:bg-primary/20 rounded transition-colors text-primary/70"
+          title="Nueva Subcarpeta"
+          onClick={onCreateSub}
+        >
+          <IconFolderPlus size={14} />
+        </button>
+        <button
+          className="p-1 hover:bg-destructive/20 hover:text-destructive/90 text-muted-foreground/40 rounded transition-colors"
+          title="Eliminar"
+          onClick={onDelete}
+        >
+          <IconTrash size={14} />
+        </button>
+      </div>
+    </div>
+  );
+};
+
+
+================================================
 FILE: src/system/molecules/Tabs/AuthTabs.tsx
 ================================================
 // src/system/molecules/Tabs/AuthTabs.tsx
@@ -7421,11 +7851,11 @@ import {
   IconStar,
   IconBan,
   IconExternalLink,
-  IconActivity, // 🟢 Importamos el icono para la Actividad
+  IconActivity,
 } from "@tabler/icons-react";
 import { MetricCard } from "../../molecules/Admin/MetricCard";
 import { QuotaBar } from "../../molecules/Admin/QuotaBar";
-import { UserActivityModal } from "./UserActivityModal"; // 🟢 Importamos el nuevo Modal
+import { UserActivityModal } from "./UserActivityModal";
 
 export function DatabaseModule() {
   const [stats, setStats] = useState<DatabaseStatsResponse | null>(null);
@@ -7433,7 +7863,6 @@ export function DatabaseModule() {
   const [error, setError] = useState<string | null>(null);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
 
-  // 🟢 ESTADO PARA EL MODAL DE ACTIVIDAD
   const [activityModalUser, setActivityModalUser] = useState<{
     id: string;
     username: string;
@@ -7454,7 +7883,6 @@ export function DatabaseModule() {
     fetchStats();
   }, []);
 
-  // --- ARSENAL TÁCTICO ---
   const handleAction = async (
     userId: string,
     action: "upgrade" | "deactivate" | "activate" | "reset_password",
@@ -7500,7 +7928,6 @@ export function DatabaseModule() {
   return (
     <>
       <div className="space-y-6">
-        {/* SECCIÓN 1: KPIs y Cuota */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <MetricCard
             title="Usuarios Totales"
@@ -7519,7 +7946,6 @@ export function DatabaseModule() {
           />
         </div>
 
-        {/* SECCIÓN 2: Tabla de Usuarios */}
         <div className="bg-background border border-border rounded-xl shadow-sm overflow-hidden pb-32">
           <div className="p-4 border-b border-border flex items-center gap-2 bg-muted/20">
             <IconDatabaseShare size={18} className="text-muted-foreground" />
@@ -7595,7 +8021,6 @@ export function DatabaseModule() {
                             <IconExternalLink size={14} /> Ver Perfil Público
                           </Link>
 
-                          {/* 🟢 NUEVO BOTÓN: Rastro de Actividad */}
                           <button
                             onClick={() => {
                               setActivityModalUser({ id: user.id, username: user.username });
@@ -7655,7 +8080,6 @@ export function DatabaseModule() {
         </div>
       </div>
 
-      {/* 🟢 RENDERIZADO DEL MODAL (Fuera del flujo de la tabla) */}
       {activityModalUser && (
         <UserActivityModal
           userId={activityModalUser.id}
@@ -9311,54 +9735,52 @@ FILE: src/system/organisms/Navigation/PageHeader.tsx
 ================================================
 "use client";
 
-import { ReactNode } from "react";
+import { useState, useEffect } from "react";
 import { Breadcrumbs } from "@/src/system/organisms/Navigation/Breadcrumbs";
 
-interface BreadcrumbItem {
-  label: string;
-  href?: string;
-}
+export function PageHeader({ title, subtitle, description, icon, breadcrumbItems }: any) {
+  const [isVisible, setIsVisible] = useState(true);
+  const [lastScrollY, setLastScrollY] = useState(0);
 
-interface PageHeaderProps {
-  title: string;
-  subtitle?: string;
-  description: string;
-  icon: ReactNode;
-  breadcrumbItems: BreadcrumbItem[];
-}
+  useEffect(() => {
+    const handleScroll = () => {
+      const currentScrollY = window.scrollY;
+      if (currentScrollY > lastScrollY && currentScrollY > 150) {
+        setIsVisible(false);
+      } else {
+        setIsVisible(true);
+      }
+      setLastScrollY(currentScrollY);
+    };
 
-export function PageHeader({
-  title,
-  subtitle,
-  description,
-  icon,
-  breadcrumbItems,
-}: PageHeaderProps) {
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, [lastScrollY]);
+
   return (
-    <div className="space-y-8">
-      {/* 1. Navegación */}
-      <div>
+    <header
+      className={`
+        hidden md:block 
+        sticky top-0 z-40 w-full transition-all duration-500 ease-in-out
+        ${isVisible ? "translate-y-0 opacity-100" : "-translate-y-full opacity-0"}
+        bg-background/80 backdrop-blur-xl px-4 md:px-0 py-6
+      `}
+    >
+      <div className="w-full mx-auto space-y-4">
         <Breadcrumbs items={breadcrumbItems} />
-      </div>
-
-      {/* 2. Título y Branding */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-border pb-8 mt-4">
-        <div>
-          <h1 className="text-3xl text-foreground font-bold tracking-tighter flex items-center gap-1">
-            <div className="p-2 text-foreground rounded-lg">
-              {icon}
-            </div>
-            {title}
-            {subtitle && (
-              <span className="font-mono font-medium lowercase text-foreground ml-1">
-                {subtitle}
-              </span>
-            )}
-          </h1>
-          <p className="text-muted-foreground mt-1 font-mono text-sm">{description}</p>
+        <div className="flex justify-between items-center gap-4">
+          <div>
+            <h1 className="text-2xl text-foreground font-black tracking-tighter flex items-center gap-2">
+              <span className="text-(--accent-color)">{icon}</span>
+              {title} {subtitle && <span className="font-mono font-medium opacity-70">{subtitle}</span>}
+            </h1>
+            <p className="text-muted-foreground font-mono text-xs tracking-widest">
+              {description}
+            </p>
+          </div>
         </div>
       </div>
-    </div>
+    </header>
   );
 }
 
@@ -9535,245 +9957,80 @@ FILE: src/system/organisms/Studio/PromptCard.tsx
 ================================================
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
-import {
-  IconCopy,
-  IconTrash,
-  IconCheck,
-  IconPhoto,
-  IconDotsVertical,
-  IconFolder,
-} from "@tabler/icons-react";
-import { SavedPrompt, Directory } from "@/src/types/models";
+import { IconCopy, IconCheck, IconPhoto } from "@tabler/icons-react";
+import { usePromptCard } from "@/src/features/studio/usePromptCard";
+import { PromptCardActions } from "../../molecules/Cards/PromptCardActions";
 import { LazyImage } from "../../molecules/Media/LazyImage";
-
-interface PromptCardProps {
-  item: SavedPrompt;
-  directories?: Directory[];
-  onDelete?: (id: number) => void;
-  onAssign?: (promptId: number, directoryId: number | null) => void;
-  isPriority: boolean;
-  isSelected?: boolean;
-  onToggleSelect?: () => void;
-  selectionModeActive?: boolean;
-  index: number;
-  lang?: string;
-  isStudio?: boolean;
-  authorUsername?: string;
-}
 
 export function PromptCard({
   item,
-  directories = [],
+  directories,
   onAssign,
   onDelete,
-  index = 0,
-  isPriority = false,
-  isSelected = false,
-  onToggleSelect,
-  selectionModeActive = false,
-  lang = "es",
-  isStudio = false,
-  authorUsername = "unknown",
-}: PromptCardProps) {
-  const [copied, setCopied] = useState(false);
-  const [isHovered, setIsHovered] = useState(false);
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-
-  const queryParam = isStudio ? "?from=studio" : "";
-  const href = `/${lang}/${authorUsername}/p/${item.id}${queryParam}`;
-
-  const handleCopy = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (item.prompt) {
-      navigator.clipboard.writeText(item.prompt);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    }
-  };
+  lang,
+  authorUsername,
+  isStudio,
+  index,
+}: any) {
+  const { setIsHovered, isMenuOpen, setIsMenuOpen, copied, handleCopy } = usePromptCard();
+  const href = `/${lang}/${authorUsername}/p/${item.id}${isStudio ? "?from=studio" : ""}`;
 
   return (
     <div
-      // 🟢 CORRECCIÓN 2: Quitamos "overflow-hidden" del padre para que el menú pueda salirse libremente
-      className="group relative flex flex-col bg-background rounded-xl border border-border shadow-sm hover:shadow-lg transition-all duration-300"
+      className="group relative flex flex-col bg-background rounded-xl border border-border shadow-sm hover:shadow-lg transition-all"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => {
         setIsHovered(false);
         setIsMenuOpen(false);
       }}
     >
-      <Link href={href} className="absolute inset-0 z-0">
-        <span className="sr-only">Ver detalles del prompt {item.title}</span>
+      <PromptCardActions
+        item={item}
+        directories={directories}
+        onAssign={onAssign}
+        onDelete={onDelete}
+        isOpen={isMenuOpen}
+        setIsOpen={setIsMenuOpen}
+      />
+
+      <Link href={href} className="flex flex-col h-full z-10">
+        <div className="relative aspect-square sm:aspect-4/5 overflow-hidden rounded-t-xl bg-muted/10">
+          {item.image_url ? (
+            <LazyImage
+              src={item.image_url}
+              alt={item.title}
+              index={index}
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <div className="w-full h-full flex flex-col items-center justify-center text-muted-foreground/30">
+              <IconPhoto size={40} stroke={1} />
+            </div>
+          )}
+        </div>
+
+        <div className="p-4 flex flex-col gap-3">
+          <h3 className="font-bold text-sm truncate">{item.title}</h3>
+          <p className="text-[10px] text-muted-foreground uppercase font-mono">
+            {item.model || "Base Model"}
+          </p>
+        </div>
       </Link>
 
-      {(selectionModeActive || isHovered || isSelected) && (
-        <div
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            onToggleSelect?.();
-          }}
-          className="absolute top-3 left-3 z-30 cursor-pointer pointer-events-auto transition-opacity duration-200"
-        >
-          <div
-            className={`w-6 h-6 rounded-full border-[1.5px] flex items-center justify-center transition-all shadow-sm ${
-              isSelected
-                ? "bg-(--accent-color) border-(--accent-color) text-white"
-                : "bg-black/40 border-white/80 hover:bg-black/60 text-white/0 hover:text-white/50"
-            }`}
-          >
-            <IconCheck
-              size={14}
-              stroke={3}
-              className={isSelected ? "opacity-100" : "opacity-0 group-hover:opacity-100"}
-            />
-          </div>
-        </div>
-      )}
-
-      {(onAssign || onDelete) && !selectionModeActive && (
-        <div
-          className={`absolute top-3 right-3 z-40 pointer-events-auto transition-opacity duration-300 ${isHovered || isMenuOpen ? "opacity-100" : "opacity-0"}`}
-        >
+      <div className="px-4 pb-4 mt-auto">
+        <div className="relative group/prompt bg-muted/30 rounded-lg p-2 border border-border/50">
+          <p className="text-[11px] font-mono text-foreground/70 line-clamp-2">{item.prompt}</p>
           <button
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
-              setIsMenuOpen(!isMenuOpen);
+              handleCopy(item.prompt);
             }}
-            className={`p-1.5 rounded-md backdrop-blur-md border shadow-sm transition-colors ${
-              isMenuOpen
-                ? "bg-background border-border text-foreground"
-                : "bg-black/40 border-white/20 text-white hover:bg-black/60"
-            }`}
+            className="absolute top-1 right-1 p-1 bg-background border rounded-md opacity-0 group-hover:opacity-100 transition-opacity"
           >
-            <IconDotsVertical size={18} />
+            {copied ? <IconCheck size={12} className="text-green-500" /> : <IconCopy size={12} />}
           </button>
-
-          {isMenuOpen && (
-            <div
-              className="absolute top-full right-0 mt-2 w-48 bg-background border border-border rounded-xl shadow-xl overflow-hidden flex flex-col py-1 z-50 animate-in fade-in duration-200"
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-              }}
-            >
-              {onAssign && directories.length > 0 && (
-                <div className="px-3 py-2 border-b border-border/10">
-                  <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1.5 flex items-center gap-1.5">
-                    <IconFolder size={12} /> Colección
-                  </label>
-                  <select
-                    className="w-full bg-muted/50 text-xs text-foreground p-1.5 rounded border border-border focus:outline-none focus:ring-1 focus:ring-(--accent-color) cursor-pointer"
-                    value={item.directory_id || ""}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                    }}
-                    onChange={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      onAssign(item.id, e.target.value ? Number(e.target.value) : null);
-                      setIsMenuOpen(false);
-                    }}
-                  >
-                    <option value="">Ninguna (Suelto)</option>
-                    {directories.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
-
-              {onDelete && (
-                <button
-                  // 🟢 CORRECCIÓN 1: Devolvemos la protección del evento al botón y forzamos w-full
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    if (window.confirm("¿Seguro que deseas eliminar este prompt de Mi Studio?")) {
-                      onDelete(item.id);
-                    }
-                    setIsMenuOpen(false);
-                  }}
-                  className="flex w-full items-center gap-2 px-3 py-2.5 text-xs font-medium text-red-500 hover:bg-red-500/10 text-left transition-colors"
-                >
-                  <IconTrash size={14} /> Borrar del Studio
-                </button>
-              )}
-            </div>
-          )}
-        </div>
-      )}
-
-      <div className="relative aspect-square sm:aspect-4/5 bg-muted/10 z-10 pointer-events-none rounded-t-xl overflow-hidden">
-        {item.image_url ? (
-          <LazyImage
-            src={item.image_url}
-            alt={item.title}
-            className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-101"
-            index={index}
-            priority={isPriority}
-          />
-        ) : (
-          <div className="w-full h-full flex flex-col items-center justify-center text-muted-foreground/50">
-            <IconPhoto size={48} stroke={1} />
-            <span className="text-xs font-mono mt-2">Sin imagen</span>
-          </div>
-        )}
-
-        <div
-          className={`absolute inset-0 bg-black/20 transition-opacity duration-300 ${isHovered || isMenuOpen ? "opacity-100" : "opacity-0"}`}
-        />
-      </div>
-
-      <div className="p-5 flex flex-col grow gap-4 z-10 pointer-events-none">
-        <div>
-          <h3 className="font-bold text-base tracking-tight truncate" title={item.title}>
-            {item.title}
-          </h3>
-          <div className="flex items-center gap-2 mt-1">
-            <span className="text-xs text-muted-foreground truncate">
-              {item.model || "Modelo desconocido"}
-            </span>
-            {item.sampler && (
-              <>
-                <span className="text-muted-foreground/30 text-[10px]">•</span>
-                <span className="text-xs text-muted-foreground truncate">{item.sampler}</span>
-              </>
-            )}
-          </div>
-        </div>
-
-        <div className="relative group/prompt bg-muted/30 rounded-lg p-3 border border-border/50 mt-auto pointer-events-auto">
-          <p className="text-xs font-mono text-foreground/80 line-clamp-3 leading-relaxed">
-            {item.prompt || <span className="italic opacity-50">Sin prompt</span>}
-          </p>
-
-          {item.prompt && (
-            <button
-              onClick={handleCopy}
-              className="absolute top-2 right-2 p-1.5 bg-background border border-border rounded-md shadow-sm opacity-0 group-hover/prompt:opacity-100 hover:bg-accent hover:text-accent-foreground transition-all"
-              title="Copiar Prompt"
-            >
-              {copied ? (
-                <IconCheck size={14} className="text-green-500" stroke={2} />
-              ) : (
-                <IconCopy size={14} stroke={1.5} />
-              )}
-            </button>
-          )}
-        </div>
-
-        <div className="flex justify-between items-center text-[10px] text-muted-foreground font-mono uppercase tracking-widest pt-1 pointer-events-auto">
-          <span>
-            {new Date(item.created_at).toLocaleDateString(lang === "es" ? "es-ES" : "en-US")}
-          </span>
-          {item.resolution && <span>{item.resolution}</span>}
         </div>
       </div>
     </div>
@@ -9795,6 +10052,7 @@ import { IconPhotoOff } from "@tabler/icons-react";
 import { fetchSeguro } from "@/src/services/api/client";
 import { PageLoader } from "../../atoms/PageLoader";
 import { PromptCard } from "./PromptCard";
+import toast from "react-hot-toast";
 
 export default function PromptGrid() {
   const { activeDirectoryId, searchQuery } = useStudioUI();
@@ -9803,7 +10061,7 @@ export default function PromptGrid() {
   const lang = (params?.lang as string) || "es";
 
   const [debouncedQuery, setDebouncedQuery] = useState(searchQuery);
-  const [prompts, setPrompts] = useState([]);
+  const [prompts, setPrompts] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -9818,7 +10076,6 @@ export default function PromptGrid() {
       setLoading(true);
       try {
         const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
-
         const endpoint = debouncedQuery
           ? `/search/studio?q=${debouncedQuery}`
           : `/prompts/studio?directory_id=${activeDirectoryId || ""}`;
@@ -9838,6 +10095,29 @@ export default function PromptGrid() {
     fetchPrompts();
   }, [activeDirectoryId, debouncedQuery]);
 
+  const handleDeletePrompt = async (promptId: string) => {
+    const toastId = toast.loading("Exterminando rastro digital...");
+    try {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
+
+      const res = await fetchSeguro(`${API_URL}/prompts/${promptId}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+
+      if (res.ok) {
+        setPrompts((prev) => prev.filter((p) => p.id !== promptId));
+        toast.success("Eliminado del Studio", { id: toastId });
+      } else {
+        const errorData = await res.json();
+        throw new Error(errorData.detail || "Fallo de autorización");
+      }
+    } catch (error: any) {
+      console.error("Fallo al borrar:", error);
+      toast.error(error.message || "Error al eliminar", { id: toastId });
+    }
+  };
+
   return (
     <div className="h-full flex flex-col">
       {loading ? (
@@ -9845,7 +10125,7 @@ export default function PromptGrid() {
           <PageLoader text="Sincronizando Studio..." />
         </div>
       ) : prompts.length > 0 ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
           {prompts.map((p: any, index) => (
             <PromptCard
               key={p.id}
@@ -9855,6 +10135,7 @@ export default function PromptGrid() {
               isStudio={true}
               authorUsername={user?.username || "unknown"}
               isPriority={index < 8}
+              onDelete={handleDeletePrompt}
             />
           ))}
         </div>
@@ -9879,183 +10160,88 @@ FILE: src/system/organisms/Studio/SidebarDirectory.tsx
 
 import React, { useState } from "react";
 import { useStudioUI, Directory } from "@/src/store/useStudioUI";
-import { useDraggable, useDroppable } from "@dnd-kit/core";
-import {
-  IconChevronDown,
-  IconChevronRight,
-  IconFolderOpen,
-  IconFolder,
-  IconFolderPlus,
-  IconTrash,
-} from "@tabler/icons-react";
-import toast from "react-hot-toast";
+import { useDirectoryActions } from "@/src/features/studio/hooks/useDirectoryActions";
+import { useDirectoryDnd } from "@/src/features/studio/hooks/useDirectoryDnd";
+import { SidebarDirectoryItem } from "../../molecules/Studio/SidebarDirectoryItem";
 
 interface SidebarDirectoryProps {
   directory: Directory;
   level?: number;
+  inheritedPrivacy?: boolean;
 }
 
-export const SidebarDirectory = ({ directory, level = 0 }: SidebarDirectoryProps) => {
+export const SidebarDirectory = ({
+  directory,
+  level = 0,
+  inheritedPrivacy = false,
+}: SidebarDirectoryProps) => {
   const [isOpen, setIsOpen] = useState(false);
 
-  const {
-    activeDirectoryId,
-    setActiveDirectory,
-    getChildDirectories,
-    deleteDirectory,
-    createDirectory,
-    renameDirectory,
-  } = useStudioUI();
-
+  // 1. Estado Global
+  const { activeDirectoryId, getChildDirectories } = useStudioUI();
   const children = getChildDirectories(directory.id);
   const isSelected = activeDirectoryId === directory.id;
+  const isEffectivelyPrivate = directory.is_private || inheritedPrivacy;
 
+  // 2. Hooks de Lógica
   const {
-    attributes,
-    listeners,
-    setNodeRef: setDraggableRef,
-    isDragging,
-  } = useDraggable({
-    id: `dir-${directory.id}`,
-    data: { type: "directory", directory },
-  });
+    setActiveDirectory,
+    handleCreateSubdirectory,
+    handleDeleteDirectory,
+    handleRenameDirectory,
+  } = useDirectoryActions(directory.id, directory.name);
 
-  const { setNodeRef: setDroppableRef, isOver } = useDroppable({
-    id: directory.id,
-    data: { type: "directory", directory },
-  });
+  const { attributes, listeners, setBothRefs, isDragging, isOver } = useDirectoryDnd(directory);
 
-  const setBothRefs = (node: HTMLElement | null) => {
-    setDraggableRef(node);
-    setDroppableRef(node);
-  };
-
-  const style = {
-    opacity: isDragging ? 0.4 : 1,
-    cursor: isDragging ? "grabbing" : "pointer",
-    paddingLeft: `${level * 12 + 12}px`,
-  };
-
+  // 3. Manejadores de Eventos
   const handleSelect = (e: React.MouseEvent) => {
     e.stopPropagation();
     setActiveDirectory(directory.id);
-    if (children.length > 0 && !isOpen) {
-      setIsOpen(true);
-    }
-  };
-
-  const handleToggle = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setIsOpen(!isOpen);
-  };
-
-  const handleCreateSubdirectory = async (e: React.MouseEvent) => {
-    e.stopPropagation();
-    const name = window.prompt("Nombre de la nueva subcarpeta:");
-    if (!name || name.trim() === "") return;
-    try {
-      await createDirectory(name.trim(), directory.id);
-      toast.success("Subcarpeta creada");
-      setIsOpen(true);
-    } catch (error: any) {
-      toast.error("Error al crear subcarpeta");
-    }
-  };
-
-  const handleDeleteDirectory = async (e: React.MouseEvent) => {
-    e.stopPropagation();
-    const confirm = window.confirm(`¿Eliminar "${directory.name}"?`);
-    if (!confirm) return;
-    try {
-      await deleteDirectory(directory.id);
-      toast.success("Carpeta eliminada");
-      if (isSelected) setActiveDirectory(null);
-    } catch (error: any) {
-      toast.error("Error al eliminar");
-    }
-  };
-
-  const handleDoubleClick = async (e: React.MouseEvent) => {
-    e.stopPropagation();
-    const newName = window.prompt("Renombrar carpeta:", directory.name);
-    if (!newName || newName.trim() === "" || newName.trim() === directory.name) return;
-    try {
-      await renameDirectory(directory.id, newName.trim());
-      toast.success("Renombrada");
-    } catch (error: any) {
-      toast.error("Error al renombrar");
-    }
+    if (children.length > 0 && !isOpen) setIsOpen(true);
   };
 
   return (
     <div className="select-none relative">
-      <div
-        ref={setBothRefs}
-        style={style}
-        {...attributes}
-        {...listeners}
-        onClick={handleSelect}
-        onDoubleClick={handleDoubleClick}
-        className={`
-          group font-mono flex items-center py-1.5 px-2 mx-2 rounded-md transition-all duration-200 relative
-          ${isSelected ? "bg-primary/5 text-foreground font-medium" : "text-muted-foreground hover:text-foreground"}
-          ${isOver ? "bg-primary/10 ring-2 ring-primary/30 border-dashed" : "hover:bg-secondary/40 border border-transparent"}
-          ${isDragging ? "bg-background border-dashed border-primary/50" : ""}
-        `}
-      >
-        {isSelected && (
-          <div
-            className="absolute left-0 w-1 h-6 bg-primary rounded-r-full shadow-[0_0_8px_rgba(var(--primary-rgb),0.4)]"
-            style={{ top: "50%", transform: "translateY(-50%)" }}
-          />
-        )}
-
-        <span
-          className="w-4 h-4 mr-1 flex items-center justify-center z-10 hover:bg-muted/50 rounded transition-colors"
-          onClick={handleToggle}
-        >
-          {children.length > 0 &&
-            (isOpen ? <IconChevronDown size={14} /> : <IconChevronRight size={14} />)}
-        </span>
-
-        <span className="mr-2">
-          {isOpen ? (
-            <IconFolderOpen
-              size={16}
-              className={isSelected ? "text-primary/70" : "text-foreground/40"}
-            />
-          ) : (
-            <IconFolder
-              size={16}
-              className={isSelected ? "text-primary/70" : "text-foreground/40"}
-            />
-          )}
-        </span>
-
-        <span className="text-sm truncate flex-1">{directory.name}</span>
-
-        <div className="opacity-0 group-hover:opacity-100 flex items-center gap-1 transition-opacity pointer-events-auto">
-          <button
-            className="p-1 hover:bg-primary/20 rounded transition-colors text-primary/70"
-            title="Nueva Subcarpeta"
-            onClick={handleCreateSubdirectory}
-          >
-            <IconFolderPlus size={14} />
-          </button>
-          <button
-            className="p-1 hover:bg-destructive/20 hover:text-destructive/90 text-muted-foreground/40 rounded transition-colors"
-            title="Eliminar"
-            onClick={handleDeleteDirectory}
-          >
-            <IconTrash size={14} />
-          </button>
-        </div>
-      </div>
+      <SidebarDirectoryItem
+        directory={directory}
+        level={level}
+        isOpen={isOpen}
+        isSelected={isSelected}
+        isDragging={isDragging}
+        isOver={isOver}
+        isEffectivelyPrivate={isEffectivelyPrivate}
+        hasChildren={children.length > 0}
+        setBothRefs={setBothRefs}
+        attributes={attributes}
+        listeners={listeners}
+        onSelect={handleSelect}
+        onToggle={(e) => {
+          e.stopPropagation();
+          setIsOpen(!isOpen);
+        }}
+        onRename={(e) => {
+          e.stopPropagation();
+          handleRenameDirectory();
+        }}
+        onCreateSub={(e) => {
+          e.stopPropagation();
+          handleCreateSubdirectory(() => setIsOpen(true));
+        }}
+        onDelete={(e) => {
+          e.stopPropagation();
+          handleDeleteDirectory(isSelected);
+        }}
+      />
 
       {isOpen && children.length > 0 && (
         <div className="mt-0.5">
           {children.map((child: Directory) => (
-            <SidebarDirectory key={child.id} directory={child} level={level + 1} />
+            <SidebarDirectory
+              key={child.id}
+              directory={child}
+              level={level + 1}
+              inheritedPrivacy={isEffectivelyPrivate}
+            />
           ))}
         </div>
       )}
@@ -10283,6 +10469,8 @@ export function ImageViewerModal({
 ================================================
 FILE: src/system/pages/Feed/PublicFeedGrid.tsx
 ================================================
+// frontend/src/system/pages/Feed/PublicFeedGrid.tsx
+import { useEffect, useRef } from "react";
 import { FeedItemCard } from "@/src/system/molecules/Cards/FeedItemCard";
 import { FeedState } from "@/src/system/molecules/Feedback/FeedState";
 import { FeedItem } from "@/src/types/models";
@@ -10292,39 +10480,56 @@ interface PublicFeedGridProps {
   feed: FeedItem[];
   isLoading: boolean;
   lang: string;
+  hasMore: boolean;
+  onLoadMore: () => void;
 }
 
-export function PublicFeedGrid({ feed, isLoading, lang }: PublicFeedGridProps) {
+export function PublicFeedGrid({
+  feed,
+  isLoading,
+  lang,
+  hasMore,
+  onLoadMore,
+}: PublicFeedGridProps) {
+  const sentinelRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore && !isLoading) {
+          onLoadMore();
+        }
+      },
+      { threshold: 0.5 },
+    );
+
+    if (sentinelRef.current) observer.observe(sentinelRef.current);
+
+    return () => observer.disconnect();
+  }, [hasMore, isLoading, onLoadMore]);
+
   return (
     <div className="pt-8">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-        <h2 className="text-xl font-black font-mono uppercase tracking-widest text-(--accent-color)">
-          Explora la Comunidad
-        </h2>
+      <h2 className="text-xl font-black font-mono uppercase tracking-widest text-(--accent-color) mb-6">
+        Explora la Comunidad
+      </h2>
+
+      <div className="mx-auto grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+        {feed.map((item, index) => (
+          <FadeIn key={item.id} delay={0.1} y={20}>
+            <FeedItemCard item={item} lang={lang} index={index} />
+          </FadeIn>
+        ))}
       </div>
-      {isLoading ? (
-        <FeedState type="loading" />
-      ) : feed.length === 0 ? (
-        <FadeIn>
-          <div className="text-center py-20 text-muted-foreground font-mono neo-border bg-muted/5">
-            Aún no hay arte público en la plataforma con estos filtros.
-          </div>
-        </FadeIn>
-      ) : (
-        <div className="mx-auto grid grid-cols-1 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-          {feed.map((item, index) => (
-            <FadeIn key={item.id} delay={index * 0.05} y={20}>
-              <FeedItemCard
-                key={item.id}
-                item={item}
-                lang={lang}
-                isPriority={index < 6}
-                index={index}
-              />
-            </FadeIn>
-          ))}
-        </div>
-      )}
+
+      <div ref={sentinelRef} className="h-20 flex items-center justify-center mt-10">
+        {isLoading && <FeedState type="loading" />}
+        {!hasMore && feed.length > 0 && (
+          <p className="text-muted-foreground font-mono text-xs uppercase">
+            — Fin de la transmisión —
+          </p>
+        )}
+      </div>
     </div>
   );
 }

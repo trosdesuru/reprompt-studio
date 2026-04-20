@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { parsePromptData, ExtractedPromptData } from "../utils/promptParser";
 import { getRawTextFromFile } from "../utils/fileExtractors";
 import { extractFilesFromZip } from "../utils/fileExtractors/zipExtractor";
@@ -31,6 +31,17 @@ export function usePromptExtractor() {
     setUpgradeModal(false);
   }, []);
 
+  useEffect(() => {
+    return () => {
+      batch.forEach((item) => {
+        if (item.previewUrl) {
+          URL.revokeObjectURL(item.previewUrl);
+          console.log(`🗑️ RAM liberada: ${item.id}`);
+        }
+      });
+    };
+  }, [batch]);
+
   const processFiles = useCallback(async (files: File[], fileRejections: any[] = []) => {
     setUpgradeModal(false);
     setIsExtracting(true);
@@ -45,7 +56,6 @@ export function usePromptExtractor() {
     const maxFilesAllowed = user?.role === "artist" ? 200 : 10;
 
     try {
-      // 1. Expandir ZIPs o aceptar múltiples archivos sueltos
       for (const file of files) {
         if (
           file.type === "application/zip" ||
@@ -75,14 +85,12 @@ export function usePromptExtractor() {
 
       const newBatchItems: BatchItem[] = [];
 
-      // 2. Extraer metadata de cada archivo
       for (const file of allFilesToProcess) {
         try {
           const rawText = await getRawTextFromFile(file);
           let parsedData: ExtractedPromptData;
 
           if (!rawText) {
-            // 🛡️ PRAGMATISMO: Si es imagen pero no tiene IA, la dejamos pasar para MODO MANUAL
             if (file.type.startsWith("image/")) {
               parsedData = {
                 prompt: "",
@@ -97,6 +105,7 @@ export function usePromptExtractor() {
                 resolution: "",
                 loras: [],
                 triggerWords: [],
+                extractionConfidence: 0,
               };
             } else {
               currentSkipped.push({ name: file.name, reason: "Sin metadatos de IA detectados." });
@@ -140,7 +149,6 @@ export function usePromptExtractor() {
     setBatch((prev) => prev.map((item) => (item.id === id ? { ...item, status } : item)));
   }, []);
 
-  // 🟢 NUEVO: Función para actualizar los datos que el usuario teclee
   const updateItemData = useCallback((id: string, newData: Partial<ExtractedPromptData>) => {
     setBatch((prev) =>
       prev.map((item) => (item.id === id ? { ...item, data: { ...item.data, ...newData } } : item)),

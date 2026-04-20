@@ -1,4 +1,4 @@
-import { ExtractedPromptData } from "./parsers/types";
+import { ExtractedPromptData, ExtractedPromptSchema } from "./parsers/validation";
 import { cleanNullBytes } from "./parsers/stringUtils";
 import { parseA1111 } from "./parsers/a1111Parser";
 import { parseComfy } from "./parsers/comfyParser";
@@ -8,22 +8,39 @@ export type { ExtractedPromptData };
 
 export function parsePromptData(rawText: string): ExtractedPromptData {
   const cleanText = cleanNullBytes(rawText);
+  let parsed: Partial<ExtractedPromptData>;
 
-  // 1. Si parece JSON (ComfyUI / Civitai)
-  if (cleanText.startsWith("{") && cleanText.endsWith("}")) {
+  if (cleanText.trim().startsWith("{")) {
     try {
       const jsonObj = JSON.parse(cleanText);
-      return parseComfy(jsonObj, cleanText);
-    } catch (e) {
-      // Si falla el JSON, intentamos tratarlo como A1111 por si es texto plano mal formado
-      return parseA1111(cleanText);
+      parsed = parseComfy(jsonObj, cleanText);
+    } catch {
+      parsed = parseA1111(cleanText);
     }
+  } else if (/--ar|--v|--style|--niji|Job ID:/i.test(cleanText)) {
+    parsed = parseMidjourney(cleanText, rawText);
+    parsed.software = "Midjourney";
+  } else {
+    parsed = parseA1111(cleanText);
   }
 
-  if (cleanText.includes("--ar") || cleanText.includes("--niji") || cleanText.includes("Job ID:")) {
-    return parseMidjourney(cleanText, rawText);
+  const validation = ExtractedPromptSchema.safeParse({
+    ...parsed,
+    rawText: rawText,
+  });
+
+  if (!validation.success) {
+    console.error("❌ Fallo en contrato de extracción:", validation.error.format());
+
+    return {
+      prompt: cleanText,
+      negativePrompt: "",
+      resolution: undefined,
+      rawText: rawText,
+      software: "Desconocido",
+      extractionConfidence: 0.1,
+    };
   }
 
-  // 2. Por defecto: Intentar parseo de Automatic1111 / Midjourney (texto plano)
-  return parseA1111(cleanText);
+  return validation.data;
 }
