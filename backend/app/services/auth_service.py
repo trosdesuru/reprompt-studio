@@ -272,7 +272,7 @@ class AuthService:
             raise HTTPException(
                 status_code=401, detail="Token expirado. Inicia sesión."
             )
-        except jwt.JWTError as e:
+        except jwt.InvalidTokenError as e:
             logger.error(f"❌ [AUTH_SERVICE] Error de firma JWT: {str(e)}")
             raise HTTPException(status_code=401, detail="Firma inválida.")
 

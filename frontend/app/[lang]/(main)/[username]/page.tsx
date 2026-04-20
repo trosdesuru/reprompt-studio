@@ -6,7 +6,7 @@ import { PageLoader } from "@/src/system/atoms/PageLoader";
 import { IconPhotoOff, IconFolder } from "@tabler/icons-react";
 
 import { PromptCard } from "@/src/system/organisms/Studio/PromptCard";
-import { usePublicProfile } from "@/src/features/studio/hooks/usePublicProfile";
+import { usePublicProfile } from "@/src/features/public/hooks/usePublicProfile";
 import { Breadcrumbs } from "@/src/system/organisms/Navigation/Breadcrumbs";
 
 export default function PublicProfilePage({

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { IconCopy, IconCheck, IconPhoto } from "@tabler/icons-react";
-import { usePromptCard } from "@/src/features/studio/usePromptCard";
+import { usePromptCard } from "@/src/system/molecules/Cards/hooks/usePromptCard";
 import { PromptCardActions } from "../../molecules/Cards/PromptCardActions";
 import { LazyImage } from "../../molecules/Media/LazyImage";
 

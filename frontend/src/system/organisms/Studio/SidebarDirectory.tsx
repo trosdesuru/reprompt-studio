@@ -1,92 +1,80 @@
 "use client";
 
-import React, { useState } from "react";
+import { useState } from "react";
 import { useStudioUI, Directory } from "@/src/store/useStudioUI";
-import { useDirectoryActions } from "@/src/features/studio/hooks/useDirectoryActions";
-import { useDirectoryDnd } from "@/src/features/studio/hooks/useDirectoryDnd";
 import { SidebarDirectoryItem } from "../../molecules/Studio/SidebarDirectoryItem";
+import { useDirectoryDnd } from "@/src/features/studio/hooks/useDirectoryDnd";
+import { useDirectoryActions } from "@/src/features/studio/hooks/useDirectoryActions";
 
-interface SidebarDirectoryProps {
+interface Props {
   directory: Directory;
   level?: number;
-  inheritedPrivacy?: boolean;
 }
 
-export const SidebarDirectory = ({
-  directory,
-  level = 0,
-  inheritedPrivacy = false,
-}: SidebarDirectoryProps) => {
+export function SidebarDirectory({ directory, level = 0 }: Props) {
   const [isOpen, setIsOpen] = useState(false);
+  const { getChildDirectories, activeDirectoryId, setActiveDirectory } = useStudioUI();
 
-  // 1. Estado Global
-  const { activeDirectoryId, getChildDirectories } = useStudioUI();
+  const { createDirectory, deleteDirectory, renameDirectory } = useDirectoryActions();
+
+  const { setBothRefs, isDragging, isOver, attributes, listeners } = useDirectoryDnd(directory);
+
   const children = getChildDirectories(directory.id);
+  const hasChildren = children.length > 0;
   const isSelected = activeDirectoryId === directory.id;
-  const isEffectivelyPrivate = directory.is_private || inheritedPrivacy;
 
-  // 2. Hooks de Lógica
-  const {
-    setActiveDirectory,
-    handleCreateSubdirectory,
-    handleDeleteDirectory,
-    handleRenameDirectory,
-  } = useDirectoryActions(directory.id, directory.name);
-
-  const { attributes, listeners, setBothRefs, isDragging, isOver } = useDirectoryDnd(directory);
-
-  // 3. Manejadores de Eventos
-  const handleSelect = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setActiveDirectory(directory.id);
-    if (children.length > 0 && !isOpen) setIsOpen(true);
+  const handleCreateSubdirectory = async (onSuccess: () => void) => {
+    const name = window.prompt("Nombre de la sub-carpeta:");
+    if (name?.trim()) {
+      await createDirectory(name.trim(), directory.id);
+      onSuccess();
+    }
   };
 
+  if (isDragging) return null;
+
   return (
-    <div className="select-none relative">
+    <div className="flex flex-col w-full" ref={setBothRefs}>
       <SidebarDirectoryItem
         directory={directory}
         level={level}
         isOpen={isOpen}
+        hasChildren={hasChildren}
         isSelected={isSelected}
-        isDragging={isDragging}
         isOver={isOver}
-        isEffectivelyPrivate={isEffectivelyPrivate}
-        hasChildren={children.length > 0}
+        isDragging={isDragging}
         setBothRefs={setBothRefs}
         attributes={attributes}
         listeners={listeners}
-        onSelect={handleSelect}
-        onToggle={(e) => {
-          e.stopPropagation();
-          setIsOpen(!isOpen);
-        }}
-        onRename={(e) => {
-          e.stopPropagation();
-          handleRenameDirectory();
-        }}
+        isEffectivelyPrivate={directory.is_private || false}
+        onToggle={() => setIsOpen(!isOpen)}
+        onSelect={() => setActiveDirectory(directory.id)}
         onCreateSub={(e) => {
           e.stopPropagation();
           handleCreateSubdirectory(() => setIsOpen(true));
         }}
         onDelete={(e) => {
           e.stopPropagation();
-          handleDeleteDirectory(isSelected);
+          if (window.confirm(`¿Borrar "${directory.name}"?`)) {
+            deleteDirectory(directory.id);
+          }
+        }}
+        onRename={(e) => {
+          e.stopPropagation();
+          const newName = window.prompt("Nuevo nombre:", directory.name);
+          if (newName && newName.trim() !== directory.name) {
+            renameDirectory(directory.id, newName.trim());
+          }
         }}
       />
 
-      {isOpen && children.length > 0 && (
-        <div className="mt-0.5">
+      {isOpen && hasChildren && (
+        <div className="flex flex-col w-full">
           {children.map((child: Directory) => (
-            <SidebarDirectory
-              key={child.id}
-              directory={child}
-              level={level + 1}
-              inheritedPrivacy={isEffectivelyPrivate}
-            />
+            <SidebarDirectory key={child.id} directory={child} level={level + 1} />
           ))}
         </div>
       )}
     </div>
   );
-};
+}

@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { useSensor, useSensors, PointerSensor, DragStartEvent, DragEndEvent } from "@dnd-kit/core";
-import { useStudioUI, Directory } from "@/src/store/useStudioUI";
+import { Directory } from "@/src/store/useStudioUI";
+import { useDirectoryActions } from "./useDirectoryActions";
 
 export function useStudioDnd() {
-  const moveDirectory = useStudioUI((state) => state.moveDirectory);
+  const { moveDirectory } = useDirectoryActions();
   const [activeDragDir, setActiveDragDir] = useState<Directory | null>(null);
 
   const sensors = useSensors(

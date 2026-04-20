@@ -5,7 +5,7 @@ import Link from "next/link";
 import { IconFolder, IconPhotoOff } from "@tabler/icons-react";
 
 import { PromptCard } from "@/src/system/organisms/Studio/PromptCard";
-import { usePublicDirectory } from "@/src/features/studio/hooks/usePublicCollection";
+import { usePublicDirectory } from "@/src/features/public/hooks/usePublicDirectory";
 import { FadeIn } from "@/src/system/atoms/FadeIn";
 import { Breadcrumbs } from "@/src/system/organisms/Navigation/Breadcrumbs";
 import { useAuthStore } from "@/src/store/authStore";

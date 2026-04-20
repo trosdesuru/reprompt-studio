@@ -104,7 +104,8 @@ Directory structure:
     │   │   │           ├── comfyParser.ts
     │   │   │           ├── midjourneyParser.ts
     │   │   │           ├── stringUtils.ts
-    │   │   │           └── types.ts
+    │   │   │           ├── types.ts
+    │   │   │           └── validation.ts
     │   │   ├── home/
     │   │   │   └── hooks/
     │   │   │       ├── useHomeInteraction.ts
@@ -113,6 +114,7 @@ Directory structure:
     │   │   │   └── hooks/
     │   │   │       └── useViewerSync.ts
     │   │   ├── search/
+    │   │   │   ├── useVectorSearch.ts
     │   │   │   └── hooks/
     │   │   │       └── useSearch.ts
     │   │   └── studio/
@@ -127,6 +129,7 @@ Directory structure:
     │   │           ├── usePublicPrompt.ts
     │   │           ├── useStudio.ts
     │   │           ├── useStudioDnd.ts
+    │   │           ├── useStudioPrompts.ts
     │   │           └── useStudioSync.ts
     │   ├── services/
     │   │   ├── api.ts
@@ -192,6 +195,8 @@ Directory structure:
     │   │   │   │   ├── NotificationDropdown.tsx
     │   │   │   │   ├── SearchCategorySelector.tsx
     │   │   │   │   └── UserDropdown.tsx
+    │   │   │   ├── Search/
+    │   │   │   │   └── UniversalSearchBar.tsx
     │   │   │   ├── Studio/
     │   │   │   │   └── SidebarDirectoryItem.tsx
     │   │   │   └── Tabs/
@@ -229,6 +234,7 @@ Directory structure:
     │   │   │   │   └── Navbar.tsx
     │   │   │   ├── Navigation/
     │   │   │   │   ├── Breadcrumbs.tsx
+    │   │   │   │   ├── NavbarSearch.tsx
     │   │   │   │   └── PageHeader.tsx
     │   │   │   ├── Search/
     │   │   │   │   └── SearchResults/
@@ -239,6 +245,7 @@ Directory structure:
     │   │   │   │   ├── PromptGrid.tsx
     │   │   │   │   ├── SidebarDirectory.tsx
     │   │   │   │   ├── StudioHeader.tsx
+    │   │   │   │   ├── StudioSearch.tsx
     │   │   │   │   └── StudioSidebar.tsx
     │   │   │   └── Viewer/
     │   │   │       └── ImageViewerModal/
@@ -597,6 +604,7 @@ FILE: package.json
     "eslint-config-next": "16.2.1",
     "jest": "^30.3.0",
     "jest-environment-jsdom": "^30.3.0",
+    "knip": "^6.5.0",
     "prettier": "^3.8.1",
     "shadcn": "^4.1.1",
     "tailwindcss": "^4",
@@ -1474,6 +1482,8 @@ export default function Home({ params }: { params: Promise<{ lang: string }> }) 
             feed={publicFeed.feed}
             isLoading={publicFeed.isFeedLoading}
             lang={lang}
+            hasMore={publicFeed.hasMore}
+            onLoadMore={publicFeed.loadMore}
           />
         ) : search.isLoading && search.results.length === 0 ? (
           <FeedState type="loading" />
@@ -3282,7 +3292,7 @@ export function useOAuthPending() {
 ================================================
 FILE: src/features/extractor/hooks/usePromptExtractor.ts
 ================================================
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { parsePromptData, ExtractedPromptData } from "../utils/promptParser";
 import { getRawTextFromFile } from "../utils/fileExtractors";
 import { extractFilesFromZip } from "../utils/fileExtractors/zipExtractor";
@@ -3315,6 +3325,17 @@ export function usePromptExtractor() {
     setUpgradeModal(false);
   }, []);
 
+  useEffect(() => {
+    return () => {
+      batch.forEach((item) => {
+        if (item.previewUrl) {
+          URL.revokeObjectURL(item.previewUrl);
+          console.log(`🗑️ RAM liberada: ${item.id}`);
+        }
+      });
+    };
+  }, [batch]);
+
   const processFiles = useCallback(async (files: File[], fileRejections: any[] = []) => {
     setUpgradeModal(false);
     setIsExtracting(true);
@@ -3329,7 +3350,6 @@ export function usePromptExtractor() {
     const maxFilesAllowed = user?.role === "artist" ? 200 : 10;
 
     try {
-      // 1. Expandir ZIPs o aceptar múltiples archivos sueltos
       for (const file of files) {
         if (
           file.type === "application/zip" ||
@@ -3359,14 +3379,12 @@ export function usePromptExtractor() {
 
       const newBatchItems: BatchItem[] = [];
 
-      // 2. Extraer metadata de cada archivo
       for (const file of allFilesToProcess) {
         try {
           const rawText = await getRawTextFromFile(file);
           let parsedData: ExtractedPromptData;
 
           if (!rawText) {
-            // 🛡️ PRAGMATISMO: Si es imagen pero no tiene IA, la dejamos pasar para MODO MANUAL
             if (file.type.startsWith("image/")) {
               parsedData = {
                 prompt: "",
@@ -3381,6 +3399,7 @@ export function usePromptExtractor() {
                 resolution: "",
                 loras: [],
                 triggerWords: [],
+                extractionConfidence: 0,
               };
             } else {
               currentSkipped.push({ name: file.name, reason: "Sin metadatos de IA detectados." });
@@ -3424,7 +3443,6 @@ export function usePromptExtractor() {
     setBatch((prev) => prev.map((item) => (item.id === id ? { ...item, status } : item)));
   }, []);
 
-  // 🟢 NUEVO: Función para actualizar los datos que el usuario teclee
   const updateItemData = useCallback((id: string, newData: Partial<ExtractedPromptData>) => {
     setBatch((prev) =>
       prev.map((item) => (item.id === id ? { ...item, data: { ...item.data, ...newData } } : item)),
@@ -3475,7 +3493,7 @@ export function usePromptExtractor() {
 ================================================
 FILE: src/features/extractor/utils/promptParser.ts
 ================================================
-import { ExtractedPromptData } from "./parsers/types";
+import { ExtractedPromptData, ExtractedPromptSchema } from "./parsers/validation";
 import { cleanNullBytes } from "./parsers/stringUtils";
 import { parseA1111 } from "./parsers/a1111Parser";
 import { parseComfy } from "./parsers/comfyParser";
@@ -3485,24 +3503,41 @@ export type { ExtractedPromptData };
 
 export function parsePromptData(rawText: string): ExtractedPromptData {
   const cleanText = cleanNullBytes(rawText);
+  let parsed: Partial<ExtractedPromptData>;
 
-  // 1. Si parece JSON (ComfyUI / Civitai)
-  if (cleanText.startsWith("{") && cleanText.endsWith("}")) {
+  if (cleanText.trim().startsWith("{")) {
     try {
       const jsonObj = JSON.parse(cleanText);
-      return parseComfy(jsonObj, cleanText);
-    } catch (e) {
-      // Si falla el JSON, intentamos tratarlo como A1111 por si es texto plano mal formado
-      return parseA1111(cleanText);
+      parsed = parseComfy(jsonObj, cleanText);
+    } catch {
+      parsed = parseA1111(cleanText);
     }
+  } else if (/--ar|--v|--style|--niji|Job ID:/i.test(cleanText)) {
+    parsed = parseMidjourney(cleanText, rawText);
+    parsed.software = "Midjourney";
+  } else {
+    parsed = parseA1111(cleanText);
   }
 
-  if (cleanText.includes("--ar") || cleanText.includes("--niji") || cleanText.includes("Job ID:")) {
-    return parseMidjourney(cleanText, rawText);
+  const validation = ExtractedPromptSchema.safeParse({
+    ...parsed,
+    rawText: rawText,
+  });
+
+  if (!validation.success) {
+    console.error("❌ Fallo en contrato de extracción:", validation.error.format());
+
+    return {
+      prompt: cleanText,
+      negativePrompt: "",
+      resolution: undefined,
+      rawText: rawText,
+      software: "Desconocido",
+      extractionConfidence: 0.1,
+    };
   }
 
-  // 2. Por defecto: Intentar parseo de Automatic1111 / Midjourney (texto plano)
-  return parseA1111(cleanText);
+  return validation.data;
 }
 
 
@@ -3703,7 +3738,6 @@ export function parseA1111(rawText: string): ExtractedPromptData {
 
   const cleanText = cleanA1111Prefixes(rawText);
 
-  // Extracción de Prompts
   const negativePromptRegex = /Negative prompt:\s*([\s\S]*?)(?=\nSteps:|$)/i;
   const negativeMatch = cleanText.match(negativePromptRegex);
 
@@ -3714,7 +3748,6 @@ export function parseA1111(rawText: string): ExtractedPromptData {
     result.prompt = cleanText.split(/\nSteps:/i)[0].trim();
   }
 
-  // Extracción de metadatos técnicos
   const matchers = {
     steps: /Steps:\s*([^,]+)/i,
     sampler: /Sampler:\s*([^,]+)/i,
@@ -3821,18 +3854,16 @@ export function parseMidjourney(description: string, rawText: string): Extracted
   const result: ExtractedPromptData = {
     prompt: description,
     rawText,
-    software: "Desconocido", // Midjourney no suele poner su nombre, pero lo identificaremos por los comandos
+    software: "Desconocido",
   };
 
-  // Si contiene comandos típicos de Midjourney
   if (description.includes("--") || description.includes("Job ID:")) {
-    result.software = "Desconocido"; // Podrías añadir "Midjourney" a la interfaz de tipos si quieres
+    result.software = "Desconocido";
 
     // Extraer resolución de --ar
     const arMatch = description.match(/--ar\s+([0-9:]+)/);
     if (arMatch) result.resolution = arMatch[1];
 
-    // Extraer Negativo (lo que va después de --no)
     const noMatch = description.match(/--no\s+([^--]+)/);
     if (noMatch) {
       result.negativePrompt = noMatch[1].trim();
@@ -3881,6 +3912,45 @@ export interface ExtractedPromptData {
   triggerWords?: string[];
   rawText: string;
 }
+
+
+
+================================================
+FILE: src/features/extractor/utils/parsers/validation.ts
+================================================
+import { z } from "zod";
+
+export const ExtractedPromptSchema = z.object({
+  prompt: z
+    .string()
+    .min(1, "El prompt es obligatorio")
+    .transform((t) => t.trim()),
+  negativePrompt: z.string().default(""),
+  steps: z.string().optional(),
+  sampler: z.string().optional(),
+  cfgScale: z.string().optional(),
+  seed: z.string().optional(),
+  model: z.string().optional(),
+  resolution: z
+    .string()
+    .optional()
+    .transform((r) => r?.replace(/\s+/g, "")),
+  software: z.enum(["A1111", "ComfyUI", "Midjourney", "NovelAI", "Desconocido"]),
+  rawText: z.string(),
+  extractionConfidence: z.number().min(0).max(1).default(1),
+
+  loras: z
+    .array(
+      z.object({
+        name: z.string(),
+        strength: z.union([z.string(), z.number()]),
+      }),
+    )
+    .optional(),
+  triggerWords: z.array(z.string()).optional(),
+});
+
+export type ExtractedPromptData = z.infer<typeof ExtractedPromptSchema>;
 
 
 
@@ -4086,6 +4156,60 @@ export function useViewerSync(activeUrl: string) {
     closeViewer,
     hasMorePages,
     loadNextPage,
+  };
+}
+
+
+
+================================================
+FILE: src/features/search/useVectorSearch.ts
+================================================
+import { useState, useCallback } from "react";
+import { fetchSeguro } from "@/src/services/api/client";
+
+interface SearchOptions {
+  scope: "global" | "studio";
+  directoryId?: string;
+}
+
+export function useVectorSearch({ scope, directoryId }: SearchOptions) {
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleExecute = useCallback(async () => {
+    if (!query.trim()) return;
+
+    setIsLoading(true);
+    try {
+      const params = new URLSearchParams({
+        q: query,
+        scope,
+        ...(directoryId && { directory_id: directoryId }),
+      });
+
+      const res = await fetchSeguro(`/search/vector?${params.toString()}`);
+      if (res.ok) {
+        const data = await res.json();
+        setResults(data.results || []);
+      }
+    } catch (err) {
+      console.error(`[VectorSearch:${scope}] Error:`, err);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [query, scope, directoryId]);
+
+  return {
+    query,
+    setQuery,
+    results,
+    isLoading,
+    handleExecute,
+    clear: () => {
+      setQuery("");
+      setResults([]);
+    },
   };
 }
 
@@ -4558,6 +4682,82 @@ export function useStudioDnd() {
   };
 
   return { sensors, activeDragDir, handleDragStart, handleDragEnd };
+}
+
+
+
+================================================
+FILE: src/features/studio/hooks/useStudioPrompts.ts
+================================================
+import { useState, useEffect } from "react";
+import { useStudioUI } from "@/src/store/useStudioUI";
+import { useAuthStore } from "@/src/store/authStore";
+import { fetchSeguro } from "@/src/services/api/client";
+import toast from "react-hot-toast";
+
+export function useStudioPrompts() {
+  const { activeDirectoryId, searchQuery } = useStudioUI();
+  const user = useAuthStore((state) => state.user);
+
+  const [debouncedQuery, setDebouncedQuery] = useState(searchQuery);
+  const [prompts, setPrompts] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    const handler = setTimeout(() => setDebouncedQuery(searchQuery), 1000);
+    return () => clearTimeout(handler);
+  }, [searchQuery]);
+
+  useEffect(() => {
+    const fetchPrompts = async () => {
+      setIsLoading(true);
+      try {
+        const endpoint = debouncedQuery
+          ? `/search/studio?q=${debouncedQuery}`
+          : `/prompts/studio?directory_id=${activeDirectoryId || ""}`;
+
+        const res = await fetchSeguro(endpoint, { credentials: "include" });
+        if (res.ok) {
+          const data = await res.json();
+          setPrompts(data.results || data.data || []);
+        }
+      } catch (err) {
+        console.error("Error en Studio Grid:", err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchPrompts();
+  }, [activeDirectoryId, debouncedQuery]);
+
+  const deletePrompt = async (promptId: string) => {
+    const toastId = toast.loading("Exterminando rastro digital...");
+    try {
+      const res = await fetchSeguro(`/prompts/${promptId}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+
+      if (res.ok) {
+        setPrompts((prev) => prev.filter((p) => p.id !== promptId));
+        toast.success("Eliminado del Studio", { id: toastId });
+      } else {
+        const errorData = await res.json();
+        throw new Error(errorData.detail || "Fallo de autorización");
+      }
+    } catch (error: any) {
+      console.error("Fallo al borrar:", error);
+      toast.error(error.message || "Error al eliminar", { id: toastId });
+    }
+  };
+
+  return {
+    prompts,
+    isLoading,
+    user,
+    deletePrompt,
+  };
 }
 
 
@@ -5365,140 +5565,72 @@ export const useProgressStore = create<ProgressState>((set) => {
 ================================================
 FILE: src/store/searchStore.ts
 ================================================
-import { useProgressStore } from "./progressStore";
 import { create } from "zustand";
-import { api } from "@/src/services/api";
-import { GalleryItem } from "@/src/types/models";
-import { handleError } from "../utils/errors/ErrorHandler";
 
 interface SearchState {
   query: string;
-  results: GalleryItem[];
+  results: any[];
   isLoading: boolean;
-  isLoadingMore: boolean;
-  error: string | null;
   nextCursor: string | null;
   hasMore: boolean;
   activeCategories: Record<string, boolean>;
-  
+
   setQuery: (q: string) => void;
-  toggleCategory: (id: string) => void;
-  executeSearch: () => Promise<void>;
-  loadMore: () => Promise<void>;
-  trending: GalleryItem[];
-  fetchTrending: () => Promise<void>;
+  setResults: (results: any[]) => void;
+  appendResults: (newResults: any[], nextCursor: string | null) => void;
+  setIsLoading: (loading: boolean) => void;
+  toggleCategory: (categoryId: string) => void;
+  clearSearch: () => void;
 }
 
-export const useSearchStore = create<SearchState>((set, get) => ({
+export const useSearchStore = create<SearchState>((set) => ({
   query: "",
   results: [],
-  trending: [],
   isLoading: false,
-  isLoadingMore: false,
-  error: null,
   nextCursor: null,
   hasMore: false,
+
   activeCategories: {
-    misc: false, doujinshi: true, manga: false, artistcg: false, gamecg: false,
-    western: false, nonh: false, imageset: false, cosplay: false, asianporn: false,
+    midjourney: false,
+    stablediffusion: false,
+    comfyui: false,
+    dalle: false,
   },
 
-  setQuery: (q) => set({ query: q }),
-  
-  toggleCategory: (id) =>
+  setQuery: (query) => set({ query }),
+  setResults: (results) => set({ results }),
+
+  appendResults: (newResults, nextCursor) =>
+    set((state) => {
+      const combined = [...state.results, ...newResults];
+
+      const unique = Array.from(new Map(combined.map((item) => [item.id, item])).values());
+
+      return {
+        results: unique,
+        nextCursor: nextCursor,
+        hasMore: !!nextCursor && unique.length > state.results.length,
+      };
+    }),
+
+  setIsLoading: (isLoading) => set({ isLoading }),
+
+  toggleCategory: (categoryId) =>
     set((state) => ({
-      activeCategories: { ...state.activeCategories, [id]: !state.activeCategories[id] },
+      activeCategories: {
+        ...state.activeCategories,
+        [categoryId]: !state.activeCategories[categoryId],
+      },
     })),
 
-  executeSearch: async () => {
-    useProgressStore.getState().start();
-    const { query, activeCategories } = get();
-    if (!query) return;
-    
-    set({ isLoading: true, error: null, results: [], nextCursor: null, hasMore: true });
-
-    try {
-      const data = await api.buscar(query, null, activeCategories);
-      if (process.env.NODE_ENV === "development") console.log("🚨 TELEMETRÍA [API INITIAL SEARCH]:", data);
-
-      if (data.status === "success") {
-        set({
-          results: data.data || [],
-          nextCursor: data.next_id || null,
-          hasMore: !!data.next_id,
-        });
-      }
-    } catch (err: unknown) {
-      const cleanMessage = handleError(err, "SearchStore");
-      set({ error: cleanMessage });
-    } finally {
-      set({ isLoading: false });
-      useProgressStore.getState().done();
-    }
-  },
-
-  // ✅ AQUÍ ESTÁ EL CÓDIGO REAL RESTAURADO
-  loadMore: async () => {
-    useProgressStore.getState().start();
-    const { query, nextCursor, hasMore, isLoadingMore, activeCategories, results } = get();
-    
-    if (process.env.NODE_ENV === "development") console.log("🚨 TELEMETRÍA [STORE]: Ejecutando loadMore. Estado actual:", { isLoadingMore, hasMore, nextCursor });
-
-    // Bloqueamos si ya está cargando o no hay más páginas
-    if (isLoadingMore || !hasMore || !nextCursor) {
-      if (process.env.NODE_ENV === "development") console.warn("🚨 TELEMETRÍA [STORE]: Petición bloqueada (ya cargando o sin cursor).");
-      return;
-    }
-    
-    set({ isLoadingMore: true });
-
-    try {
-      console.log(`🚨 TELEMETRÍA [STORE]: Pidiendo página con cursor: ${nextCursor}`);
-      const data = await api.buscar(query, nextCursor, activeCategories);
-      
-      if (process.env.NODE_ENV === "development") console.log("🚨 TELEMETRÍA [API LOAD MORE]:", data);
-
-      if (data.status === "success" && data.data && data.data.length > 0) {
-        const combined = [...results, ...data.data];
-        
-        // Filtramos duplicados usando la URL como ID único
-        const unique = Array.from(new Map(combined.map((item) => [item.url, item])).values());
-
-        // 🛡️ CIRCUIT BREAKER
-        if (unique.length === results.length) {
-          if (process.env.NODE_ENV === "development") console.warn("🚨 CIRCUIT BREAKER: El Backend mandó los mismos resultados. Cortando el bucle.");
-          set({ hasMore: false });
-        } else {
-          set({
-            results: unique,
-            nextCursor: data.next_id || null,
-            hasMore: !!data.next_id, // Si no hay next_id, desactivamos el Infinite Scroll
-          });
-        }
-      } else {
-        if (process.env.NODE_ENV === "development") console.warn("🚨 TELEMETRÍA [STORE]: La API devolvió un array vacío. Fin de los resultados.");
-        set({ hasMore: false });
-      }
-    } catch (err) {
-      if (process.env.NODE_ENV === "development") console.error("🚨 TELEMETRÍA [STORE]: Error al cargar más:", err);
-    } finally {
-      set({ isLoadingMore: false });
-      useProgressStore.getState().done();
-    }
-  },
-
-  // ✅ CÓDIGO RESTAURADO PARA LAS TENDENCIAS DE LA HOME
-  fetchTrending: async () => {
-    useProgressStore.getState().start();
-    try {
-      const data = await api.getTrends(5);
-      if (data.status === "success") set({ trending: data.data });
-      useProgressStore.getState().done();
-    } catch (err) {
-      console.error("Error cargando tendencias:", err);
-      useProgressStore.getState().done();
-    }
-  },
+  clearSearch: () =>
+    set({
+      query: "",
+      results: [],
+      isLoading: false,
+      nextCursor: null,
+      hasMore: false,
+    }),
 }));
 
 
@@ -7590,6 +7722,92 @@ export function UserDropdown() {
       )}
 
       {showPwdModal && <ChangePasswordModal onClose={() => setShowPwdModal(false)} />}
+    </div>
+  );
+}
+
+
+
+================================================
+FILE: src/system/molecules/Search/UniversalSearchBar.tsx
+================================================
+// src/system/molecules/Search/UniversalSearchBar.tsx
+"use client";
+
+import { useRef, useEffect } from "react";
+import { IconSearch, IconLoader2, IconX } from "@tabler/icons-react";
+
+interface UniversalSearchBarProps {
+  query: string;
+  isLoading: boolean;
+  placeholder?: string;
+  onQueryChange: (q: string) => void;
+  onSubmit: () => void;
+  onClear: () => void;
+  enableKeyboardShortcut?: boolean;
+}
+
+export function UniversalSearchBar({
+  query,
+  isLoading,
+  placeholder = "Buscar...",
+  onQueryChange,
+  onSubmit,
+  onClear,
+  enableKeyboardShortcut = false,
+}: UniversalSearchBarProps) {
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!enableKeyboardShortcut) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      const isInput =
+        target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable;
+      if (e.key === "/" && !isInput) {
+        e.preventDefault();
+        inputRef.current?.focus();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [enableKeyboardShortcut]);
+
+  return (
+    <div className="relative flex items-center w-full h-10 bg-muted/20 border border-border/40 rounded-xl focus-within:border-(--accent-color)/50 focus-within:ring-1 focus-within:ring-(--accent-color)/20 transition-all backdrop-blur-sm">
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          onSubmit();
+        }}
+        className="flex-1 h-full flex items-center relative pl-3"
+      >
+        <div className="flex items-center justify-center w-5 h-5">
+          {isLoading ? (
+            <IconLoader2 size={16} className="animate-spin text-(--accent-color)" />
+          ) : (
+            <IconSearch size={16} className="text-muted-foreground/60" />
+          )}
+        </div>
+
+        <input
+          ref={inputRef}
+          value={query}
+          onChange={(e) => onQueryChange(e.target.value)}
+          className="w-full h-full bg-transparent px-3 text-sm outline-none placeholder:text-muted-foreground/40 font-medium"
+          placeholder={placeholder}
+        />
+
+        {query && (
+          <button
+            type="button"
+            onClick={onClear}
+            className="pr-3 text-muted-foreground/40 hover:text-foreground transition-colors"
+          >
+            <IconX size={14} />
+          </button>
+        )}
+      </form>
     </div>
   );
 }
@@ -9731,6 +9949,45 @@ export function Breadcrumbs({ items, homeHref = "/" }: BreadcrumbsProps) {
 
 
 ================================================
+FILE: src/system/organisms/Navigation/NavbarSearch.tsx
+================================================
+// src/system/organisms/Navigation/NavbarSearch.tsx
+"use client";
+
+import { UniversalSearchBar } from "../../molecules/Search/UniversalSearchBar";
+import { useVectorSearch } from "@/src/features/search/useVectorSearch";
+import { useSearchStore } from "@/src/store/searchStore"; // Para sincronizar con el feed
+
+export function NavbarSearch() {
+  const globalSearchStore = useSearchStore(); // Conectamos con el estado global de la página
+
+  const vector = useVectorSearch({ scope: "global" });
+
+  const onSearchSubmit = async () => {
+    await vector.handleExecute();
+    // Actualizamos el store global para que el feed principal cambie
+    globalSearchStore.setResults(vector.results);
+    globalSearchStore.setQuery(vector.query);
+  };
+
+  return (
+    <div className="w-full max-w-xl">
+      <UniversalSearchBar
+        query={vector.query}
+        isLoading={vector.isLoading}
+        placeholder="Búsqueda semántica de prompts..."
+        enableKeyboardShortcut={true}
+        onQueryChange={vector.setQuery}
+        onSubmit={onSearchSubmit}
+        onClear={vector.clear}
+      />
+    </div>
+  );
+}
+
+
+
+================================================
 FILE: src/system/organisms/Navigation/PageHeader.tsx
 ================================================
 "use client";
@@ -10044,109 +10301,53 @@ FILE: src/system/organisms/Studio/PromptGrid.tsx
 ================================================
 "use client";
 
-import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { useStudioUI } from "@/src/store/useStudioUI";
-import { useAuthStore } from "@/src/store/authStore";
 import { IconPhotoOff } from "@tabler/icons-react";
-import { fetchSeguro } from "@/src/services/api/client";
 import { PageLoader } from "../../atoms/PageLoader";
 import { PromptCard } from "./PromptCard";
-import toast from "react-hot-toast";
+import { useStudioPrompts } from "@/src/features/studio/hooks/useStudioPrompts";
 
 export default function PromptGrid() {
-  const { activeDirectoryId, searchQuery } = useStudioUI();
-  const user = useAuthStore((state) => state.user);
   const params = useParams();
   const lang = (params?.lang as string) || "es";
 
-  const [debouncedQuery, setDebouncedQuery] = useState(searchQuery);
-  const [prompts, setPrompts] = useState<any[]>([]);
-  const [loading, setLoading] = useState(false);
+  const { prompts, isLoading, user, deletePrompt } = useStudioPrompts();
 
-  useEffect(() => {
-    const handler = setTimeout(() => {
-      setDebouncedQuery(searchQuery);
-    }, 1000);
-    return () => clearTimeout(handler);
-  }, [searchQuery]);
+  if (isLoading) {
+    return (
+      <div className="h-full flex flex-col flex-1 items-center justify-center">
+        <PageLoader text="Sincronizando Studio..." />
+      </div>
+    );
+  }
 
-  useEffect(() => {
-    const fetchPrompts = async () => {
-      setLoading(true);
-      try {
-        const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
-        const endpoint = debouncedQuery
-          ? `/search/studio?q=${debouncedQuery}`
-          : `/prompts/studio?directory_id=${activeDirectoryId || ""}`;
-
-        const res = await fetchSeguro(`${API_URL}${endpoint}`, { credentials: "include" });
-        if (res.ok) {
-          const data = await res.json();
-          setPrompts(data.results || data.data || []);
-        }
-      } catch (err) {
-        console.error("Error en Studio Grid:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchPrompts();
-  }, [activeDirectoryId, debouncedQuery]);
-
-  const handleDeletePrompt = async (promptId: string) => {
-    const toastId = toast.loading("Exterminando rastro digital...");
-    try {
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
-
-      const res = await fetchSeguro(`${API_URL}/prompts/${promptId}`, {
-        method: "DELETE",
-        credentials: "include",
-      });
-
-      if (res.ok) {
-        setPrompts((prev) => prev.filter((p) => p.id !== promptId));
-        toast.success("Eliminado del Studio", { id: toastId });
-      } else {
-        const errorData = await res.json();
-        throw new Error(errorData.detail || "Fallo de autorización");
-      }
-    } catch (error: any) {
-      console.error("Fallo al borrar:", error);
-      toast.error(error.message || "Error al eliminar", { id: toastId });
-    }
-  };
+  if (prompts.length === 0) {
+    return (
+      <div className="h-full flex flex-col flex-1 items-center justify-center text-muted-foreground/40">
+        <IconPhotoOff size={48} stroke={1.5} className="mb-4" />
+        <p className="text-sm font-mono uppercase tracking-widest text-center px-4">
+          No se encontraron prompts en este rincón
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="h-full flex flex-col">
-      {loading ? (
-        <div className="flex-1 flex items-center justify-center">
-          <PageLoader text="Sincronizando Studio..." />
-        </div>
-      ) : prompts.length > 0 ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
-          {prompts.map((p: any, index) => (
-            <PromptCard
-              key={p.id}
-              item={p}
-              index={index}
-              lang={lang}
-              isStudio={true}
-              authorUsername={user?.username || "unknown"}
-              isPriority={index < 8}
-              onDelete={handleDeletePrompt}
-            />
-          ))}
-        </div>
-      ) : (
-        <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground/40">
-          <IconPhotoOff size={48} stroke={1.5} className="mb-4" />
-          <p className="text-sm font-mono uppercase tracking-widest text-center px-4">
-            No se encontraron prompts en este rincón
-          </p>
-        </div>
-      )}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
+        {prompts.map((p: any, index: number) => (
+          <PromptCard
+            key={p.id}
+            item={p}
+            index={index}
+            lang={lang}
+            isStudio={true}
+            authorUsername={user?.username || "unknown"}
+            isPriority={index < 8}
+            onDelete={deletePrompt}
+          />
+        ))}
+      </div>
     </div>
   );
 }
@@ -10279,6 +10480,47 @@ export function StudioHeader() {
           </p>
         </div>
       </div>
+    </div>
+  );
+}
+
+
+
+================================================
+FILE: src/system/organisms/Studio/StudioSearch.tsx
+================================================
+"use client";
+
+import { useEffect } from "react";
+import { UniversalSearchBar } from "../../molecules/Search/UniversalSearchBar";
+import { useVectorSearch } from "@/src/features/search/useVectorSearch";
+import { useStudioUI } from "@/src/store/useStudioUI";
+
+export function StudioSearch() {
+  const { activeDirectoryId } = useStudioUI();
+
+  const vector = useVectorSearch({
+    scope: "studio",
+    directoryId: activeDirectoryId ?? undefined,
+  });
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (vector.query) vector.handleExecute();
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [vector.query]);
+
+  return (
+    <div className="mb-4">
+      <UniversalSearchBar
+        query={vector.query}
+        isLoading={vector.isLoading}
+        placeholder="Busca en tus extracciones..."
+        onQueryChange={vector.setQuery}
+        onSubmit={vector.handleExecute}
+        onClear={vector.clear}
+      />
     </div>
   );
 }

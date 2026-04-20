@@ -8,11 +8,13 @@ interface User {
 
 interface AuthState {
   user: User | null;
-  isAuthenticated: boolean; // 🟢 FIX: Añadido al contrato
+  isAuthenticated: boolean;
   isLoadingAuth: boolean;
+  hasCheckedInitialAuth: boolean;
+
   login: (userData: User) => void;
   logout: () => Promise<void>;
-  checkAuth: () => Promise<void>;
+  checkAuth: (force?: boolean) => Promise<void>;
   logoutSilencioso: () => void;
 }
 
@@ -35,30 +37,40 @@ const redirectToLogin = () => {
   window.location.href = `${localePrefix}/login`;
 };
 
-export const useAuthStore = create<AuthState>((set) => ({
+export const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
-  isAuthenticated: false, // 🟢 FIX: Inicializado
+  isAuthenticated: false,
   isLoadingAuth: true,
+  hasCheckedInitialAuth: false,
 
   login: (userData) => {
     console.log(`[AUTH_STORE] Sesión iniciada localmente: @${userData.username}`);
-    set({ user: userData, isAuthenticated: true, isLoadingAuth: false });
+    set({
+      user: userData,
+      isAuthenticated: true,
+      isLoadingAuth: false,
+      hasCheckedInitialAuth: true,
+    });
   },
 
   logoutSilencioso: () => {
     console.log("🤫 [AUTH_STORE] Limpieza de estado local (Silenciosa).");
-    set({ user: null, isAuthenticated: false, isLoadingAuth: false });
+    set({ user: null, isAuthenticated: false, isLoadingAuth: false, hasCheckedInitialAuth: true });
   },
 
-  checkAuth: async () => {
+  checkAuth: async (force = false) => {
+    const { hasCheckedInitialAuth } = get();
+
+    if (hasCheckedInitialAuth && !force) {
+      return;
+    }
+
     console.log("🔍 [AUTH_STORE] Verificando estado de sesión...");
     set({ isLoadingAuth: true });
 
     try {
-      // 🟢 FIX: Consolidado en una sola llamada y con AWAIT
       const res = await api.auth.me();
 
-      // Mapeo defensivo de la respuesta del backend
       const userData = res?.user || res?.data || res;
       const username = userData?.username;
       const role = userData?.role || "voyager";
@@ -68,19 +80,16 @@ export const useAuthStore = create<AuthState>((set) => ({
         set({
           user: { username, role },
           isAuthenticated: true,
-          isLoadingAuth: false,
         });
       } else {
         console.warn("⚠️ [AUTH_STORE] checkAuth respondió OK pero el cuerpo está vacío.");
-        set({ user: null, isAuthenticated: false, isLoadingAuth: false });
+        set({ user: null, isAuthenticated: false });
       }
     } catch (error: unknown) {
       console.warn("🛑 [AUTH_STORE] checkAuth falló (No hay sesión activa).");
-      set({ user: null, isAuthenticated: false, isLoadingAuth: false });
-
-      // No lanzamos el error al ErrorHandler aquí para evitar spam de toasts en el login
+      set({ user: null, isAuthenticated: false });
     } finally {
-      set({ isLoadingAuth: false });
+      set({ isLoadingAuth: false, hasCheckedInitialAuth: true });
     }
   },
 
@@ -92,7 +101,12 @@ export const useAuthStore = create<AuthState>((set) => ({
     } catch (error) {
       console.error("❌ [AUTH_STORE] Falló llamada al backend para logout:", error);
     } finally {
-      set({ user: null, isAuthenticated: false, isLoadingAuth: false });
+      set({
+        user: null,
+        isAuthenticated: false,
+        isLoadingAuth: false,
+        hasCheckedInitialAuth: true,
+      });
       redirectToLogin();
     }
   },
@@ -101,7 +115,7 @@ export const useAuthStore = create<AuthState>((set) => ({
 if (typeof window !== "undefined") {
   window.addEventListener("auth:session_recovered", () => {
     console.log("♻️ [AUTH_STORE] Sesión recuperada. Sincronizando interfaz...");
-    useAuthStore.getState().checkAuth();
+    useAuthStore.getState().checkAuth(true);
   });
 
   window.addEventListener("auth:unauthorized", () => {

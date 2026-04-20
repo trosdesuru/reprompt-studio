@@ -4,6 +4,8 @@ import { useAuthStore } from "@/src/store/authStore";
 import { fetchSeguro } from "@/src/services/api/client";
 import toast from "react-hot-toast";
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
+
 export function useStudioPrompts() {
   const { activeDirectoryId, searchQuery } = useStudioUI();
   const user = useAuthStore((state) => state.user);
@@ -21,14 +23,19 @@ export function useStudioPrompts() {
     const fetchPrompts = async () => {
       setIsLoading(true);
       try {
+        const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
+
         const endpoint = debouncedQuery
-          ? `/search/studio?q=${debouncedQuery}`
-          : `/prompts/studio?directory_id=${activeDirectoryId || ""}`;
+          ? `${API_BASE}/search/studio?q=${debouncedQuery}`
+          : `${API_BASE}/prompts/studio?directory_id=${activeDirectoryId || ""}`;
 
         const res = await fetchSeguro(endpoint, { credentials: "include" });
+
         if (res.ok) {
           const data = await res.json();
           setPrompts(data.results || data.data || []);
+        } else {
+          console.error("Fallo del servidor:", res.status);
         }
       } catch (err) {
         console.error("Error en Studio Grid:", err);
@@ -43,7 +50,7 @@ export function useStudioPrompts() {
   const deletePrompt = async (promptId: string) => {
     const toastId = toast.loading("Exterminando rastro digital...");
     try {
-      const res = await fetchSeguro(`/prompts/${promptId}`, {
+      const res = await fetchSeguro(`${API_URL}/prompts/${promptId}`, {
         method: "DELETE",
         credentials: "include",
       });

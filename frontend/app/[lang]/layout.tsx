@@ -6,8 +6,10 @@ import { AuthProvider } from "@/src/features/auth/AuthProvider";
 import { ThemeProvider } from "@/src/dictionaries/ThemeProvider";
 import { AppToaster } from "@/src/system/organisms/Layout/AppToaster";
 import { GlobalProgress } from "@/src/system/organisms/Layout/GlobalProgress";
-import { cn } from "@/lib/utils";
 
+import { GlobalModal } from "@/src/system/organisms/Modal/GlobalModal";
+
+import { cn } from "@/lib/utils";
 import { getDictionary, Locale } from "@/src/dictionaries/getDictionary";
 import { I18nProvider } from "@/src/dictionaries/I18nProvider";
 import { GoogleOAuthProvider } from "@react-oauth/google";
@@ -18,7 +20,11 @@ const prompt = Prompt({
   variable: "--font-prompt",
 });
 
-const jetbrainsMono = JetBrains_Mono({ weight: ["400", "500", "600", "700"], subsets: ["latin"], variable: "--font-mono" });
+const jetbrainsMono = JetBrains_Mono({
+  weight: ["400", "500", "600", "700"],
+  subsets: ["latin"],
+  variable: "--font-mono",
+});
 
 export const metadata: Metadata = {
   title: "reprompt",
@@ -55,7 +61,9 @@ export default async function RootLayout({
               <AuthProvider>
                 <GlobalProgress />
                 {children}
+
                 <AppToaster />
+                <GlobalModal />
               </AuthProvider>
             </I18nProvider>
           </GoogleOAuthProvider>

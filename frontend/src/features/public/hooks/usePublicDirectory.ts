@@ -16,17 +16,16 @@ interface DirectoryDetail {
 export function usePublicDirectory(username: string, directory_slug: string) {
   const [data, setData] = useState<DirectoryDetail | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [error] = useState<string | null>(null);
 
   useEffect(() => {
     setIsLoading(true);
     api.public
       .getDirectory(username, directory_slug)
-      .then((res) => setData(res))
-      .catch((err) => {
-        console.error("Error fetching directory:", err);
-        setError("Colección no encontrada, eliminada o privada.");
-        setData(null);
+      .then(async (res) => {
+        if (!res.ok) throw new Error("Error en la petición");
+        const jsonData = await res.json();
+        setData(jsonData);
       })
       .finally(() => setIsLoading(false));
   }, [username, directory_slug]);

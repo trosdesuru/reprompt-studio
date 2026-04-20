@@ -2,7 +2,7 @@
 
 import { use } from "react";
 import Link from "next/link";
-import { usePublicPrompt } from "@/src/features/studio/hooks/usePublicPrompt";
+import { usePublicPrompt } from "@/src/features/public/hooks/usePublicPrompt";
 import { PromptImageViewer } from "@/src/system/molecules/Cards/PromptImageViewer";
 import { PromptMetadataPanel } from "@/src/system/molecules/Cards/PromptMetadataPanel";
 import { Breadcrumbs } from "@/src/system/organisms/Navigation/Breadcrumbs";

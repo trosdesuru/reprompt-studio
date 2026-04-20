@@ -3,10 +3,15 @@
 import { IconFolderPlus, IconCloudUpload, IconFolder } from "@tabler/icons-react";
 import { useStudioUI, Directory } from "@/src/store/useStudioUI";
 import { SidebarDirectory } from "@/src/system/organisms/Studio/SidebarDirectory";
-import { useFileUploader } from "@/src/features/studio/hooks/useFileUploader";
+import { useFileUploader } from "@/src/features/extractor/hooks/useFileUploader";
+
+import { useDirectoryActions } from "@/src/features/studio/hooks/useDirectoryActions";
 
 export function StudioSidebar() {
-  const { directories, createDirectory, activeDirectoryId, setActiveDirectory } = useStudioUI();
+  const { directories, activeDirectoryId, setActiveDirectory } = useStudioUI();
+
+  const { createDirectory } = useDirectoryActions();
+
   const { handleUploadClick } = useFileUploader();
 
   const handleCreateRootFolder = async (e: React.MouseEvent) => {

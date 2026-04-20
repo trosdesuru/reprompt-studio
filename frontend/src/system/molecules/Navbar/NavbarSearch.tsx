@@ -19,12 +19,10 @@ export function NavbarSearch() {
     setQuery(e.target.value);
   }, [setQuery]);
 
-  // 🛡️ FIX UX: Atajo de teclado '/' para hacer focus rápido
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Solo actuar si pulsa '/' y no está escribiendo ya en un input
       if (e.key === '/' && document.activeElement?.tagName !== 'INPUT' && document.activeElement?.tagName !== 'TEXTAREA') {
-        e.preventDefault(); // Evita que se escriba la barra en el input
+        e.preventDefault();
         inputRef.current?.focus();
       }
     };

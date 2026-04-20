@@ -4,7 +4,7 @@ let isRefreshing = false;
 let refreshPromise: Promise<boolean> | null = null;
 
 export const API_URL = ENV.API_URL;
-export interface ExtendedRequestInit extends RequestInit {
+interface ExtendedRequestInit extends RequestInit {
   next?: {
     revalidate?: number;
     tags?: string[];
