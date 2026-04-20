@@ -37,6 +37,8 @@ class ImagePrompt(SQLModel, table=True):
     cfg_scale: Optional[str] = Field(default=None)
     seed: Optional[str] = Field(default=None)
     resolution: Optional[str] = Field(default=None)
+    width: Optional[int] = Field(default=None)
+    height: Optional[int] = Field(default=None)
 
     image_url: Optional[str] = Field(default=None, sa_column=Column(Text))
 

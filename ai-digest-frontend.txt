@@ -90,6 +90,7 @@ Directory structure:
     │   │   │           └── useOAuthPending.ts
     │   │   ├── extractor/
     │   │   │   ├── hooks/
+    │   │   │   │   ├── useFileUploader.ts
     │   │   │   │   └── usePromptExtractor.ts
     │   │   │   └── utils/
     │   │   │       ├── promptParser.ts
@@ -113,21 +114,19 @@ Directory structure:
     │   │   ├── image-viewer/
     │   │   │   └── hooks/
     │   │   │       └── useViewerSync.ts
+    │   │   ├── public/
+    │   │   │   └── hooks/
+    │   │   │       ├── usePublicDirectory.ts
+    │   │   │       ├── usePublicProfile.ts
+    │   │   │       └── usePublicPrompt.ts
     │   │   ├── search/
     │   │   │   ├── useVectorSearch.ts
     │   │   │   └── hooks/
     │   │   │       └── useSearch.ts
     │   │   └── studio/
-    │   │       ├── usePromptCard.ts
     │   │       └── hooks/
     │   │           ├── useDirectoryActions.ts
     │   │           ├── useDirectoryDnd.ts
-    │   │           ├── useFileUploader.ts
-    │   │           ├── usePromptActions.ts
-    │   │           ├── usePublicCollection.ts
-    │   │           ├── usePublicProfile.ts
-    │   │           ├── usePublicPrompt.ts
-    │   │           ├── useStudio.ts
     │   │           ├── useStudioDnd.ts
     │   │           ├── useStudioPrompts.ts
     │   │           └── useStudioSync.ts
@@ -149,7 +148,7 @@ Directory structure:
     │   │   ├── notificationStore.tsx
     │   │   ├── progressStore.ts
     │   │   ├── searchStore.ts
-    │   │   ├── usePromptExtractor.ts
+    │   │   ├── useGlobalModal.ts
     │   │   └── useStudioUI.ts
     │   ├── system/
     │   │   ├── atoms/
@@ -181,9 +180,10 @@ Directory structure:
     │   │   │   │   ├── CreateCollectionModal.tsx
     │   │   │   │   ├── FeedItemCard.tsx
     │   │   │   │   ├── PromptCardActions.tsx
-    │   │   │   │   ├── PromptCardMenu.tsx
     │   │   │   │   ├── PromptImageViewer.tsx
-    │   │   │   │   └── PromptMetadataPanel.tsx
+    │   │   │   │   ├── PromptMetadataPanel.tsx
+    │   │   │   │   └── hooks/
+    │   │   │   │       └── usePromptCard.ts
     │   │   │   ├── Feedback/
     │   │   │   │   └── FeedState.tsx
     │   │   │   ├── Media/
@@ -229,6 +229,7 @@ Directory structure:
     │   │   │   ├── Media/
     │   │   │   │   └── UniversalMediaCard.tsx
     │   │   │   ├── Modal/
+    │   │   │   │   ├── GlobalModal.tsx
     │   │   │   │   └── UpgradeModal.tsx
     │   │   │   ├── Navbar/
     │   │   │   │   └── Navbar.tsx
@@ -240,11 +241,9 @@ Directory structure:
     │   │   │   │   └── SearchResults/
     │   │   │   │       └── SearchResults.tsx
     │   │   │   ├── Studio/
-    │   │   │   │   ├── BulkActionBar.tsx
     │   │   │   │   ├── PromptCard.tsx
     │   │   │   │   ├── PromptGrid.tsx
     │   │   │   │   ├── SidebarDirectory.tsx
-    │   │   │   │   ├── StudioHeader.tsx
     │   │   │   │   ├── StudioSearch.tsx
     │   │   │   │   └── StudioSidebar.tsx
     │   │   │   └── Viewer/
@@ -563,7 +562,6 @@ FILE: package.json
   "dependencies": {
     "@base-ui/react": "^1.3.0",
     "@dnd-kit/core": "^6.3.1",
-    "@dnd-kit/utilities": "^3.2.2",
     "@phosphor-icons/react": "^2.1.10",
     "@react-oauth/google": "^0.13.4",
     "@tabler/icons-react": "^3.41.0",
@@ -586,6 +584,7 @@ FILE: package.json
     "server-only": "^0.0.1",
     "tailwind-merge": "^3.5.0",
     "tw-animate-css": "^1.4.0",
+    "zod": "^4.3.6",
     "zustand": "^5.0.12"
   },
   "devDependencies": {
@@ -1133,8 +1132,10 @@ import { AuthProvider } from "@/src/features/auth/AuthProvider";
 import { ThemeProvider } from "@/src/dictionaries/ThemeProvider";
 import { AppToaster } from "@/src/system/organisms/Layout/AppToaster";
 import { GlobalProgress } from "@/src/system/organisms/Layout/GlobalProgress";
-import { cn } from "@/lib/utils";
 
+import { GlobalModal } from "@/src/system/organisms/Modal/GlobalModal";
+
+import { cn } from "@/lib/utils";
 import { getDictionary, Locale } from "@/src/dictionaries/getDictionary";
 import { I18nProvider } from "@/src/dictionaries/I18nProvider";
 import { GoogleOAuthProvider } from "@react-oauth/google";
@@ -1145,7 +1146,11 @@ const prompt = Prompt({
   variable: "--font-prompt",
 });
 
-const jetbrainsMono = JetBrains_Mono({ weight: ["400", "500", "600", "700"], subsets: ["latin"], variable: "--font-mono" });
+const jetbrainsMono = JetBrains_Mono({
+  weight: ["400", "500", "600", "700"],
+  subsets: ["latin"],
+  variable: "--font-mono",
+});
 
 export const metadata: Metadata = {
   title: "reprompt",
@@ -1182,7 +1187,9 @@ export default async function RootLayout({
               <AuthProvider>
                 <GlobalProgress />
                 {children}
+
                 <AppToaster />
+                <GlobalModal />
               </AuthProvider>
             </I18nProvider>
           </GoogleOAuthProvider>
@@ -1411,21 +1418,12 @@ export default async function LoginPage({ params }: LoginPageProps) {
 ================================================
 FILE: app/[lang]/(main)/layout.tsx
 ================================================
-// src/app/[lang]/(main)/layout.tsx
 "use client";
 
-import { useEffect } from "react";
-import { useAuthStore } from "@/src/store/authStore";
 import { Navbar } from "@/src/system/organisms/Navbar/Navbar";
 import { FadeIn } from "@/src/system/atoms/FadeIn";
 
 export default function MainLayout({ children }: { children: React.ReactNode }) {
-  const checkAuth = useAuthStore((state) => state.checkAuth);
-
-  useEffect(() => {
-    checkAuth();
-  }, [checkAuth]);
-
   return (
     <>
       <Navbar />
@@ -1542,7 +1540,7 @@ import { PageLoader } from "@/src/system/atoms/PageLoader";
 import { IconPhotoOff, IconFolder } from "@tabler/icons-react";
 
 import { PromptCard } from "@/src/system/organisms/Studio/PromptCard";
-import { usePublicProfile } from "@/src/features/studio/hooks/usePublicProfile";
+import { usePublicProfile } from "@/src/features/public/hooks/usePublicProfile";
 import { Breadcrumbs } from "@/src/system/organisms/Navigation/Breadcrumbs";
 
 export default function PublicProfilePage({
@@ -1655,7 +1653,7 @@ import Link from "next/link";
 import { IconFolder, IconPhotoOff } from "@tabler/icons-react";
 
 import { PromptCard } from "@/src/system/organisms/Studio/PromptCard";
-import { usePublicDirectory } from "@/src/features/studio/hooks/usePublicCollection";
+import { usePublicDirectory } from "@/src/features/public/hooks/usePublicDirectory";
 import { FadeIn } from "@/src/system/atoms/FadeIn";
 import { Breadcrumbs } from "@/src/system/organisms/Navigation/Breadcrumbs";
 import { useAuthStore } from "@/src/store/authStore";
@@ -1774,7 +1772,7 @@ FILE: app/[lang]/(main)/[username]/p/[prompt_id]/page.tsx
 
 import { use } from "react";
 import Link from "next/link";
-import { usePublicPrompt } from "@/src/features/studio/hooks/usePublicPrompt";
+import { usePublicPrompt } from "@/src/features/public/hooks/usePublicPrompt";
 import { PromptImageViewer } from "@/src/system/molecules/Cards/PromptImageViewer";
 import { PromptMetadataPanel } from "@/src/system/molecules/Cards/PromptMetadataPanel";
 import { Breadcrumbs } from "@/src/system/organisms/Navigation/Breadcrumbs";
@@ -2931,27 +2929,21 @@ import { usePathname } from "next/navigation";
 import { useAuthStore } from "@/src/store/authStore";
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const { checkAuth, user, isLoadingAuth } = useAuthStore();
+  const { checkAuth, user, hasCheckedInitialAuth } = useAuthStore();
   const pathname = usePathname() || "";
 
   useEffect(() => {
-    console.log("🛡️ [AUTH_PROVIDER] Estado actual:", { user: user?.username, isLoadingAuth });
-  }, [user, isLoadingAuth]);
-
-  useEffect(() => {
     const isAuthPage =
-      pathname.includes("/login") ||
-      pathname.includes("/join") ||
-      pathname.includes("/callback")
+      pathname.includes("/login") || pathname.includes("/join") || pathname.includes("/callback");
 
     if (!isAuthPage) {
-      if (!user) {
+      if (!user && !hasCheckedInitialAuth) {
         checkAuth();
       }
     } else {
       useAuthStore.setState({ isLoadingAuth: false });
     }
-  }, [pathname, checkAuth, user]);
+  }, [pathname, checkAuth, user, hasCheckedInitialAuth]);
 
   return <>{children}</>;
 }
@@ -3285,6 +3277,30 @@ export function useOAuthPending() {
     handleOauthSubmit,
     cancelOauthFlow,
   };
+}
+
+
+
+================================================
+FILE: src/features/extractor/hooks/useFileUploader.ts
+================================================
+import { usePromptExtractor } from "@/src/features/extractor/hooks/usePromptExtractor";
+
+export function useFileUploader() {
+  const { processFiles } = usePromptExtractor();
+
+  const handleUploadClick = () => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.multiple = true;
+    input.onchange = (e) => {
+      const files = (e.target as HTMLInputElement).files;
+      if (files) processFiles(Array.from(files));
+    };
+    input.click();
+  };
+
+  return { handleUploadClick };
 }
 
 
@@ -4162,6 +4178,117 @@ export function useViewerSync(activeUrl: string) {
 
 
 ================================================
+FILE: src/features/public/hooks/usePublicDirectory.ts
+================================================
+import { useState, useEffect } from "react";
+import { api } from "@/src/services/api";
+import { SavedPrompt } from "@/src/types/models";
+
+interface DirectoryDetail {
+  directory: {
+    id: number;
+    name: string;
+    description: string;
+    slug: string;
+    created_at: string;
+  };
+  prompts: SavedPrompt[];
+}
+
+export function usePublicDirectory(username: string, directory_slug: string) {
+  const [data, setData] = useState<DirectoryDetail | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error] = useState<string | null>(null);
+
+  useEffect(() => {
+    setIsLoading(true);
+    api.public
+      .getDirectory(username, directory_slug)
+      .then(async (res) => {
+        if (!res.ok) throw new Error("Error en la petición");
+        const jsonData = await res.json();
+        setData(jsonData);
+      })
+      .finally(() => setIsLoading(false));
+  }, [username, directory_slug]);
+
+  return { data, isLoading, error };
+}
+
+
+
+================================================
+FILE: src/features/public/hooks/usePublicProfile.ts
+================================================
+import { useState, useEffect } from "react";
+import { api } from "@/src/services/api";
+import { SavedPrompt } from "@/src/types/models";
+
+interface ProfileData {
+  user: { username: string; role: string };
+  directories: any[];
+  recent_prompts: SavedPrompt[];
+}
+
+export function usePublicProfile(username: string) {
+  const [data, setData] = useState<ProfileData | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error] = useState<string | null>(null);
+
+  useEffect(() => {
+    setIsLoading(true);
+    api.public
+      .getDirectory(username, "")
+      .then(async (res) => {
+        if (!res.ok) throw new Error("Error en la petición");
+        const jsonData = await res.json();
+        setData(jsonData);
+      })
+      .finally(() => setIsLoading(false));
+  }, [username]);
+
+  return { data, isLoading, error };
+}
+
+
+
+================================================
+FILE: src/features/public/hooks/usePublicPrompt.ts
+================================================
+import { useState, useEffect } from "react";
+import { api } from "@/src/services/api";
+
+export function usePublicPrompt(promptId: string) {
+  const [data, setData] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setIsLoading(true);
+
+    api.public
+      .getPromptDetail(promptId)
+      .then(async (res: Response) => {
+        if (!res.ok) {
+          throw new Error(`HTTP error! status: ${res.status}`);
+        }
+        const jsonData = await res.json();
+        
+        setData(jsonData);
+      })
+      .catch((err: any) => {
+        console.error("Error fetching prompt:", err);
+        setError("El prompt no existe o es privado.");
+        setData(null);
+      })
+      .finally(() => setIsLoading(false));
+  }, [promptId]);
+
+  return { data, isLoading, error };
+}
+
+
+================================================
 FILE: src/features/search/useVectorSearch.ts
 ================================================
 import { useState, useCallback } from "react";
@@ -4260,87 +4387,128 @@ export function useSearch() {
 
 
 ================================================
-FILE: src/features/studio/usePromptCard.ts
-================================================
-import { useState } from "react";
-import toast from "react-hot-toast";
-
-export function usePromptCard() {
-  const [isHovered, setIsHovered] = useState(false);
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [copied, setCopied] = useState(false);
-
-  const handleCopy = (text: string) => {
-    if (!text) return;
-    navigator.clipboard.writeText(text);
-    setCopied(true);
-    toast.success("Prompt copiado");
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  return {
-    isHovered,
-    setIsHovered,
-    isMenuOpen,
-    setIsMenuOpen,
-    copied,
-    handleCopy,
-  };
-}
-
-
-
-================================================
 FILE: src/features/studio/hooks/useDirectoryActions.ts
 ================================================
+import { useCallback } from "react";
 import { useStudioUI } from "@/src/store/useStudioUI";
-import toast from "react-hot-toast";
+import { fetchSeguro } from "@/src/services/api/client";
 
-export function useDirectoryActions(directoryId: string | number, directoryName: string) {
-  const { setActiveDirectory, deleteDirectory, createDirectory, renameDirectory } = useStudioUI();
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
 
-  const safeId = String(directoryId);
+export function useDirectoryActions() {
+  const { directories, setDirectories, activeDirectoryId, setActiveDirectory } = useStudioUI();
 
-  const handleCreateSubdirectory = async (onSuccess: () => void) => {
-    const name = window.prompt("Nombre de la nueva subcarpeta:");
-    if (!name || name.trim() === "") return;
-    try {
-      await createDirectory(name.trim(), safeId);
-      toast.success("Subcarpeta creada");
-      onSuccess();
-    } catch (error: any) {
-      toast.error("Error al crear subcarpeta");
-    }
-  };
+  const createDirectory = useCallback(
+    async (name: string, parentId: string | null) => {
+      try {
+        const payload: Record<string, string> = { name };
+        if (parentId) {
+          payload.parent_id = parentId;
+        }
 
-  const handleDeleteDirectory = async (isSelected: boolean) => {
-    const confirm = window.confirm(`¿Eliminar "${directoryName}" y todo su contenido?`);
-    if (!confirm) return;
-    try {
-      await deleteDirectory(safeId);
-      toast.success("Carpeta eliminada");
-      if (isSelected) setActiveDirectory(null);
-    } catch (error: any) {
-      toast.error("Error al eliminar");
-    }
-  };
+        const res = await fetchSeguro(`${API_URL}/directories/`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+          credentials: "include",
+        });
 
-  const handleRenameDirectory = async () => {
-    const newName = window.prompt("Renombrar carpeta:", directoryName);
-    if (!newName || newName.trim() === "" || newName.trim() === directoryName) return;
-    try {
-      await renameDirectory(safeId, newName.trim());
-      toast.success("Carpeta renombrada");
-    } catch (error: any) {
-      toast.error("Error al renombrar");
-    }
-  };
+        if (res.ok) {
+          const newDir = await res.json();
+          setDirectories([...directories, newDir]);
+        } else {
+          throw new Error("Fallo al crear el directorio");
+        }
+      } catch (error) {
+        console.error("[DirectoryActions] Error creando:", error);
+      }
+    },
+    [directories, setDirectories],
+  );
+
+  // En src/features/studio/hooks/useDirectoryActions.ts
+
+  const deleteDirectory = useCallback(
+    async (id: string) => {
+      try {
+        const res = await fetchSeguro(`${API_URL}/directories/${id}`, {
+          method: "DELETE",
+          credentials: "include",
+        });
+
+        if (res.ok) {
+          setDirectories(directories.filter((d) => d.id !== id));
+          if (activeDirectoryId === id) setActiveDirectory(null);
+        } else {
+          // 🟢 FRONTEND INTELIGENTE: Leemos el error del backend
+          const errorData = await res.json();
+
+          if (res.status === 409 && errorData.detail === "DIRECTORY_NOT_EMPTY") {
+            alert(
+              "⚠️ Esta carpeta contiene subcarpetas o prompts.\n\nPor seguridad, debes vaciarla o mover sus elementos antes de eliminarla.",
+            );
+            return;
+          }
+
+          throw new Error(errorData.detail || "Fallo al borrar el directorio");
+        }
+      } catch (error: any) {
+        console.error("[DirectoryActions] Error borrando:", error.message);
+      }
+    },
+    [directories, setDirectories, activeDirectoryId, setActiveDirectory],
+  );
+
+  const renameDirectory = useCallback(
+    async (id: string, newName: string) => {
+      try {
+        const res = await fetchSeguro(`${API_URL}/directories/${id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: newName }),
+        });
+
+        if (!res.ok) throw new Error("No se pudo renombrar");
+
+        setDirectories(directories.map((dir) => (dir.id === id ? { ...dir, name: newName } : dir)));
+      } catch (error) {
+        console.error("[DirectoryActions] Error renombrando:", error);
+        throw error;
+      }
+    },
+    [directories, setDirectories],
+  );
+
+  const moveDirectory = useCallback(
+    async (directoryId: string, newParentId: string | null) => {
+      const previousDirectories = [...directories];
+      setDirectories(
+        directories.map((d) => (d.id === directoryId ? { ...d, parent_id: newParentId } : d)),
+      );
+
+      try {
+        const res = await fetchSeguro(`${API_URL}/directories/${directoryId}/move`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ parent_id: newParentId }),
+          credentials: "include",
+        });
+
+        if (!res.ok) throw new Error("Fallo al mover en el servidor");
+      } catch (error) {
+        console.error("[DirectoryActions] Error moviendo, haciendo rollback:", error);
+
+        setDirectories(previousDirectories);
+      }
+    },
+    [directories, setDirectories],
+  );
 
   return {
-    setActiveDirectory,
-    handleCreateSubdirectory,
-    handleDeleteDirectory,
-    handleRenameDirectory,
+    createDirectory,
+    deleteDirectory,
+    renameDirectory,
+    moveDirectory,
   };
 }
 
@@ -4379,279 +4547,15 @@ export function useDirectoryDnd(directory: Directory) {
 
 
 ================================================
-FILE: src/features/studio/hooks/useFileUploader.ts
-================================================
-import { usePromptExtractor } from "@/src/features/extractor/hooks/usePromptExtractor";
-
-export function useFileUploader() {
-  const { processFiles } = usePromptExtractor();
-
-  const handleUploadClick = () => {
-    const input = document.createElement("input");
-    input.type = "file";
-    input.multiple = true;
-    input.onchange = (e) => {
-      const files = (e.target as HTMLInputElement).files;
-      if (files) processFiles(Array.from(files));
-    };
-    input.click();
-  };
-
-  return { handleUploadClick };
-}
-
-
-
-================================================
-FILE: src/features/studio/hooks/usePromptActions.ts
-================================================
-import { useState } from "react";
-
-export function usePromptActions() {
-  const [copied, setCopied] = useState(false);
-
-  const copyToClipboard = (text: string) => {
-    if (!text) return;
-    navigator.clipboard.writeText(text);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  const confirmDeletion = (onConfirm: () => void) => {
-    if (window.confirm("¿Seguro que deseas eliminar este rastro digital?")) {
-      onConfirm();
-    }
-  };
-
-  return { copied, copyToClipboard, confirmDeletion };
-}
-
-
-
-================================================
-FILE: src/features/studio/hooks/usePublicCollection.ts
-================================================
-import { useState, useEffect } from "react";
-import { api } from "@/src/services/api";
-import { SavedPrompt } from "@/src/types/models";
-
-interface DirectoryDetail {
-  directory: {
-    id: number;
-    name: string;
-    description: string;
-    slug: string;
-    created_at: string;
-  };
-  prompts: SavedPrompt[];
-}
-
-export function usePublicDirectory(username: string, directory_slug: string) {
-  const [data, setData] = useState<DirectoryDetail | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    setIsLoading(true);
-    api.public
-      .getDirectory(username, directory_slug)
-      .then((res) => setData(res))
-      .catch((err) => {
-        console.error("Error fetching directory:", err);
-        setError("Colección no encontrada, eliminada o privada.");
-        setData(null);
-      })
-      .finally(() => setIsLoading(false));
-  }, [username, directory_slug]);
-
-  return { data, isLoading, error };
-}
-
-
-
-================================================
-FILE: src/features/studio/hooks/usePublicProfile.ts
-================================================
-import { useState, useEffect } from "react"; 
-import { api } from "@/src/services/api";
-import { SavedPrompt } from "@/src/types/models";
-
-interface ProfileData {
-  user: { username: string; role: string };
-  directories: any[];
-  recent_prompts: SavedPrompt[];
-}
-
-export function usePublicProfile(username: string) {
-  const [data, setData] = useState<ProfileData | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    setIsLoading(true);
-    api.public
-      .getProfile(username)
-      .then((res) => setData(res))
-      .catch((err) => {
-        console.error("Error fetching profile:", err);
-        setError("Este usuario no existe o se ha perdido en el vacío.");
-        setData(null);
-      })
-      .finally(() => setIsLoading(false));
-  }, [username]);
-
-  return { data, isLoading, error };
-}
-
-
-
-================================================
-FILE: src/features/studio/hooks/usePublicPrompt.ts
-================================================
-import { useState, useEffect } from "react";
-import { api } from "@/src/services/api";
-
-export function usePublicPrompt(promptId: string) {
-  const [data, setData] = useState<any>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    setIsLoading(true);
-
-    api.public
-      .getPromptDetail(promptId)
-      .then(async (res: Response) => {
-        if (!res.ok) {
-          throw new Error(`HTTP error! status: ${res.status}`);
-        }
-        const jsonData = await res.json();
-        
-        setData(jsonData);
-      })
-      .catch((err: any) => {
-        console.error("Error fetching prompt:", err);
-        setError("El prompt no existe o es privado.");
-        setData(null);
-      })
-      .finally(() => setIsLoading(false));
-  }, [promptId]);
-
-  return { data, isLoading, error };
-}
-
-
-================================================
-FILE: src/features/studio/hooks/useStudio.ts
-================================================
-import { useState, useEffect, useCallback } from "react";
-import { api } from "@/src/services/api";
-import { SavedPrompt, Directory } from "@/src/types/models";
-import { handleError } from "@/src/utils/errors/ErrorHandler";
-import { toast } from "react-hot-toast";
-
-export function useStudio() {
-  const [prompts, setPrompts] = useState<SavedPrompt[]>([]);
-  const [directories, setDirectorys] = useState<Directory[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const [isDeletingBatch, setIsDeletingBatch] = useState(false);
-
-  const fetchPrompts = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const [promptsRes, directorysRes] = await Promise.all([
-        api.getMyPrompt(),
-        api.directories.getMyDirectorys(),
-      ]);
-
-      console.log("📦 [DEBUG] Respuesta cruda de Colecciones:", directorysRes);
-
-      setPrompts(promptsRes);
-
-      const directory = Array.isArray(directorysRes)
-        ? directorysRes
-        : directorysRes?.directories || [];
-
-      setDirectorys(directory);
-    } catch (err: unknown) {
-      const msg = handleError(err, "useStudio");
-      setError(msg);
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  const assignToDirectory = async (promptId: number, directoryId: number | null) => {
-    try {
-      await api.directories.assignPrompt(promptId, directoryId);
-      setPrompts((prev) =>
-        prev.map((p) => (p.id === promptId ? { ...p, directory_id: directoryId } : p)),
-      );
-      toast.success("Imagen movida correctamente");
-    } catch (error) {
-      toast.error("Error al mover la imagen");
-    }
-  };
-
-  const deletePrompt = async (id: number) => {
-    try {
-      await api.deletePrompt(id);
-      setPrompts((prev) => prev.filter((p) => p.id !== id));
-      toast.success("Prompt eliminado");
-    } catch (err: unknown) {
-      handleError(err, "BorrarPrompt");
-      toast.error("No se pudo eliminar el prompt.");
-    }
-  };
-
-  const deletePromptsBatch = async (ids: number[]) => {
-    setIsDeletingBatch(true);
-    try {
-      await api.prompts.deleteBatch(ids);
-
-      setPrompts((prev) => prev.filter((p) => !ids.includes(p.id)));
-      toast.success(`${ids.length} imágenes eliminadas`);
-      return true;
-    } catch (err) {
-      handleError(err, "BorrarLote");
-      toast.error("Error al borrar las imágenes");
-      return false;
-    } finally {
-      setIsDeletingBatch(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchPrompts();
-  }, [fetchPrompts]);
-
-  return {
-    prompts,
-    directories,
-    isLoading,
-    error,
-    refetch: fetchPrompts,
-    assignToDirectory,
-    deletePrompt,
-    isDeletingBatch,
-    deletePromptsBatch,
-  };
-}
-
-
-
-================================================
 FILE: src/features/studio/hooks/useStudioDnd.ts
 ================================================
 import { useState } from "react";
 import { useSensor, useSensors, PointerSensor, DragStartEvent, DragEndEvent } from "@dnd-kit/core";
-import { useStudioUI, Directory } from "@/src/store/useStudioUI";
+import { Directory } from "@/src/store/useStudioUI";
+import { useDirectoryActions } from "./useDirectoryActions";
 
 export function useStudioDnd() {
-  const moveDirectory = useStudioUI((state) => state.moveDirectory);
+  const { moveDirectory } = useDirectoryActions();
   const [activeDragDir, setActiveDragDir] = useState<Directory | null>(null);
 
   const sensors = useSensors(
@@ -4695,6 +4599,8 @@ import { useAuthStore } from "@/src/store/authStore";
 import { fetchSeguro } from "@/src/services/api/client";
 import toast from "react-hot-toast";
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
+
 export function useStudioPrompts() {
   const { activeDirectoryId, searchQuery } = useStudioUI();
   const user = useAuthStore((state) => state.user);
@@ -4712,14 +4618,19 @@ export function useStudioPrompts() {
     const fetchPrompts = async () => {
       setIsLoading(true);
       try {
+        const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
+
         const endpoint = debouncedQuery
-          ? `/search/studio?q=${debouncedQuery}`
-          : `/prompts/studio?directory_id=${activeDirectoryId || ""}`;
+          ? `${API_BASE}/search/studio?q=${debouncedQuery}`
+          : `${API_BASE}/prompts/studio?directory_id=${activeDirectoryId || ""}`;
 
         const res = await fetchSeguro(endpoint, { credentials: "include" });
+
         if (res.ok) {
           const data = await res.json();
           setPrompts(data.results || data.data || []);
+        } else {
+          console.error("Fallo del servidor:", res.status);
         }
       } catch (err) {
         console.error("Error en Studio Grid:", err);
@@ -4734,7 +4645,7 @@ export function useStudioPrompts() {
   const deletePrompt = async (promptId: string) => {
     const toastId = toast.loading("Exterminando rastro digital...");
     try {
-      const res = await fetchSeguro(`/prompts/${promptId}`, {
+      const res = await fetchSeguro(`${API_URL}/prompts/${promptId}`, {
         method: "DELETE",
         credentials: "include",
       });
@@ -5041,7 +4952,7 @@ let isRefreshing = false;
 let refreshPromise: Promise<boolean> | null = null;
 
 export const API_URL = ENV.API_URL;
-export interface ExtendedRequestInit extends RequestInit {
+interface ExtendedRequestInit extends RequestInit {
   next?: {
     revalidate?: number;
     tags?: string[];
@@ -5316,11 +5227,13 @@ interface User {
 
 interface AuthState {
   user: User | null;
-  isAuthenticated: boolean; // 🟢 FIX: Añadido al contrato
+  isAuthenticated: boolean;
   isLoadingAuth: boolean;
+  hasCheckedInitialAuth: boolean;
+
   login: (userData: User) => void;
   logout: () => Promise<void>;
-  checkAuth: () => Promise<void>;
+  checkAuth: (force?: boolean) => Promise<void>;
   logoutSilencioso: () => void;
 }
 
@@ -5343,30 +5256,40 @@ const redirectToLogin = () => {
   window.location.href = `${localePrefix}/login`;
 };
 
-export const useAuthStore = create<AuthState>((set) => ({
+export const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
-  isAuthenticated: false, // 🟢 FIX: Inicializado
+  isAuthenticated: false,
   isLoadingAuth: true,
+  hasCheckedInitialAuth: false,
 
   login: (userData) => {
     console.log(`[AUTH_STORE] Sesión iniciada localmente: @${userData.username}`);
-    set({ user: userData, isAuthenticated: true, isLoadingAuth: false });
+    set({
+      user: userData,
+      isAuthenticated: true,
+      isLoadingAuth: false,
+      hasCheckedInitialAuth: true,
+    });
   },
 
   logoutSilencioso: () => {
     console.log("🤫 [AUTH_STORE] Limpieza de estado local (Silenciosa).");
-    set({ user: null, isAuthenticated: false, isLoadingAuth: false });
+    set({ user: null, isAuthenticated: false, isLoadingAuth: false, hasCheckedInitialAuth: true });
   },
 
-  checkAuth: async () => {
+  checkAuth: async (force = false) => {
+    const { hasCheckedInitialAuth } = get();
+
+    if (hasCheckedInitialAuth && !force) {
+      return;
+    }
+
     console.log("🔍 [AUTH_STORE] Verificando estado de sesión...");
     set({ isLoadingAuth: true });
 
     try {
-      // 🟢 FIX: Consolidado en una sola llamada y con AWAIT
       const res = await api.auth.me();
 
-      // Mapeo defensivo de la respuesta del backend
       const userData = res?.user || res?.data || res;
       const username = userData?.username;
       const role = userData?.role || "voyager";
@@ -5376,19 +5299,16 @@ export const useAuthStore = create<AuthState>((set) => ({
         set({
           user: { username, role },
           isAuthenticated: true,
-          isLoadingAuth: false,
         });
       } else {
         console.warn("⚠️ [AUTH_STORE] checkAuth respondió OK pero el cuerpo está vacío.");
-        set({ user: null, isAuthenticated: false, isLoadingAuth: false });
+        set({ user: null, isAuthenticated: false });
       }
     } catch (error: unknown) {
       console.warn("🛑 [AUTH_STORE] checkAuth falló (No hay sesión activa).");
-      set({ user: null, isAuthenticated: false, isLoadingAuth: false });
-
-      // No lanzamos el error al ErrorHandler aquí para evitar spam de toasts en el login
+      set({ user: null, isAuthenticated: false });
     } finally {
-      set({ isLoadingAuth: false });
+      set({ isLoadingAuth: false, hasCheckedInitialAuth: true });
     }
   },
 
@@ -5400,7 +5320,12 @@ export const useAuthStore = create<AuthState>((set) => ({
     } catch (error) {
       console.error("❌ [AUTH_STORE] Falló llamada al backend para logout:", error);
     } finally {
-      set({ user: null, isAuthenticated: false, isLoadingAuth: false });
+      set({
+        user: null,
+        isAuthenticated: false,
+        isLoadingAuth: false,
+        hasCheckedInitialAuth: true,
+      });
       redirectToLogin();
     }
   },
@@ -5409,7 +5334,7 @@ export const useAuthStore = create<AuthState>((set) => ({
 if (typeof window !== "undefined") {
   window.addEventListener("auth:session_recovered", () => {
     console.log("♻️ [AUTH_STORE] Sesión recuperada. Sincronizando interfaz...");
-    useAuthStore.getState().checkAuth();
+    useAuthStore.getState().checkAuth(true);
   });
 
   window.addEventListener("auth:unauthorized", () => {
@@ -5636,57 +5561,43 @@ export const useSearchStore = create<SearchState>((set) => ({
 
 
 ================================================
-FILE: src/store/usePromptExtractor.ts
+FILE: src/store/useGlobalModal.ts
 ================================================
-import { create } from 'zustand';
-import { useStudioUI } from './useStudioUI';
+import { create } from "zustand";
 
-interface ExtractorState {
-  isExtracting: boolean;
-  processFiles: (files: File[]) => Promise<void>;
+type ModalType = "info" | "warning" | "danger" | "success";
+
+interface ModalConfig {
+  title: string;
+  message: React.ReactNode | string;
+  type?: ModalType;
+  confirmText?: string;
+  cancelText?: string;
+  onConfirm?: () => void;
 }
 
-export const usePromptExtractor = create<ExtractorState>((set) => ({
-  isExtracting: false,
-  
-  processFiles: async (files: File[]) => {
-    if (!files || files.length === 0) return;
-    
-    const activeDir = useStudioUI.getState().activeDirectoryId;
-    set({ isExtracting: true });
+interface GlobalModalState {
+  isOpen: boolean;
+  config: ModalConfig | null;
+  openModal: (config: ModalConfig) => void;
+  closeModal: () => void;
+}
 
-    for (const file of files) {
-      const formData = new FormData();
-      formData.append('file', file);
-      if (activeDir) formData.append('directory_id', activeDir);
+export const useGlobalModal = create<GlobalModalState>((set) => ({
+  isOpen: false,
+  config: null,
 
-      try {
-        const res = await fetch('/api/prompts/upload-studio', {
-          method: 'POST',
-          body: formData,
-        });
-        
-        if (res.ok) {
-          console.log(`✅ ${file.name} subida y vectorizada.`);
-        }
-      } catch (err) {
-        console.error(`❌ Error subiendo ${file.name}:`, err);
-      }
-    }
+  openModal: (config) => set({ isOpen: true, config: { type: "info", ...config } }),
 
-    set({ isExtracting: false });
-    // Aquí podríamos disparar un refresh de la galería
-  }
+  closeModal: () => set({ isOpen: false }),
 }));
+
 
 
 ================================================
 FILE: src/store/useStudioUI.ts
 ================================================
 import { create } from "zustand";
-import { fetchSeguro } from "../services/api/client";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
 
 export interface Directory {
   id: string;
@@ -5696,9 +5607,10 @@ export interface Directory {
   is_private?: boolean;
 }
 
-export interface StudioUIState {
+interface StudioUIState {
   directories: Directory[];
   activeDirectoryId: string | null;
+
   searchQuery: string;
   isSearching: boolean;
 
@@ -5708,12 +5620,6 @@ export interface StudioUIState {
   setIsSearching: (status: boolean) => void;
 
   getChildDirectories: (parentId: string | null) => Directory[];
-
-  createDirectory: (name: string, parentId: string | null) => Promise<void>;
-  deleteDirectory: (id: string) => Promise<void>;
-
-  renameDirectory: (id: string, newName: string) => Promise<void>;
-  moveDirectory: (directoryId: string, newParentId: string | null) => Promise<void>;
 }
 
 export const useStudioUI = create<StudioUIState>((set, get) => ({
@@ -5729,93 +5635,6 @@ export const useStudioUI = create<StudioUIState>((set, get) => ({
 
   getChildDirectories: (parentId) => {
     return get().directories.filter((d: Directory) => d.parent_id === parentId);
-  },
-
-  createDirectory: async (name, parentId) => {
-    try {
-      const res = await fetchSeguro(`${API_URL}/directories/`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, parent_id: parentId }),
-        credentials: "include",
-      });
-
-      if (res.ok) {
-        const newDir = await res.json();
-        set((state) => ({ directories: [...state.directories, newDir] }));
-      }
-    } catch (error) {
-      console.error("Error creando directorio:", error);
-    }
-  },
-
-  deleteDirectory: async (id) => {
-    try {
-      const res = await fetchSeguro(`${API_URL}/directories/${id}`, {
-        method: "DELETE",
-        credentials: "include",
-      });
-
-      if (res.ok) {
-        set((state) => ({
-          directories: state.directories.filter((d) => d.id !== id),
-          activeDirectoryId: state.activeDirectoryId === id ? null : state.activeDirectoryId,
-        }));
-      }
-    } catch (error) {
-      console.error("Error borrando directorio:", error);
-    }
-  },
-
-  renameDirectory: async (id: string, newName: string) => {
-    try {
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
-      const res = await fetchSeguro(`${API_URL}/directories/${id}`, {
-        method: "PATCH",
-        body: JSON.stringify({ name: newName }),
-      });
-
-      if (!res.ok) throw new Error("No se pudo renombrar la carpeta");
-
-      set((state) => ({
-        directories: state.directories.map((dir) =>
-          dir.id === id ? { ...dir, name: newName } : dir,
-        ),
-      }));
-    } catch (error) {
-      console.error("Error renombrando directorio:", error);
-      throw error;
-    }
-  },
-
-  moveDirectory: async (directoryId, newParentId) => {
-    set((state) => ({
-      directories: state.directories.map((d) =>
-        d.id === directoryId ? { ...d, parent_id: newParentId } : d,
-      ),
-    }));
-
-    try {
-      const res = await fetchSeguro(`${API_URL}/directories/${directoryId}/move`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ parent_id: newParentId }),
-        credentials: "include",
-      });
-
-      if (!res.ok) throw new Error("Fallo al mover en el servidor");
-    } catch (error) {
-      console.error("Error moviendo directorio:", error);
-
-      const res = await fetchSeguro(`${API_URL}/directories/`, {
-        credentials: "include",
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        set({ directories: data });
-      }
-    }
   },
 }));
 
@@ -6874,48 +6693,6 @@ export function PromptCardActions({
 
 
 ================================================
-FILE: src/system/molecules/Cards/PromptCardMenu.tsx
-================================================
-// src/system/molecules/Cards/PromptCardMenu.tsx
-import { IconFolder, IconTrash } from "@tabler/icons-react";
-
-export function PromptCardMenu({ item, directories, onAssign, onDelete, isOpen }: any) {
-  if (!isOpen) return null;
-
-  return (
-    <div className="absolute top-full right-0 mt-2 w-48 bg-background border border-border rounded-xl shadow-xl z-50 py-1">
-      {onAssign && directories.length > 0 && (
-        <div className="px-3 py-2 border-b border-border/10">
-          <label className="text-[10px] font-bold uppercase text-muted-foreground flex items-center gap-1.5 mb-1.5">
-            <IconFolder size={12} /> Colección
-          </label>
-          <select
-            value={item.directory_id || ""}
-            onChange={(e) => onAssign(item.id, e.target.value ? Number(e.target.value) : null)}
-            className="w-full bg-muted/50 text-xs p-1.5 rounded border border-border focus:ring-1 focus:ring-(--accent-color)"
-          >
-            <option value="">Ninguna (Suelto)</option>
-            {directories.map((d: any) => (
-              <option key={d.id} value={d.id}>
-                {d.name}
-              </option>
-            ))}
-          </select>
-        </div>
-      )}
-      <button
-        onClick={onDelete}
-        className="flex w-full items-center gap-2 px-3 py-2.5 text-xs text-red-500 hover:bg-red-500/10"
-      >
-        <IconTrash size={14} /> Eliminar
-      </button>
-    </div>
-  );
-}
-
-
-
-================================================
 FILE: src/system/molecules/Cards/PromptImageViewer.tsx
 ================================================
 "use client";
@@ -7042,6 +6819,37 @@ export function PromptMetadataPanel({ prompt }: PromptMetadataPanelProps) {
       )}
     </FadeIn>
   );
+}
+
+
+
+================================================
+FILE: src/system/molecules/Cards/hooks/usePromptCard.ts
+================================================
+import { useState } from "react";
+import toast from "react-hot-toast";
+
+export function usePromptCard() {
+  const [isHovered, setIsHovered] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = (text: string) => {
+    if (!text) return;
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    toast.success("Prompt copiado");
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return {
+    isHovered,
+    setIsHovered,
+    isMenuOpen,
+    setIsMenuOpen,
+    copied,
+    handleCopy,
+  };
 }
 
 
@@ -7330,12 +7138,10 @@ export function NavbarSearch() {
     setQuery(e.target.value);
   }, [setQuery]);
 
-  // 🛡️ FIX UX: Atajo de teclado '/' para hacer focus rápido
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Solo actuar si pulsa '/' y no está escribiendo ya en un input
       if (e.key === '/' && document.activeElement?.tagName !== 'INPUT' && document.activeElement?.tagName !== 'TEXTAREA') {
-        e.preventDefault(); // Evita que se escriba la barra en el input
+        e.preventDefault();
         inputRef.current?.focus();
       }
     };
@@ -9782,6 +9588,78 @@ export function UniversalMediaCard({
 
 
 ================================================
+FILE: src/system/organisms/Modal/GlobalModal.tsx
+================================================
+"use client";
+
+import { useGlobalModal } from "@/src/store/useGlobalModal";
+import { IconAlertTriangle, IconInfoCircle, IconX } from "@tabler/icons-react";
+
+export function GlobalModal() {
+  const { isOpen, config, closeModal } = useGlobalModal();
+
+  if (!isOpen || !config) return null;
+
+  const isDanger = config.type === "danger" || config.type === "warning";
+  const Icon = isDanger ? IconAlertTriangle : IconInfoCircle;
+  const iconColor = isDanger
+    ? "text-red-500 bg-red-500/10"
+    : "text-(--accent-color) bg-(--accent-color)/10";
+  const confirmBtnStyle = isDanger
+    ? "bg-red-500 hover:bg-red-600 text-white"
+    : "bg-(--accent-color) hover:bg-(--accent-color)/80 text-foreground";
+
+  return (
+    <div className="fixed inset-0 z-9999 flex items-center justify-center bg-background/80 backdrop-blur-sm animate-in fade-in duration-200">
+      <div className="bg-muted/30 border border-border/50 shadow-2xl rounded-2xl w-full max-w-md p-6 relative animate-in zoom-in-95 duration-200">
+        <button
+          onClick={closeModal}
+          className="absolute top-4 right-4 text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <IconX size={20} />
+        </button>
+
+        <div className="flex flex-col gap-4">
+          <div className="flex items-center gap-3">
+            <div className={`p-2 rounded-full ${iconColor}`}>
+              <Icon size={24} stroke={1.5} />
+            </div>
+            <h2 className="text-lg font-bold tracking-tight">{config.title}</h2>
+          </div>
+
+          <div className="text-muted-foreground text-sm leading-relaxed whitespace-pre-line">
+            {config.message}
+          </div>
+
+          <div className="flex justify-end gap-3 mt-4 pt-4 border-t border-border/30">
+            {config.onConfirm && (
+              <button
+                onClick={closeModal}
+                className="px-4 py-2 rounded-lg text-sm font-medium hover:bg-muted transition-colors"
+              >
+                {config.cancelText || "Cancelar"}
+              </button>
+            )}
+
+            <button
+              onClick={() => {
+                if (config.onConfirm) config.onConfirm();
+                closeModal();
+              }}
+              className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${confirmBtnStyle}`}
+            >
+              {config.confirmText || "Entendido"}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+
+================================================
 FILE: src/system/organisms/Modal/UpgradeModal.tsx
 ================================================
 import { IconSparkles, IconX } from "@tabler/icons-react";
@@ -10145,78 +10023,13 @@ export function SearchResults({
 
 
 ================================================
-FILE: src/system/organisms/Studio/BulkActionBar.tsx
-================================================
-import { IconTrash, IconDownload, IconX } from "@tabler/icons-react";
-import { FadeIn } from "../../atoms/FadeIn"; // Tu atom de animación
-
-interface BulkActionBarProps {
-  selectedCount: number;
-  onClearSelection: () => void;
-  onDeleteSelected: () => void;
-  onDownloadSelected: () => void;
-  isDeleting?: boolean;
-}
-
-export function BulkActionBar({
-  selectedCount,
-  onClearSelection,
-  onDeleteSelected,
-  onDownloadSelected,
-  isDeleting = false,
-}: BulkActionBarProps) {
-  if (selectedCount === 0) return null;
-
-  return (
-    // 🟢 CORRECCIÓN: Usamos tu FadeIn y le pasamos el posicionamiento fixed
-    <FadeIn>
-      <div className="bg-foreground text-background px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-6 border border-border/20">
-        {/* Contador y Cancelar */}
-        <div className="flex items-center gap-3 pr-6 border-r border-background/20">
-          <span className="font-bold whitespace-nowrap">{selectedCount} seleccionadas</span>
-          <button
-            onClick={onClearSelection}
-            className="p-1 hover:bg-background/20 rounded-full transition-colors"
-            title="Cancelar selección"
-          >
-            <IconX size={18} />
-          </button>
-        </div>
-
-        {/* Acciones */}
-        <div className="flex items-center gap-4">
-          <button
-            onClick={onDownloadSelected}
-            className="flex items-center gap-2 text-sm font-medium hover:text-brand-blue transition-colors"
-          >
-            <IconDownload size={20} />
-            Descargar ZIP
-          </button>
-
-          <button
-            onClick={onDeleteSelected}
-            disabled={isDeleting}
-            className="flex items-center gap-2 text-sm font-medium text-red-400 hover:text-red-300 transition-colors disabled:opacity-50"
-          >
-            <IconTrash size={20} />
-            {isDeleting ? "Borrando..." : "Borrar"}
-          </button>
-        </div>
-      </div>
-    </FadeIn>
-  );
-}
-
-
-
-================================================
 FILE: src/system/organisms/Studio/PromptCard.tsx
 ================================================
 "use client";
 
 import Link from "next/link";
 import { IconCopy, IconCheck, IconPhoto } from "@tabler/icons-react";
-import { usePromptCard } from "@/src/features/studio/usePromptCard";
+import { usePromptCard } from "@/src/system/molecules/Cards/hooks/usePromptCard";
 import { PromptCardActions } from "../../molecules/Cards/PromptCardActions";
 import { LazyImage } from "../../molecules/Media/LazyImage";
 
@@ -10359,127 +10172,81 @@ FILE: src/system/organisms/Studio/SidebarDirectory.tsx
 ================================================
 "use client";
 
-import React, { useState } from "react";
+import { useState } from "react";
 import { useStudioUI, Directory } from "@/src/store/useStudioUI";
-import { useDirectoryActions } from "@/src/features/studio/hooks/useDirectoryActions";
-import { useDirectoryDnd } from "@/src/features/studio/hooks/useDirectoryDnd";
 import { SidebarDirectoryItem } from "../../molecules/Studio/SidebarDirectoryItem";
+import { useDirectoryDnd } from "@/src/features/studio/hooks/useDirectoryDnd";
+import { useDirectoryActions } from "@/src/features/studio/hooks/useDirectoryActions";
 
-interface SidebarDirectoryProps {
+interface Props {
   directory: Directory;
   level?: number;
-  inheritedPrivacy?: boolean;
 }
 
-export const SidebarDirectory = ({
-  directory,
-  level = 0,
-  inheritedPrivacy = false,
-}: SidebarDirectoryProps) => {
+export function SidebarDirectory({ directory, level = 0 }: Props) {
   const [isOpen, setIsOpen] = useState(false);
+  const { getChildDirectories, activeDirectoryId, setActiveDirectory } = useStudioUI();
 
-  // 1. Estado Global
-  const { activeDirectoryId, getChildDirectories } = useStudioUI();
+  const { createDirectory, deleteDirectory, renameDirectory } = useDirectoryActions();
+
+  const { setBothRefs, isDragging, isOver, attributes, listeners } = useDirectoryDnd(directory);
+
   const children = getChildDirectories(directory.id);
+  const hasChildren = children.length > 0;
   const isSelected = activeDirectoryId === directory.id;
-  const isEffectivelyPrivate = directory.is_private || inheritedPrivacy;
 
-  // 2. Hooks de Lógica
-  const {
-    setActiveDirectory,
-    handleCreateSubdirectory,
-    handleDeleteDirectory,
-    handleRenameDirectory,
-  } = useDirectoryActions(directory.id, directory.name);
-
-  const { attributes, listeners, setBothRefs, isDragging, isOver } = useDirectoryDnd(directory);
-
-  // 3. Manejadores de Eventos
-  const handleSelect = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setActiveDirectory(directory.id);
-    if (children.length > 0 && !isOpen) setIsOpen(true);
+  const handleCreateSubdirectory = async (onSuccess: () => void) => {
+    const name = window.prompt("Nombre de la sub-carpeta:");
+    if (name?.trim()) {
+      await createDirectory(name.trim(), directory.id);
+      onSuccess();
+    }
   };
 
+  if (isDragging) return null;
+
   return (
-    <div className="select-none relative">
+    <div className="flex flex-col w-full" ref={setBothRefs}>
       <SidebarDirectoryItem
         directory={directory}
         level={level}
         isOpen={isOpen}
+        hasChildren={hasChildren}
         isSelected={isSelected}
-        isDragging={isDragging}
         isOver={isOver}
-        isEffectivelyPrivate={isEffectivelyPrivate}
-        hasChildren={children.length > 0}
+        isDragging={isDragging}
         setBothRefs={setBothRefs}
         attributes={attributes}
         listeners={listeners}
-        onSelect={handleSelect}
-        onToggle={(e) => {
-          e.stopPropagation();
-          setIsOpen(!isOpen);
-        }}
-        onRename={(e) => {
-          e.stopPropagation();
-          handleRenameDirectory();
-        }}
+        isEffectivelyPrivate={directory.is_private || false}
+        onToggle={() => setIsOpen(!isOpen)}
+        onSelect={() => setActiveDirectory(directory.id)}
         onCreateSub={(e) => {
           e.stopPropagation();
           handleCreateSubdirectory(() => setIsOpen(true));
         }}
         onDelete={(e) => {
           e.stopPropagation();
-          handleDeleteDirectory(isSelected);
+          if (window.confirm(`¿Borrar "${directory.name}"?`)) {
+            deleteDirectory(directory.id);
+          }
+        }}
+        onRename={(e) => {
+          e.stopPropagation();
+          const newName = window.prompt("Nuevo nombre:", directory.name);
+          if (newName && newName.trim() !== directory.name) {
+            renameDirectory(directory.id, newName.trim());
+          }
         }}
       />
 
-      {isOpen && children.length > 0 && (
-        <div className="mt-0.5">
+      {isOpen && hasChildren && (
+        <div className="flex flex-col w-full">
           {children.map((child: Directory) => (
-            <SidebarDirectory
-              key={child.id}
-              directory={child}
-              level={level + 1}
-              inheritedPrivacy={isEffectivelyPrivate}
-            />
+            <SidebarDirectory key={child.id} directory={child} level={level + 1} />
           ))}
         </div>
       )}
-    </div>
-  );
-};
-
-
-
-================================================
-FILE: src/system/organisms/Studio/StudioHeader.tsx
-================================================
-import Link from "next/link";
-import { IconAlbum, IconChevronRight } from "@tabler/icons-react";
-
-export function StudioHeader() {
-  return (
-    <div className="flex flex-col gap-2">
-      <div className="flex items-center gap-2 text-sm text-muted-foreground font-mono">
-        <Link href="/es" className="hover:text-primary transition-colors cursor-pointer">
-          Inicio
-        </Link>
-        <IconChevronRight size={14} />
-        <span className="text-foreground font-semibold">Mi Studio</span>
-      </div>
-
-      <div className="flex items-center gap-3">
-        <div className="p-2 bg-primary/10 rounded-lg border border-primary/20 neo-shadow-sm">
-          <IconAlbum className="text-primary" size={28} stroke={1.5} />
-        </div>
-        <div>
-          <h1 className="text-2xl md:text-3xl font-black tracking-tight uppercase">Mi Studio</h1>
-          <p className="text-muted-foreground text-sm font-mono mt-1">
-            Gestiona y organiza tus extracciones
-          </p>
-        </div>
-      </div>
     </div>
   );
 }
@@ -10535,10 +10302,15 @@ FILE: src/system/organisms/Studio/StudioSidebar.tsx
 import { IconFolderPlus, IconCloudUpload, IconFolder } from "@tabler/icons-react";
 import { useStudioUI, Directory } from "@/src/store/useStudioUI";
 import { SidebarDirectory } from "@/src/system/organisms/Studio/SidebarDirectory";
-import { useFileUploader } from "@/src/features/studio/hooks/useFileUploader";
+import { useFileUploader } from "@/src/features/extractor/hooks/useFileUploader";
+
+import { useDirectoryActions } from "@/src/features/studio/hooks/useDirectoryActions";
 
 export function StudioSidebar() {
-  const { directories, createDirectory, activeDirectoryId, setActiveDirectory } = useStudioUI();
+  const { directories, activeDirectoryId, setActiveDirectory } = useStudioUI();
+
+  const { createDirectory } = useDirectoryActions();
+
   const { handleUploadClick } = useFileUploader();
 
   const handleCreateRootFolder = async (e: React.MouseEvent) => {
