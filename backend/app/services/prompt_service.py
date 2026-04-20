@@ -6,6 +6,8 @@ from typing import List, Optional
 from fastapi import HTTPException
 from sqlmodel import Session, select
 
+from app.core.redis_config import conn as redis_conn
+from rq import Queue
 from app.models.user import User
 from app.models.prompt import ImagePrompt
 from app.core.config import settings
@@ -15,6 +17,8 @@ from app.services.security import validate_magic_bytes
 from app.services.embedding_service import EmbeddingService
 
 logger = logging.getLogger("prompt_service")
+
+q_ai = Queue("ai_processing", connection=redis_conn)
 
 
 class PromptService:
@@ -79,12 +83,20 @@ class PromptService:
             width=width,
             height=height,
             embedding=embedding,
+            ai_processed=False,
         )
 
         session.add(nuevo_prompt)
         session.commit()
         session.refresh(nuevo_prompt)
+
         nuevo_prompt.embedding = []
+
+        try:
+            q_ai.enqueue("worker.process_image_ai", str(nuevo_prompt.id))
+            logger.info(f"🚀 Tarea de IA encolada para prompt ID: {nuevo_prompt.id}")
+        except Exception as e:
+            logger.error(f"⚠️ No se pudo encolar la tarea de IA: {e}")
 
         return nuevo_prompt
 

@@ -1,11 +1,15 @@
 import os
 import logging
 import secrets
+import uuid
+import time
+
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi import FastAPI, Request, Depends, HTTPException, status
 from fastapi.openapi.docs import get_swagger_ui_html
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.init_db import init_db
 
@@ -25,6 +29,21 @@ logging.basicConfig(
 logger = logging.getLogger("backend")
 
 security = HTTPBasic()
+
+
+class CorrelationIdMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        correlation_id = request.headers.get("X-Request-ID", str(uuid.uuid4()))
+
+        request.state.correlation_id = correlation_id
+
+        start_time = time.time()
+        response = await call_next(request)
+        process_time = time.time() - start_time
+
+        response.headers["X-Request-ID"] = correlation_id
+        response.headers["X-Process-Time"] = str(process_time)
+        return response
 
 
 def get_current_username(credentials: HTTPBasicCredentials = Depends(security)):
@@ -66,6 +85,8 @@ app = FastAPI(
     redoc_url=None,
     openapi_url=None,
 )
+
+app.add_middleware(CorrelationIdMiddleware)
 
 # 🌐 CONFIGURACIÓN DE CORS
 ALLOWED_ORIGINS = [

@@ -1,6 +1,6 @@
 import uuid
 from sqlmodel import SQLModel, Field, Column, JSON
-from sqlalchemy import Text
+from sqlalchemy import Text, JSON, Column
 from typing import Optional, Dict, Any, List
 from datetime import datetime
 from pgvector.sqlalchemy import Vector
@@ -41,6 +41,12 @@ class ImagePrompt(SQLModel, table=True):
     height: Optional[int] = Field(default=None)
 
     image_url: Optional[str] = Field(default=None, sa_column=Column(Text))
+
+    tags: List[str] = Field(default=[], sa_column=Column(JSON))
+    is_nsfw: bool = Field(default=False)
+    nsfw_score: float = Field(default=0.0)
+
+    ai_processed: bool = Field(default=False)
 
     extra_data: Dict[str, Any] = Field(default_factory=dict, sa_column=Column(JSON))
     created_at: datetime = Field(default_factory=datetime.utcnow)

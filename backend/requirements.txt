@@ -18,7 +18,7 @@ certifi==2025.4.26
 cffi==1.17.1
 charset-normalizer==3.4.2
 ckzg==2.1.1
-click==8.2.0
+click==8.3.2
 coloredlogs==15.0.1
 croniter==6.2.2
 cryptography==44.0.3
