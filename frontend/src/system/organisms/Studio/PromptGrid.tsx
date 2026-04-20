@@ -33,11 +33,11 @@ export default function PromptGrid() {
 
   return (
     <div className="h-full flex flex-col">
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
-        {prompts.map((p: any, index: number) => (
+      <div className="columns-1 sm:columns-2 lg:columns-3 xl:columns-4 gap-4 space-y-4 mx-auto w-full max-w-7xl">
+        {prompts.map((prompt, index) => (
           <PromptCard
-            key={p.id}
-            item={p}
+            key={prompt.id}
+            item={prompt}
             index={index}
             lang={lang}
             isStudio={true}

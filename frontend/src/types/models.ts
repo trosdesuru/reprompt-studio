@@ -1,6 +1,26 @@
 export type MediaVariant = "gallery" | "viewer" | "search";
 export type AspectRatio = "portrait" | "landscape" | "square" | "auto";
 
+export interface SavedPrompt {
+  id: number;
+  user_id: string;
+  title: string;
+  prompt: string;
+  negative_prompt?: string;
+  model: string;
+  resolution?: string;
+  width?: number;
+  height?: number;
+  sampler?: string;
+  steps?: number;
+  cfg_scale?: number;
+  seed?: string;
+  image_url?: string;
+  software?: string;
+  directory_id?: number | null;
+  created_at: string;
+}
+
 export interface MediaCardData {
   id: string | number;
   user_id: string;
@@ -42,19 +62,5 @@ export interface Directory {
   slug: string;
   description: string | null;
   is_private: boolean;
-  created_at: string;
-}
-
-export interface SavedPrompt {
-  id: number;
-  user_id: string;
-  title: string;
-  prompt: string;
-  model: string;
-  resolution?: string;
-  sampler?: string;
-  image_url?: string;
-  software?: string;
-  directory_id?: number | null;
   created_at: string;
 }

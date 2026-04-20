@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { IconCopy, IconCheck, IconPhoto } from "@tabler/icons-react";
+import { IconPhoto } from "@tabler/icons-react";
 import { usePromptCard } from "@/src/system/molecules/Cards/hooks/usePromptCard";
 import { PromptCardActions } from "../../molecules/Cards/PromptCardActions";
 import { LazyImage } from "../../molecules/Media/LazyImage";
+import { PromptCardSnippet } from "../../molecules/Cards/PromptCardSnippet";
 
 export function PromptCard({
   item,
@@ -21,24 +22,26 @@ export function PromptCard({
 
   return (
     <div
-      className="group relative flex flex-col bg-background rounded-xl border border-border shadow-sm hover:shadow-lg transition-all"
+      className="group relative flex flex-col h-fit break-inside-avoid mb-6 bg-background rounded-xl border border-border shadow-sm hover:shadow-lg transition-all overflow-hidden"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => {
         setIsHovered(false);
         setIsMenuOpen(false);
       }}
     >
-      <PromptCardActions
-        item={item}
-        directories={directories}
-        onAssign={onAssign}
-        onDelete={onDelete}
-        isOpen={isMenuOpen}
-        setIsOpen={setIsMenuOpen}
-      />
+      <div className="absolute top-2 right-2 z-30 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+        <PromptCardActions
+          item={item}
+          directories={directories}
+          onAssign={onAssign}
+          onDelete={onDelete}
+          isOpen={isMenuOpen}
+          setIsOpen={setIsMenuOpen}
+        />
+      </div>
 
-      <Link href={href} className="flex flex-col h-full z-10">
-        <div className="relative aspect-square sm:aspect-4/5 overflow-hidden rounded-t-xl bg-muted/10">
+      <Link href={href} className="relative flex flex-col h-full z-10">
+        <div className="relative aspect-4/5 w-full overflow-hidden bg-muted/10">
           {item.image_url ? (
             <LazyImage
               src={item.image_url}
@@ -51,31 +54,20 @@ export function PromptCard({
               <IconPhoto size={40} stroke={1} />
             </div>
           )}
+
+          <div className="absolute inset-x-0 bottom-0 p-3 pt-12 bg-linear-to-t from-background/95 via-background/80 to-transparent opacity-0 translate-y-4 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300 ease-out flex flex-col gap-2 pointer-events-none group-hover:pointer-events-auto">
+            <p className="text-[10px] text-muted-foreground font-mono font-semibold uppercase tracking-wider drop-shadow-sm">
+              {item.model || "Base Model"}
+            </p>
+
+            <PromptCardSnippet promptText={item.prompt} copied={copied} onCopy={handleCopy} />
+          </div>
         </div>
 
-        <div className="p-4 flex flex-col gap-3">
+        <div className="p-3 bg-background border-t border-border/10">
           <h3 className="font-bold text-sm truncate">{item.title}</h3>
-          <p className="text-[10px] text-muted-foreground uppercase font-mono">
-            {item.model || "Base Model"}
-          </p>
         </div>
       </Link>
-
-      <div className="px-4 pb-4 mt-auto">
-        <div className="relative group/prompt bg-muted/30 rounded-lg p-2 border border-border/50">
-          <p className="text-[11px] font-mono text-foreground/70 line-clamp-2">{item.prompt}</p>
-          <button
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              handleCopy(item.prompt);
-            }}
-            className="absolute top-1 right-1 p-1 bg-background border rounded-md opacity-0 group-hover:opacity-100 transition-opacity"
-          >
-            {copied ? <IconCheck size={12} className="text-green-500" /> : <IconCopy size={12} />}
-          </button>
-        </div>
-      </div>
     </div>
   );
 }
