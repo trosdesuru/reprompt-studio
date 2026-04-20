@@ -68,7 +68,7 @@ class PromptService:
             )
 
         final_image_url = f"{base_url}{permanent_key}"
-        embedding = EmbeddingService.generate_vector(data.prompt or data.file_name)
+        embedding = EmbeddingService.generate_vector(data.prompt or data.title)
         parsed_dir_id = (
             uuid.UUID(data.directory_id)
             if data.directory_id and data.directory_id != "null"
