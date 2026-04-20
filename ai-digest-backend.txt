@@ -534,12 +534,6 @@ import os
 import requests
 from PIL import Image
 from io import BytesIO
-from transformers import (
-    BlipProcessor,
-    BlipForConditionalGeneration,
-    CLIPProcessor,
-    CLIPModel,
-)
 from app.core.db import engine
 from sqlmodel import Session, select
 from rq import Queue, Worker
@@ -548,13 +542,6 @@ from app.core.redis_config import conn
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s")
 logger = logging.getLogger("rq_worker")
-
-blip_processor = BlipProcessor.from_pretrained("Salesforce/blip-image-captioning-base")
-blip_model = BlipForConditionalGeneration.from_pretrained(
-    "Salesforce/blip-image-captioning-base"
-)
-clip_model = CLIPModel.from_pretrained("openai/clip-vit-base-patch32")
-clip_processor = CLIPProcessor.from_pretrained("openai/clip-vit-base-patch32")
 
 
 def process_image_ai(prompt_id: str):
@@ -567,27 +554,8 @@ def process_image_ai(prompt_id: str):
             response = requests.get(prompt.image_url)
             img = Image.open(BytesIO(response.content)).convert("RGB")
 
-            inputs = blip_processor(img, return_tensors="pt")
-            out = blip_model.generate(**inputs)
-            caption = blip_processor.decode(out[0], skip_special_tokens=True)
-            generated_tags = list(set(caption.lower().split()))
-
-            safety_labels = ["a photo", "nsfw", "explicit", "violence", "blood"]
-            inputs = clip_processor(
-                text=safety_labels, images=img, return_tensors="pt", padding=True
-            )
-            outputs = clip_model(**inputs)
-            probs = outputs.logits_per_image.softmax(dim=1)
-            nsfw_prob = float(torch.sum(probs[0][1:]))
-
-            prompt.tags = generated_tags
-            prompt.nsfw_score = nsfw_prob
-            prompt.is_nsfw = nsfw_prob > 0.7
-            prompt.ai_processed = True
-
             session.add(prompt)
             session.commit()
-            logger.info(f"✅ [AI] ID {prompt_id} procesado. NSFW: {nsfw_prob:.2f}")
 
         except Exception as e:
             logger.error(f"❌ [AI] Error en ID {prompt_id}: {e}")
@@ -598,11 +566,10 @@ if __name__ == "__main__":
         queues = [
             Queue("downloads_premium", connection=conn),
             Queue("downloads_free", connection=conn),
-            Queue("ai_processing", connection=conn),
         ]
 
         worker = Worker(queues, connection=conn)
-        logger.info("👷 Worker RQ Online. Escuchando colas de Descargas e IA.")
+        logger.info("👷 Worker RQ Online. Escuchando colas de Descargas.")
         worker.work()
     except Exception as e:
         logger.error(f"❌ El Worker ha muerto: {e}")
@@ -3445,14 +3412,7 @@ class ImagePrompt(SQLModel, table=True):
     resolution: Optional[str] = Field(default=None)
     width: Optional[int] = Field(default=None)
     height: Optional[int] = Field(default=None)
-
     image_url: Optional[str] = Field(default=None, sa_column=Column(Text))
-
-    tags: List[str] = Field(default=[], sa_column=Column(JSON))
-    is_nsfw: bool = Field(default=False)
-    nsfw_score: float = Field(default=0.0)
-
-    ai_processed: bool = Field(default=False)
 
     extra_data: Dict[str, Any] = Field(default_factory=dict, sa_column=Column(JSON))
     created_at: datetime = Field(default_factory=datetime.utcnow)
@@ -4628,8 +4588,6 @@ from typing import List, Optional
 from fastapi import HTTPException
 from sqlmodel import Session, select
 
-from app.core.redis_config import conn as redis_conn
-from rq import Queue
 from app.models.user import User
 from app.models.prompt import ImagePrompt
 from app.core.config import settings
@@ -4639,8 +4597,6 @@ from app.services.security import validate_magic_bytes
 from app.services.embedding_service import EmbeddingService
 
 logger = logging.getLogger("prompt_service")
-
-q_ai = Queue("ai_processing", connection=redis_conn)
 
 
 class PromptService:
@@ -4713,12 +4669,6 @@ class PromptService:
         session.refresh(nuevo_prompt)
 
         nuevo_prompt.embedding = []
-
-        try:
-            q_ai.enqueue("worker.process_image_ai", str(nuevo_prompt.id))
-            logger.info(f"🚀 Tarea de IA encolada para prompt ID: {nuevo_prompt.id}")
-        except Exception as e:
-            logger.error(f"⚠️ No se pudo encolar la tarea de IA: {e}")
 
         return nuevo_prompt
 

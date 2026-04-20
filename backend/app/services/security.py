@@ -1,7 +1,5 @@
 import logging
 import requests
-from app.core.config import settings
-from urllib.error import URLError, HTTPError
 
 logger = logging.getLogger(__name__)
 
@@ -21,43 +19,24 @@ MAGIC_SIGNATURES = {
 }
 
 
-def validate_magic_bytes(file_url: str) -> bool:
+def validate_magic_bytes(file_bytes: bytes) -> bool:
     """
-    Verifica la autenticidad del archivo descargando solo 256 bytes.
-    Programación Defensiva: Asume falsedad por defecto.
+    Verifica la autenticidad del archivo leyendo sus primeros bytes directamente.
     """
-    if not file_url:
+    if not file_bytes or len(file_bytes) < 12:
         return False
 
-    if not file_url.startswith(settings.R2_PUBLIC_URL):
-        logger.error(
-            f"[SECURITY] Intento de SSRF bloqueado: {file_url}"
-        )
-        return False
+    if file_bytes.startswith(MAGIC_SIGNATURES["png"]):
+        return True
+    if file_bytes.startswith(MAGIC_SIGNATURES["jpeg"]):
+        return True
+    if (
+        file_bytes.startswith(MAGIC_SIGNATURES["webp_riff"])
+        and file_bytes[8:12] == MAGIC_SIGNATURES["webp_webp"]
+    ):
+        return True
 
-    try:
-        # Inyectamos cabecera Range de forma dinámica para esta petición
-        response = http_session.get(
-            file_url, headers={"Range": "bytes=0-256"}, timeout=5
-        )
-        response.raise_for_status()
-        header_bytes = response.content
-
-        if header_bytes.startswith(MAGIC_SIGNATURES["png"]):
-            return True
-        if header_bytes.startswith(MAGIC_SIGNATURES["jpeg"]):
-            return True
-        if (
-            header_bytes.startswith(MAGIC_SIGNATURES["webp_riff"])
-            and header_bytes[8:12] == MAGIC_SIGNATURES["webp_webp"]
-        ):
-            return True
-
-        logger.warning(
-            f"[SECURITY] Archivo malicioso detectado y bloqueado. URL: {file_url}"
-        )
-        return False
-
-    except requests.RequestException as e:
-        logger.error(f"[SECURITY] Error de red al auditar URL {file_url}: {e}")
-        return False
+    logger.warning(
+        "[SECURITY] Archivo malicioso detectado y bloqueado (Magic Bytes inválidos)."
+    )
+    return False

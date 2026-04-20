@@ -2,7 +2,7 @@ import uuid
 import logging
 from io import BytesIO
 from PIL import Image
-from typing import List, Optional
+from typing import List, Optional, Any
 from fastapi import HTTPException
 from sqlmodel import Session, select
 
@@ -22,12 +22,10 @@ class PromptService:
     def process_quarantined_upload(
         session: Session,
         current_user: User,
-        temp_image_url: str,
-        file_name: str,
-        directory_id: Optional[str],
+        data: Any,
     ) -> ImagePrompt:
         base_url = settings.R2_PUBLIC_URL.rstrip("/") + "/"
-        temp_key = temp_image_url.replace(base_url, "")
+        temp_key = data.image_url.replace(base_url, "")
 
         if not temp_key.startswith(f"temp/{current_user.id}/"):
             raise HTTPException(status_code=403, detail="Ruta de cuarentena inválida.")
@@ -49,12 +47,19 @@ class PromptService:
                 status_code=400, detail="El archivo está corrupto o es malicioso."
             )
 
+        width, height = None, None
         try:
             with Image.open(BytesIO(file_bytes)) as img:
                 width, height = img.size
-        except Exception as e:
-            logger.warning(f"No se pudieron extraer las dimensiones: {e}")
-            width, height = None, None
+        except Exception:
+            pass
+
+        if not width and data.resolution and "x" in data.resolution.lower():
+            try:
+                w, h = data.resolution.lower().split("x")
+                width, height = int(w.strip()), int(h.strip())
+            except:
+                pass
 
         permanent_key = temp_key.replace("temp/", "prompts/", 1)
         if not move_to_permanent(temp_key, permanent_key):
@@ -63,21 +68,30 @@ class PromptService:
             )
 
         final_image_url = f"{base_url}{permanent_key}"
-
-        embedding = EmbeddingService.generate_vector(file_name)
-
+        embedding = EmbeddingService.generate_vector(data.prompt or data.file_name)
         parsed_dir_id = (
-            uuid.UUID(directory_id) if directory_id and directory_id != "null" else None
+            uuid.UUID(data.directory_id)
+            if data.directory_id and data.directory_id != "null"
+            else None
         )
 
         nuevo_prompt = ImagePrompt(
             user_id=current_user.id,
             directory_id=parsed_dir_id,
             image_url=final_image_url,
-            title=file_name,
-            prompt=file_name,
+            title=data.title,
+            prompt=data.prompt,
+            negative_prompt=data.negative_prompt,
+            software=data.software,
+            model=data.model,
+            sampler=data.sampler,
+            steps=data.steps,
+            cfg_scale=data.cfg_scale,
+            seed=data.seed,
+            resolution=data.resolution,
             width=width,
             height=height,
+            extra_data=data.extra_data,
             embedding=embedding,
             ai_processed=False,
         )
@@ -85,7 +99,6 @@ class PromptService:
         session.add(nuevo_prompt)
         session.commit()
         session.refresh(nuevo_prompt)
-
         nuevo_prompt.embedding = []
 
         return nuevo_prompt

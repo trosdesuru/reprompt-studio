@@ -100,7 +100,7 @@ def login_user(
 
 @router.get("/google/url")
 def get_google_auth_url():
-    """Genera la URL para que el frontend redirija al usuario a Google"""
+    print("🔴 [DEBUG AUTH] 1. Petición recibida en /google/url")
     base_url = "https://accounts.google.com/o/oauth2/v2/auth"
     params = {
         "client_id": settings.GOOGLE_CLIENT_ID,
