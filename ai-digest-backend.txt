@@ -35,7 +35,8 @@ Directory structure:
     │   │   ├── routes_download.py
     │   │   ├── routes_prompt.py
     │   │   ├── routes_public.py
-    │   │   └── routes_search.py
+    │   │   ├── routes_search.py
+    │   │   └── routes_system.py
     │   ├── core/
     │   │   ├── __init__.py
     │   │   ├── config.py
@@ -65,6 +66,7 @@ Directory structure:
     │   │   ├── security.py
     │   │   └── storage.py
     │   └── utils/
+    │       ├── logger.py
     │       └── storage.py
     ├── scripts/
     │   ├── e2e_clean.py
@@ -332,7 +334,7 @@ certifi==2025.4.26
 cffi==1.17.1
 charset-normalizer==3.4.2
 ckzg==2.1.1
-click==8.2.0
+click==8.3.2
 coloredlogs==15.0.1
 croniter==6.2.2
 cryptography==44.0.3
@@ -475,7 +477,6 @@ yt-dlp==2025.4.30
 zipp==3.19.1
 
 
-
 ================================================
 FILE: reset_db.py
 ================================================
@@ -529,23 +530,79 @@ FILE: skills-lock.json
 FILE: worker.py
 ================================================
 import logging
+import os
+import requests
+from PIL import Image
+from io import BytesIO
+from transformers import (
+    BlipProcessor,
+    BlipForConditionalGeneration,
+    CLIPProcessor,
+    CLIPModel,
+)
+from app.core.db import engine
+from sqlmodel import Session, select
 from rq import Queue, Worker
+from app.models.prompt import ImagePrompt
 from app.core.redis_config import conn
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s")
 logger = logging.getLogger("rq_worker")
 
+blip_processor = BlipProcessor.from_pretrained("Salesforce/blip-image-captioning-base")
+blip_model = BlipForConditionalGeneration.from_pretrained(
+    "Salesforce/blip-image-captioning-base"
+)
+clip_model = CLIPModel.from_pretrained("openai/clip-vit-base-patch32")
+clip_processor = CLIPProcessor.from_pretrained("openai/clip-vit-base-patch32")
+
+
+def process_image_ai(prompt_id: str):
+    with Session(engine) as session:
+        prompt = session.get(ImagePrompt, prompt_id)
+        if not prompt or not prompt.image_url:
+            return
+
+        try:
+            response = requests.get(prompt.image_url)
+            img = Image.open(BytesIO(response.content)).convert("RGB")
+
+            inputs = blip_processor(img, return_tensors="pt")
+            out = blip_model.generate(**inputs)
+            caption = blip_processor.decode(out[0], skip_special_tokens=True)
+            generated_tags = list(set(caption.lower().split()))
+
+            safety_labels = ["a photo", "nsfw", "explicit", "violence", "blood"]
+            inputs = clip_processor(
+                text=safety_labels, images=img, return_tensors="pt", padding=True
+            )
+            outputs = clip_model(**inputs)
+            probs = outputs.logits_per_image.softmax(dim=1)
+            nsfw_prob = float(torch.sum(probs[0][1:]))
+
+            prompt.tags = generated_tags
+            prompt.nsfw_score = nsfw_prob
+            prompt.is_nsfw = nsfw_prob > 0.7
+            prompt.ai_processed = True
+
+            session.add(prompt)
+            session.commit()
+            logger.info(f"✅ [AI] ID {prompt_id} procesado. NSFW: {nsfw_prob:.2f}")
+
+        except Exception as e:
+            logger.error(f"❌ [AI] Error en ID {prompt_id}: {e}")
+
+
 if __name__ == "__main__":
     try:
-        premium_queue = Queue("downloads_premium", connection=conn)
-        free_queue = Queue("downloads_free", connection=conn)
+        queues = [
+            Queue("downloads_premium", connection=conn),
+            Queue("downloads_free", connection=conn),
+            Queue("ai_processing", connection=conn),
+        ]
 
-        # El orden de la lista importa:
-        # vaciará premium antes de tocar free
-        worker = Worker([premium_queue, free_queue], connection=conn)
-
-        logger.info("👷 Worker RQ v2.7.0 online.")
-        logger.info("🎧 Escuchando colas: 1. downloads_premium | 2. downloads_free")
+        worker = Worker(queues, connection=conn)
+        logger.info("👷 Worker RQ Online. Escuchando colas de Descargas e IA.")
         worker.work()
     except Exception as e:
         logger.error(f"❌ El Worker ha muerto: {e}")
@@ -1274,11 +1331,15 @@ FILE: app/main.py
 import os
 import logging
 import secrets
+import uuid
+import time
+
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi import FastAPI, Request, Depends, HTTPException, status
 from fastapi.openapi.docs import get_swagger_ui_html
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.init_db import init_db
 
@@ -1298,6 +1359,21 @@ logging.basicConfig(
 logger = logging.getLogger("backend")
 
 security = HTTPBasic()
+
+
+class CorrelationIdMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        correlation_id = request.headers.get("X-Request-ID", str(uuid.uuid4()))
+
+        request.state.correlation_id = correlation_id
+
+        start_time = time.time()
+        response = await call_next(request)
+        process_time = time.time() - start_time
+
+        response.headers["X-Request-ID"] = correlation_id
+        response.headers["X-Process-Time"] = str(process_time)
+        return response
 
 
 def get_current_username(credentials: HTTPBasicCredentials = Depends(security)):
@@ -1339,6 +1415,8 @@ app = FastAPI(
     redoc_url=None,
     openapi_url=None,
 )
+
+app.add_middleware(CorrelationIdMiddleware)
 
 # 🌐 CONFIGURACIÓN DE CORS
 ALLOWED_ORIGINS = [
@@ -2970,6 +3048,43 @@ def buscar_en_studio(
 
 
 ================================================
+FILE: app/api/routes_system.py
+================================================
+from fastapi import APIRouter, Depends
+from sqlmodel import Session, select
+from app.core.db import get_session
+import time
+
+router = APIRouter()
+
+
+@router.get("/health")
+def health_check(session: Session = Depends(get_session)):
+    """
+    Diagnóstico profundo: Verifica latencia de DB y estado de conexión.
+    """
+    start_db = time.time()
+    try:
+        session.exec(select(1)).first()
+        db_status = "online"
+        db_latency = f"{round((time.time() - start_db) * 1000, 2)}ms"
+    except Exception:
+        db_status = "offline"
+        db_latency = "n/a"
+
+    return {
+        "status": "operational",
+        "timestamp": time.time(),
+        "checks": {
+            "database": db_status,
+            "db_latency": db_latency,
+            "version": "0.5.0-beta",
+        },
+    }
+
+
+
+================================================
 FILE: app/core/__init__.py
 ================================================
 [Empty file]
@@ -3291,7 +3406,7 @@ FILE: app/models/prompt.py
 ================================================
 import uuid
 from sqlmodel import SQLModel, Field, Column, JSON
-from sqlalchemy import Text
+from sqlalchemy import Text, JSON, Column
 from typing import Optional, Dict, Any, List
 from datetime import datetime
 from pgvector.sqlalchemy import Vector
@@ -3332,6 +3447,12 @@ class ImagePrompt(SQLModel, table=True):
     height: Optional[int] = Field(default=None)
 
     image_url: Optional[str] = Field(default=None, sa_column=Column(Text))
+
+    tags: List[str] = Field(default=[], sa_column=Column(JSON))
+    is_nsfw: bool = Field(default=False)
+    nsfw_score: float = Field(default=0.0)
+
+    ai_processed: bool = Field(default=False)
 
     extra_data: Dict[str, Any] = Field(default_factory=dict, sa_column=Column(JSON))
     created_at: datetime = Field(default_factory=datetime.utcnow)
@@ -4507,6 +4628,8 @@ from typing import List, Optional
 from fastapi import HTTPException
 from sqlmodel import Session, select
 
+from app.core.redis_config import conn as redis_conn
+from rq import Queue
 from app.models.user import User
 from app.models.prompt import ImagePrompt
 from app.core.config import settings
@@ -4516,6 +4639,8 @@ from app.services.security import validate_magic_bytes
 from app.services.embedding_service import EmbeddingService
 
 logger = logging.getLogger("prompt_service")
+
+q_ai = Queue("ai_processing", connection=redis_conn)
 
 
 class PromptService:
@@ -4580,12 +4705,20 @@ class PromptService:
             width=width,
             height=height,
             embedding=embedding,
+            ai_processed=False,
         )
 
         session.add(nuevo_prompt)
         session.commit()
         session.refresh(nuevo_prompt)
+
         nuevo_prompt.embedding = []
+
+        try:
+            q_ai.enqueue("worker.process_image_ai", str(nuevo_prompt.id))
+            logger.info(f"🚀 Tarea de IA encolada para prompt ID: {nuevo_prompt.id}")
+        except Exception as e:
+            logger.error(f"⚠️ No se pudo encolar la tarea de IA: {e}")
 
         return nuevo_prompt
 
@@ -4772,6 +4905,48 @@ def delete_file(key: str) -> None:
         s3_client.delete_object(Bucket=settings.R2_BUCKET_NAME, Key=key)
     except Exception as e:
         logger.error(f"[STORAGE] Error borrando llave {key}: {e}")
+
+
+
+================================================
+FILE: app/utils/logger.py
+================================================
+import logging
+import json
+from datetime import datetime
+
+
+class StructuredLogger:
+    def __init__(self, name: str):
+        self.logger = logging.getLogger(name)
+
+    def _format(self, level, msg, request=None, extra=None):
+        log_data = {
+            "timestamp": datetime.utcnow().isoformat(),
+            "level": level,
+            "module": self.logger.name,
+            "message": msg,
+            "correlation_id": (
+                getattr(request.state, "correlation_id", "system")
+                if request
+                else "system"
+            ),
+        }
+        if extra:
+            log_data.update(extra)
+        return json.dumps(log_data)
+
+    def info(self, msg, request=None, **kwargs):
+        self.logger.info(self._format("INFO", msg, request, kwargs))
+
+    def error(self, msg, request=None, **kwargs):
+        self.logger.error(self._format("ERROR", msg, request, kwargs))
+
+    def warning(self, msg, request=None, **kwargs):
+        self.logger.warning(self._format("WARNING", msg, request, kwargs))
+
+
+logger = StructuredLogger("reprompt")
 
 
 
