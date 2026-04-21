@@ -122,23 +122,36 @@ export function PromptMetadataPanel({ prompt, isOwner = true, onSave }: PromptMe
       )}
 
       {prompt.auto_tags && prompt.auto_tags.length > 0 && (
-        <div className="space-y-3 pt-2 pb-4">
-          <h3 className="font-mono text-xs font-black uppercase tracking-widest flex items-center gap-2 mb-2 text-muted-foreground">
-            # Tags
+        <div className="space-y-3 pt-2">
+          <h3 className="font-mono text-xs font-black uppercase tracking-widest flex items-center gap-2 text-muted-foreground">
+            🏷️ Etiquetas Detectadas (IA)
           </h3>
           <div className="flex flex-wrap gap-1.5">
-            {prompt.auto_tags.map((tag) => (
-              <span
-                key={tag}
-                className="px-2.5 py-1 bg-primary/10 text-primary text-[10px] font-bold uppercase tracking-wider rounded-md border border-primary/20 hover:bg-primary/20 transition-colors"
-              >
-                {tag}
-              </span>
-            ))}
+            {prompt.auto_tags.map((tagItem, idx) => {
+              const isObject = typeof tagItem === "object" && tagItem !== null;
+              const tagName = isObject ? tagItem.name : tagItem;
+              const confidence = isObject ? tagItem.confidence : 100;
+
+              if (!tagName) return null;
+
+              return (
+                <div
+                  key={`${tagName}-${idx}`}
+                  title={`Coincidencia: ${confidence}%`}
+                  className="relative overflow-hidden inline-flex items-center px-2.5 py-1 text-primary text-[10px] font-bold uppercase tracking-wider rounded-md border border-primary/30 group cursor-default"
+                >
+                  <div
+                    className="absolute left-0 top-0 h-full bg-primary/20 group-hover:bg-primary/30 transition-colors z-0"
+                    style={{ width: `${confidence}%` }}
+                  />
+
+                  <span className="relative z-10 pointer-events-none">{tagName}</span>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
-
       <div className="space-y-6">
         <div className="group relative bg-(--bg-secondary) neo-border p-4 transition-all hover:neo-shadow">
           <div className="flex justify-between items-center mb-3 border-b border-border/50 pb-2">
@@ -237,7 +250,7 @@ export function PromptMetadataPanel({ prompt, isOwner = true, onSave }: PromptMe
                     />
                   ) : (
                     <span className="text-sm font-bold truncate" title={String(value)}>
-                      {value}
+                      {value as string | number}
                     </span>
                   )}
                 </div>

@@ -17,7 +17,7 @@ export interface SavedPrompt {
   seed?: string;
   image_url?: string;
   software?: string;
-  auto_tags?: string[];
+  auto_tags?: { name: string; confidence: number }[];
   trigger_words?: string[];
   directory_id?: number | null;
   created_at: string;

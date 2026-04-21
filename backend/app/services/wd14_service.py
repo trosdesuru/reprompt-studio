@@ -31,7 +31,7 @@ class WD14Tagger:
 
         base_dir = os.environ.get("STORAGE_PATH", os.path.join(os.getcwd(), ".storage"))
         self.model_dir = os.path.join(base_dir, "models", "wd14")
-        
+
         os.makedirs(self.model_dir, exist_ok=True)
 
         self.model_path = os.path.join(self.model_dir, self.model_file)
@@ -111,7 +111,7 @@ class WD14Tagger:
 
         return img_float
 
-    def get_tags(self, image_url: str, threshold: float = 0.35) -> List[str]:
+    def get_tags(self, image_url: str, threshold: float = 0.35) -> List[dict]:
         try:
             response = requests.get(image_url, timeout=10)
             response.raise_for_status()
@@ -128,7 +128,14 @@ class WD14Tagger:
                 if i in self.tag_indices and p >= threshold:
                     tag_name = self.tag_names[self.tag_indices.index(i)]
                     clean_tag = tag_name.replace("_", " ")
-                    result_tags.append(clean_tag)
+
+                    confidence = int(round(float(p) * 100))
+
+                    result_tags.append({"name": clean_tag, "confidence": confidence})
+
+            result_tags = sorted(
+                result_tags, key=lambda x: x["confidence"], reverse=True
+            )
 
             return result_tags
 
