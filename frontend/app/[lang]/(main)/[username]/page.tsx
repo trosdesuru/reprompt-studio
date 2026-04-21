@@ -5,9 +5,9 @@ import Link from "next/link";
 import { PageLoader } from "@/src/system/atoms/PageLoader";
 import { IconPhotoOff, IconFolder } from "@tabler/icons-react";
 
-import { PromptCard } from "@/src/system/organisms/Studio/PromptCard";
+import { PromptCard } from "@/src/system/molecules/Studio/PromptCard";
 import { usePublicProfile } from "@/src/features/public/hooks/usePublicProfile";
-import { Breadcrumbs } from "@/src/system/organisms/Navigation/Breadcrumbs";
+import { Breadcrumbs } from "@/src/system/molecules/Navigation/Breadcrumbs";
 
 export default function PublicProfilePage({
   params,

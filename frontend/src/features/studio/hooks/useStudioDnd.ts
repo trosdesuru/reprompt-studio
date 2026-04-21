@@ -24,12 +24,15 @@ export function useStudioDnd() {
     setActiveDragDir(null);
     const { active, over } = event;
 
-    if (!over || active.id === `dir-${over.id}`) return;
+    if (!over) return;
 
+    const isTargetRoot = over.id === "root-zone";
+    const targetDirId = isTargetRoot ? null : String(over.id).replace("dir-", "");
     const draggedDirId = String(active.id).replace("dir-", "");
-    const targetDirId = String(over.id);
 
-    if (draggedDirId !== targetDirId) {
+    if (draggedDirId === (targetDirId || "root")) return;
+
+    if (active.data.current?.type === "directory") {
       moveDirectory(draggedDirId, targetDirId);
     }
   };

@@ -2,7 +2,7 @@
 
 import { PromptImageViewer } from "@/src/system/molecules/Cards/PromptImageViewer";
 import { PromptMetadataPanel } from "@/src/system/molecules/Cards/PromptMetadataPanel";
-import { Breadcrumbs } from "@/src/system/organisms/Navigation/Breadcrumbs";
+import { Breadcrumbs } from "@/src/system/molecules/Navigation/Breadcrumbs";
 import { SavedPrompt } from "@/src/types/models";
 import { useUpdatePromptMetadata } from "@/src/features/studio/hooks/useUpdatePromptMetadata";
 

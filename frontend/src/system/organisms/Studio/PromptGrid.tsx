@@ -1,52 +1,40 @@
-"use client";
-
-import { useParams } from "next/navigation";
 import { IconPhotoOff } from "@tabler/icons-react";
-import { PageLoader } from "../../atoms/PageLoader";
-import { PromptCard } from "./PromptCard";
-import { useStudioPrompts } from "@/src/features/studio/hooks/useStudioPrompts";
+import { PromptCard } from "../../molecules/Studio/PromptCard";
+import { SavedPrompt } from "@/src/types/models";
 
-export default function PromptGrid() {
-  const params = useParams();
-  const lang = (params?.lang as string) || "es";
+interface PromptGridProps {
+  prompts: SavedPrompt[];
+  lang: string;
+  authorUsername: string;
+  onDelete: (id: string) => void;
+}
 
-  const { prompts, isLoading, user, deletePrompt } = useStudioPrompts();
-
-  if (isLoading) {
-    return (
-      <div className="h-full flex flex-col flex-1 items-center justify-center">
-        <PageLoader text="Sincronizando Studio..." />
-      </div>
-    );
-  }
-
+export function PromptGrid({ prompts, lang, authorUsername, onDelete }: PromptGridProps) {
   if (prompts.length === 0) {
     return (
-      <div className="h-full flex flex-col flex-1 items-center justify-center text-muted-foreground/40">
+      <div className="flex-1 min-h-[50vh] flex flex-col items-center justify-center text-muted-foreground/40 bg-muted/5">
         <IconPhotoOff size={48} stroke={1.5} className="mb-4" />
         <p className="text-sm font-mono uppercase tracking-widest text-center px-4">
-          No se encontraron prompts en este rincón
+          Este directorio está vacío.
         </p>
       </div>
     );
   }
 
   return (
-    <div className="h-full flex flex-col">
-      <div className="columns-1 sm:columns-2 lg:columns-3 xl:columns-4 gap-4 space-y-4 mx-auto w-full max-w-7xl">
-        {prompts.map((prompt, index) => (
-          <PromptCard
-            key={prompt.id}
-            item={prompt}
-            index={index}
-            lang={lang}
-            isStudio={true}
-            authorUsername={user?.username || "unknown"}
-            isPriority={index < 8}
-            onDelete={deletePrompt}
-          />
-        ))}
-      </div>
+    <div className="grid gap-3 sm:gap-4 w-full pb-24 grid-cols-[repeat(auto-fill,minmax(150px,1fr))] sm:grid-cols-[repeat(auto-fill,minmax(200px,1fr))] lg:grid-cols-[repeat(auto-fill,minmax(220px,1fr))]">
+      {prompts.map((prompt, index) => (
+        <PromptCard
+          key={prompt.id}
+          item={prompt}
+          index={index}
+          lang={lang}
+          isStudio={true}
+          authorUsername={authorUsername}
+          isPriority={index < 8}
+          onDelete={onDelete}
+        />
+      ))}
     </div>
   );
 }

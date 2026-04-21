@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useStudioUI, Directory } from "@/src/store/useStudioUI";
-import { SidebarDirectoryItem } from "../../molecules/Studio/SidebarDirectoryItem";
+import { SidebarDirectoryItem } from "../../atoms/Studio/SidebarDirectoryItem";
 import { useDirectoryDnd } from "@/src/features/studio/hooks/useDirectoryDnd";
 import { useDirectoryActions } from "@/src/features/studio/hooks/useDirectoryActions";
 
