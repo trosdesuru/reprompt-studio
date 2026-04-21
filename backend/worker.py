@@ -13,6 +13,7 @@ from app.core.db import engine
 from app.core.redis_config import conn
 
 from app.services.embedding_service import EmbeddingService
+from app.services.wd14_service import wd14_manager
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s")
 logger = logging.getLogger("rq_worker")
@@ -28,16 +29,24 @@ def process_image_ai(prompt_id: str):
         try:
             logger.info(f"🧠 [WORKER] Iniciando procesamiento de IA para: {prompt_id}")
             texto_a_vectorizar = prompt.prompt or prompt.title or "Generative Art"
+            start_time_emb = time.time()
+
             vector = EmbeddingService.generate_vector(prompt.prompt or "Generative Art")
-
-            start_time = time.time()
             prompt.embedding = vector
-            end_time = time.time()
 
-            tiempo_ia = round(end_time - start_time, 2)
+            tiempo_emb = round(time.time() - start_time_emb, 2)
+
+            logger.info(f"🏷️ [WORKER] Extrayendo etiquetas visuales...")
+            start_time_tags = time.time()
+
+            etiquetas = wd14_manager.get_tags(prompt.image_url)
+            prompt.auto_tags = etiquetas
+
+            tiempo_tags = round(time.time() - start_time_tags, 2)
 
             session.add(prompt)
             session.commit()
+            
             logger.info(f"✅ [WORKER] IA completada con éxito para ID: {prompt_id}")
 
         except Exception as e:

@@ -3,11 +3,12 @@ import { IconLoader2 } from "@tabler/icons-react";
 import { AuthForm } from "@/src/system/organisms/Auth/AuthForm";
 
 interface LoginPageProps {
-  params: Promise<{ lang: string }>;
+  params: Promise<{ lang: string }> | { lang: string };
 }
 
 export default async function LoginPage({ params }: LoginPageProps) {
-  const { lang } = await params;
+  const resolvedParams = await params;
+  const lang = resolvedParams?.lang || "es"; 
 
   console.log(`🚪 [LOGIN_PAGE] Renderizando acceso en: ${lang}`);
 

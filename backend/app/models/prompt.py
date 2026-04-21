@@ -41,5 +41,6 @@ class ImagePrompt(SQLModel, table=True):
     height: Optional[int] = Field(default=None)
     image_url: Optional[str] = Field(default=None, sa_column=Column(Text))
 
+    auto_tags: List[str] = Field(default=[], sa_column=Column(JSON))
     extra_data: Dict[str, Any] = Field(default_factory=dict, sa_column=Column(JSON))
     created_at: datetime = Field(default_factory=datetime.utcnow)

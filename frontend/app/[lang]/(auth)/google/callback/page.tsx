@@ -1,17 +1,17 @@
 "use client";
 
+import { useEffect, useRef, Suspense } from "react";
+import { useRouter, useSearchParams, useParams } from "next/navigation";
 import { api } from "@/src/services/api";
 import { useAuthStore } from "@/src/store/authStore";
-import { useEffect, useRef } from "react";
-import { useRouter, useSearchParams, useParams } from "next/navigation";
 import { PageLoader } from "@/src/system/atoms/PageLoader";
 import toast from "react-hot-toast";
 
-export default function GoogleCallbackPage() {
+function CallbackLogic() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const params = useParams();
-  const lang = params?.lang as string;
+  const lang = (params?.lang as string) || "es";
 
   const processed = useRef(false);
   const checkAuth = useAuthStore((state) => state.checkAuth);
@@ -55,7 +55,9 @@ export default function GoogleCallbackPage() {
 
           await checkAuth();
 
-          window.location.href = `/${lang}`;
+          setTimeout(() => {
+            window.location.replace(`/${lang}`);
+          }, 1000);
         }
       } catch (error: any) {
         toast.error(error.message || "Fallo al conectar con Google");
@@ -67,4 +69,12 @@ export default function GoogleCallbackPage() {
   }, [searchParams, router, checkAuth, lang]);
 
   return <PageLoader text="Cifrando conexión segura con Google..." />;
+}
+
+export default function GoogleCallbackPage() {
+  return (
+    <Suspense fallback={<PageLoader text="Autenticando..." />}>
+      <CallbackLogic />
+    </Suspense>
+  );
 }
