@@ -13,7 +13,7 @@ from app.core.db import engine
 from app.core.redis_config import conn
 
 from app.services.embedding_service import EmbeddingService
-from app.services.wd14_service import wd14_manager
+from app.services.wd14_service import WD14Tagger
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s")
 logger = logging.getLogger("rq_worker")
@@ -38,6 +38,8 @@ def process_image_ai(prompt_id: str):
 
             logger.info(f"🏷️ [WORKER] Extrayendo etiquetas visuales...")
             start_time_tags = time.time()
+
+            wd14_manager = WD14Tagger()
 
             etiquetas = wd14_manager.get_tags(prompt.image_url)
             prompt.auto_tags = etiquetas

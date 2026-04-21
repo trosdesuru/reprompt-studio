@@ -142,6 +142,3 @@ class WD14Tagger:
         except Exception as e:
             logger.error(f"❌ [WD14] Error etiquetando {image_url}: {e}")
             return []
-
-
-wd14_manager = WD14Tagger()

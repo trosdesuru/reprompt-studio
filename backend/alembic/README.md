@@ -8,3 +8,6 @@ docker compose exec backend alembic upgrade head
 git add backend/alembic/versions/
 git commit -m "description commit version"
 git push origin main
+
+### Confirmación de estructura de BBDD con sello stamp
+docker compose exec backend alembic stamp head
