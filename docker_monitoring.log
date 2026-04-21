@@ -1,0 +1,136 @@
+Tue Apr 21 12:40:01 CEST 2026 reprompt-frontend-1   0.00%     1.195GiB / 1.921GiB
+reprompt-worker-1     0.00%     75.25MiB / 1.921GiB
+reprompt-backend-1    6.60%     154.3MiB / 1.921GiB
+reprompt-redis-1      1.51%     5.664MiB / 1.921GiB
+Tue Apr 21 12:40:05 CEST 2026 reprompt-frontend-1   0.00%     1.195GiB / 1.921GiB
+reprompt-worker-1     0.00%     75.25MiB / 1.921GiB
+reprompt-backend-1    5.84%     154.3MiB / 1.921GiB
+reprompt-redis-1      1.28%     5.664MiB / 1.921GiB
+Tue Apr 21 12:40:08 CEST 2026 reprompt-frontend-1   0.00%     1.195GiB / 1.921GiB
+reprompt-worker-1     0.00%     75.25MiB / 1.921GiB
+reprompt-backend-1    24.67%    154.3MiB / 1.921GiB
+reprompt-redis-1      1.80%     5.664MiB / 1.921GiB
+Tue Apr 21 12:40:11 CEST 2026 reprompt-frontend-1   167.94%   1.194GiB / 1.921GiB
+reprompt-worker-1     0.00%     75.19MiB / 1.921GiB
+reprompt-backend-1    13.36%    165.5MiB / 1.921GiB
+reprompt-redis-1      1.52%     5.707MiB / 1.921GiB
+Tue Apr 21 12:40:15 CEST 2026 reprompt-frontend-1   0.00%     1.189GiB / 1.921GiB
+reprompt-worker-1     0.00%     75.19MiB / 1.921GiB
+reprompt-backend-1    5.53%     165.5MiB / 1.921GiB
+reprompt-redis-1      1.45%     5.707MiB / 1.921GiB
+Tue Apr 21 12:40:19 CEST 2026 reprompt-frontend-1   10.89%    1.189GiB / 1.921GiB
+reprompt-worker-1     0.00%     75.19MiB / 1.921GiB
+reprompt-backend-1    117.03%   173.1MiB / 1.921GiB
+reprompt-redis-1      1.54%     5.707MiB / 1.921GiB
+Tue Apr 21 12:40:22 CEST 2026 reprompt-frontend-1   0.00%     1.141GiB / 1.921GiB
+reprompt-worker-1     42.57%    206.2MiB / 1.921GiB
+reprompt-backend-1    26.25%    154MiB / 1.921GiB
+reprompt-redis-1      3.29%     4.285MiB / 1.921GiB
+Tue Apr 21 12:40:26 CEST 2026 reprompt-frontend-1   0.00%     1.133GiB / 1.921GiB
+reprompt-worker-1     92.56%    124.2MiB / 1.921GiB
+reprompt-backend-1    8.78%     144.4MiB / 1.921GiB
+reprompt-redis-1      1.38%     6.297MiB / 1.921GiB
+Tue Apr 21 12:40:29 CEST 2026 reprompt-frontend-1   0.00%     1.133GiB / 1.921GiB
+reprompt-worker-1     31.78%    247.1MiB / 1.921GiB
+reprompt-backend-1    9.69%     144.2MiB / 1.921GiB
+reprompt-redis-1      1.22%     5.355MiB / 1.921GiB
+Tue Apr 21 12:40:32 CEST 2026 reprompt-frontend-1   0.00%     1.133GiB / 1.921GiB
+reprompt-worker-1     91.96%    80.04MiB / 1.921GiB
+reprompt-backend-1    5.65%     144.7MiB / 1.921GiB
+reprompt-redis-1      2.78%     3.602MiB / 1.921GiB
+Tue Apr 21 12:40:36 CEST 2026 reprompt-frontend-1   0.00%     1.133GiB / 1.921GiB
+reprompt-worker-1     5.93%     127.3MiB / 1.921GiB
+reprompt-backend-1    7.70%     144.3MiB / 1.921GiB
+reprompt-redis-1      2.96%     5.801MiB / 1.921GiB
+Tue Apr 21 12:40:39 CEST 2026 reprompt-frontend-1   0.99%     1.135GiB / 1.921GiB
+reprompt-worker-1     82.53%    119.4MiB / 1.921GiB
+reprompt-backend-1    6.78%     144.9MiB / 1.921GiB
+reprompt-redis-1      2.89%     5.539MiB / 1.921GiB
+Tue Apr 21 12:40:43 CEST 2026 reprompt-frontend-1   0.00%     1.133GiB / 1.921GiB
+reprompt-worker-1     61.54%    301.8MiB / 1.921GiB
+reprompt-backend-1    8.49%     144.6MiB / 1.921GiB
+reprompt-redis-1      1.61%     3.906MiB / 1.921GiB
+Tue Apr 21 12:40:46 CEST 2026 reprompt-frontend-1   0.00%     1.141GiB / 1.921GiB
+reprompt-worker-1     0.00%     76.23MiB / 1.921GiB
+reprompt-backend-1    5.64%     145MiB / 1.921GiB
+reprompt-redis-1      1.30%     6.77MiB / 1.921GiB
+Tue Apr 21 12:40:50 CEST 2026 reprompt-frontend-1   0.04%     1.141GiB / 1.921GiB
+reprompt-worker-1     0.00%     76.23MiB / 1.921GiB
+reprompt-backend-1    7.16%     145MiB / 1.921GiB
+reprompt-redis-1      1.65%     6.77MiB / 1.921GiB
+Tue Apr 21 12:40:53 CEST 2026 reprompt-frontend-1   0.00%     1.141GiB / 1.921GiB
+reprompt-worker-1     0.00%     76.23MiB / 1.921GiB
+reprompt-backend-1    5.33%     145MiB / 1.921GiB
+reprompt-redis-1      1.55%     6.77MiB / 1.921GiB
+Tue Apr 21 12:40:56 CEST 2026 reprompt-frontend-1   0.00%     1.141GiB / 1.921GiB
+reprompt-worker-1     0.00%     76.23MiB / 1.921GiB
+reprompt-backend-1    7.21%     145MiB / 1.921GiB
+reprompt-redis-1      1.00%     6.77MiB / 1.921GiB
+Tue Apr 21 12:40:59 CEST 2026 reprompt-frontend-1   0.12%     1.141GiB / 1.921GiB
+reprompt-worker-1     0.00%     76.23MiB / 1.921GiB
+reprompt-backend-1    13.23%    145MiB / 1.921GiB
+reprompt-redis-1      1.02%     6.77MiB / 1.921GiB
+Tue Apr 21 12:41:03 CEST 2026 reprompt-frontend-1   0.00%     1.141GiB / 1.921GiB
+reprompt-worker-1     0.00%     76.23MiB / 1.921GiB
+reprompt-backend-1    9.87%     145MiB / 1.921GiB
+reprompt-redis-1      1.05%     6.77MiB / 1.921GiB
+Tue Apr 21 12:41:06 CEST 2026 reprompt-frontend-1   0.00%     1.141GiB / 1.921GiB
+reprompt-worker-1     0.00%     76.23MiB / 1.921GiB
+reprompt-backend-1    7.33%     145MiB / 1.921GiB
+reprompt-redis-1      1.07%     6.77MiB / 1.921GiB
+Tue Apr 21 12:41:09 CEST 2026 reprompt-frontend-1   0.09%     1.141GiB / 1.921GiB
+reprompt-worker-1     0.00%     76.23MiB / 1.921GiB
+reprompt-backend-1    7.62%     145MiB / 1.921GiB
+reprompt-redis-1      1.01%     6.77MiB / 1.921GiB
+Tue Apr 21 12:41:12 CEST 2026 reprompt-frontend-1   0.00%     1.141GiB / 1.921GiB
+reprompt-worker-1     0.00%     76.23MiB / 1.921GiB
+reprompt-backend-1    7.27%     145MiB / 1.921GiB
+reprompt-redis-1      1.41%     6.77MiB / 1.921GiB
+Tue Apr 21 12:41:16 CEST 2026 reprompt-frontend-1   0.00%     1.141GiB / 1.921GiB
+reprompt-worker-1     0.00%     76.23MiB / 1.921GiB
+reprompt-backend-1    8.54%     145MiB / 1.921GiB
+reprompt-redis-1      1.20%     6.77MiB / 1.921GiB
+Tue Apr 21 12:41:19 CEST 2026 reprompt-frontend-1   0.06%     1.144GiB / 1.921GiB
+reprompt-worker-1     0.00%     76.23MiB / 1.921GiB
+reprompt-backend-1    4.81%     145MiB / 1.921GiB
+reprompt-redis-1      0.91%     6.77MiB / 1.921GiB
+Tue Apr 21 12:41:22 CEST 2026 reprompt-frontend-1   0.00%     1.144GiB / 1.921GiB
+reprompt-worker-1     0.00%     76.23MiB / 1.921GiB
+reprompt-backend-1    9.48%     145MiB / 1.921GiB
+reprompt-redis-1      0.99%     6.77MiB / 1.921GiB
+Tue Apr 21 12:41:25 CEST 2026 reprompt-frontend-1   0.00%     1.144GiB / 1.921GiB
+reprompt-worker-1     0.00%     76.23MiB / 1.921GiB
+reprompt-backend-1    10.56%    145MiB / 1.921GiB
+reprompt-redis-1      0.92%     6.77MiB / 1.921GiB
+Tue Apr 21 12:41:29 CEST 2026 reprompt-frontend-1   0.05%     1.144GiB / 1.921GiB
+reprompt-worker-1     0.00%     76.23MiB / 1.921GiB
+reprompt-backend-1    7.62%     145MiB / 1.921GiB
+reprompt-redis-1      1.47%     6.77MiB / 1.921GiB
+Tue Apr 21 12:41:32 CEST 2026 reprompt-frontend-1   0.00%     1.144GiB / 1.921GiB
+reprompt-worker-1     0.00%     76.23MiB / 1.921GiB
+reprompt-backend-1    9.50%     145MiB / 1.921GiB
+reprompt-redis-1      1.66%     6.77MiB / 1.921GiB
+Tue Apr 21 12:41:35 CEST 2026 reprompt-frontend-1   0.00%     1.144GiB / 1.921GiB
+reprompt-worker-1     0.00%     76.22MiB / 1.921GiB
+reprompt-backend-1    6.31%     145MiB / 1.921GiB
+reprompt-redis-1      1.16%     6.77MiB / 1.921GiB
+Tue Apr 21 12:41:38 CEST 2026 reprompt-frontend-1   0.00%     1.144GiB / 1.921GiB
+reprompt-worker-1     0.00%     76.22MiB / 1.921GiB
+reprompt-backend-1    8.92%     145MiB / 1.921GiB
+reprompt-redis-1      0.88%     6.77MiB / 1.921GiB
+Tue Apr 21 12:41:41 CEST 2026 reprompt-frontend-1   0.00%     1.144GiB / 1.921GiB
+reprompt-worker-1     0.00%     76.22MiB / 1.921GiB
+reprompt-backend-1    8.51%     145MiB / 1.921GiB
+reprompt-redis-1      0.86%     6.77MiB / 1.921GiB
+Tue Apr 21 12:41:45 CEST 2026 reprompt-frontend-1   0.00%     1.145GiB / 1.921GiB
+reprompt-worker-1     0.00%     76.22MiB / 1.921GiB
+reprompt-backend-1    8.53%     145MiB / 1.921GiB
+reprompt-redis-1      1.06%     6.781MiB / 1.921GiB
+Tue Apr 21 12:41:48 CEST 2026 reprompt-frontend-1   64.92%    1.195GiB / 1.921GiB
+reprompt-worker-1     0.00%     76.22MiB / 1.921GiB
+reprompt-backend-1    12.17%    145MiB / 1.921GiB
+reprompt-redis-1      2.11%     6.781MiB / 1.921GiB
+Tue Apr 21 12:41:51 CEST 2026 reprompt-frontend-1   123.33%   1.211GiB / 1.921GiB
+reprompt-worker-1     0.00%     76.22MiB / 1.921GiB
+reprompt-backend-1    20.28%    153.9MiB / 1.921GiB
+reprompt-redis-1      3.37%     6.781MiB / 1.921GiB

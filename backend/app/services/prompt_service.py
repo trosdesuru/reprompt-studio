@@ -1,20 +1,52 @@
 import uuid
 import logging
+
+from rq import Queue
 from io import BytesIO
 from PIL import Image
 from typing import List, Optional, Any
 from fastapi import HTTPException
 from sqlmodel import Session, select
 
+from worker import process_image_ai
+
 from app.models.user import User
 from app.models.prompt import ImagePrompt
-from app.core.config import settings
-from app.services.storage import s3_client, move_to_permanent, delete_file
+
 from app.utils.storage import eliminar_de_r2
+
+from app.core.redis_config import conn
+from app.core.config import settings
+
+from app.services.storage import s3_client, move_to_permanent, delete_file
 from app.services.security import validate_magic_bytes
-from app.services.embedding_service import EmbeddingService
+
 
 logger = logging.getLogger("prompt_service")
+
+ai_queue = Queue("default", connection=conn)
+
+
+def guardar_prompt_extractor(prompt_data: dict, session: Session):
+    try:
+        new_prompt = ImagePrompt(**prompt_data)
+        session.add(new_prompt)
+        session.commit()
+        session.refresh(new_prompt)
+
+        ai_queue.enqueue(
+            process_image_ai, prompt_id=str(new_prompt.id), job_timeout="5m"
+        )
+
+        logger.info(
+            f"📡 [ENQUEUE] Tarea de IA enviada al Worker para el prompt {new_prompt.id}"
+        )
+        return new_prompt
+
+    except Exception as e:
+        session.rollback()
+        logger.error(f"❌ Error al guardar prompt: {e}")
+        raise e
 
 
 class PromptService:
@@ -70,7 +102,7 @@ class PromptService:
             )
 
         final_image_url = f"{base_url}{permanent_key}"
-        embedding = EmbeddingService.generate_vector(data.prompt or data.title)
+
         parsed_dir_id = (
             uuid.UUID(data.directory_id)
             if data.directory_id and data.directory_id != "null"
@@ -100,31 +132,16 @@ class PromptService:
         session.add(nuevo_prompt)
         session.commit()
         session.refresh(nuevo_prompt)
-        nuevo_prompt.embedding = None
+
+        ai_queue.enqueue(
+            process_image_ai, prompt_id=str(nuevo_prompt.id), job_timeout="5m"
+        )
+
+        logger.info(
+            f"📡 [ENQUEUE] Subida individual enviada al Worker: {nuevo_prompt.id}"
+        )
 
         return nuevo_prompt
-
-    @staticmethod
-    def generar_embedding_en_background(prompt_id: uuid.UUID, texto: str):
-        from app.core.db import (
-            engine,
-        )
-        from app.services.embedding_service import EmbeddingService
-
-        try:
-            vector = EmbeddingService.generate_vector(texto)
-
-            with Session(engine) as db_session:
-                prompt_db = db_session.get(ImagePrompt, prompt_id)
-                if prompt_db:
-                    prompt_db.embedding = vector
-                    db_session.add(prompt_db)
-                    db_session.commit()
-                    logger.info(
-                        f"✅ IA finalizada en segundo plano para el prompt {prompt_id}"
-                    )
-        except Exception as e:
-            logger.error(f"❌ Error generando IA en background para {prompt_id}: {e}")
 
     @staticmethod
     def get_studio_prompts(
