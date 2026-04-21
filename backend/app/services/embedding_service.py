@@ -1,30 +1,36 @@
 import logging
-from typing import List
+import threading  # 👈 IMPORTANTE: Importamos el gestor de candados
 from fastembed import TextEmbedding
 
-logger = logging.getLogger("embedding_service")
+logger = logging.getLogger(__name__)
 
 
 class EmbeddingService:
     _model = None
+    _lock = threading.Lock()  # 👈 Creamos un candado para los hilos
 
     @classmethod
     def get_model(cls):
         if cls._model is None:
-            logger.info("📡 Cargando modelo de embeddings local (FastEmbed)...")
-            cls._model = TextEmbedding(model_name="BAAI/bge-small-en-v1.5")
+            with cls._lock:
+                if cls._model is None:
+                    logger.info(
+                        "🧠 Inicializando modelo FastEmbed en memoria global (Solo 1 vez)..."
+                    )
+                    cls._model = TextEmbedding(model_name="BAAI/bge-small-en-v1.5")
         return cls._model
 
     @classmethod
-    def generate_vector(cls, text: str) -> List[float]:
-        """Convierte cualquier texto en un vector de 384 dimensiones"""
-        if not text:
-            return []
-
+    def generate_vector(cls, texto: str) -> list[float]:
         try:
+            if not texto:
+                return [0.0] * 384
+
             model = cls.get_model()
-            embeddings = list(model.embed([text]))
+
+            embeddings = list(model.embed([texto]))
             return embeddings[0].tolist()
+
         except Exception as e:
-            logger.error(f"❌ Error generando vector: {e}")
-            return []
+            logger.error(f"❌ Error generando vector para '{texto}': {e}")
+            return [0.0] * 384

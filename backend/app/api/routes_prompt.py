@@ -2,7 +2,7 @@ import uuid
 import html
 from typing import List, Optional, Dict, Any
 from pydantic import BaseModel, Field, field_validator
-from fastapi import APIRouter, Depends, UploadFile, File, Form, HTTPException
+from fastapi import APIRouter, Depends, UploadFile, File, Form, HTTPException, BackgroundTasks
 from sqlmodel import Session
 
 from app.core.db import get_session
@@ -81,14 +81,27 @@ def generate_upload_url(
 @router.post("/save")
 def save_studio_prompt(
     data: StudioSaveRequest,
+    background_tasks: BackgroundTasks,
     current_user: User = Depends(get_current_user),
     session: Session = Depends(get_session),
 ):
+    # 1. Guardado Ultra-Rápido (Sin IA)
     nuevo_prompt = PromptService.process_quarantined_upload(
         session=session,
         current_user=current_user,
         data=data,
     )
+
+    # 2. Mandamos a la IA a trabajar en las sombras
+    texto_para_ia = data.prompt or data.title
+    if texto_para_ia:
+        background_tasks.add_task(
+            PromptService.generar_embedding_en_background,
+            prompt_id=nuevo_prompt.id,
+            texto=texto_para_ia,
+        )
+
+    # 3. Respuesta instantánea al frontend (Evita el Timeout)
     return {"status": "success", "data": nuevo_prompt}
 
 

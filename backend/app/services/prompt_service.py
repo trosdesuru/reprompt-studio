@@ -32,7 +32,9 @@ class PromptService:
 
         try:
             response = s3_client.get_object(
-                Bucket=settings.R2_BUCKET_NAME, Key=temp_key
+                Bucket=settings.R2_BUCKET_NAME,
+                Key=temp_key,
+                Range="bytes=0-2048",
             )
             file_bytes = response["Body"].read()
         except Exception as e:
@@ -92,16 +94,37 @@ class PromptService:
             width=width,
             height=height,
             extra_data=data.extra_data,
-            embedding=embedding,
-            ai_processed=False,
+            embedding=None,
         )
 
         session.add(nuevo_prompt)
         session.commit()
         session.refresh(nuevo_prompt)
-        nuevo_prompt.embedding = []
+        nuevo_prompt.embedding = None
 
         return nuevo_prompt
+
+    @staticmethod
+    def generar_embedding_en_background(prompt_id: uuid.UUID, texto: str):
+        from app.core.db import (
+            engine,
+        )
+        from app.services.embedding_service import EmbeddingService
+
+        try:
+            vector = EmbeddingService.generate_vector(texto)
+
+            with Session(engine) as db_session:
+                prompt_db = db_session.get(ImagePrompt, prompt_id)
+                if prompt_db:
+                    prompt_db.embedding = vector
+                    db_session.add(prompt_db)
+                    db_session.commit()
+                    logger.info(
+                        f"✅ IA finalizada en segundo plano para el prompt {prompt_id}"
+                    )
+        except Exception as e:
+            logger.error(f"❌ Error generando IA en background para {prompt_id}: {e}")
 
     @staticmethod
     def get_studio_prompts(
