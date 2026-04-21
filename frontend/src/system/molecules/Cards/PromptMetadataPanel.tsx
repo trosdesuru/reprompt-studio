@@ -121,6 +121,24 @@ export function PromptMetadataPanel({ prompt, isOwner = true, onSave }: PromptMe
         </div>
       )}
 
+      {prompt.auto_tags && prompt.auto_tags.length > 0 && (
+        <div className="space-y-3 pt-2 pb-4">
+          <h3 className="font-mono text-xs font-black uppercase tracking-widest flex items-center gap-2 mb-2 text-muted-foreground">
+            # Tags
+          </h3>
+          <div className="flex flex-wrap gap-1.5">
+            {prompt.auto_tags.map((tag) => (
+              <span
+                key={tag}
+                className="px-2.5 py-1 bg-primary/10 text-primary text-[10px] font-bold uppercase tracking-wider rounded-md border border-primary/20 hover:bg-primary/20 transition-colors"
+              >
+                {tag}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="space-y-6">
         <div className="group relative bg-(--bg-secondary) neo-border p-4 transition-all hover:neo-shadow">
           <div className="flex justify-between items-center mb-3 border-b border-border/50 pb-2">

@@ -17,6 +17,8 @@ export interface SavedPrompt {
   seed?: string;
   image_url?: string;
   software?: string;
+  auto_tags?: string[];
+  trigger_words?: string[];
   directory_id?: number | null;
   created_at: string;
 }
@@ -39,7 +41,8 @@ export interface GalleryItem {
   thumb: string;
   gid?: string;
   token?: string;
-  tags?: string[];
+  auto_tags?: string[];
+  trigger_words?: string[];
   [key: string]: any;
 }
 

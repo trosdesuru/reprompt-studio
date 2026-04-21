@@ -10,6 +10,7 @@ storage/
 **/storage/
 analytics_*.json
 .docs/
+.storage/
 
 # Secretos
 .env

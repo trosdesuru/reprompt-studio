@@ -1,7 +1,6 @@
 import { MediaCardData, GalleryItem } from "@/src/types/models";
 
 export const mapSearchToMediaCard = (item: GalleryItem): MediaCardData => {
-  // 🚨 SENSOR DE TRANSFORMACIÓN
   if (!item && process.env.NODE_ENV === "development")
     console.error("🚨 TELEMETRÍA [ADAPTER]: Item recibido es NULO o UNDEFINED");
   if (item && !item.thumb && process.env.NODE_ENV === "development")
@@ -12,8 +11,7 @@ export const mapSearchToMediaCard = (item: GalleryItem): MediaCardData => {
     user_id: item.user_id,
     imageUrl: item?.thumb || "",
     title: item?.title || "Sin título",
-    tags: item?.tags || [],
-    source: "E-Hentai",
+    tags: item?.auto_tags || item.auto_tags || [],
     aspectRatio: "portrait",
   };
 };
@@ -24,6 +22,7 @@ export const mapViewerToMediaCard = (page: any, index: number): MediaCardData =>
     id: `p-${index}`,
     imageUrl: page?.image_url || "",
     title: page?.name || "",
+    tags: page?.auto_tags || page?.tags || [],
     aspectRatio: "auto",
   };
 };

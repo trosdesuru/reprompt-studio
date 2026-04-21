@@ -29,7 +29,9 @@ class WD14Tagger:
         self.model_file = "model.onnx"
         self.csv_file = "selected_tags.csv"
 
-        self.model_dir = "/storage/models/wd14"
+        base_dir = os.environ.get("STORAGE_PATH", os.path.join(os.getcwd(), ".storage"))
+        self.model_dir = os.path.join(base_dir, "models", "wd14")
+        
         os.makedirs(self.model_dir, exist_ok=True)
 
         self.model_path = os.path.join(self.model_dir, self.model_file)
