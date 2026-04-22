@@ -4,60 +4,48 @@ import { useState, useRef } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useAuthStore } from "@/src/store/authStore";
 import { useClickOutside } from "@/src/utils/hooks/useClickOutside";
-
-import { MenuItem } from "../../atoms/Menu/MenuItem";
-import { LogoutMenuItem } from "@/src/features/auth/components/LogoutMenuItem";
-
-import { IconMenu2, IconX, IconSettings, IconDashboard } from "@tabler/icons-react";
+import { MenuItem } from "@/src/system/atoms/Dropdown/MenuItem";
+import { IconMenu2, IconX, IconSettings, IconDashboard, IconLogout } from "@tabler/icons-react";
 
 export function UserDropdown() {
   const router = useRouter();
   const pathname = usePathname();
-  const user = useAuthStore((state) => state.user);
-
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const { user, logout } = useAuthStore();
+  const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  useClickOutside(menuRef, () => setIsMenuOpen(false));
+  useClickOutside(menuRef, () => setIsOpen(false));
 
   if (!user) return null;
 
   const lang = pathname?.split("/")[1] || "es";
-
   const navigate = (path: string) => {
     router.push(path);
-    setIsMenuOpen(false);
+    setIsOpen(false);
   };
 
   return (
     <div className="relative" ref={menuRef}>
       <button
-        onClick={() => setIsMenuOpen(!isMenuOpen)}
-        className={`p-2 neo-border transition-all flex items-center gap-2 ${
-          isMenuOpen
-            ? "bg-(--accent-color) text-white neo-shadow-accent -translate-y-1"
-            : "bg-background text-foreground hover:neo-shadow hover:-translate-y-0.5"
-        }`}
+        onClick={() => setIsOpen(!isOpen)}
+        className={`p-2 neo-border transition-all ${isOpen ? "bg-(--accent-color) text-white" : "bg-background"}`}
       >
-        {isMenuOpen ? <IconX size={24} /> : <IconMenu2 size={24} />}
+        {isOpen ? <IconX size={24} /> : <IconMenu2 size={24} />}
       </button>
 
-      {isMenuOpen && (
-        <div className="absolute right-0 mt-3 w-64 bg-(--bg-secondary) neo-border neo-shadow flex flex-col z-50 animate-fade-in origin-top-right">
+      {isOpen && (
+        <div className="absolute right-0 mt-3 w-64 bg-(--bg-secondary) neo-border neo-shadow z-50 animate-fade-in">
           <div className="p-4 border-b-2 border-(--border-color) bg-background">
-            <p className="text-sm font-bold text-foreground truncate">@{user.username}</p>
-            <p className="text-xs font-mono text-(--accent-color) uppercase tracking-widest mt-1">
-              {user.role}
-            </p>
+            <p className="text-sm font-bold">@{user.username}</p>
+            <p className="text-[10px] font-mono text-(--accent-color) uppercase">{user.role}</p>
           </div>
 
-          <div className="flex flex-col p-2 gap-1">
+          <div className="p-2 flex flex-col gap-1">
             <MenuItem
               icon={<IconSettings size={18} />}
               label="Configuración"
               onClick={() => navigate(`/${lang}/${user.username}/settings/profile`)}
             />
-
             {user.role === "admin" && (
               <MenuItem
                 icon={<IconDashboard size={18} />}
@@ -68,7 +56,12 @@ export function UserDropdown() {
           </div>
 
           <div className="p-2 bg-background border-t-2 border-(--border-color)">
-            <LogoutMenuItem />
+            <MenuItem
+              icon={<IconLogout size={18} />}
+              label="Cerrar Sesión"
+              onClick={logout}
+              variant="danger"
+            />
           </div>
         </div>
       )}
