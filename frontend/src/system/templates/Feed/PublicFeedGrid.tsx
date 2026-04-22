@@ -46,7 +46,7 @@ export function PublicFeedGrid({
 
       <div className="mx-auto columns-1 sm:columns-2 md:columns-3 lg:columns-4 xl:columns-5 gap-6">
         {feed.map((item, index) => (
-          <div key={item.id} className="break-inside-avoid mb-6">
+          <div key={item.id} className="break-inside-avoid mb-6 inline-block w-full">
             <FadeIn delay={0.1} y={20} className="h-full">
               <FeedItemCard item={item} lang={lang} index={index} />
             </FadeIn>

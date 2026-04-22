@@ -7,6 +7,7 @@ import { api } from "@/src/services/api";
 import { handleError } from "@/src/utils/errors/ErrorHandler";
 import { useNotificationStore } from "@/src/store/notificationStore";
 import { fetchSeguro } from "@/src/services/api/client";
+import { optimizeAndLogImage } from "@/src/utils/lib/image-optimizer";
 
 interface Props {
   batch: BatchItem[];
@@ -38,50 +39,50 @@ export function BatchInspector({
       let finalImageUrl = null;
 
       if (item.previewUrl && item.previewUrl.startsWith("blob:")) {
-        const response = await fetch(item.previewUrl);
-        const blob = await response.blob();
+        // 🟢 2. OPTIMIZACIÓN ANTES DE LA FIRMA
+        // Usamos item.file (el archivo original) y lo pasamos por la trituradora WebP
+        const archivoOptimizado = await optimizeAndLogImage(item.file);
 
         const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
+        // 🟢 3. Pedimos el ticket usando los datos del archivo optimizado (.webp)
         const ticketRes = await fetchSeguro(`${API_URL}/prompts/generate-upload-url`, {
           method: "POST",
           credentials: "include",
           body: JSON.stringify({
-            file_name: item.file.name,
-            content_type: blob.type,
+            file_name: archivoOptimizado.name,
+            content_type: archivoOptimizado.type, // image/webp
           }),
         });
 
         if (!ticketRes.ok) throw new Error("No se pudo obtener el ticket de subida de R2");
 
-        // ✅ MINA 3 DESACTIVADA: Parseamos el JSON plano
         const ticketData = await ticketRes.json();
-
         const uploadUrl = ticketData.upload_url;
-        const contentType = blob.type;
-        const fileSize = blob.size;
+        const contentType = archivoOptimizado.type;
+        const fileSize = archivoOptimizado.size;
 
         // --- 🕵️‍♂️ LOGS DE DIAGNÓSTICO QUIRÚRGICO ANTES DEL FETCH ---
         const fetchOptions = {
           method: "PUT",
-          headers: { "Content-Type": contentType },
-          body: blob,
+          headers: {
+            "Content-Type": contentType,
+            "Cache-Control": "public, max-age=31536000, immutable", // 🛡️ Contrato de caché estricto
+          },
+          body: archivoOptimizado, // 🟢 4. Subimos el WebP, no el Blob crudo
         };
 
-        console.log("🔴 === PRE-FLIGHT CHECK (R2 UPLOAD) ===");
-        console.log("👉 Archivo:", item.file.name);
+        console.log("🔴 === PRE-FLIGHT CHECK (R2 BATCH UPLOAD) ===");
+        console.log("👉 Archivo:", archivoOptimizado.name);
         console.log("👉 Origen del Navegador:", window.location.origin);
-        console.log("👉 URL Destino (Ticket):", uploadUrl);
-        console.log("👉 Objeto Blob - Type:", contentType, "| Size:", fileSize, "bytes");
-        console.log("👉 Headers exactos a enviar:", fetchOptions.headers);
-        console.log("🔴 ===================================");
+        console.log("👉 Objeto - Type:", contentType, "| Size:", fileSize, "bytes");
+        console.log("🔴 ==========================================");
 
         // Subida directa a Cloudflare
         const uploadRes = await fetch(uploadUrl, fetchOptions);
 
-        // --- 🕵️‍♂️ LOGS DE RESPUESTA DE CLOUDFLARE ---
         console.log("🟢 === RESPUESTA DE R2 ===");
         console.log("Status:", uploadRes.status, uploadRes.statusText);
-        console.log("Headers recibidos:", Object.fromEntries(uploadRes.headers.entries()));
 
         if (!uploadRes.ok) {
           const errorText = await uploadRes.text();
@@ -90,7 +91,6 @@ export function BatchInspector({
         }
         console.log("🟢 =======================");
 
-        // ✅ MINA 4 DESACTIVADA: Ahora el backend sí nos entrega file_url
         finalImageUrl = ticketData.file_url;
       }
 

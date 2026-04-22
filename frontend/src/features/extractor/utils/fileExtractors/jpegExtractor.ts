@@ -28,9 +28,14 @@ export async function extractJpegMetadata(file: File): Promise<string | null> {
       return metadata.ImageDescription.trim();
     }
 
-    // 3. Prioridad: description (Caso específico de algunos metadatos XMP)
     if (metadata.description) {
-      return metadata.description.trim();
+      if (typeof metadata.description === "string") {
+        return metadata.description.trim();
+      }
+      if (Array.isArray(metadata.description)) {
+        return metadata.description.join(" ").trim();
+      }
+      return String(metadata.description).trim();
     }
 
     return null;

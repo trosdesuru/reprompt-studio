@@ -55,7 +55,12 @@ export interface FeedItem {
   title: string;
   username: string;
   image_url?: string;
+  width?: number;
+  height?: number;
   items_count: number;
+  resolution?: string;
+  created_at: string;
+  model?: string;
 }
 
 export interface Directory {

@@ -6,6 +6,12 @@ const API_URL = ENV.API_URL;
 export const promptApi = {
   getMyPrompt: () => fetchSeguro(`${API_URL}/prompts/`),
 
+  getPresignedUrl: (params: { filename: string; contentType: string }) =>
+    fetchSeguro(`${API_URL}/prompts/upload-url`, {
+      method: "POST",
+      body: JSON.stringify(params),
+    }),
+
   savePrompt: (data: any) =>
     fetchSeguro(`${API_URL}/prompts/save`, {
       method: "POST",
