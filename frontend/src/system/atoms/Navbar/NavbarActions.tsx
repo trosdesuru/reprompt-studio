@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useState, useEffect } from "react";
 import { useAuthStore } from "@/src/store/authStore";
 import { useTheme } from "@/src/utils/hooks/useTheme";
-import { UserDropdown } from "../../molecules/Navbar/UserDropdown";
+import { UserDropdown } from "../../organisms/Header/UserDropdown";
 import { NotificationDropdown } from "../../molecules/Navbar/NotificationDropdown";
 import { IconAlbum, IconSun, IconMoon, IconScanTraces } from "@tabler/icons-react";
 
