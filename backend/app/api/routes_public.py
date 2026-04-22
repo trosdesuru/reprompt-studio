@@ -36,6 +36,15 @@ def get_public_profile(username: str, session: Session = Depends(get_session)):
     )
     prompts = session.exec(statement).all()
 
+    def safe_extract(obj):
+        if not obj:
+            return None
+        data = {k: v for k, v in obj.__dict__.items() if not k.startswith("_")}
+        data.pop("embedding", None)
+        return data
+
+    clean_prompts = [safe_extract(p) for p in prompts]
+
     return {
         "status": "success",
         "user": {
@@ -43,7 +52,7 @@ def get_public_profile(username: str, session: Session = Depends(get_session)):
             "role": user.role.value if hasattr(user.role, "value") else user.role,
         },
         "directories": directories,
-        "recent_prompts": prompts,
+        "recent_prompts": clean_prompts,
     }
 
 
@@ -80,11 +89,20 @@ def get_public_directory(
         .order_by(ImagePrompt.created_at.desc())
     ).all()
 
+    def safe_extract(obj):
+        if not obj:
+            return None
+        data = {k: v for k, v in obj.__dict__.items() if not k.startswith("_")}
+        data.pop("embedding", None)
+        return data
+
+    clean_prompts = [safe_extract(p) for p in prompts]
+
     return {
         "status": "success",
         "user": {"username": user.username},
         "directory": directory,
-        "prompts": prompts,
+        "prompts": clean_prompts,
     }
 
 

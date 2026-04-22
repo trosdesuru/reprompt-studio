@@ -62,12 +62,12 @@ export function PageHeader({
         <div className="w-full mx-auto space-y-6">
           <div className="flex justify-between items-center gap-4">
             <div>
-              <h1 className="text-2xl text-foreground font-black tracking-tighter flex items-center gap-2">
-                <span className="text-primary">{icon}</span>
+              <h1 className="text-2xl text-foreground/90 font-black tracking-tighter flex items-center gap-2">
+                <span className="text-foreground/90">{icon}</span>
                 {title}{" "}
                 {subtitle && <span className="font-mono font-medium opacity-70">{subtitle}</span>}
               </h1>
-              <p className="text-muted-foreground font-mono text-xs tracking-widest">
+              <p className="text-foreground/40 font-mono text-xs tracking-widest">
                 {description}
               </p>
             </div>

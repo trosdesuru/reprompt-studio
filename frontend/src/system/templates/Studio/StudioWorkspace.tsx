@@ -24,7 +24,7 @@ export function StudioWorkspace() {
     [activeDirectoryId, directories],
   );
 
-  const directoryName = activeDirectoryId && activeDir ? activeDir.name : "Mi Studio (Raíz)";
+  const directoryName = activeDirectoryId && activeDir ? activeDir.name : "reprompt root";
   const authorUsername = user?.username || "unknown";
 
   if (isLoading) {

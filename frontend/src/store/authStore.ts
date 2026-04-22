@@ -11,6 +11,7 @@ interface AuthState {
   isAuthenticated: boolean;
   isLoadingAuth: boolean;
   hasCheckedInitialAuth: boolean;
+  updateLocalUsername: (newUsername: string) => void;
 
   login: (userData: User) => void;
   logout: () => Promise<void>;
@@ -42,6 +43,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   isAuthenticated: false,
   isLoadingAuth: true,
   hasCheckedInitialAuth: false,
+  updateLocalUsername: (newUsername) => {
+    const currentUser = get().user;
+    if (currentUser) {
+      set({ user: { ...currentUser, username: newUsername } });
+    }
+  },
 
   login: (userData) => {
     console.log(`[AUTH_STORE] Sesión iniciada localmente: @${userData.username}`);

@@ -3,7 +3,7 @@ import re
 import logging
 import requests
 from app.core.config import settings
-from sqlalchemy import or_
+from sqlalchemy import or_, func
 from google.oauth2 import id_token
 from google.auth.transport import requests as google_requests
 
@@ -12,6 +12,7 @@ GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
 import jwt
 from fastapi import HTTPException
 from sqlmodel import Session, select
+from app.utils.username import normalize_username
 from app.models.user import User, InviteCode
 from app.core.security import (
     get_password_hash,
@@ -27,9 +28,6 @@ class AuthService:
 
     @staticmethod
     def register_user(user_data, session: Session):
-        """Lógica de negocio pura para registrar un usuario."""
-        from sqlalchemy import func
-
         logger = logging.getLogger("auth_service")
         logger.info(f"📝 [AUTH_SERVICE] Intento de registro. Email: {user_data.email}")
 
@@ -105,6 +103,41 @@ class AuthService:
             f"✨ ¡Usuario registrado! Email: {new_user.email} -> Username asignado: @{new_user.username}"
         )
         return new_user
+
+    @staticmethod
+    def update_username(
+        current_user: User, new_username_raw: str, session: Session, redis_client
+    ):
+        new_username = normalize_username(new_username_raw)
+
+        if not new_username or len(new_username) < 3:
+            raise HTTPException(status_code=400, detail="Nombre inválido")
+        if new_username == current_user.username:
+            return new_username, None, None
+
+        exists = session.exec(select(User).where(User.username == new_username)).first()
+        if exists:
+            raise HTTPException(status_code=400, detail="El nombre ya está en uso")
+
+        old_username = current_user.username
+        keys = redis_client.keys(f"session:{old_username}:*")
+        if keys:
+            redis_client.delete(*keys)
+
+        current_user.username = new_username
+        session.add(current_user)
+        session.commit()
+        session.refresh(current_user)
+
+        new_access_token = create_access_token(
+            data={"sub": new_username, "role": current_user.role}
+        )
+        new_refresh_data = create_refresh_token(data={"sub": new_username})
+
+        redis_key = f"session:{new_username}:{new_refresh_data['family_id']}"
+        redis_client.setex(redis_key, 60 * 60 * 24 * 7, new_refresh_data["jti"])
+
+        return new_username, new_access_token, new_refresh_data["token"]
 
     @staticmethod
     def change_password(data, current_user: User, session: Session):
@@ -301,7 +334,6 @@ class AuthService:
         logger = logging.getLogger("auth_service")
         logger.info("🔍 [AUTH_GOOGLE] Iniciando canje de Code por Token...")
 
-        # 1. Canjear el Code por el Token en los servidores de Google
         token_url = "https://oauth2.googleapis.com/token"
         data = {
             "code": code,
@@ -321,7 +353,6 @@ class AuthService:
         tokens = response.json()
         id_token_jwt = tokens.get("id_token")
 
-        # 2. Verificar la firma del JWT que nos dio Google
         try:
             idinfo = id_token.verify_oauth2_token(
                 id_token_jwt, google_requests.Request(), settings.GOOGLE_CLIENT_ID
@@ -336,11 +367,9 @@ class AuthService:
 
         logger.info(f"✅ [AUTH_GOOGLE] Identidad confirmada: {email}")
 
-        # 3. Flujo de decisión: ¿Existe o es nuevo?
         user = session.exec(select(User).where(User.email == email)).first()
 
         if user:
-            # ESCENARIO A: Ya existe
             access_token = create_access_token(
                 data={"sub": user.username, "role": user.role}
             )
@@ -356,7 +385,6 @@ class AuthService:
                 "username": user.username,
             }
         else:
-            # ESCENARIO B: Es nuevo
             return {
                 "status": "needs_invite",
                 "email": email,
@@ -366,74 +394,61 @@ class AuthService:
 
     @staticmethod
     def register_google_user(join_data, session: Session, redis_client):
-        """El usuario nuevo nos ha dado su código de invitación. Lo registramos."""
-        from sqlalchemy import (
-            func,
-        )  # Asegúrate de tener esta importación arriba si no la tienes
+        logger = logging.getLogger("auth_service")
 
-        # 1. Volvemos a validar el token de Google por seguridad extrema
         idinfo = AuthService.verify_google_token(join_data.token)
         email = idinfo.get("email")
         provider_id = idinfo.get("sub")
 
-        # 2. Verificamos que el Alias que eligió no esté cogido
-        user_exists = session.exec(
-            select(User).where(User.username == join_data.username)
-        ).first()
-        if user_exists:
-            raise HTTPException(
-                status_code=400,
-                detail="El nombre de usuario ya está en uso. Elige otro.",
-            )
+        base_name = normalize_username(join_data.username)
+        if not base_name:
+            base_name = "voyager"
 
-        # 👑 3. LÓGICA DEL CREADOR (Bypass del Primer Usuario)
+        final_username = base_name
+        counter = 1
+
+        while session.exec(select(User).where(User.username == final_username)).first():
+            final_username = f"{base_name}{counter}"
+            counter += 1
+
+        logger.info(
+            f"👤 [JOIN] Original: {join_data.username} -> Final: {final_username}"
+        )
+
         user_count = session.exec(select(func.count(User.id))).one()
         is_first_user = user_count == 0
 
         invite = None
-
         if is_first_user:
             assigned_role = "admin"
-            logging.getLogger("auth_service").info(
-                "👑 Primer usuario detectado (Google). Asignando ADMIN."
-            )
         else:
-            # 3b. Validar código de invitación (El Muro Físico para los mortales)
-            statement = (
-                select(InviteCode)
-                .where(InviteCode.code == join_data.invite_code)
-                .where(InviteCode.is_used == False)
+            statement = select(InviteCode).where(
+                InviteCode.code == join_data.invite_code, InviteCode.is_used == False
             )
             invite = session.exec(statement).first()
-
             if not invite:
-                raise HTTPException(
-                    status_code=400,
-                    detail="Código de invitación inválido o ya fue utilizado",
-                )
+                raise HTTPException(status_code=400, detail="Código inválido o usado")
 
             assigned_role = "admin" if invite.code.startswith("TROYA-") else "voyager"
 
-        # 4. Crear el usuario en PostgreSQL
         new_user = User(
-            username=join_data.username,
+            username=final_username,
             email=email,
             auth_provider="google",
             provider_id=provider_id,
             role=assigned_role,
         )
+
         session.add(new_user)
         session.commit()
         session.refresh(new_user)
 
-        # 5. Quemar la invitación SOLO si el usuario usó una
         if invite:
             invite.is_used = True
             invite.used_by_id = new_user.id
             session.add(invite)
             session.commit()
 
-        # 6. Crear la sesión en Redis
         access_token = create_access_token(
             data={"sub": new_user.username, "role": new_user.role}
         )
@@ -450,7 +465,6 @@ class AuthService:
     ):
         """Intercambia el código por el token de Discord y extrae el perfil."""
 
-        # 1. Intercambiar código por Access Token en Discord
         data = {
             "client_id": settings.DISCORD_CLIENT_ID,
             "client_secret": settings.DISCORD_CLIENT_SECRET,
@@ -473,7 +487,6 @@ class AuthService:
                 detail="El código de Discord ha expirado o es inválido.",
             )
 
-        # 2. Obtener el perfil del usuario usando el Token
         try:
             user_response = requests.get(
                 "https://discord.com/api/users/me",
@@ -496,11 +509,9 @@ class AuthService:
                 detail="Necesitas tener un email verificado en Discord.",
             )
 
-        # 3. Flujo de decisión: ¿Existe o es nuevo?
         user = session.exec(select(User).where(User.email == email)).first()
 
         if user:
-            # ESCENARIO A: Ya existe. Iniciamos sesión.
             access_token = create_access_token(
                 data={"sub": user.username, "role": user.role}
             )
@@ -516,11 +527,10 @@ class AuthService:
                 "username": user.username,
             }
         else:
-            # ESCENARIO B: Es nuevo. Necesita invitación.
             suggested_username = "".join(e for e in name.lower() if e.isalnum())
             return {
                 "status": "needs_invite",
                 "email": email,
                 "suggested_username": suggested_username,
-                "provider_id": provider_id,  # Discord ID para enlazar la cuenta
+                "provider_id": provider_id,
             }

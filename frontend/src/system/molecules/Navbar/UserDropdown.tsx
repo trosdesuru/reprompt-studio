@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation"; // 🟢 Importamos usePathname
 import { useAuthStore } from "@/src/store/authStore";
 import { useTheme } from "@/src/utils/hooks/useTheme";
 import { useClickOutside } from "@/src/utils/hooks/useClickOutside";
@@ -16,10 +16,12 @@ import {
   IconDashboard,
   IconKey,
   IconUserPlus,
+  IconUserEdit,
 } from "@tabler/icons-react";
 
 export function UserDropdown() {
   const router = useRouter();
+  const pathname = usePathname(); // 🟢 Obtenemos el path actual
   const { user, logout } = useAuthStore();
   const { isDark, toggleTheme } = useTheme();
 
@@ -32,6 +34,9 @@ export function UserDropdown() {
 
   if (!user) return null;
 
+  // 🟢 Extraemos el idioma del pathname (ej: "/es/studio" -> "es")
+  const lang = pathname?.split("/")[1] || "es";
+
   const menuItems = [];
 
   if (user.role === "admin") {
@@ -40,7 +45,7 @@ export function UserDropdown() {
         label: "Panel de Control",
         icon: <IconDashboard size={18} />,
         action: () => {
-          router.push("/admin");
+          router.push(`/${lang}/admin`);
           setIsMenuOpen(false);
         },
       },
@@ -48,7 +53,7 @@ export function UserDropdown() {
         label: "Gestionar Accesos",
         icon: <IconUserPlus size={18} />,
         action: () => {
-          router.push("/admin");
+          router.push(`/${lang}/admin`);
           setIsMenuOpen(false);
         },
       },
@@ -60,6 +65,16 @@ export function UserDropdown() {
     icon: <IconKey size={18} />,
     action: () => {
       setShowPwdModal(true);
+      setIsMenuOpen(false);
+    },
+  });
+
+  menuItems.unshift({
+    label: "Mi Perfil / Ajustes",
+    icon: <IconUserEdit size={18} />,
+    action: () => {
+      // 🟢 Ahora 'lang' está definido y la ruta es dinámica
+      router.push(`/${lang}/${user.username}/settings/profile`);
       setIsMenuOpen(false);
     },
   });

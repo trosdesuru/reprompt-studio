@@ -1,19 +1,16 @@
-const nextJest = require('next/jest')
+const nextJest = require("next/jest");
 
 const createJestConfig = nextJest({
-  // Ruta a tu app Next.js
-  dir: './',
-})
+  dir: "./",
+});
 
 const customJestConfig = {
-  // Archivo que se ejecuta antes de las pruebas para cargar los matchers (toBeInTheDocument, etc.)
-  setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
-  // 🛡️ FIX CRÍTICO: Simular un navegador en lugar de Node.js
-  testEnvironment: 'jest-environment-jsdom',
-  // Mapeo de alias para que Jest entienda las rutas con "@/"
+  setupFilesAfterEnv: ["<rootDir>/jest.setup.js"],
+  testEnvironment: "jest-environment-jsdom",
   moduleNameMapper: {
-    '^@/(.*)$': '<rootDir>/$1',
+    "^@/(.*)$": "<rootDir>/$1",
   },
-}
+  testPathIgnorePatterns: ["<rootDir>/.next/", "<rootDir>/node_modules/", "<rootDir>/tests/"],
+};
 
-module.exports = createJestConfig(customJestConfig)
+module.exports = createJestConfig(customJestConfig);

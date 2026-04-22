@@ -1,69 +1,55 @@
-import { defineConfig, devices } from '@playwright/test';
+import { defineConfig, devices } from "@playwright/test";
 
 /**
- * Read environment variables from file.
- * https://github.com/motdotla/dotenv
- */
-// import dotenv from 'dotenv';
-// import path from 'path';
-// dotenv.config({ path: path.resolve(__dirname, '.env') });
-
-/**
- * See https://playwright.dev/docs/test-configuration.
+ * Ver configuración completa en: https://playwright.dev/docs/test-configuration.
  */
 export default defineConfig({
-  testDir: './tests',
+  testDir: "./tests",
+  /* Ejecución en paralelo para mayor velocidad */
   fullyParallel: true,
+  /* Fallar en CI si te dejas un test.only */
   forbidOnly: !!process.env.CI,
-  retries: process.env.CI ? 2 : 0,
+  /* Reintentos para mitigar "flakiness" en entornos con pocos recursos */
+  retries: process.env.CI ? 2 : 1,
+  /* Limitar workers en CI para evitar cuellos de botella */
   workers: process.env.CI ? 1 : undefined,
-  reporter: 'html',
+  reporter: "html",
+
+  /* Configuración global de los tests */
   use: {
-    baseURL: 'http://localhost:3000',
-    trace: 'on-first-retry',
+    /* 🛡️ FIX CRÍTICO: Forzamos 127.0.0.1 para evitar el error ::1 (IPv6) */
+    baseURL: "http://127.0.0.1:3000",
+
+    /* Recolectar trazas para debuggear fallos en el reporte HTML */
+    trace: "on-first-retry",
+    /* Capturar pantallazo solo cuando un test falla */
+    screenshot: "only-on-failure",
+    /* Aumentar el tiempo de espera para encontrar elementos (bueno para el Studio) */
+    actionTimeout: 10000,
+  },
+
+  /* Configuración de timeouts globales */
+  timeout: 60000,
+  expect: {
+    timeout: 10000,
   },
 
   projects: [
     {
-      name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
+      name: "chromium",
+      use: { ...devices["Desktop Chrome"] },
     },
-
-    // {
-    //   name: 'firefox',
-    //   use: { ...devices['Desktop Firefox'] },
-    // },
-
-    // {
-    //   name: 'webkit',
-    //   use: { ...devices['Desktop Safari'] },
-    // },
-
-    /* Test against mobile viewports. */
-    // {
-    //   name: 'Mobile Chrome',
-    //   use: { ...devices['Pixel 5'] },
-    // },
-    // {
-    //   name: 'Mobile Safari',
-    //   use: { ...devices['iPhone 12'] },
-    // },
-
-    /* Test against branded browsers. */
-    // {
-    //   name: 'Microsoft Edge',
-    //   use: { ...devices['Desktop Edge'], channel: 'msedge' },
-    // },
-    // {
-    //   name: 'Google Chrome',
-    //   use: { ...devices['Desktop Chrome'], channel: 'chrome' },
-    // },
   ],
 
-  /* Run your local dev server before starting the tests */
+  /**
+   * 🏗️ OPCIONAL: Descomenta esto si quieres que Playwright arranque
+   * automáticamente el servidor de Next.js antes de los tests.
+   */
   // webServer: {
-  //   command: 'npm run start',
-  //   url: 'http://localhost:3000',
+  //   command: 'npm run dev',
+  //   url: 'http://127.0.0.1:3000',
   //   reuseExistingServer: !process.env.CI,
+  //   stdout: 'ignore',
+  //   stderr: 'pipe',
   // },
 });

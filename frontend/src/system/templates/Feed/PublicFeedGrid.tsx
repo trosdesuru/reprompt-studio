@@ -1,4 +1,5 @@
-// frontend/src/system/pages/Feed/PublicFeedGrid.tsx
+"use client";
+
 import { useEffect, useRef } from "react";
 import { FeedItemCard } from "@/src/system/molecules/Cards/FeedItemCard";
 import { FeedState } from "@/src/system/molecules/Feedback/FeedState";
@@ -43,18 +44,20 @@ export function PublicFeedGrid({
         Explora la Comunidad
       </h2>
 
-      <div className="mx-auto grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+      <div className="mx-auto columns-1 sm:columns-2 md:columns-3 lg:columns-4 xl:columns-5 gap-6">
         {feed.map((item, index) => (
-          <FadeIn key={item.id} delay={0.1} y={20}>
-            <FeedItemCard item={item} lang={lang} index={index} />
-          </FadeIn>
+          <div key={item.id} className="break-inside-avoid mb-6">
+            <FadeIn delay={0.1} y={20} className="h-full">
+              <FeedItemCard item={item} lang={lang} index={index} />
+            </FadeIn>
+          </div>
         ))}
       </div>
 
       <div ref={sentinelRef} className="h-20 flex items-center justify-center mt-10">
         {isLoading && <FeedState type="loading" />}
         {!hasMore && feed.length > 0 && (
-          <p className="text-muted-foreground font-mono text-xs uppercase">
+          <p className="text-muted-foreground font-mono text-xs uppercase text-center">
             — Fin de la transmisión —
           </p>
         )}

@@ -8,9 +8,11 @@ from app.schemas.user import GoogleAuthRequest
 from app.schemas.user import DiscordAuthRequest
 from fastapi import APIRouter, Depends, Response, Cookie, HTTPException, status
 from fastapi.responses import JSONResponse
+from sqlalchemy import func
 from sqlmodel import Session, select
 
 from app.services.auth_service import AuthService
+from app.schemas.user import UsernameUpdate
 from app.services.audit_service import AuditService
 from app.core.db import get_session
 from app.api.deps import get_current_user, get_current_admin, RateLimiter
@@ -260,6 +262,35 @@ def get_current_user_profile(current_user: User = Depends(get_current_user)):
             "role": current_user.role,
             "is_active": current_user.is_active,
         },
+    }
+
+
+@router.patch("/me/username")
+def change_my_username(
+    data: UsernameUpdate,
+    response: Response,
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    new_name, new_access, new_refresh = AuthService.update_username(
+        current_user, data.new_username, session, redis_client
+    )
+
+    if new_access and new_refresh:
+        response.set_cookie(
+            key="access_token", value=new_access, max_age=60 * 15, **COOKIE_PARAMS
+        )
+        response.set_cookie(
+            key="refresh_token",
+            value=new_refresh,
+            max_age=60 * 60 * 24 * 7,
+            **COOKIE_PARAMS,
+        )
+
+    return {
+        "status": "success",
+        "new_username": new_name,
+        "message": "Identidad actualizada correctamente",
     }
 
 

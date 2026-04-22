@@ -12,6 +12,10 @@ class UserLogin(BaseModel):
     password: str
 
 
+class UsernameUpdate(BaseModel):
+    new_username: str
+
+
 class Token(BaseModel):
     access_token: str
     token_type: str
