@@ -1,22 +1,19 @@
 "use client";
 
+import { SettingsSectionHeader } from "@/src/features/settings/components/SettingsSectionHeader";
 import { useTheme } from "@/src/utils/hooks/useTheme";
-import { IconPalette, IconSun, IconMoon } from "@tabler/icons-react";
+import { IconSun, IconMoon, IconDeviceDesktopFilled } from "@tabler/icons-react";
 
 export default function AppearanceSettingsPage() {
   const { isDark, toggleTheme } = useTheme();
 
   return (
     <div className="max-w-3xl animate-fade-in">
-      <div className="mb-8">
-        <h1 className="text-2xl font-black font-mono uppercase flex items-center gap-3">
-          <IconPalette className="text-(--accent-color)" size={28} />
-          Apariencia
-        </h1>
-        <p className="text-sm text-muted-foreground mt-2">
-          Personaliza cómo se ve Reprompt en este dispositivo.
-        </p>
-      </div>
+      <SettingsSectionHeader
+        title="Opciones de Tema"
+        description="Personaliza cómo se ve Reprompt en este dispositivo."
+        icon={<IconDeviceDesktopFilled className="text-accent-color" size={24} />}
+      />
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* TEMA CLARO */}

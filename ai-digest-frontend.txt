@@ -42,9 +42,21 @@ Directory structure:
     │           │   ├── page.tsx
     │           │   ├── [collection_slug]/
     │           │   │   └── page.tsx
-    │           │   └── p/
-    │           │       └── [prompt_id]/
-    │           │           ├── loading.tsx
+    │           │   ├── p/
+    │           │   │   └── [prompt_id]/
+    │           │   │       ├── loading.tsx
+    │           │   │       └── page.tsx
+    │           │   ├── profile/
+    │           │   │   └── page.tsx
+    │           │   └── settings/
+    │           │       ├── layout.tsx
+    │           │       ├── appearance/
+    │           │       │   └── page.tsx
+    │           │       ├── components/
+    │           │       │   └── SettingsSidebar.tsx
+    │           │       ├── profile/
+    │           │       │   └── page.tsx
+    │           │       └── security/
     │           │           └── page.tsx
     │           ├── admin/
     │           │   └── page.tsx
@@ -78,12 +90,15 @@ Directory structure:
     │   │   │       └── useAdminGuard.ts
     │   │   ├── auth/
     │   │   │   ├── AuthProvider.tsx
+    │   │   │   ├── components/
+    │   │   │   │   └── LogoutMenuItem.tsx
     │   │   │   └── hooks/
     │   │   │       ├── useAuthForm.tsx
     │   │   │       ├── useCredentialsAuth.ts
     │   │   │       ├── useOAuth.ts
     │   │   │       ├── useRedirectIfAuthenticated.ts
     │   │   │       ├── useRegister.ts
+    │   │   │       ├── useUpdateUsername.ts
     │   │   │       └── oauth/
     │   │   │           ├── useDiscordAuth.ts
     │   │   │           ├── useGoogleAuth.ts
@@ -123,13 +138,30 @@ Directory structure:
     │   │   │   ├── useVectorSearch.ts
     │   │   │   └── hooks/
     │   │   │       └── useSearch.ts
-    │   │   └── studio/
+    │   │   ├── settings/
+    │   │   │   ├── layout.tsx
+    │   │   │   ├── components/
+    │   │   │   │   ├── SettingsSidebar.tsx
+    │   │   │   │   └── SidebarNavLink.tsx
+    │   │   │   └── hooks/
+    │   │   │       └── useSettingsNavigation.tsx
+    │   │   ├── studio/
+    │   │   │   └── hooks/
+    │   │   │       ├── useDirectoryActions.ts
+    │   │   │       ├── useDirectoryDnd.ts
+    │   │   │       ├── usePromptUpload.ts
+    │   │   │       ├── useStudioDnd.ts
+    │   │   │       ├── useStudioPrompts.ts
+    │   │   │       ├── useStudioSync.ts
+    │   │   │       └── useUpdatePromptMetadata.ts
+    │   │   ├── theme/
+    │   │   │   └── components/
+    │   │   │       └── ThemeMenuItem.tsx
+    │   │   └── user/
+    │   │       ├── components/
+    │   │       │   └── UpdateUsernameForm.tsx
     │   │       └── hooks/
-    │   │           ├── useDirectoryActions.ts
-    │   │           ├── useDirectoryDnd.ts
-    │   │           ├── useStudioDnd.ts
-    │   │           ├── useStudioPrompts.ts
-    │   │           └── useStudioSync.ts
+    │   │           └── useUpdateUsername.ts
     │   ├── services/
     │   │   ├── api.ts
     │   │   ├── api/
@@ -140,7 +172,9 @@ Directory structure:
     │   │   │   ├── downloads.ts
     │   │   │   ├── prompts.ts
     │   │   │   ├── public.ts
-    │   │   │   └── search.ts
+    │   │   │   ├── search.ts
+    │   │   │   ├── user.test.ts
+    │   │   │   └── user.ts
     │   │   └── config/
     │   │       └── env.ts
     │   ├── store/
@@ -157,11 +191,17 @@ Directory structure:
     │   │   │   ├── Heading.tsx
     │   │   │   ├── MediaCover.tsx
     │   │   │   ├── PageLoader.tsx
+    │   │   │   ├── Dropdown/
+    │   │   │   │   └── MenuItem.tsx
     │   │   │   ├── Login/
     │   │   │   │   ├── AuthSeparator.tsx
     │   │   │   │   └── FormHeader.tsx
-    │   │   │   └── Navbar/
-    │   │   │       └── NavbarActions.tsx
+    │   │   │   ├── Menu/
+    │   │   │   │   └── MenuItem.tsx
+    │   │   │   ├── Navbar/
+    │   │   │   │   └── NavbarActions.tsx
+    │   │   │   └── Studio/
+    │   │   │       └── SidebarDirectoryItem.tsx
     │   │   ├── molecules/
     │   │   │   ├── FormField.tsx
     │   │   │   ├── MediaOverlay.tsx
@@ -195,12 +235,17 @@ Directory structure:
     │   │   │   │   ├── NavbarSearch.test.tsx
     │   │   │   │   ├── NavbarSearch.tsx
     │   │   │   │   ├── NotificationDropdown.tsx
-    │   │   │   │   ├── SearchCategorySelector.tsx
-    │   │   │   │   └── UserDropdown.tsx
+    │   │   │   │   └── SearchCategorySelector.tsx
+    │   │   │   ├── Navigation/
+    │   │   │   │   └── Breadcrumbs.tsx
     │   │   │   ├── Search/
     │   │   │   │   └── UniversalSearchBar.tsx
     │   │   │   ├── Studio/
-    │   │   │   │   └── SidebarDirectoryItem.tsx
+    │   │   │   │   ├── DirectoryHeader.tsx
+    │   │   │   │   ├── PromptCard.tsx
+    │   │   │   │   ├── SidebarDirectory.tsx
+    │   │   │   │   ├── StudioDndWrapper.tsx
+    │   │   │   │   └── StudioSearch.tsx
     │   │   │   └── Tabs/
     │   │   │       └── AuthTabs.tsx
     │   │   ├── organisms/
@@ -224,6 +269,8 @@ Directory structure:
     │   │   │   │   │   └── index.tsx
     │   │   │   │   └── Inspector/
     │   │   │   │       └── BatchInspector.tsx
+    │   │   │   ├── Header/
+    │   │   │   │   └── UserDropdown.tsx
     │   │   │   ├── Layout/
     │   │   │   │   ├── AppToaster.tsx
     │   │   │   │   ├── GlobalProgress.tsx
@@ -236,7 +283,6 @@ Directory structure:
     │   │   │   ├── Navbar/
     │   │   │   │   └── Navbar.tsx
     │   │   │   ├── Navigation/
-    │   │   │   │   ├── Breadcrumbs.tsx
     │   │   │   │   ├── NavbarSearch.tsx
     │   │   │   │   └── PageHeader.tsx
     │   │   │   ├── PromptDetail/
@@ -245,17 +291,16 @@ Directory structure:
     │   │   │   │   └── SearchResults/
     │   │   │   │       └── SearchResults.tsx
     │   │   │   ├── Studio/
-    │   │   │   │   ├── PromptCard.tsx
     │   │   │   │   ├── PromptGrid.tsx
-    │   │   │   │   ├── SidebarDirectory.tsx
-    │   │   │   │   ├── StudioSearch.tsx
     │   │   │   │   └── StudioSidebar.tsx
     │   │   │   └── Viewer/
     │   │   │       └── ImageViewerModal/
     │   │   │           └── ImageViewerModal.tsx
-    │   │   └── pages/
-    │   │       └── Feed/
-    │   │           └── PublicFeedGrid.tsx
+    │   │   └── templates/
+    │   │       ├── Feed/
+    │   │       │   └── PublicFeedGrid.tsx
+    │   │       └── Studio/
+    │   │           └── StudioWorkspace.tsx
     │   ├── types/
     │   │   ├── auth.types.ts
     │   │   └── models.ts
@@ -271,10 +316,15 @@ Directory structure:
     │       │   ├── useClickOutside.ts
     │       │   └── useTheme.ts
     │       └── lib/
-    │           └── cn.ts
+    │           ├── cn.ts
+    │           ├── image-optimizer.ts
+    │           ├── media.ts
+    │           ├── routes.ts
+    │           └── string.ts
     ├── tests/
     │   ├── auth.spec.ts
     │   ├── example.spec.ts
+    │   ├── identity.spec.ts
     │   ├── reverse_engineering.spec.ts
     │   └── security.spec.ts
     └── .github/
@@ -467,25 +517,22 @@ export default eslintConfig;
 ================================================
 FILE: jest.config.js
 ================================================
-const nextJest = require('next/jest')
+const nextJest = require("next/jest");
 
 const createJestConfig = nextJest({
-  // Ruta a tu app Next.js
-  dir: './',
-})
+  dir: "./",
+});
 
 const customJestConfig = {
-  // Archivo que se ejecuta antes de las pruebas para cargar los matchers (toBeInTheDocument, etc.)
-  setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
-  // 🛡️ FIX CRÍTICO: Simular un navegador en lugar de Node.js
-  testEnvironment: 'jest-environment-jsdom',
-  // Mapeo de alias para que Jest entienda las rutas con "@/"
+  setupFilesAfterEnv: ["<rootDir>/jest.setup.js"],
+  testEnvironment: "jest-environment-jsdom",
   moduleNameMapper: {
-    '^@/(.*)$': '<rootDir>/$1',
+    "^@/(.*)$": "<rootDir>/$1",
   },
-}
+  testPathIgnorePatterns: ["<rootDir>/.next/", "<rootDir>/node_modules/", "<rootDir>/tests/"],
+};
 
-module.exports = createJestConfig(customJestConfig)
+module.exports = createJestConfig(customJestConfig);
 
 
 
@@ -622,73 +669,59 @@ FILE: package.json
 ================================================
 FILE: playwright.config.ts
 ================================================
-import { defineConfig, devices } from '@playwright/test';
+import { defineConfig, devices } from "@playwright/test";
 
 /**
- * Read environment variables from file.
- * https://github.com/motdotla/dotenv
- */
-// import dotenv from 'dotenv';
-// import path from 'path';
-// dotenv.config({ path: path.resolve(__dirname, '.env') });
-
-/**
- * See https://playwright.dev/docs/test-configuration.
+ * Ver configuración completa en: https://playwright.dev/docs/test-configuration.
  */
 export default defineConfig({
-  testDir: './tests',
+  testDir: "./tests",
+  /* Ejecución en paralelo para mayor velocidad */
   fullyParallel: true,
+  /* Fallar en CI si te dejas un test.only */
   forbidOnly: !!process.env.CI,
-  retries: process.env.CI ? 2 : 0,
+  /* Reintentos para mitigar "flakiness" en entornos con pocos recursos */
+  retries: process.env.CI ? 2 : 1,
+  /* Limitar workers en CI para evitar cuellos de botella */
   workers: process.env.CI ? 1 : undefined,
-  reporter: 'html',
+  reporter: "html",
+
+  /* Configuración global de los tests */
   use: {
-    baseURL: 'http://localhost:3000',
-    trace: 'on-first-retry',
+    /* 🛡️ FIX CRÍTICO: Forzamos 127.0.0.1 para evitar el error ::1 (IPv6) */
+    baseURL: "http://127.0.0.1:3000",
+
+    /* Recolectar trazas para debuggear fallos en el reporte HTML */
+    trace: "on-first-retry",
+    /* Capturar pantallazo solo cuando un test falla */
+    screenshot: "only-on-failure",
+    /* Aumentar el tiempo de espera para encontrar elementos (bueno para el Studio) */
+    actionTimeout: 10000,
+  },
+
+  /* Configuración de timeouts globales */
+  timeout: 60000,
+  expect: {
+    timeout: 10000,
   },
 
   projects: [
     {
-      name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
+      name: "chromium",
+      use: { ...devices["Desktop Chrome"] },
     },
-
-    // {
-    //   name: 'firefox',
-    //   use: { ...devices['Desktop Firefox'] },
-    // },
-
-    // {
-    //   name: 'webkit',
-    //   use: { ...devices['Desktop Safari'] },
-    // },
-
-    /* Test against mobile viewports. */
-    // {
-    //   name: 'Mobile Chrome',
-    //   use: { ...devices['Pixel 5'] },
-    // },
-    // {
-    //   name: 'Mobile Safari',
-    //   use: { ...devices['iPhone 12'] },
-    // },
-
-    /* Test against branded browsers. */
-    // {
-    //   name: 'Microsoft Edge',
-    //   use: { ...devices['Desktop Edge'], channel: 'msedge' },
-    // },
-    // {
-    //   name: 'Google Chrome',
-    //   use: { ...devices['Desktop Chrome'], channel: 'chrome' },
-    // },
   ],
 
-  /* Run your local dev server before starting the tests */
+  /**
+   * 🏗️ OPCIONAL: Descomenta esto si quieres que Playwright arranque
+   * automáticamente el servidor de Next.js antes de los tests.
+   */
   // webServer: {
-  //   command: 'npm run start',
-  //   url: 'http://localhost:3000',
+  //   command: 'npm run dev',
+  //   url: 'http://127.0.0.1:3000',
   //   reuseExistingServer: !process.env.CI,
+  //   stdout: 'ignore',
+  //   stderr: 'pipe',
   // },
 });
 
@@ -1465,7 +1498,7 @@ import { useHomeInteraction } from "@/src/features/home/hooks/useHomeInteraction
 
 import { Hero } from "@/src/system/organisms/Layout/Hero";
 import { FeedState } from "@/src/system/molecules/Feedback/FeedState";
-import { PublicFeedGrid } from "@/src/system/pages/Feed/PublicFeedGrid";
+import { PublicFeedGrid } from "@/src/system/templates/Feed/PublicFeedGrid";
 import { SearchResults } from "@/src/system/organisms/Search/SearchResults/SearchResults";
 
 const ImageViewerModal = dynamic(
@@ -1556,9 +1589,9 @@ import Link from "next/link";
 import { PageLoader } from "@/src/system/atoms/PageLoader";
 import { IconPhotoOff, IconFolder } from "@tabler/icons-react";
 
-import { PromptCard } from "@/src/system/organisms/Studio/PromptCard";
+import { PromptCard } from "@/src/system/molecules/Studio/PromptCard";
 import { usePublicProfile } from "@/src/features/public/hooks/usePublicProfile";
-import { Breadcrumbs } from "@/src/system/organisms/Navigation/Breadcrumbs";
+import { Breadcrumbs } from "@/src/system/molecules/Navigation/Breadcrumbs";
 
 export default function PublicProfilePage({
   params,
@@ -1669,10 +1702,10 @@ import { use, useEffect, useState } from "react";
 import Link from "next/link";
 import { IconFolder, IconPhotoOff } from "@tabler/icons-react";
 
-import { PromptCard } from "@/src/system/organisms/Studio/PromptCard";
+import { PromptCard } from "@/src/system/molecules/Studio/PromptCard";
 import { usePublicDirectory } from "@/src/features/public/hooks/usePublicDirectory";
 import { FadeIn } from "@/src/system/atoms/FadeIn";
-import { Breadcrumbs } from "@/src/system/organisms/Navigation/Breadcrumbs";
+import { Breadcrumbs } from "@/src/system/molecules/Navigation/Breadcrumbs";
 import { useAuthStore } from "@/src/store/authStore";
 
 export default function PublicDirectoryPage({
@@ -1826,6 +1859,372 @@ export default function PromptDetailPage({ params, searchParams }: PromptDetailP
       ];
 
   return <PromptDetailView prompt={prompt} breadcrumbItems={breadcrumbItems} />;
+}
+
+
+
+================================================
+FILE: app/[lang]/(main)/[username]/profile/page.tsx
+================================================
+[Empty file]
+
+
+================================================
+FILE: app/[lang]/(main)/[username]/settings/layout.tsx
+================================================
+import { SettingsSidebar } from "@/src/features/settings/components/SettingsSidebar";
+
+export default function SettingsLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="container mx-auto max-w-6xl px-4 py-12 animate-fade-in">
+      <div className="flex flex-col md:flex-row gap-10">
+        <aside className="w-full md:w-64 shrink-0">
+          <SettingsSidebar />
+        </aside>
+        <main className="flex-1 bg-(--bg-secondary) neo-border p-8 min-h-125">{children}</main>
+      </div>
+    </div>
+  );
+}
+
+
+
+================================================
+FILE: app/[lang]/(main)/[username]/settings/appearance/page.tsx
+================================================
+"use client";
+
+import { useTheme } from "@/src/utils/hooks/useTheme";
+import { IconPalette, IconSun, IconMoon } from "@tabler/icons-react";
+
+export default function AppearanceSettingsPage() {
+  const { isDark, toggleTheme } = useTheme();
+
+  return (
+    <div className="max-w-3xl animate-fade-in">
+      <div className="mb-8">
+        <h1 className="text-2xl font-black font-mono uppercase flex items-center gap-3">
+          <IconPalette className="text-(--accent-color)" size={28} />
+          Apariencia
+        </h1>
+        <p className="text-sm text-muted-foreground mt-2">
+          Personaliza cómo se ve Reprompt en este dispositivo.
+        </p>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* TEMA CLARO */}
+        <button
+          // 🟢 Si está en oscuro, el click lo cambia. Si ya está en claro, no hace nada.
+          onClick={() => isDark && toggleTheme()}
+          className={`flex flex-col items-start gap-4 p-4 text-left transition-all ${
+            !isDark // 🟢 Evaluamos si NO es oscuro (es decir, es claro)
+              ? "neo-border border-(--accent-color) bg-(--accent-color)/5 neo-shadow-accent"
+              : "neo-border bg-background hover:neo-shadow"
+          }`}
+        >
+          {/* Mini-Preview UI (Imita la interfaz de Reprompt) */}
+          <div className="w-full h-32 bg-gray-100 border-2 border-gray-300 rounded-sm flex flex-col p-2 gap-2">
+            <div className="w-full h-4 bg-white border border-gray-200"></div>
+            <div className="flex gap-2 flex-1">
+              <div className="w-1/3 h-full bg-gray-200"></div>
+              <div className="w-2/3 h-full bg-white border border-gray-200"></div>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 font-bold uppercase tracking-wider text-sm w-full">
+            <IconSun size={20} className={!isDark ? "text-(--accent-color)" : "text-foreground"} />
+            Tema Claro
+            {!isDark && (
+              <span className="ml-auto text-xs bg-(--accent-color) text-white px-2 py-0.5">
+                Activo
+              </span>
+            )}
+          </div>
+        </button>
+
+        {/* TEMA OSCURO */}
+        <button
+          // 🟢 Si no está en oscuro (está en claro), el click lo cambia.
+          onClick={() => !isDark && toggleTheme()}
+          className={`flex flex-col items-start gap-4 p-4 text-left transition-all ${
+            isDark
+              ? "neo-border border-(--accent-color) bg-(--accent-color)/5 neo-shadow-accent"
+              : "neo-border bg-[#0a0a0a] border-gray-800 hover:neo-shadow"
+          }`}
+        >
+          {/* Mini-Preview UI Oscuro */}
+          <div className="w-full h-32 bg-[#121212] border-2 border-gray-800 rounded-sm flex flex-col p-2 gap-2">
+            <div className="w-full h-4 bg-[#1a1a1a] border border-gray-800"></div>
+            <div className="flex gap-2 flex-1">
+              <div className="w-1/3 h-full bg-[#1e1e1e]"></div>
+              <div className="w-2/3 h-full bg-[#1a1a1a] border border-gray-800"></div>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 font-bold uppercase tracking-wider text-sm text-white w-full">
+            <IconMoon size={20} className={isDark ? "text-(--accent-color)" : "text-gray-400"} />
+            Tema Oscuro
+            {isDark && (
+              <span className="ml-auto text-xs bg-(--accent-color) text-white px-2 py-0.5">
+                Activo
+              </span>
+            )}
+          </div>
+        </button>
+      </div>
+    </div>
+  );
+}
+
+
+
+================================================
+FILE: app/[lang]/(main)/[username]/settings/components/SettingsSidebar.tsx
+================================================
+"use client";
+
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { IconUserEdit, IconLock, IconPalette } from "@tabler/icons-react";
+
+export function SettingsSidebar({ username, lang }: { username: string; lang: string }) {
+  const pathname = usePathname();
+  const basePath = `/${lang}/${username}/settings`;
+
+  const links = [
+    { href: `${basePath}/profile`, label: "Perfil Público", icon: <IconUserEdit size={20} /> },
+    { href: `${basePath}/security`, label: "Seguridad", icon: <IconLock size={20} /> },
+    { href: `${basePath}/appearance`, label: "Apariencia", icon: <IconPalette size={20} /> },
+  ];
+
+  return (
+    <nav className="flex flex-col gap-2">
+      <p className="text-[10px] font-black font-mono text-muted-foreground uppercase tracking-widest px-4 mb-2">
+        Ajustes de Usuario
+      </p>
+      {links.map((link) => {
+        const isActive = pathname === link.href;
+        return (
+          <Link
+            key={link.href}
+            href={link.href}
+            className={`flex items-center gap-3 px-4 py-3 font-bold transition-all neo-border ${
+              isActive
+                ? "bg-(--accent-color) text-white border-transparent neo-shadow-accent"
+                : "hover:bg-muted/10 border-transparent hover:border-(--border-color)"
+            }`}
+          >
+            {link.icon} {link.label}
+          </Link>
+        );
+      })}
+    </nav>
+  );
+}
+
+
+
+================================================
+FILE: app/[lang]/(main)/[username]/settings/profile/page.tsx
+================================================
+"use client";
+
+import { use, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useAuthStore } from "@/src/store/authStore";
+import { UpdateUsernameForm } from "@/src/features/user/components/UpdateUsernameForm";
+
+export default function ProfileSettingsPage({
+  params,
+}: {
+  params: Promise<{ lang: string; username: string }>;
+}) {
+  const { lang, username } = use(params);
+  const router = useRouter();
+  const { user, isLoadingAuth } = useAuthStore();
+
+  const decodedUsername = decodeURIComponent(username);
+
+  // Guardián de Rutas (Directriz 10: Confianza Cero)
+  useEffect(() => {
+    if (!isLoadingAuth) {
+      if (!user) {
+        router.push(`/${lang}/login`);
+      } else if (user.username !== decodedUsername) {
+        console.warn("🚫 Intento de acceso a ajustes ajenos.");
+        router.push(`/${lang}/${encodeURIComponent(user.username)}/settings/profile`);
+      }
+    }
+  }, [user, isLoadingAuth, decodedUsername, lang, router]);
+
+  if (isLoadingAuth || user?.username !== decodedUsername) {
+    return null; // O un skeleton de carga
+  }
+
+  return (
+    <div className="max-w-2xl animate-fade-in space-y-8">
+      {/* Cabecera de la Página */}
+      <header>
+        <h1 className="text-2xl font-black tracking-tighter uppercase">Perfil Público</h1>
+        <p className="text-sm text-muted-foreground mt-2">
+          Gestiona tu identidad y cómo te ven los demás en la comunidad.
+        </p>
+      </header>
+
+      {/* AQUÍ APILAREMOS LOS MÓDULOS EN EL FUTURO:
+        <UpdateAvatarForm />
+        <UpdateBioForm />
+      */}
+      
+      <div className="space-y-8">
+        <UpdateUsernameForm lang={lang} />
+      </div>
+    </div>
+  );
+}
+
+
+================================================
+FILE: app/[lang]/(main)/[username]/settings/security/page.tsx
+================================================
+"use client";
+
+import { useState, useRef } from "react";
+import { useAuthStore } from "@/src/store/authStore";
+import { api } from "@/src/services/api"; // Asegúrate de que esta ruta coincida con tu API
+import { toast } from "react-hot-toast";
+import { Button } from "@/src/system/atoms/Button";
+import { IconShieldLock, IconAlertTriangle } from "@tabler/icons-react";
+
+export default function SecuritySettingsPage() {
+  const user = useAuthStore((state) => state.user);
+
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const formRef = useRef<HTMLFormElement>(null);
+
+  // 🚀 HIGH PERFORMANCE SUBMIT: Usamos FormData en lugar de controlar cada input
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setError(null);
+
+    const formData = new FormData(e.currentTarget);
+    const currentPassword = formData.get("currentPassword") as string;
+    const newPassword = formData.get("newPassword") as string;
+    const confirmPassword = formData.get("confirmPassword") as string;
+
+    // Validación de Frontera (Confianza Cero)
+    if (newPassword !== confirmPassword) {
+      setError("Las contraseñas nuevas no coinciden.");
+      setIsLoading(false);
+      return;
+    }
+
+    if (newPassword.length < 8) {
+      setError("La nueva contraseña debe tener al menos 8 caracteres.");
+      setIsLoading(false);
+      return;
+    }
+
+    try {
+      // Sustituye esto por tu llamada real a la API
+      await api.cambiarPassword({
+        current_password: currentPassword,
+        new_password: newPassword,
+      });
+
+      toast.success("Contraseña actualizada con éxito");
+      formRef.current?.reset(); // Limpiamos el formulario nativamente
+    } catch (err: any) {
+      setError(err.message || "Fallo al actualizar la contraseña");
+      toast.error("No se pudo cambiar la contraseña");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  if (!user) return null;
+
+  return (
+    <div className="max-w-2xl animate-fade-in">
+      <div className="mb-8">
+        <h1 className="text-2xl font-black font-mono uppercase flex items-center gap-3">
+          <IconShieldLock className="text-(--accent-color)" size={28} />
+          Seguridad y Acceso
+        </h1>
+        <p className="text-sm text-muted-foreground mt-2">
+          Gestiona tu contraseña y protege tu cuenta de Reprompt.
+        </p>
+      </div>
+
+      <div className="bg-background neo-border p-6 relative overflow-hidden">
+        {/* Decoración sutil */}
+        <div className="absolute top-0 right-0 w-32 h-32 bg-(--accent-color) opacity-5 blur-3xl rounded-full -translate-y-1/2 translate-x-1/2"></div>
+
+        <h2 className="text-lg font-bold border-b-2 border-(--border-color) pb-3 mb-6">
+          Cambiar Contraseña
+        </h2>
+
+        {error && (
+          <div className="mb-6 p-3 bg-red-500/10 border border-red-500 text-red-500 text-sm font-bold flex items-center gap-2">
+            <IconAlertTriangle size={18} /> {error}
+          </div>
+        )}
+
+        <form ref={formRef} onSubmit={handleSubmit} className="space-y-5">
+          <div className="space-y-2">
+            <label className="text-xs font-black font-mono uppercase tracking-widest text-muted-foreground">
+              Contraseña Actual
+            </label>
+            <input
+              type="password"
+              name="currentPassword"
+              required
+              className="w-full p-3 bg-(--bg-secondary) neo-border focus:outline-none focus:ring-2 focus:ring-(--accent-color) transition-all"
+              placeholder="••••••••"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-xs font-black font-mono uppercase tracking-widest text-muted-foreground">
+              Nueva Contraseña
+            </label>
+            <input
+              type="password"
+              name="newPassword"
+              required
+              minLength={8}
+              className="w-full p-3 bg-(--bg-secondary) neo-border focus:outline-none focus:ring-2 focus:ring-(--accent-color) transition-all"
+              placeholder="••••••••"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-xs font-black font-mono uppercase tracking-widest text-muted-foreground">
+              Confirmar Nueva Contraseña
+            </label>
+            <input
+              type="password"
+              name="confirmPassword"
+              required
+              minLength={8}
+              className="w-full p-3 bg-(--bg-secondary) neo-border focus:outline-none focus:ring-2 focus:ring-(--accent-color) transition-all"
+              placeholder="••••••••"
+            />
+          </div>
+
+          <div className="pt-4 border-t-2 border-(--border-color) flex items-center justify-between">
+            <p className="text-xs text-muted-foreground font-mono">
+              La sesión actual se mantendrá activa.
+            </p>
+            <Button type="submit" isLoading={isLoading} className="min-w-37.5">
+              {isLoading ? "Guardando..." : "Actualizar Clave"}
+            </Button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
 }
 
 
@@ -1987,54 +2386,40 @@ export default function RepromptPage({ params }: { params: Promise<{ lang: strin
 ================================================
 FILE: app/[lang]/(main)/studio/page.tsx
 ================================================
-"use client";
-
-import { DndContext, closestCenter, DragOverlay } from "@dnd-kit/core";
-import { IconFolder, IconAlbum } from "@tabler/icons-react";
-import { StudioSidebar } from "@/src/system/organisms/Studio/StudioSidebar";
-import PromptGrid from "@/src/system/organisms/Studio/PromptGrid";
-import { useStudioSync } from "@/src/features/studio/hooks/useStudioSync";
-import { useStudioDnd } from "@/src/features/studio/hooks/useStudioDnd";
+import { IconAlbum } from "@tabler/icons-react";
 import { PageHeader } from "@/src/system/organisms/Navigation/PageHeader";
+import { StudioSidebar } from "@/src/system/organisms/Studio/StudioSidebar";
+import { StudioDndWrapper } from "@/src/system/molecules/Studio/StudioDndWrapper";
+import { StudioWorkspace } from "@/src/system/templates/Studio/StudioWorkspace";
 
 export default function StudioPage() {
-  useStudioSync();
-  const { sensors, activeDragDir, handleDragStart, handleDragEnd } = useStudioDnd();
-
   return (
-    <div className="flex flex-col h-[calc(100vh-64px)] w-full bg-background p-4 md:p-6 lg:p-8 gap-4">
+    <div className="flex flex-col h-[calc(100vh-64px)] w-full bg-background p-4 md:p-6 lg:p-8">
       <PageHeader
         title="Mi Studio"
-        description="Gestiona y organiza tus extracciones."
+        description="Gestiona y organiza tus prompts."
         icon={<IconAlbum size={28} stroke={1.5} />}
         breadcrumbItems={[{ label: "Mi Studio" }]}
+        scrollContainerId="studio-main"
+        collapseOnHide={true}
       />
 
-      <DndContext
-        sensors={sensors}
-        collisionDetection={closestCenter}
-        onDragStart={handleDragStart}
-        onDragEnd={handleDragEnd}
-      >
-        <div className="flex flex-1 overflow-hidden border border-border/30 rounded-xl bg-card/20 backdrop-blur-sm">
+      <StudioDndWrapper>
+        <div className="flex flex-1 overflow-hidden border border-border/30 rounded-xl bg-card/20 backdrop-blur-sm transition-all duration-500">
           <StudioSidebar />
-          <main className="flex-1 overflow-y-auto custom-scrollbar bg-background/30 p-4 md:p-6">
-            <PromptGrid />
+
+          <main
+            id="studio-main"
+            className="flex-1 overflow-y-auto custom-scrollbar bg-background/30 p-4 md:p-6 scroll-smooth"
+          >
+            <StudioWorkspace />
           </main>
         </div>
-
-        <DragOverlay dropAnimation={null}>
-          {activeDragDir && (
-            <div className="flex items-center py-2 px-3 bg-card border border-primary/40 border-dashed rounded-lg shadow-2xl opacity-90 cursor-grabbing">
-              <IconFolder size={18} className="text-primary mr-2" />
-              <span className="text-sm font-bold text-foreground">{activeDragDir.name}</span>
-            </div>
-          )}
-        </DragOverlay>
-      </DndContext>
+      </StudioDndWrapper>
     </div>
   );
 }
+
 
 
 ================================================
@@ -2924,6 +3309,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
 
 ================================================
+FILE: src/features/auth/components/LogoutMenuItem.tsx
+================================================
+"use client";
+
+import { useAuthStore } from "@/src/store/authStore";
+import { MenuItem } from "@/src/system/atoms/Menu/MenuItem";
+import { IconLogout } from "@tabler/icons-react";
+
+export function LogoutMenuItem() {
+  const logout = useAuthStore((state) => state.logout);
+
+  return (
+    <MenuItem
+      icon={<IconLogout size={18} />}
+      label="Cerrar Sesión"
+      onClick={logout}
+      variant="danger"
+    />
+  );
+}
+
+
+
+================================================
 FILE: src/features/auth/hooks/useAuthForm.tsx
 ================================================
 // src/features/auth/hooks/useAuthForm.ts
@@ -3133,6 +3542,35 @@ export const useRegister = (lang: string) => {
 
   return { handleRegister, isLoading, error };
 };
+
+
+
+================================================
+FILE: src/features/auth/hooks/useUpdateUsername.ts
+================================================
+import { useRouter } from "next/navigation";
+import { api } from "@/src/services/api";
+import toast from "react-hot-toast";
+
+export function useUpdateUsername(lang: string) {
+  const router = useRouter();
+
+  const handleUpdate = async (newName: string) => {
+    try {
+      await api.user.updateUsername(newName);
+
+      toast.success("Nombre actualizado. Redirigiendo...");
+
+      setTimeout(() => {
+        router.push(`/${lang}/login?updated=true`);
+      }, 1500);
+    } catch (error: any) {
+      toast.error(error.message || "Error al actualizar");
+    }
+  };
+
+  return { handleUpdate };
+}
 
 
 
@@ -3587,9 +4025,14 @@ export async function extractJpegMetadata(file: File): Promise<string | null> {
       return metadata.ImageDescription.trim();
     }
 
-    // 3. Prioridad: description (Caso específico de algunos metadatos XMP)
     if (metadata.description) {
-      return metadata.description.trim();
+      if (typeof metadata.description === "string") {
+        return metadata.description.trim();
+      }
+      if (Array.isArray(metadata.description)) {
+        return metadata.description.join(" ").trim();
+      }
+      return String(metadata.description).trim();
     }
 
     return null;
@@ -4167,18 +4610,24 @@ interface DirectoryDetail {
 export function usePublicDirectory(username: string, directory_slug: string) {
   const [data, setData] = useState<DirectoryDetail | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [error] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!username || !directory_slug || directory_slug === "undefined" || username === "undefined") {
+      return;
+    } 
     setIsLoading(true);
-    api.public
-      .getDirectory(username, directory_slug)
-      .then(async (res) => {
+
+    api.public.getDirectory(username, directory_slug).then(async (res) => {
         if (!res.ok) throw new Error("Error en la petición");
         const jsonData = await res.json();
         setData(jsonData);
       })
+      .catch((err) => {
+        setError(err.message);
+      })
       .finally(() => setIsLoading(false));
+      
   }, [username, directory_slug]);
 
   return { data, isLoading, error };
@@ -4356,6 +4805,130 @@ export function useSearch() {
 
 
 ================================================
+FILE: src/features/settings/layout.tsx
+================================================
+import { SettingsSidebar } from "@/src/features/settings/components/SettingsSidebar";
+
+export default function SettingsLayout({
+  children,
+  params,
+}: {
+  children: React.ReactNode;
+  params: { lang: string; username: string };
+}) {
+  return (
+    <div className="container mx-auto max-w-6xl px-4 py-12">
+      <div className="flex flex-col md:flex-row gap-8">
+        <aside>
+          <SettingsSidebar username={params.username} lang={params.lang} />
+        </aside>
+
+        <main className="flex-1 min-w-0">
+          <div className="bg-(--bg-secondary) neo-border p-6 md:p-8">{children}</div>
+        </main>
+      </div>
+    </div>
+  );
+}
+
+
+
+================================================
+FILE: src/features/settings/components/SettingsSidebar.tsx
+================================================
+"use client";
+
+import { useSettingsNavigation } from "../hooks/useSettingsNavigation";
+import { SidebarNavLink } from "./SidebarNavLink";
+
+export function SettingsSidebar() {
+  const links = useSettingsNavigation();
+
+  return (
+    <nav className="flex flex-col gap-2">
+      <p className="text-[10px] font-black font-mono text-muted-foreground uppercase tracking-widest px-4 mb-2">
+        Ajustes de Usuario
+      </p>
+
+      {links.map((link) => (
+        <SidebarNavLink key={link.href} {...link} />
+      ))}
+    </nav>
+  );
+}
+
+
+
+================================================
+FILE: src/features/settings/components/SidebarNavLink.tsx
+================================================
+import Link from "next/link";
+import { NavLink } from "../hooks/useSettingsNavigation";
+
+export function SidebarNavLink({ href, label, icon, isActive }: NavLink) {
+  return (
+    <Link
+      href={href}
+      className={`flex items-center gap-3 px-4 py-3 font-bold transition-all neo-border ${
+        isActive
+          ? "bg-(--accent-color) text-white border-transparent neo-shadow-accent"
+          : "hover:bg-muted/10 border-transparent hover:border-(--border-color)"
+      }`}
+    >
+      {icon} {label}
+    </Link>
+  );
+}
+
+
+
+================================================
+FILE: src/features/settings/hooks/useSettingsNavigation.tsx
+================================================
+import { usePathname, useParams } from "next/navigation";
+import { IconUserEdit, IconLock, IconPalette } from "@tabler/icons-react";
+import { ReactNode } from "react";
+
+export interface NavLink {
+  href: string;
+  label: string;
+  icon: ReactNode;
+  isActive: boolean;
+}
+
+export function useSettingsNavigation(): NavLink[] {
+  const pathname = usePathname();
+  const params = useParams();
+
+  const lang = (params?.lang as string) || "es";
+  const username = (params?.username as string) || "";
+  const basePath = `/${lang}/${username}/settings`;
+
+  return [
+    {
+      href: `${basePath}/profile`,
+      label: "Perfil Público",
+      icon: <IconUserEdit size={20} />,
+      isActive: pathname.includes(`${basePath}/profile`),
+    },
+    {
+      href: `${basePath}/security`,
+      label: "Seguridad",
+      icon: <IconLock size={20} />,
+      isActive: pathname.includes(`${basePath}/security`),
+    },
+    {
+      href: `${basePath}/appearance`,
+      label: "Apariencia",
+      icon: <IconPalette size={20} />,
+      isActive: pathname.includes(`${basePath}/appearance`),
+    },
+  ];
+}
+
+
+
+================================================
 FILE: src/features/studio/hooks/useDirectoryActions.ts
 ================================================
 import { useCallback } from "react";
@@ -4516,6 +5089,89 @@ export function useDirectoryDnd(directory: Directory) {
 
 
 ================================================
+FILE: src/features/studio/hooks/usePromptUpload.ts
+================================================
+// src/features/studio/hooks/usePromptUpload.ts
+
+import { useState } from "react";
+import { api } from "@/src/services/api";
+import { optimizeAndLogImage } from "@/src/utils/lib/image-optimizer";
+import toast from "react-hot-toast";
+
+export function usePromptUpload() {
+  const [isUploading, setIsUploading] = useState(false);
+
+  const uploadPrompt = async (fileOriginal: File) => {
+    setIsUploading(true);
+    console.log(
+      `🚀 [UPLOAD-START] Iniciando flujo de subida para: ${fileOriginal.name} (${(fileOriginal.size / 1024 / 1024).toFixed(2)} MB)`,
+    );
+
+    try {
+      // 🟢 PASO 1: Optimización y Transformación a WebP
+      console.log(`⏳ [UPLOAD-STEP-1] Optimizando imagen en el cliente...`);
+      const archivoOptimizado = await optimizeAndLogImage(fileOriginal);
+
+      // 🟢 PASO 2: Pedir URL pre-firmada
+      console.log(
+        `⏳ [UPLOAD-STEP-2] Solicitando URL pre-firmada al Backend para: ${archivoOptimizado.name} (${archivoOptimizado.type})`,
+      );
+      const resUrl = await api.prompts.getPresignedUrl({
+        filename: archivoOptimizado.name,
+        contentType: archivoOptimizado.type,
+      });
+
+      if (!resUrl.ok) {
+        throw new Error(`Error del servidor al obtener firma (Status: ${resUrl.status})`);
+      }
+
+      const { url, public_url } = await resUrl.json();
+      console.log(`✅ [UPLOAD-STEP-2] Firma obtenida. URL Pública esperada: ${public_url}`);
+
+      // 🟢 PASO 3: Subida directa a R2
+      console.log(`☁️ [UPLOAD-STEP-3] Transfiriendo bytes a Cloudflare R2...`);
+      const uploadRes = await fetch(url, {
+        method: "PUT",
+        body: archivoOptimizado,
+        headers: {
+          "Content-Type": archivoOptimizado.type,
+          "Cache-Control": "public, max-age=31536000, immutable",
+        },
+      });
+
+      if (!uploadRes.ok) {
+        console.error(
+          `❌ [UPLOAD-STEP-3] Cloudflare R2 rechazó el archivo. Status: ${uploadRes.status} - ${uploadRes.statusText}`,
+        );
+        throw new Error("Fallo al subir imagen al almacenamiento de Cloudflare");
+      }
+
+      console.log(`✅ [UPLOAD-STEP-3] Transferencia a R2 completada con éxito.`);
+
+      // 🟢 PASO 4: Finalización
+      console.log(
+        `🎉 [UPLOAD-FINISH] Flujo de subida perfecto. Pasando el testigo a la Cuarentena del Backend.`,
+      );
+
+      return {
+        success: true,
+        image_url: public_url,
+      };
+    } catch (error: any) {
+      console.error(`🚨 [UPLOAD-CRASH] El flujo de subida fue interrumpido:`, error);
+      toast.error(error.message || "Fallo en la subida");
+      return { success: false };
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  return { uploadPrompt, isUploading };
+}
+
+
+
+================================================
 FILE: src/features/studio/hooks/useStudioDnd.ts
 ================================================
 import { useState } from "react";
@@ -4544,12 +5200,15 @@ export function useStudioDnd() {
     setActiveDragDir(null);
     const { active, over } = event;
 
-    if (!over || active.id === `dir-${over.id}`) return;
+    if (!over) return;
 
+    const isTargetRoot = over.id === "root-zone";
+    const targetDirId = isTargetRoot ? null : String(over.id).replace("dir-", "");
     const draggedDirId = String(active.id).replace("dir-", "");
-    const targetDirId = String(over.id);
 
-    if (draggedDirId !== targetDirId) {
+    if (draggedDirId === (targetDirId || "root")) return;
+
+    if (active.data.current?.type === "directory") {
       moveDirectory(draggedDirId, targetDirId);
     }
   };
@@ -4672,6 +5331,188 @@ export function useStudioSync() {
 
 
 ================================================
+FILE: src/features/studio/hooks/useUpdatePromptMetadata.ts
+================================================
+import { fetchSeguro } from "@/src/services/api/client";
+import { SavedPrompt } from "@/src/types/models";
+import toast from "react-hot-toast";
+
+export function useUpdatePromptMetadata(promptId: string) {
+  const handleSaveMetadata = async (updatedData: Partial<SavedPrompt>) => {
+    const toastId = toast.loading("Actualizando metadatos en la base de datos...");
+
+    try {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
+
+      const res = await fetchSeguro(`${API_URL}/prompts/${promptId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updatedData),
+      });
+
+      if (!res.ok) throw new Error("Fallo al guardar en el servidor");
+
+      toast.success("¡Metadatos actualizados!", { id: toastId });
+    } catch (error) {
+      console.error("[useUpdatePromptMetadata] Error:", error);
+      toast.error("Error al actualizar. Revisa la conexión.", { id: toastId });
+      throw error;
+    }
+  };
+
+  return { handleSaveMetadata };
+}
+
+
+
+================================================
+FILE: src/features/theme/components/ThemeMenuItem.tsx
+================================================
+"use client";
+
+import { useTheme } from "@/src/utils/hooks/useTheme";
+import { MenuItem } from "@/src/system/atoms/Menu/MenuItem";
+import { IconSun, IconMoon } from "@tabler/icons-react";
+
+export function ThemeMenuItem() {
+  const { isDark, toggleTheme } = useTheme();
+
+  return (
+    <MenuItem
+      icon={
+        isDark ? (
+          <IconSun size={18} className="text-yellow-500" />
+        ) : (
+          <IconMoon size={18} className="text-blue-500" />
+        )
+      }
+      label={isDark ? "Modo Claro" : "Modo Oscuro"}
+      onClick={toggleTheme}
+    />
+  );
+}
+
+
+
+================================================
+FILE: src/features/user/components/UpdateUsernameForm.tsx
+================================================
+"use client";
+
+import { useEffect, useState } from "react";
+import { useAuthStore } from "@/src/store/authStore";
+import { useUpdateUsername } from "@/src/features/user/hooks/useUpdateUsername";
+import { Button } from "@/src/system/atoms/Button";
+import { IconUserEdit, IconAt } from "@tabler/icons-react";
+import { slugifyUsername } from "@/src/utils/lib/string";
+
+export function UpdateUsernameForm({ lang }: { lang: string }) {
+  const { user } = useAuthStore();
+  const { handleUpdate, isLoading } = useUpdateUsername(lang);
+  const [inputValue, setInputValue] = useState("");
+
+  useEffect(() => {
+    if (user?.username) {
+      setInputValue(user.username);
+    }
+  }, [user]);
+
+  const onSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await handleUpdate(inputValue);
+  };
+
+  return (
+    <section className="bg-background neo-border p-6 relative overflow-hidden">
+      <div className="flex items-center gap-3 border-b-2 border-(--border-color) pb-4 mb-6">
+        <IconUserEdit size={24} className="text-(--accent-color)" />
+        <h2 className="text-lg font-bold uppercase font-mono">Nombre de Usuario</h2>
+      </div>
+
+      <form onSubmit={onSave} className="space-y-4">
+        <div className="relative">
+          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground">
+            <IconAt size={18} />
+          </span>
+          <input
+            type="text"
+            value={inputValue}
+            onChange={(e) => setInputValue(e.target.value)}
+            placeholder="nuevo_nombre"
+            className="w-full bg-(--bg-secondary) neo-border p-4 pl-12 font-mono text-lg focus:outline-none focus:ring-2 focus:ring-(--accent-color) transition-all"
+          />
+        </div>
+
+        <div className="bg-muted/10 p-4 neo-border border-dashed border-muted-foreground/30">
+          <p className="text-[10px] font-mono text-muted-foreground uppercase leading-relaxed">
+            Vista previa de tu URL: <br />
+            <span className="text-(--accent-color) font-bold">
+              reprompt.studio/{lang}/{slugifyUsername(inputValue) || "..."}
+            </span>
+          </p>
+        </div>
+
+        <p className="text-[10px] text-red-500/70 font-mono uppercase italic">
+          * Al cambiar tu nombre, tu sesión se cerrará por seguridad y la URL antigua dejará de
+          funcionar.
+        </p>
+
+        <div className="flex justify-end pt-2">
+          <Button
+            type="submit"
+            isLoading={isLoading}
+            className="min-w-37.5"
+            disabled={inputValue === user?.username || !inputValue}
+          >
+            Guardar
+          </Button>
+        </div>
+      </form>
+    </section>
+  );
+}
+
+
+
+================================================
+FILE: src/features/user/hooks/useUpdateUsername.ts
+================================================
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { api } from "@/src/services/api";
+import { useAuthStore } from "@/src/store/authStore";
+import { slugifyUsername } from "@/src/utils/lib/string";
+import toast from "react-hot-toast";
+
+export function useUpdateUsername(lang: string) {
+  const router = useRouter();
+  const updateLocalUsername = useAuthStore((state) => state.updateLocalUsername);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleUpdate = async (newNameRaw: string) => {
+    const safeName = slugifyUsername(newNameRaw);
+
+    setIsLoading(true);
+    try {
+      await api.user.updateUsername(safeName);
+
+      updateLocalUsername(safeName);
+
+      toast.success("¡Identidad actualizada!");
+
+      router.push(`/${lang}/${safeName}/settings/profile`);
+    } catch (error: any) {
+      toast.error(error.message || "Error al actualizar el nombre");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return { handleUpdate, isLoading };
+}
+
+
+================================================
 FILE: src/services/api.ts
 ================================================
 // src/services/api.ts
@@ -4682,15 +5523,18 @@ import { promptApi } from "./api/prompts";
 import { publicApi } from "./api/public";
 import { directoriesApi } from "./api/directories";
 import { adminApi } from "./api/admin";
+import { userApi } from "./api/user";
 
 export const api = {
   ...authApi,
   ...searchApi,
   ...downloadApi,
   ...promptApi,
+  ...userApi,
 
   admin: adminApi,
   auth: authApi,
+  user: userApi,
   public: publicApi,
   prompts: promptApi,
   directories: directoriesApi,
@@ -5070,6 +5914,12 @@ const API_URL = ENV.API_URL;
 export const promptApi = {
   getMyPrompt: () => fetchSeguro(`${API_URL}/prompts/`),
 
+  getPresignedUrl: (params: { filename: string; contentType: string }) =>
+    fetchSeguro(`${API_URL}/prompts/upload-url`, {
+      method: "POST",
+      body: JSON.stringify(params),
+    }),
+
   savePrompt: (data: any) =>
     fetchSeguro(`${API_URL}/prompts/save`, {
       method: "POST",
@@ -5187,6 +6037,81 @@ export const searchApi = {
 
 
 ================================================
+FILE: src/services/api/user.test.ts
+================================================
+import { userApi } from "./user";
+import { fetchSeguro } from "./client";
+
+jest.mock("./client", () => ({
+  fetchSeguro: jest.fn(() =>
+    Promise.resolve({
+      ok: true,
+      json: () => Promise.resolve({ status: "success" }),
+    }),
+  ),
+  API_URL: "http://localhost:8000/api",
+}));
+
+describe("userApi", () => {
+  it("debe enviar un PATCH correcto para actualizar el username", async () => {
+    await userApi.updateUsername("nuevo_nombre");
+
+    expect(fetchSeguro).toHaveBeenCalledWith(
+      expect.stringContaining("/auth/me/username"),
+      expect.objectContaining({
+        method: "PATCH",
+        body: JSON.stringify({ new_username: "nuevo_nombre" }),
+      }),
+    );
+  });
+});
+
+
+
+================================================
+FILE: src/services/api/user.ts
+================================================
+import { API_URL, fetchSeguro } from "./client";
+
+const handleJsonResponse = async (res: Response) => {
+  if (!res.ok) {
+    const errorBody = await res
+      .clone()
+      .json()
+      .catch(() => ({}));
+    throw new Error(
+      errorBody.detail || errorBody.message || `Fallo en el servidor (${res.status})`,
+    );
+  }
+  if (res.status === 204) return null;
+  return res.json();
+};
+
+export const userApi = {
+  updateUsername: async (newUsername: string) => {
+    return fetchSeguro(`${API_URL}/auth/me/username`, {
+      method: "PATCH",
+      body: JSON.stringify({ new_username: newUsername }),
+    }).then(handleJsonResponse);
+  },
+
+  getActivity: async () => {
+    return fetchSeguro(`${API_URL}/auth/me/activity`, {
+      method: "GET",
+    }).then(handleJsonResponse);
+  },
+
+  updatePrivacy: async (isPrivate: boolean) => {
+    return fetchSeguro(`${API_URL}/auth/me/privacy`, {
+      method: "PATCH",
+      body: JSON.stringify({ is_private: isPrivate }),
+    }).then(handleJsonResponse);
+  },
+};
+
+
+
+================================================
 FILE: src/services/config/env.ts
 ================================================
 const API_URL_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
@@ -5213,6 +6138,7 @@ interface AuthState {
   isAuthenticated: boolean;
   isLoadingAuth: boolean;
   hasCheckedInitialAuth: boolean;
+  updateLocalUsername: (newUsername: string) => void;
 
   login: (userData: User) => void;
   logout: () => Promise<void>;
@@ -5244,6 +6170,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   isAuthenticated: false,
   isLoadingAuth: true,
   hasCheckedInitialAuth: false,
+  updateLocalUsername: (newUsername) => {
+    const currentUser = get().user;
+    if (currentUser) {
+      set({ user: { ...currentUser, username: newUsername } });
+    }
+  },
 
   login: (userData) => {
     console.log(`[AUTH_STORE] Sesión iniciada localmente: @${userData.username}`);
@@ -5715,11 +6647,13 @@ interface FadeInProps {
   duration?: number;
   delay?: number;
   y?: number;
+  className?: string;
 }
 
-export function FadeIn({ children, duration = 0.5, delay = 0, y = 10 }: FadeInProps) {
+export function FadeIn({ children, duration = 0.5, delay = 0, y = 10, className }: FadeInProps) {
   return (
     <motion.div
+      className={className}
       initial={{ opacity: 0, y: y }}
       animate={{ opacity: 1, y: 0 }}
       transition={{
@@ -5848,6 +6782,42 @@ export function PageLoader({ text = "Procesando petición..." }: PageLoaderProps
 
 
 ================================================
+FILE: src/system/atoms/Dropdown/MenuItem.tsx
+================================================
+import React from "react";
+
+interface MenuItemProps {
+  icon: React.ReactNode;
+  label: string;
+  onClick?: () => void;
+  variant?: "default" | "danger";
+  className?: string;
+}
+
+export function MenuItem({
+  icon,
+  label,
+  onClick,
+  variant = "default",
+  className = "",
+}: MenuItemProps) {
+  const baseClass =
+    "flex items-center gap-3 p-3 text-sm font-bold neo-border border-transparent transition-all text-left uppercase tracking-wide w-full";
+  const variantClass =
+    variant === "danger"
+      ? "text-red-500 hover:bg-red-500/10 hover:border-red-500/50"
+      : "text-foreground hover:bg-muted/30 hover:border-(--border-color)";
+
+  return (
+    <button onClick={onClick} className={`${baseClass} ${variantClass} ${className}`}>
+      {icon} {label}
+    </button>
+  );
+}
+
+
+
+================================================
 FILE: src/system/atoms/Login/AuthSeparator.tsx
 ================================================
 export function AuthSeparator() {
@@ -5893,6 +6863,35 @@ export function FormHeader() {
 
 
 ================================================
+FILE: src/system/atoms/Menu/MenuItem.tsx
+================================================
+import React from "react";
+
+interface MenuItemProps {
+  icon: React.ReactNode;
+  label: string;
+  onClick: () => void;
+  variant?: "default" | "danger";
+}
+
+export function MenuItem({ icon, label, onClick, variant = "default" }: MenuItemProps) {
+  const baseClass =
+    "flex items-center gap-3 p-3 text-sm font-bold neo-border border-transparent transition-all text-left uppercase tracking-wide w-full";
+  const variantClass =
+    variant === "danger"
+      ? "text-red-500 hover:bg-red-500/10 hover:border-red-500/50"
+      : "text-foreground hover:bg-muted/30 hover:border-(--border-color)";
+
+  return (
+    <button onClick={onClick} className={`${baseClass} ${variantClass}`}>
+      {icon} {label}
+    </button>
+  );
+}
+
+
+
+================================================
 FILE: src/system/atoms/Navbar/NavbarActions.tsx
 ================================================
 "use client";
@@ -5901,7 +6900,7 @@ import Link from "next/link";
 import { useState, useEffect } from "react";
 import { useAuthStore } from "@/src/store/authStore";
 import { useTheme } from "@/src/utils/hooks/useTheme";
-import { UserDropdown } from "../../molecules/Navbar/UserDropdown";
+import { UserDropdown } from "../../organisms/Header/UserDropdown";
 import { NotificationDropdown } from "../../molecules/Navbar/NotificationDropdown";
 import { IconAlbum, IconSun, IconMoon, IconScanTraces } from "@tabler/icons-react";
 
@@ -5968,6 +6967,125 @@ export function NavbarActions() {
 
 
 ================================================
+FILE: src/system/atoms/Studio/SidebarDirectoryItem.tsx
+================================================
+import React from "react";
+import { Directory } from "@/src/store/useStudioUI";
+import {
+  IconChevronDown,
+  IconChevronRight,
+  IconFolderOpen,
+  IconFolder,
+  IconFolderPlus,
+  IconTrash,
+  IconCloudLock,
+} from "@tabler/icons-react";
+
+interface SidebarDirectoryItemProps {
+  directory: Directory;
+  level: number;
+  isOpen: boolean;
+  isSelected: boolean;
+  isDragging: boolean;
+  isOver: boolean;
+  isEffectivelyPrivate: boolean;
+  hasChildren: boolean;
+  setBothRefs: (node: HTMLElement | null) => void;
+  attributes: any;
+  listeners: any;
+  onSelect: (e: React.MouseEvent) => void;
+  onToggle: (e: React.MouseEvent) => void;
+  onRename: (e: React.MouseEvent) => void;
+  onCreateSub: (e: React.MouseEvent) => void;
+  onDelete: (e: React.MouseEvent) => void;
+}
+
+export const SidebarDirectoryItem = ({
+  directory,
+  level,
+  isOpen,
+  isSelected,
+  isDragging,
+  isOver,
+  isEffectivelyPrivate,
+  hasChildren,
+  setBothRefs,
+  attributes,
+  listeners,
+  onSelect,
+  onToggle,
+  onRename,
+  onCreateSub,
+  onDelete,
+}: SidebarDirectoryItemProps) => {
+  return (
+    <div
+      ref={setBothRefs}
+      style={{
+        opacity: isDragging ? 0.4 : 1,
+        cursor: isDragging ? "grabbing" : "pointer",
+        paddingLeft: `${level * 12 + 12}px`,
+      }}
+      {...attributes}
+      {...listeners}
+      onClick={onSelect}
+      onDoubleClick={onRename}
+      className={`
+        group font-mono flex items-center py-1.5 px-2 mx-2 rounded-md transition-all duration-200 relative
+        ${isSelected ? "bg-primary/5 text-foreground font-medium" : "text-muted-foreground hover:text-foreground"}
+        ${isOver ? "bg-primary/10 ring-2 ring-primary/30 border-dashed" : "hover:bg-secondary/40 border border-transparent"}
+        ${isDragging ? "bg-background border-dashed border-primary/50" : ""}
+      `}
+    >
+      {isSelected && (
+        <div className="absolute left-0 w-1 h-6 bg-primary rounded-r-full shadow-[0_0_8px_rgba(var(--primary-rgb),0.4)] top-1/2 -translate-y-1/2" />
+      )}
+
+      <span
+        className="w-4 h-4 mr-1 flex items-center justify-center z-10 hover:bg-muted/50 rounded transition-colors"
+        onClick={onToggle}
+      >
+        {hasChildren && (isOpen ? <IconChevronDown size={14} /> : <IconChevronRight size={14} />)}
+      </span>
+
+      <span className="mr-2 relative flex items-center justify-center">
+        {isOpen ? (
+          <IconFolderOpen size={16} className={isSelected ? "text-primary/70" : "text-foreground/40"} />
+        ) : (
+          <IconFolder size={16} className={isSelected ? "text-primary/70" : "text-foreground/40"} />
+        )}
+
+        {isEffectivelyPrivate && (
+          <div className="absolute -bottom-1 -right-1.5 bg-background rounded-full p-px">
+            <IconCloudLock size={12} className="text-red-300" stroke={2} />
+          </div>
+        )}
+      </span>
+
+      <span className="text-sm truncate flex-1">{directory.name}</span>
+
+      <div className="opacity-0 group-hover:opacity-100 flex items-center gap-1 transition-opacity pointer-events-auto">
+        <button
+          className="p-1 hover:bg-primary/20 rounded transition-colors text-primary/70"
+          title="Nueva Subcarpeta"
+          onClick={onCreateSub}
+        >
+          <IconFolderPlus size={14} />
+        </button>
+        <button
+          className="p-1 hover:bg-destructive/20 hover:text-destructive/90 text-muted-foreground/40 rounded transition-colors"
+          title="Eliminar"
+          onClick={onDelete}
+        >
+          <IconTrash size={14} />
+        </button>
+      </div>
+    </div>
+  );
+};
+
+
+================================================
 FILE: src/system/molecules/FormField.tsx
 ================================================
 interface Props extends React.InputHTMLAttributes<HTMLInputElement> {
@@ -6007,16 +7125,21 @@ interface MediaOverlayProps {
   onDownload?: (e: React.MouseEvent) => void;
 }
 
-export function MediaOverlay({ title, prompt, tags, variant = "gallery", onDownload }: MediaOverlayProps) {
+export function MediaOverlay({
+  title,
+  prompt,
+  tags,
+  variant = "gallery",
+  onDownload,
+}: MediaOverlayProps) {
   const isViewer = variant === "viewer";
 
   return (
     <div className="absolute inset-0 bg-linear-to-t from-black/90 via-black/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-4 pointer-events-none">
-      
       {/* Botón de descarga interactivo (Top Right) */}
       {onDownload && (
         <div className="absolute top-3 right-3 flex gap-2 translate-y-2.5 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300 delay-75 pointer-events-auto">
-          <button 
+          <button
             onClick={onDownload}
             className="p-2 bg-black/50 hover:bg-black/80 backdrop-blur-md text-white rounded-lg transition-colors border border-white/10"
             title="Descargar imagen"
@@ -6031,7 +7154,7 @@ export function MediaOverlay({ title, prompt, tags, variant = "gallery", onDownl
         <h3 className="text-sm font-bold line-clamp-1 mb-1 shadow-black/50 drop-shadow-md">
           {title}
         </h3>
-        
+
         {prompt && (
           <div className="flex items-start gap-1.5 mt-2 text-xs text-white/80 line-clamp-2 leading-tight">
             <IconWand size={14} className="shrink-0 text-var(--accent-color) mt-0.5" />
@@ -6042,11 +7165,23 @@ export function MediaOverlay({ title, prompt, tags, variant = "gallery", onDownl
         {/* Los tags se esconden en el visor para mayor limpieza */}
         {!isViewer && tags && tags.length > 0 && (
           <div className="flex flex-wrap gap-1 mt-3">
-            {tags.slice(0, 3).map(tag => (
-              <span key={tag} className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 bg-white/20 backdrop-blur-sm rounded-sm">
-                {tag}
+            {tags.slice(0, 4).map(
+              (
+                tag,
+              ) => (
+                <span
+                  key={tag}
+                  className="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 bg-black/60 text-white/90 backdrop-blur-md rounded-sm border border-white/10"
+                >
+                  {tag}
+                </span>
+              ),
+            )}
+            {tags.length > 4 && (
+              <span className="text-[9px] font-black px-1.5 py-0.5 bg-black/40 text-white/70 rounded-sm">
+                +{tags.length - 4}
               </span>
-            ))}
+            )}
           </div>
         )}
       </div>
@@ -6541,6 +7676,8 @@ import Link from "next/link";
 import { IconStack2, IconUser } from "@tabler/icons-react";
 import { LazyImage } from "../Media/LazyImage";
 import { FeedItem } from "@/src/types/models";
+import { getFeedItemUrl } from "@/src/utils/lib/routes";
+import { getTailwindAspectClass } from "@/src/utils/lib/media";
 
 interface FeedItemCardProps {
   item: FeedItem;
@@ -6550,15 +7687,14 @@ interface FeedItemCardProps {
 }
 
 export function FeedItemCard({ item, lang, isPriority = false, index = 0 }: FeedItemCardProps) {
-  const href =
-    item.type === "prompt"
-      ? `/${lang}/${item.username}/p/${item.raw_id || item.id}`
-      : `/${lang}/${item.username}/${item.slug}`;
+  const href = getFeedItemUrl(item, lang);
+
+  const aspectClass = getTailwindAspectClass(item.width, item.height, item.resolution);
 
   return (
     <Link
       href={href}
-      className="group relative cursor-pointer bg-muted/10 neo-border overflow-hidden aspect-4/5 hover:neo-shadow-accent transition-all block"
+      className={`group relative cursor-pointer bg-muted/10 neo-border overflow-hidden block transition-all hover:neo-shadow-accent ${aspectClass}`}
     >
       {item.image_url ? (
         <LazyImage
@@ -6569,16 +7705,16 @@ export function FeedItemCard({ item, lang, isPriority = false, index = 0 }: Feed
           index={index}
         />
       ) : (
-        <div className="w-full h-full group-hover:scale-105 transition-transform duration-500">
+        <div className="w-full h-full flex items-center justify-center bg-background group-hover:scale-105 transition-transform duration-500">
           <img
-            src="/logo-white.png"
-            className="w-full h-full object-scale-down! dark:hidden opacity-80"
-            alt="Portada por defecto"
+            src="/logo-brand-black.svg"
+            className="w-1/2 h-auto object-contain dark:hidden opacity-30"
+            alt="Cover"
           />
           <img
-            src="/logo-black.png"
-            className="w-full h-full object-scale-down hidden dark:block opacity-80"
-            alt="Portada por defecto"
+            src="/logo-brand-white.svg"
+            className="w-1/2 h-auto object-contain hidden dark:block opacity-30"
+            alt="Cover"
           />
         </div>
       )}
@@ -6586,12 +7722,15 @@ export function FeedItemCard({ item, lang, isPriority = false, index = 0 }: Feed
       <div className="absolute inset-0 z-20 bg-linear-to-t from-black/90 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-4">
         <div className="absolute top-3 left-3 flex gap-2">
           {item.type === "directory" && (
-            <span className="bg-foreground-600/60 text-blue-200 text-[10px] font-bold px-2 py-1 flex items-center gap-1 neo-border rounded-md shadow-sm">
-              <IconStack2 size={12} stroke={2} /> {item.title}
+            <span className="bg-black/60 backdrop-blur-sm text-blue-300 text-[10px] font-bold px-2 py-1 flex items-center gap-1 neo-border border-blue-500/30 rounded-md shadow-sm">
+              <IconStack2 size={12} stroke={2} /> Colección
             </span>
           )}
         </div>
-        <h3 className="text-white font-bold text-sm truncate shadow-black">{item.title}</h3>
+
+        <h3 className="text-white font-bold text-sm truncate shadow-black drop-shadow-md">
+          {item.title}
+        </h3>
         <div className="flex items-center gap-1.5 mt-1 text-white/80 text-xs font-mono">
           <IconUser size={12} /> @{item.username}
         </div>
@@ -6881,6 +8020,37 @@ export function PromptMetadataPanel({ prompt, isOwner = true, onSave }: PromptMe
         </div>
       )}
 
+      {prompt.auto_tags && prompt.auto_tags.length > 0 && (
+        <div className="space-y-3 pt-2">
+          <h3 className="font-mono text-xs font-black uppercase tracking-widest flex items-center gap-2 text-muted-foreground">
+            🏷️ Etiquetas Detectadas (IA)
+          </h3>
+          <div className="flex flex-wrap gap-1.5">
+            {prompt.auto_tags.map((tagItem, idx) => {
+              const isObject = typeof tagItem === "object" && tagItem !== null;
+              const tagName = isObject ? tagItem.name : tagItem;
+              const confidence = isObject ? tagItem.confidence : 100;
+
+              if (!tagName) return null;
+
+              return (
+                <div
+                  key={`${tagName}-${idx}`}
+                  title={`Coincidencia: ${confidence}%`}
+                  className="relative overflow-hidden inline-flex items-center px-2.5 py-1 text-primary text-[10px] font-bold uppercase tracking-wider rounded-md border border-primary/30 group cursor-default"
+                >
+                  <div
+                    className="absolute left-0 top-0 h-full bg-primary/20 group-hover:bg-primary/30 transition-colors z-0"
+                    style={{ width: `${confidence}%` }}
+                  />
+
+                  <span className="relative z-10 pointer-events-none">{tagName}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
       <div className="space-y-6">
         <div className="group relative bg-(--bg-secondary) neo-border p-4 transition-all hover:neo-shadow">
           <div className="flex justify-between items-center mb-3 border-b border-border/50 pb-2">
@@ -6979,7 +8149,7 @@ export function PromptMetadataPanel({ prompt, isOwner = true, onSave }: PromptMe
                     />
                   ) : (
                     <span className="text-sm font-bold truncate" title={String(value)}>
-                      {value}
+                      {value as string | number}
                     </span>
                   )}
                 </div>
@@ -7597,136 +8767,57 @@ export function SearchCategorySelector({ options, activeCategories, onToggle }: 
 
 
 ================================================
-FILE: src/system/molecules/Navbar/UserDropdown.tsx
+FILE: src/system/molecules/Navigation/Breadcrumbs.tsx
 ================================================
-"use client";
+import Link from "next/link";
+import { IconChevronRight, IconHome } from "@tabler/icons-react";
 
-import { useState, useRef } from "react";
-import { useRouter } from "next/navigation";
-import { useAuthStore } from "@/src/store/authStore";
-import { useTheme } from "@/src/utils/hooks/useTheme";
-import { useClickOutside } from "@/src/utils/hooks/useClickOutside";
-import { ChangePasswordModal } from "@/src/system/organisms/Auth/ChangePasswordModal";
+interface BreadcrumbItem {
+  label: string;
+  href?: string;
+}
 
-import {
-  IconMenu2,
-  IconX,
-  IconSun,
-  IconMoon,
-  IconLogout,
-  IconDashboard,
-  IconKey,
-  IconUserPlus,
-} from "@tabler/icons-react";
+interface BreadcrumbsProps {
+  items: BreadcrumbItem[];
+  homeHref?: string;
+}
 
-export function UserDropdown() {
-  const router = useRouter();
-  const { user, logout } = useAuthStore();
-  const { isDark, toggleTheme } = useTheme();
-
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [showPwdModal, setShowPwdModal] = useState(false);
-
-  const menuRef = useRef<HTMLDivElement>(null);
-
-  useClickOutside(menuRef, () => setIsMenuOpen(false));
-
-  if (!user) return null;
-
-  const menuItems = [];
-
-  if (user.role === "admin") {
-    menuItems.push(
-      {
-        label: "Panel de Control",
-        icon: <IconDashboard size={18} />,
-        action: () => {
-          router.push("/admin");
-          setIsMenuOpen(false);
-        },
-      },
-      {
-        label: "Gestionar Accesos",
-        icon: <IconUserPlus size={18} />,
-        action: () => {
-          router.push("/admin");
-          setIsMenuOpen(false);
-        },
-      },
-    );
-  }
-
-  menuItems.push({
-    label: "Cambiar Clave",
-    icon: <IconKey size={18} />,
-    action: () => {
-      setShowPwdModal(true);
-      setIsMenuOpen(false);
-    },
-  });
-
+export function Breadcrumbs({ items, homeHref = "/" }: BreadcrumbsProps) {
   return (
-    <div className="relative" ref={menuRef}>
-      <button
-        onClick={() => setIsMenuOpen(!isMenuOpen)}
-        className={`p-2 neo-border transition-all flex items-center gap-2 ${
-          isMenuOpen
-            ? "bg-(--accent-color) text-white neo-shadow-accent -translate-y-1"
-            : "bg-background text-foreground hover:neo-shadow hover:-translate-y-0.5"
-        }`}
-        aria-label="Menú de usuario"
-      >
-        {isMenuOpen ? <IconX size={24} /> : <IconMenu2 size={24} />}
-      </button>
+    <nav
+      aria-label="Breadcrumb"
+      className="flex items-center space-x-1 text-xs md:text-sm font-mono text-accent/50 overflow-x-auto pb-2 scrollbar-none"
+    >
+      <Link href={homeHref} className="hover:text-accent transition-colors flex items-center">
+        <IconHome size={16} stroke={1.5} />
+      </Link>
 
-      {isMenuOpen && (
-        <div className="absolute right-0 mt-3 w-64 bg-(--bg-secondary) neo-border neo-shadow flex flex-col z-50 animate-fade-in origin-top-right">
-          <div className="p-4 border-b-2 border-(--border-color) bg-background">
-            <p className="text-sm font-bold text-foreground truncate">@{user.username}</p>
-            <p className="text-xs font-mono text-(--accent-color) uppercase tracking-widest mt-1">
-              {user.role}
-            </p>
-          </div>
+      {items.map((item, index) => {
+        const isLast = index === items.length - 1;
 
-          <div className="flex flex-col p-2 gap-1">
-            {menuItems.map((item, index) => (
-              <button
-                key={index}
-                onClick={item.action}
-                className="flex items-center gap-3 p-3 text-sm font-bold text-foreground hover:bg-background neo-border border-transparent hover:border-(--border-color) transition-all text-left uppercase tracking-wide"
+        return (
+          <div key={index} className="flex items-center space-x-1 whitespace-nowrap hover:text-accent">
+            <IconChevronRight size={14} className="opacity-50" stroke={1.5} />
+            {isLast || !item.href ? (
+              <span
+                className="font-bold text-accent/80 tracking-widest truncate max-w-150px sm:max-w-300px"
+                title={item.label}
               >
-                {item.icon}
                 {item.label}
-              </button>
-            ))}
+              </span>
+            ) : (
+              <Link
+                href={item.href}
+                className="hover:text-(--accent-color) transition-colors tracking-widest truncate max-w-150px sm:max-w-200px"
+                title={item.label}
+              >
+                {item.label}
+              </Link>
+            )}
           </div>
-
-          <div className="border-t-2 border-(--border-color) p-2 flex flex-col gap-1 bg-background">
-            <button
-              onClick={toggleTheme}
-              className="flex items-center gap-3 p-3 text-sm font-bold text-foreground hover:bg-(--bg-secondary) neo-border border-transparent hover:border-(--border-color) transition-all text-left uppercase tracking-wide"
-            >
-              {isDark ? (
-                <IconSun size={18} className="text-yellow-500" />
-              ) : (
-                <IconMoon size={18} className="text-blue-500" />
-              )}
-              {isDark ? "Modo Claro" : "Modo Oscuro"}
-            </button>
-
-            <button
-              onClick={logout}
-              className="flex items-center gap-3 p-3 text-sm font-black text-red-500 hover:bg-red-500/10 neo-border border-transparent hover:border-red-500/50 transition-all text-left uppercase tracking-wide"
-            >
-              <IconLogout size={18} />
-              Cerrar Sesión
-            </button>
-          </div>
-        </div>
-      )}
-
-      {showPwdModal && <ChangePasswordModal onClose={() => setShowPwdModal(false)} />}
-    </div>
+        );
+      })}
+    </nav>
   );
 }
 
@@ -7819,122 +8910,287 @@ export function UniversalSearchBar({
 
 
 ================================================
-FILE: src/system/molecules/Studio/SidebarDirectoryItem.tsx
+FILE: src/system/molecules/Studio/DirectoryHeader.tsx
 ================================================
-import React from "react";
-import { Directory } from "@/src/store/useStudioUI";
-import {
-  IconChevronDown,
-  IconChevronRight,
-  IconFolderOpen,
-  IconFolder,
-  IconFolderPlus,
-  IconTrash,
-  IconCloudLock,
-} from "@tabler/icons-react";
+import { IconFolderOpen } from "@tabler/icons-react";
 
-interface SidebarDirectoryItemProps {
-  directory: Directory;
-  level: number;
-  isOpen: boolean;
-  isSelected: boolean;
-  isDragging: boolean;
-  isOver: boolean;
-  isEffectivelyPrivate: boolean;
-  hasChildren: boolean;
-  setBothRefs: (node: HTMLElement | null) => void;
-  attributes: any;
-  listeners: any;
-  onSelect: (e: React.MouseEvent) => void;
-  onToggle: (e: React.MouseEvent) => void;
-  onRename: (e: React.MouseEvent) => void;
-  onCreateSub: (e: React.MouseEvent) => void;
-  onDelete: (e: React.MouseEvent) => void;
+interface DirectoryHeaderProps {
+  name: string;
 }
 
-export const SidebarDirectoryItem = ({
-  directory,
-  level,
-  isOpen,
-  isSelected,
-  isDragging,
-  isOver,
-  isEffectivelyPrivate,
-  hasChildren,
-  setBothRefs,
-  attributes,
-  listeners,
-  onSelect,
-  onToggle,
-  onRename,
-  onCreateSub,
-  onDelete,
-}: SidebarDirectoryItemProps) => {
+export function DirectoryHeader({ name }: DirectoryHeaderProps) {
   return (
-    <div
-      ref={setBothRefs}
-      style={{
-        opacity: isDragging ? 0.4 : 1,
-        cursor: isDragging ? "grabbing" : "pointer",
-        paddingLeft: `${level * 12 + 12}px`,
-      }}
-      {...attributes}
-      {...listeners}
-      onClick={onSelect}
-      onDoubleClick={onRename}
-      className={`
-        group font-mono flex items-center py-1.5 px-2 mx-2 rounded-md transition-all duration-200 relative
-        ${isSelected ? "bg-primary/5 text-foreground font-medium" : "text-muted-foreground hover:text-foreground"}
-        ${isOver ? "bg-primary/10 ring-2 ring-primary/30 border-dashed" : "hover:bg-secondary/40 border border-transparent"}
-        ${isDragging ? "bg-background border-dashed border-primary/50" : ""}
-      `}
-    >
-      {isSelected && (
-        <div className="absolute left-0 w-1 h-6 bg-primary rounded-r-full shadow-[0_0_8px_rgba(var(--primary-rgb),0.4)] top-1/2 -translate-y-1/2" />
-      )}
-
-      <span
-        className="w-4 h-4 mr-1 flex items-center justify-center z-10 hover:bg-muted/50 rounded transition-colors"
-        onClick={onToggle}
-      >
-        {hasChildren && (isOpen ? <IconChevronDown size={14} /> : <IconChevronRight size={14} />)}
-      </span>
-
-      <span className="mr-2 relative flex items-center justify-center">
-        {isOpen ? (
-          <IconFolderOpen size={16} className={isSelected ? "text-primary/70" : "text-foreground/40"} />
-        ) : (
-          <IconFolder size={16} className={isSelected ? "text-primary/70" : "text-foreground/40"} />
-        )}
-
-        {isEffectivelyPrivate && (
-          <div className="absolute -bottom-1 -right-1.5 bg-background rounded-full p-px">
-            <IconCloudLock size={12} className="text-red-300" stroke={2} />
-          </div>
-        )}
-      </span>
-
-      <span className="text-sm truncate flex-1">{directory.name}</span>
-
-      <div className="opacity-0 group-hover:opacity-100 flex items-center gap-1 transition-opacity pointer-events-auto">
-        <button
-          className="p-1 hover:bg-primary/20 rounded transition-colors text-primary/70"
-          title="Nueva Subcarpeta"
-          onClick={onCreateSub}
-        >
-          <IconFolderPlus size={14} />
-        </button>
-        <button
-          className="p-1 hover:bg-destructive/20 hover:text-destructive/90 text-muted-foreground/40 rounded transition-colors"
-          title="Eliminar"
-          onClick={onDelete}
-        >
-          <IconTrash size={14} />
-        </button>
-      </div>
+    <div className="mb-6 pb-4 animate-in fade-in duration-500">
+      <h2 className="text-2xl lg:text-xl text-foreground/50 font-medium tracking-tighter flex items-center gap-3">
+        <IconFolderOpen className="text-foreground/50" size={24} />
+        {name}
+      </h2>
     </div>
   );
-};
+}
+
+
+
+================================================
+FILE: src/system/molecules/Studio/PromptCard.tsx
+================================================
+"use client";
+
+import Link from "next/link";
+import { IconPhoto } from "@tabler/icons-react";
+import { usePromptCard } from "@/src/system/molecules/Cards/hooks/usePromptCard";
+import { PromptCardActions } from "../Cards/PromptCardActions";
+import { LazyImage } from "../Media/LazyImage";
+import { PromptCardSnippet } from "../Cards/PromptCardSnippet";
+import { SavedPrompt } from "@/src/types/models";
+
+interface PromptCardProps {
+  item: SavedPrompt;
+  directories?: any[];
+  onAssign?: (promptId: string, dirId: string) => void;
+  onDelete?: (id: string) => void;
+  lang: string;
+  authorUsername: string;
+  isStudio?: boolean;
+  index: number;
+  isPriority?: boolean;
+}
+
+export function PromptCard({
+  item,
+  directories,
+  onAssign,
+  onDelete,
+  lang,
+  authorUsername,
+  isStudio = false,
+  index,
+  isPriority = false,
+}: PromptCardProps) {
+  const { setIsHovered, isMenuOpen, setIsMenuOpen, copied, handleCopy } = usePromptCard();
+  const href = `/${lang}/${authorUsername}/p/${item.id}${isStudio ? "?from=studio" : ""}`;
+
+  return (
+    <div
+      className="group relative flex flex-col h-full bg-background rounded-xl border border-border/50 shadow-xs hover:shadow-md hover:border-border transition-all duration-200 overflow-hidden"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => {
+        setIsHovered(false);
+        setIsMenuOpen(false);
+      }}
+    >
+      <div className="absolute top-2 right-2 z-30 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+        <PromptCardActions
+          item={item}
+          directories={directories}
+          onAssign={onAssign}
+          onDelete={onDelete}
+          isOpen={isMenuOpen}
+          setIsOpen={setIsMenuOpen}
+        />
+      </div>
+
+      <Link href={href} className="relative flex flex-col h-full z-10 flex-1">
+        <div className="relative aspect-4/5 w-full overflow-hidden bg-muted/20">
+          {item.image_url ? (
+            <LazyImage
+              src={item.image_url}
+              alt={item.title || "Prompt image"}
+              index={index}
+              className="w-full h-full object-cover transition-transform duration-300 ease-out group-hover:scale-[1.02]"
+              priority={isPriority}
+            />
+          ) : (
+            <div className="w-full h-full flex flex-col items-center justify-center text-muted-foreground/20">
+              <IconPhoto size={32} stroke={1.5} />
+            </div>
+          )}
+
+          <div className="absolute inset-x-0 bottom-0 p-3 pt-12 bg-linear-to-t from-background/95 via-background/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200 ease-in-out flex flex-col gap-1.5 pointer-events-none group-hover:pointer-events-auto">
+            <p className="text-[9px] text-muted-foreground font-mono font-semibold uppercase tracking-wider drop-shadow-sm line-clamp-1">
+              {item.model || "Base Model"}
+            </p>
+
+            <PromptCardSnippet promptText={item.prompt} copied={copied} onCopy={handleCopy} />
+          </div>
+        </div>
+
+        <div className="p-2.5 sm:p-3 bg-background flex-1 flex items-center">
+          <h3 className="font-semibold text-xs sm:text-sm truncate w-full text-foreground/90">
+            {item.software || "Sin título"}
+          </h3>
+        </div>
+      </Link>
+    </div>
+  );
+}
+
+
+
+================================================
+FILE: src/system/molecules/Studio/SidebarDirectory.tsx
+================================================
+"use client";
+
+import { useState } from "react";
+import { useStudioUI, Directory } from "@/src/store/useStudioUI";
+import { SidebarDirectoryItem } from "../../atoms/Studio/SidebarDirectoryItem";
+import { useDirectoryDnd } from "@/src/features/studio/hooks/useDirectoryDnd";
+import { useDirectoryActions } from "@/src/features/studio/hooks/useDirectoryActions";
+
+interface Props {
+  directory: Directory;
+  level?: number;
+}
+
+export function SidebarDirectory({ directory, level = 0 }: Props) {
+  const [isOpen, setIsOpen] = useState(false);
+  const { getChildDirectories, activeDirectoryId, setActiveDirectory } = useStudioUI();
+
+  const { createDirectory, deleteDirectory, renameDirectory } = useDirectoryActions();
+
+  const { setBothRefs, isDragging, isOver, attributes, listeners } = useDirectoryDnd(directory);
+
+  const children = getChildDirectories(directory.id);
+  const hasChildren = children.length > 0;
+  const isSelected = activeDirectoryId === directory.id;
+
+  const handleCreateSubdirectory = async (onSuccess: () => void) => {
+    const name = window.prompt("Nombre de la sub-carpeta:");
+    if (name?.trim()) {
+      await createDirectory(name.trim(), directory.id);
+      onSuccess();
+    }
+  };
+
+  if (isDragging) return null;
+
+  return (
+    <div className="flex flex-col w-full" ref={setBothRefs}>
+      <SidebarDirectoryItem
+        directory={directory}
+        level={level}
+        isOpen={isOpen}
+        hasChildren={hasChildren}
+        isSelected={isSelected}
+        isOver={isOver}
+        isDragging={isDragging}
+        setBothRefs={setBothRefs}
+        attributes={attributes}
+        listeners={listeners}
+        isEffectivelyPrivate={directory.is_private || false}
+        onToggle={() => setIsOpen(!isOpen)}
+        onSelect={() => setActiveDirectory(directory.id)}
+        onCreateSub={(e) => {
+          e.stopPropagation();
+          handleCreateSubdirectory(() => setIsOpen(true));
+        }}
+        onDelete={(e) => {
+          e.stopPropagation();
+          if (window.confirm(`¿Borrar "${directory.name}"?`)) {
+            deleteDirectory(directory.id);
+          }
+        }}
+        onRename={(e) => {
+          e.stopPropagation();
+          const newName = window.prompt("Nuevo nombre:", directory.name);
+          if (newName && newName.trim() !== directory.name) {
+            renameDirectory(directory.id, newName.trim());
+          }
+        }}
+      />
+
+      {isOpen && hasChildren && (
+        <div className="flex flex-col w-full">
+          {children.map((child: Directory) => (
+            <SidebarDirectory key={child.id} directory={child} level={level + 1} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+
+
+================================================
+FILE: src/system/molecules/Studio/StudioDndWrapper.tsx
+================================================
+"use client";
+
+import { DndContext, closestCenter, DragOverlay } from "@dnd-kit/core";
+import { IconFolder } from "@tabler/icons-react";
+import { useStudioDnd } from "@/src/features/studio/hooks/useStudioDnd";
+
+interface StudioDndWrapperProps {
+  children: React.ReactNode;
+}
+
+export function StudioDndWrapper({ children }: StudioDndWrapperProps) {
+  const { sensors, activeDragDir, handleDragStart, handleDragEnd } = useStudioDnd();
+
+  return (
+    <DndContext
+      sensors={sensors}
+      collisionDetection={closestCenter}
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
+    >
+      {children}
+
+      <DragOverlay dropAnimation={null}>
+        {activeDragDir && (
+          <div className="flex items-center py-2 px-3 bg-card border border-primary/40 border-dashed rounded-lg shadow-2xl opacity-90 cursor-grabbing">
+            <IconFolder size={18} className="text-primary mr-2" />
+            <span className="text-sm font-bold text-foreground">{activeDragDir.name}</span>
+          </div>
+        )}
+      </DragOverlay>
+    </DndContext>
+  );
+}
+
+
+
+================================================
+FILE: src/system/molecules/Studio/StudioSearch.tsx
+================================================
+"use client";
+
+import { useEffect } from "react";
+import { UniversalSearchBar } from "../../molecules/Search/UniversalSearchBar";
+import { useVectorSearch } from "@/src/features/search/useVectorSearch";
+import { useStudioUI } from "@/src/store/useStudioUI";
+
+export function StudioSearch() {
+  const { activeDirectoryId } = useStudioUI();
+
+  const vector = useVectorSearch({
+    scope: "studio",
+    directoryId: activeDirectoryId ?? undefined,
+  });
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (vector.query) vector.handleExecute();
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [vector.query]);
+
+  return (
+    <div className="mb-4">
+      <UniversalSearchBar
+        query={vector.query}
+        isLoading={vector.isLoading}
+        placeholder="Busca en tus extracciones..."
+        onQueryChange={vector.setQuery}
+        onSubmit={vector.handleExecute}
+        onClear={vector.clear}
+      />
+    </div>
+  );
+}
+
 
 
 ================================================
@@ -9313,6 +10569,7 @@ import { api } from "@/src/services/api";
 import { handleError } from "@/src/utils/errors/ErrorHandler";
 import { useNotificationStore } from "@/src/store/notificationStore";
 import { fetchSeguro } from "@/src/services/api/client";
+import { optimizeAndLogImage } from "@/src/utils/lib/image-optimizer";
 
 interface Props {
   batch: BatchItem[];
@@ -9344,50 +10601,50 @@ export function BatchInspector({
       let finalImageUrl = null;
 
       if (item.previewUrl && item.previewUrl.startsWith("blob:")) {
-        const response = await fetch(item.previewUrl);
-        const blob = await response.blob();
+        // 🟢 2. OPTIMIZACIÓN ANTES DE LA FIRMA
+        // Usamos item.file (el archivo original) y lo pasamos por la trituradora WebP
+        const archivoOptimizado = await optimizeAndLogImage(item.file);
 
         const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
+        // 🟢 3. Pedimos el ticket usando los datos del archivo optimizado (.webp)
         const ticketRes = await fetchSeguro(`${API_URL}/prompts/generate-upload-url`, {
           method: "POST",
           credentials: "include",
           body: JSON.stringify({
-            file_name: item.file.name,
-            content_type: blob.type,
+            file_name: archivoOptimizado.name,
+            content_type: archivoOptimizado.type, // image/webp
           }),
         });
 
         if (!ticketRes.ok) throw new Error("No se pudo obtener el ticket de subida de R2");
 
-        // ✅ MINA 3 DESACTIVADA: Parseamos el JSON plano
         const ticketData = await ticketRes.json();
-
         const uploadUrl = ticketData.upload_url;
-        const contentType = blob.type;
-        const fileSize = blob.size;
+        const contentType = archivoOptimizado.type;
+        const fileSize = archivoOptimizado.size;
 
         // --- 🕵️‍♂️ LOGS DE DIAGNÓSTICO QUIRÚRGICO ANTES DEL FETCH ---
         const fetchOptions = {
           method: "PUT",
-          headers: { "Content-Type": contentType },
-          body: blob,
+          headers: {
+            "Content-Type": contentType,
+            "Cache-Control": "public, max-age=31536000, immutable", // 🛡️ Contrato de caché estricto
+          },
+          body: archivoOptimizado, // 🟢 4. Subimos el WebP, no el Blob crudo
         };
 
-        console.log("🔴 === PRE-FLIGHT CHECK (R2 UPLOAD) ===");
-        console.log("👉 Archivo:", item.file.name);
+        console.log("🔴 === PRE-FLIGHT CHECK (R2 BATCH UPLOAD) ===");
+        console.log("👉 Archivo:", archivoOptimizado.name);
         console.log("👉 Origen del Navegador:", window.location.origin);
-        console.log("👉 URL Destino (Ticket):", uploadUrl);
-        console.log("👉 Objeto Blob - Type:", contentType, "| Size:", fileSize, "bytes");
-        console.log("👉 Headers exactos a enviar:", fetchOptions.headers);
-        console.log("🔴 ===================================");
+        console.log("👉 Objeto - Type:", contentType, "| Size:", fileSize, "bytes");
+        console.log("🔴 ==========================================");
 
         // Subida directa a Cloudflare
         const uploadRes = await fetch(uploadUrl, fetchOptions);
 
-        // --- 🕵️‍♂️ LOGS DE RESPUESTA DE CLOUDFLARE ---
         console.log("🟢 === RESPUESTA DE R2 ===");
         console.log("Status:", uploadRes.status, uploadRes.statusText);
-        console.log("Headers recibidos:", Object.fromEntries(uploadRes.headers.entries()));
 
         if (!uploadRes.ok) {
           const errorText = await uploadRes.text();
@@ -9396,7 +10653,6 @@ export function BatchInspector({
         }
         console.log("🟢 =======================");
 
-        // ✅ MINA 4 DESACTIVADA: Ahora el backend sí nos entrega file_url
         finalImageUrl = ticketData.file_url;
       }
 
@@ -9598,6 +10854,82 @@ export function BatchInspector({
           );
         })}
       </div>
+    </div>
+  );
+}
+
+
+
+================================================
+FILE: src/system/organisms/Header/UserDropdown.tsx
+================================================
+"use client";
+
+import { useState, useRef } from "react";
+import { useRouter, usePathname } from "next/navigation";
+import { useAuthStore } from "@/src/store/authStore";
+import { useClickOutside } from "@/src/utils/hooks/useClickOutside";
+import { MenuItem } from "@/src/system/atoms/Dropdown/MenuItem";
+import { IconMenu2, IconX, IconSettings, IconDashboard, IconLogout } from "@tabler/icons-react";
+
+export function UserDropdown() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const { user, logout } = useAuthStore();
+  const [isOpen, setIsOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useClickOutside(menuRef, () => setIsOpen(false));
+
+  if (!user) return null;
+
+  const lang = pathname?.split("/")[1] || "es";
+  const navigate = (path: string) => {
+    router.push(path);
+    setIsOpen(false);
+  };
+
+  return (
+    <div className="relative" ref={menuRef}>
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className={`p-2 neo-border transition-all ${isOpen ? "bg-(--accent-color) text-white" : "bg-background"}`}
+      >
+        {isOpen ? <IconX size={24} /> : <IconMenu2 size={24} />}
+      </button>
+
+      {isOpen && (
+        <div className="absolute right-0 mt-3 w-64 bg-(--bg-secondary) neo-border neo-shadow z-50 animate-fade-in">
+          <div className="p-4 border-b-2 border-(--border-color) bg-background">
+            <p className="text-sm font-bold">@{user.username}</p>
+            <p className="text-[10px] font-mono text-(--accent-color) uppercase">{user.role}</p>
+          </div>
+
+          <div className="p-2 flex flex-col gap-1">
+            <MenuItem
+              icon={<IconSettings size={18} />}
+              label="Configuración"
+              onClick={() => navigate(`/${lang}/${user.username}/settings/profile`)}
+            />
+            {user.role === "admin" && (
+              <MenuItem
+                icon={<IconDashboard size={18} />}
+                label="Panel Admin"
+                onClick={() => navigate(`/${lang}/admin`)}
+              />
+            )}
+          </div>
+
+          <div className="p-2 bg-background border-t-2 border-(--border-color)">
+            <MenuItem
+              icon={<IconLogout size={18} />}
+              label="Cerrar Sesión"
+              onClick={logout}
+              variant="danger"
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -9963,63 +11295,6 @@ export function Navbar() {
 
 
 ================================================
-FILE: src/system/organisms/Navigation/Breadcrumbs.tsx
-================================================
-import Link from "next/link";
-import { IconChevronRight, IconHome } from "@tabler/icons-react";
-
-interface BreadcrumbItem {
-  label: string;
-  href?: string;
-}
-
-interface BreadcrumbsProps {
-  items: BreadcrumbItem[];
-  homeHref?: string;
-}
-
-export function Breadcrumbs({ items, homeHref = "/" }: BreadcrumbsProps) {
-  return (
-    <nav
-      aria-label="Breadcrumb"
-      className="flex items-center space-x-1 text-xs md:text-sm font-mono text-muted-foreground overflow-x-auto pb-2 scrollbar-none"
-    >
-      <Link href={homeHref} className="hover:text-accent-foreground transition-colors flex items-center">
-        <IconHome size={16} stroke={1.5} />
-      </Link>
-
-      {items.map((item, index) => {
-        const isLast = index === items.length - 1;
-
-        return (
-          <div key={index} className="flex items-center space-x-1 whitespace-nowrap">
-            <IconChevronRight size={14} className="opacity-50" stroke={1.5} />
-            {isLast || !item.href ? (
-              <span
-                className="font-bold text-foreground tracking-widest uppercase truncate max-w-150px sm:max-w-300px"
-                title={item.label}
-              >
-                {item.label}
-              </span>
-            ) : (
-              <Link
-                href={item.href}
-                className="hover:text-(--accent-color) transition-colors tracking-widest uppercase truncate max-w-150px sm:max-w-200px"
-                title={item.label}
-              >
-                {item.label}
-              </Link>
-            )}
-          </div>
-        );
-      })}
-    </nav>
-  );
-}
-
-
-
-================================================
 FILE: src/system/organisms/Navigation/NavbarSearch.tsx
 ================================================
 // src/system/organisms/Navigation/NavbarSearch.tsx
@@ -10064,51 +11339,81 @@ FILE: src/system/organisms/Navigation/PageHeader.tsx
 "use client";
 
 import { useState, useEffect } from "react";
-import { Breadcrumbs } from "@/src/system/organisms/Navigation/Breadcrumbs";
+import { Breadcrumbs } from "@/src/system/molecules/Navigation/Breadcrumbs";
 
-export function PageHeader({ title, subtitle, description, icon, breadcrumbItems }: any) {
+interface PageHeaderProps {
+  title: string;
+  subtitle?: string;
+  description: string;
+  icon: React.ReactNode;
+  breadcrumbItems: any[];
+  scrollContainerId?: string;
+  collapseOnHide?: boolean;
+}
+
+export function PageHeader({
+  title,
+  subtitle,
+  description,
+  icon,
+  breadcrumbItems,
+  scrollContainerId,
+  collapseOnHide = false,
+}: PageHeaderProps) {
   const [isVisible, setIsVisible] = useState(true);
   const [lastScrollY, setLastScrollY] = useState(0);
 
   useEffect(() => {
+    const target = scrollContainerId ? document.getElementById(scrollContainerId) : window;
+    if (!target) return;
+
     const handleScroll = () => {
-      const currentScrollY = window.scrollY;
-      if (currentScrollY > lastScrollY && currentScrollY > 150) {
+      const currentScrollY = scrollContainerId ? (target as HTMLElement).scrollTop : window.scrollY;
+
+      if (currentScrollY > lastScrollY && currentScrollY > 100) {
         setIsVisible(false);
-      } else {
+      } else if (currentScrollY < lastScrollY) {
         setIsVisible(true);
       }
+
       setLastScrollY(currentScrollY);
     };
 
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, [lastScrollY]);
+    target.addEventListener("scroll", handleScroll, { passive: true });
+    return () => target.removeEventListener("scroll", handleScroll);
+  }, [lastScrollY, scrollContainerId]);
+
+  const visibilityClasses = isVisible
+    ? "opacity-100 translate-y-0 max-h-[300px] mb-4"
+    : collapseOnHide
+      ? "opacity-0 -translate-y-4 max-h-0 overflow-hidden mb-0"
+      : "opacity-0 -translate-y-full";
 
   return (
-    <header
-      className={`
-        hidden md:block 
-        sticky top-0 z-40 w-full transition-all duration-500 ease-in-out
-        ${isVisible ? "translate-y-0 opacity-100" : "-translate-y-full opacity-0"}
-        bg-background/80 backdrop-blur-xl px-4 md:px-0 py-6
-      `}
-    >
-      <div className="w-full mx-auto space-y-4">
-        <Breadcrumbs items={breadcrumbItems} />
-        <div className="flex justify-between items-center gap-4">
-          <div>
-            <h1 className="text-2xl text-foreground font-black tracking-tighter flex items-center gap-2">
-              <span className="text-(--accent-color)">{icon}</span>
-              {title} {subtitle && <span className="font-mono font-medium opacity-70">{subtitle}</span>}
-            </h1>
-            <p className="text-muted-foreground font-mono text-xs tracking-widest">
-              {description}
-            </p>
+    <div className={`transition-all duration-500 ease-in-out ${visibilityClasses}`}>
+      <header
+        className={`
+          md:block w-full bg-background/80
+          ${!collapseOnHide ? "sticky top-0 z-40" : "relative z-40"}
+        `}
+      >
+        <div className="w-full mx-auto space-y-6">
+          <div className="flex justify-between items-center gap-4">
+            <div>
+              <h1 className="text-2xl text-foreground/90 font-black tracking-tighter flex items-center gap-2">
+                <span className="text-foreground/90">{icon}</span>
+                {title}{" "}
+                {subtitle && <span className="font-mono font-medium opacity-70">{subtitle}</span>}
+              </h1>
+              <p className="text-foreground/40 font-mono text-xs tracking-widest">
+                {description}
+              </p>
+            </div>
           </div>
+          <Breadcrumbs items={breadcrumbItems} />
         </div>
-      </div>
-    </header>
+      </header>
+    </div>
   );
 }
 
@@ -10117,38 +11422,38 @@ export function PageHeader({ title, subtitle, description, icon, breadcrumbItems
 ================================================
 FILE: src/system/organisms/PromptDetail/PromptDetailView.tsx
 ================================================
+"use client";
+
 import { PromptImageViewer } from "@/src/system/molecules/Cards/PromptImageViewer";
 import { PromptMetadataPanel } from "@/src/system/molecules/Cards/PromptMetadataPanel";
-import { Breadcrumbs } from "@/src/system/organisms/Navigation/Breadcrumbs";
+import { Breadcrumbs } from "@/src/system/molecules/Navigation/Breadcrumbs";
 import { SavedPrompt } from "@/src/types/models";
+import { useUpdatePromptMetadata } from "@/src/features/studio/hooks/useUpdatePromptMetadata";
 
 interface PromptDetailViewProps {
   prompt: SavedPrompt;
   breadcrumbItems: { label: string; href?: string }[];
 }
 
-const handleSaveMetadata = async (updatedData: Partial<SavedPrompt>) => {
-  // Aquí llamas a tu API: ej. await fetch(`/api/prompts/${prompt.id}`, { method: 'PATCH', ... })
-  console.log("Guardando en base de datos:", updatedData);
-};
-
 export function PromptDetailView({ prompt, breadcrumbItems }: PromptDetailViewProps) {
   const isLandscape = prompt.width && prompt.height ? prompt.width / prompt.height > 1.2 : false;
 
+  const { handleSaveMetadata } = useUpdatePromptMetadata(String(prompt.id));
+
   return (
-    <main className="min-h-screen bg-background p-4 md:p-8">
-      <div className="max-w-6xl mx-auto space-y-8">
-        <div className="mb-4">
+    <main className="h-[calc(100dvh-64px)] bg-background p-4 md:p-8 overflow-hidden flex flex-col">
+      <div className="max-w-7xl w-full mx-auto flex flex-col h-full">
+        <div className="shrink-0 mb-6">
           <Breadcrumbs items={breadcrumbItems} />
         </div>
 
         <div
-          className={`grid gap-8 items-start ${isLandscape ? "grid-cols-1" : "grid-cols-1 lg:grid-cols-2 lg:gap-12"}`}
+          className={`flex-1 min-h-0 grid gap-6 lg:gap-12 ${isLandscape ? "grid-cols-1 overflow-y-auto pb-10 custom-scrollbar" : "grid-cols-1 lg:grid-cols-2"}`}
         >
-          <section className="sticky top-24 bg-muted/10 rounded-2xl overflow-hidden border border-border flex items-center justify-center">
-            <div
-              className={`relative w-full ${isLandscape ? "aspect-video" : "min-h-[50vh] lg:h-[80vh]"}`}
-            >
+          <section
+            className={`rounded-2xl overflow-hidden border border-border bg-muted/10 flex items-center justify-center ${isLandscape ? "relative w-full aspect-video" : "h-full min-h-0"}`}
+          >
+            <div className="w-full h-full relative">
               <PromptImageViewer
                 imageUrl={prompt.image_url || null}
                 altText={prompt.title || "Imagen generada"}
@@ -10156,9 +11461,9 @@ export function PromptDetailView({ prompt, breadcrumbItems }: PromptDetailViewPr
             </div>
           </section>
 
-          <section className="space-y-6">
-            <header>
-              <h1 className="text-2xl font-black uppercase tracking-tighter mb-2">
+          <section className="flex flex-col h-full min-h-0">
+            <header className="shrink-0 mb-6">
+              <h1 className="text-2xl lg:text-3xl font-black uppercase tracking-tighter mb-2">
                 {prompt.title || "Prompt Sin Título"}
               </h1>
               <p className="text-sm font-mono text-muted-foreground">
@@ -10166,7 +11471,13 @@ export function PromptDetailView({ prompt, breadcrumbItems }: PromptDetailViewPr
               </p>
             </header>
 
-            <PromptMetadataPanel prompt={prompt} isOwner={true} onSave={handleSaveMetadata} />
+            <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 pb-12">
+              <PromptMetadataPanel
+                prompt={prompt}
+                isOwner={true}
+                onSave={handleSaveMetadata}
+              />
+            </div>
           </section>
         </div>
       </div>
@@ -10278,263 +11589,45 @@ export function SearchResults({
 
 
 ================================================
-FILE: src/system/organisms/Studio/PromptCard.tsx
-================================================
-"use client";
-
-import Link from "next/link";
-import { IconPhoto } from "@tabler/icons-react";
-import { usePromptCard } from "@/src/system/molecules/Cards/hooks/usePromptCard";
-import { PromptCardActions } from "../../molecules/Cards/PromptCardActions";
-import { LazyImage } from "../../molecules/Media/LazyImage";
-import { PromptCardSnippet } from "../../molecules/Cards/PromptCardSnippet";
-
-export function PromptCard({
-  item,
-  directories,
-  onAssign,
-  onDelete,
-  lang,
-  authorUsername,
-  isStudio,
-  index,
-}: any) {
-  const { setIsHovered, isMenuOpen, setIsMenuOpen, copied, handleCopy } = usePromptCard();
-  const href = `/${lang}/${authorUsername}/p/${item.id}${isStudio ? "?from=studio" : ""}`;
-
-  return (
-    <div
-      className="group relative flex flex-col h-fit break-inside-avoid mb-6 bg-background rounded-xl border border-border shadow-sm hover:shadow-lg transition-all overflow-hidden"
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => {
-        setIsHovered(false);
-        setIsMenuOpen(false);
-      }}
-    >
-      <div className="absolute top-2 right-2 z-30 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-        <PromptCardActions
-          item={item}
-          directories={directories}
-          onAssign={onAssign}
-          onDelete={onDelete}
-          isOpen={isMenuOpen}
-          setIsOpen={setIsMenuOpen}
-        />
-      </div>
-
-      <Link href={href} className="relative flex flex-col h-full z-10">
-        <div className="relative aspect-4/5 w-full overflow-hidden bg-muted/10">
-          {item.image_url ? (
-            <LazyImage
-              src={item.image_url}
-              alt={item.title}
-              index={index}
-              className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-            />
-          ) : (
-            <div className="w-full h-full flex flex-col items-center justify-center text-muted-foreground/30">
-              <IconPhoto size={40} stroke={1} />
-            </div>
-          )}
-
-          <div className="absolute inset-x-0 bottom-0 p-3 pt-12 bg-linear-to-t from-background/95 via-background/80 to-transparent opacity-0 translate-y-4 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300 ease-out flex flex-col gap-2 pointer-events-none group-hover:pointer-events-auto">
-            <p className="text-[10px] text-muted-foreground font-mono font-semibold uppercase tracking-wider drop-shadow-sm">
-              {item.model || "Base Model"}
-            </p>
-
-            <PromptCardSnippet promptText={item.prompt} copied={copied} onCopy={handleCopy} />
-          </div>
-        </div>
-
-        <div className="p-3 bg-background border-t border-border/10">
-          <h3 className="font-bold text-sm truncate">{item.title}</h3>
-        </div>
-      </Link>
-    </div>
-  );
-}
-
-
-
-================================================
 FILE: src/system/organisms/Studio/PromptGrid.tsx
 ================================================
-"use client";
-
-import { useParams } from "next/navigation";
 import { IconPhotoOff } from "@tabler/icons-react";
-import { PageLoader } from "../../atoms/PageLoader";
-import { PromptCard } from "./PromptCard";
-import { useStudioPrompts } from "@/src/features/studio/hooks/useStudioPrompts";
+import { PromptCard } from "../../molecules/Studio/PromptCard";
+import { SavedPrompt } from "@/src/types/models";
 
-export default function PromptGrid() {
-  const params = useParams();
-  const lang = (params?.lang as string) || "es";
+interface PromptGridProps {
+  prompts: SavedPrompt[];
+  lang: string;
+  authorUsername: string;
+  onDelete: (id: string) => void;
+}
 
-  const { prompts, isLoading, user, deletePrompt } = useStudioPrompts();
-
-  if (isLoading) {
-    return (
-      <div className="h-full flex flex-col flex-1 items-center justify-center">
-        <PageLoader text="Sincronizando Studio..." />
-      </div>
-    );
-  }
-
+export function PromptGrid({ prompts, lang, authorUsername, onDelete }: PromptGridProps) {
   if (prompts.length === 0) {
     return (
-      <div className="h-full flex flex-col flex-1 items-center justify-center text-muted-foreground/40">
+      <div className="flex-1 min-h-[50vh] flex flex-col items-center justify-center text-muted-foreground/40 bg-muted/5">
         <IconPhotoOff size={48} stroke={1.5} className="mb-4" />
         <p className="text-sm font-mono uppercase tracking-widest text-center px-4">
-          No se encontraron prompts en este rincón
+          Este directorio está vacío.
         </p>
       </div>
     );
   }
 
   return (
-    <div className="h-full flex flex-col">
-      <div className="columns-1 sm:columns-2 lg:columns-3 xl:columns-4 gap-4 space-y-4 mx-auto w-full max-w-7xl">
-        {prompts.map((prompt, index) => (
-          <PromptCard
-            key={prompt.id}
-            item={prompt}
-            index={index}
-            lang={lang}
-            isStudio={true}
-            authorUsername={user?.username || "unknown"}
-            isPriority={index < 8}
-            onDelete={deletePrompt}
-          />
-        ))}
-      </div>
-    </div>
-  );
-}
-
-
-
-================================================
-FILE: src/system/organisms/Studio/SidebarDirectory.tsx
-================================================
-"use client";
-
-import { useState } from "react";
-import { useStudioUI, Directory } from "@/src/store/useStudioUI";
-import { SidebarDirectoryItem } from "../../molecules/Studio/SidebarDirectoryItem";
-import { useDirectoryDnd } from "@/src/features/studio/hooks/useDirectoryDnd";
-import { useDirectoryActions } from "@/src/features/studio/hooks/useDirectoryActions";
-
-interface Props {
-  directory: Directory;
-  level?: number;
-}
-
-export function SidebarDirectory({ directory, level = 0 }: Props) {
-  const [isOpen, setIsOpen] = useState(false);
-  const { getChildDirectories, activeDirectoryId, setActiveDirectory } = useStudioUI();
-
-  const { createDirectory, deleteDirectory, renameDirectory } = useDirectoryActions();
-
-  const { setBothRefs, isDragging, isOver, attributes, listeners } = useDirectoryDnd(directory);
-
-  const children = getChildDirectories(directory.id);
-  const hasChildren = children.length > 0;
-  const isSelected = activeDirectoryId === directory.id;
-
-  const handleCreateSubdirectory = async (onSuccess: () => void) => {
-    const name = window.prompt("Nombre de la sub-carpeta:");
-    if (name?.trim()) {
-      await createDirectory(name.trim(), directory.id);
-      onSuccess();
-    }
-  };
-
-  if (isDragging) return null;
-
-  return (
-    <div className="flex flex-col w-full" ref={setBothRefs}>
-      <SidebarDirectoryItem
-        directory={directory}
-        level={level}
-        isOpen={isOpen}
-        hasChildren={hasChildren}
-        isSelected={isSelected}
-        isOver={isOver}
-        isDragging={isDragging}
-        setBothRefs={setBothRefs}
-        attributes={attributes}
-        listeners={listeners}
-        isEffectivelyPrivate={directory.is_private || false}
-        onToggle={() => setIsOpen(!isOpen)}
-        onSelect={() => setActiveDirectory(directory.id)}
-        onCreateSub={(e) => {
-          e.stopPropagation();
-          handleCreateSubdirectory(() => setIsOpen(true));
-        }}
-        onDelete={(e) => {
-          e.stopPropagation();
-          if (window.confirm(`¿Borrar "${directory.name}"?`)) {
-            deleteDirectory(directory.id);
-          }
-        }}
-        onRename={(e) => {
-          e.stopPropagation();
-          const newName = window.prompt("Nuevo nombre:", directory.name);
-          if (newName && newName.trim() !== directory.name) {
-            renameDirectory(directory.id, newName.trim());
-          }
-        }}
-      />
-
-      {isOpen && hasChildren && (
-        <div className="flex flex-col w-full">
-          {children.map((child: Directory) => (
-            <SidebarDirectory key={child.id} directory={child} level={level + 1} />
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-
-
-================================================
-FILE: src/system/organisms/Studio/StudioSearch.tsx
-================================================
-"use client";
-
-import { useEffect } from "react";
-import { UniversalSearchBar } from "../../molecules/Search/UniversalSearchBar";
-import { useVectorSearch } from "@/src/features/search/useVectorSearch";
-import { useStudioUI } from "@/src/store/useStudioUI";
-
-export function StudioSearch() {
-  const { activeDirectoryId } = useStudioUI();
-
-  const vector = useVectorSearch({
-    scope: "studio",
-    directoryId: activeDirectoryId ?? undefined,
-  });
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (vector.query) vector.handleExecute();
-    }, 500);
-    return () => clearTimeout(timer);
-  }, [vector.query]);
-
-  return (
-    <div className="mb-4">
-      <UniversalSearchBar
-        query={vector.query}
-        isLoading={vector.isLoading}
-        placeholder="Busca en tus extracciones..."
-        onQueryChange={vector.setQuery}
-        onSubmit={vector.handleExecute}
-        onClear={vector.clear}
-      />
+    <div className="grid gap-3 sm:gap-4 w-full pb-24 grid-cols-[repeat(auto-fill,minmax(150px,1fr))] sm:grid-cols-[repeat(auto-fill,minmax(200px,1fr))] lg:grid-cols-[repeat(auto-fill,minmax(220px,1fr))]">
+      {prompts.map((prompt, index) => (
+        <PromptCard
+          key={prompt.id}
+          item={prompt}
+          index={index}
+          lang={lang}
+          isStudio={true}
+          authorUsername={authorUsername}
+          isPriority={index < 8}
+          onDelete={onDelete}
+        />
+      ))}
     </div>
   );
 }
@@ -10548,17 +11641,20 @@ FILE: src/system/organisms/Studio/StudioSidebar.tsx
 
 import { IconFolderPlus, IconCloudUpload, IconFolder } from "@tabler/icons-react";
 import { useStudioUI, Directory } from "@/src/store/useStudioUI";
-import { SidebarDirectory } from "@/src/system/organisms/Studio/SidebarDirectory";
+import { SidebarDirectory } from "../../molecules/Studio/SidebarDirectory";
 import { useFileUploader } from "@/src/features/extractor/hooks/useFileUploader";
-
 import { useDirectoryActions } from "@/src/features/studio/hooks/useDirectoryActions";
+import { useDroppable } from "@dnd-kit/core";
 
 export function StudioSidebar() {
   const { directories, activeDirectoryId, setActiveDirectory } = useStudioUI();
-
   const { createDirectory } = useDirectoryActions();
-
   const { handleUploadClick } = useFileUploader();
+
+  const { setNodeRef: setRootDropRef, isOver: isRootOver } = useDroppable({
+    id: "root-zone",
+    data: { type: "root" },
+  });
 
   const handleCreateRootFolder = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -10567,16 +11663,20 @@ export function StudioSidebar() {
   };
 
   return (
-    <aside className="w-72 border-r border-border/30 bg-muted/5 flex-col hidden md:flex">
+    <aside className="w-72 border-r border-border/30 bg-muted/5 flex-col hidden md:flex h-full shrink-0">
       <div className="pt-6 flex-1 overflow-y-auto custom-scrollbar flex flex-col gap-1">
         <div className="px-3 mb-1 group relative">
           <div
+            ref={setRootDropRef}
             onClick={() => setActiveDirectory(null)}
-            className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs transition-all border cursor-pointer role="button" ${
-              activeDirectoryId === null
-                ? "bg-primary/10 text-primary border-primary/20 font-bold"
-                : "text-muted-foreground hover:bg-secondary/40 border-transparent font-medium"
-            }`}
+            className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs transition-all border cursor-pointer role="button" 
+              ${
+                activeDirectoryId === null
+                  ? "bg-primary/10 text-primary border-primary/20 font-bold"
+                  : "text-muted-foreground hover:bg-secondary/40 border-transparent font-medium"
+              }
+              ${isRootOver ? "ring-2 ring-primary border-dashed bg-primary/20" : ""} 
+            `}
           >
             <IconFolder size={18} stroke={1.5} />
             <span className="tracking-widest flex-1 text-left">
@@ -10728,9 +11828,10 @@ export function ImageViewerModal({
 
 
 ================================================
-FILE: src/system/pages/Feed/PublicFeedGrid.tsx
+FILE: src/system/templates/Feed/PublicFeedGrid.tsx
 ================================================
-// frontend/src/system/pages/Feed/PublicFeedGrid.tsx
+"use client";
+
 import { useEffect, useRef } from "react";
 import { FeedItemCard } from "@/src/system/molecules/Cards/FeedItemCard";
 import { FeedState } from "@/src/system/molecules/Feedback/FeedState";
@@ -10775,23 +11876,80 @@ export function PublicFeedGrid({
         Explora la Comunidad
       </h2>
 
-      <div className="mx-auto grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+      <div className="mx-auto columns-1 sm:columns-2 md:columns-3 lg:columns-4 xl:columns-5 gap-6">
         {feed.map((item, index) => (
-          <FadeIn key={item.id} delay={0.1} y={20}>
-            <FeedItemCard item={item} lang={lang} index={index} />
-          </FadeIn>
+          <div key={item.id} className="break-inside-avoid mb-6 inline-block w-full">
+            <FadeIn delay={0.1} y={20} className="h-full">
+              <FeedItemCard item={item} lang={lang} index={index} />
+            </FadeIn>
+          </div>
         ))}
       </div>
 
       <div ref={sentinelRef} className="h-20 flex items-center justify-center mt-10">
         {isLoading && <FeedState type="loading" />}
         {!hasMore && feed.length > 0 && (
-          <p className="text-muted-foreground font-mono text-xs uppercase">
+          <p className="text-muted-foreground font-mono text-xs uppercase text-center">
             — Fin de la transmisión —
           </p>
         )}
       </div>
     </div>
+  );
+}
+
+
+
+================================================
+FILE: src/system/templates/Studio/StudioWorkspace.tsx
+================================================
+"use client";
+
+import { useMemo } from "react";
+import { useParams } from "next/navigation";
+import { PageLoader } from "@/src/system/atoms/PageLoader";
+import { DirectoryHeader } from "@/src/system/molecules/Studio/DirectoryHeader";
+import { PromptGrid } from "@/src/system/organisms/Studio/PromptGrid";
+
+import { useStudioPrompts } from "@/src/features/studio/hooks/useStudioPrompts";
+import { useStudioUI } from "@/src/store/useStudioUI";
+import { useStudioSync } from "@/src/features/studio/hooks/useStudioSync";
+
+export function StudioWorkspace() {
+  useStudioSync();
+
+  const params = useParams();
+  const lang = (params?.lang as string) || "es";
+
+  const { prompts, isLoading, user, deletePrompt } = useStudioPrompts();
+  const { activeDirectoryId, directories } = useStudioUI();
+
+  const activeDir = useMemo(
+    () => directories.find((d) => String(d.id) === String(activeDirectoryId)),
+    [activeDirectoryId, directories],
+  );
+
+  const directoryName = activeDirectoryId && activeDir ? activeDir.name : "reprompt root";
+  const authorUsername = user?.username || "unknown";
+
+  if (isLoading) {
+    return (
+      <div className="h-full flex flex-col flex-1 items-center justify-center">
+        <PageLoader text="Sincronizando Studio..." />
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <DirectoryHeader name={directoryName} />
+      <PromptGrid
+        prompts={prompts}
+        lang={lang}
+        authorUsername={authorUsername}
+        onDelete={deletePrompt}
+      />
+    </>
   );
 }
 
@@ -10835,6 +11993,8 @@ export interface SavedPrompt {
   seed?: string;
   image_url?: string;
   software?: string;
+  auto_tags?: { name: string; confidence: number }[];
+  trigger_words?: string[];
   directory_id?: number | null;
   created_at: string;
 }
@@ -10857,7 +12017,8 @@ export interface GalleryItem {
   thumb: string;
   gid?: string;
   token?: string;
-  tags?: string[];
+  auto_tags?: string[];
+  trigger_words?: string[];
   [key: string]: any;
 }
 
@@ -10870,7 +12031,12 @@ export interface FeedItem {
   title: string;
   username: string;
   image_url?: string;
+  width?: number;
+  height?: number;
   items_count: number;
+  resolution?: string;
+  created_at: string;
+  model?: string;
 }
 
 export interface Directory {
@@ -10891,7 +12057,6 @@ FILE: src/utils/adapters/mediaAdapters.ts
 import { MediaCardData, GalleryItem } from "@/src/types/models";
 
 export const mapSearchToMediaCard = (item: GalleryItem): MediaCardData => {
-  // 🚨 SENSOR DE TRANSFORMACIÓN
   if (!item && process.env.NODE_ENV === "development")
     console.error("🚨 TELEMETRÍA [ADAPTER]: Item recibido es NULO o UNDEFINED");
   if (item && !item.thumb && process.env.NODE_ENV === "development")
@@ -10902,8 +12067,7 @@ export const mapSearchToMediaCard = (item: GalleryItem): MediaCardData => {
     user_id: item.user_id,
     imageUrl: item?.thumb || "",
     title: item?.title || "Sin título",
-    tags: item?.tags || [],
-    source: "E-Hentai",
+    tags: item?.auto_tags || item.auto_tags || [],
     aspectRatio: "portrait",
   };
 };
@@ -10914,6 +12078,7 @@ export const mapViewerToMediaCard = (page: any, index: number): MediaCardData =>
     id: `p-${index}`,
     imageUrl: page?.image_url || "",
     title: page?.name || "",
+    tags: page?.auto_tags || page?.tags || [],
     aspectRatio: "auto",
   };
 };
@@ -11091,6 +12256,198 @@ export function cn(...inputs: ClassValue[]) {
 
 
 ================================================
+FILE: src/utils/lib/image-optimizer.ts
+================================================
+// src/utils/lib/image-optimizer.ts
+
+/**
+ * Convierte un File (Imagen) a un formato WebP optimizado usando Canvas.
+ * Limita el tamaño máximo para evitar archivos gigantes.
+ */
+function compressToWebP(file: File, maxWidthOrHeight = 1536, quality = 0.85): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+
+    img.onload = () => {
+      URL.revokeObjectURL(url); // Liberamos memoria (Directriz 11)
+
+      // Calculamos nuevas dimensiones manteniendo el Aspect Ratio
+      let width = img.width;
+      let height = img.height;
+
+      if (width > maxWidthOrHeight || height > maxWidthOrHeight) {
+        if (width > height) {
+          height = Math.round((height * maxWidthOrHeight) / width);
+          width = maxWidthOrHeight;
+        } else {
+          width = Math.round((width * maxWidthOrHeight) / height);
+          height = maxWidthOrHeight;
+        }
+      }
+
+      // Creamos el Canvas para redibujar
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+
+      const ctx = canvas.getContext("2d");
+      if (!ctx) {
+        return reject(new Error("No se pudo obtener el contexto del canvas"));
+      }
+
+      // Dibujamos la imagen redimensionada
+      ctx.drawImage(img, 0, 0, width, height);
+
+      // Extraemos como WebP
+      canvas.toBlob(
+        (blob) => {
+          if (blob) {
+            resolve(blob);
+          } else {
+            reject(new Error("Fallo al convertir la imagen a WebP"));
+          }
+        },
+        "image/webp", // 🟢 Forzamos el formato WebP
+        quality       // Calidad (0.85 es el sweet spot visual/peso)
+      );
+    };
+
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("No se pudo cargar la imagen para comprimirla"));
+    };
+
+    img.src = url;
+  });
+}
+
+/**
+ * Función principal para usar antes de pedir la pre-signed URL.
+ * Devuelve un File nuevo en formato WebP y loguea el rendimiento.
+ */
+export async function optimizeAndLogImage(file: File): Promise<File> {
+  const startSize = (file.size / 1024 / 1024).toFixed(2);
+  console.log(`📸 [IMAGEN-ORIGINAL] Nombre: ${file.name} | Tamaño: ${startSize} MB`);
+
+  try {
+    // Si ya es muy pequeña o es un gif animado, no la tocamos
+    if (file.size < 100 * 1024 || file.type === "image/gif") {
+      console.log(`✨ [OPTIMIZACIÓN-SKIPPED] Archivo ignorado por tamaño o tipo.`);
+      return file;
+    }
+
+    const compressedBlob = await compressToWebP(file);
+    
+    const endSize = (compressedBlob.size / 1024).toFixed(2);
+    const reduction = (((file.size - compressedBlob.size) / file.size) * 100).toFixed(1);
+
+    console.log(`✨ [OPTIMIZACIÓN-FRONTEND] Nuevo Tamaño: ${endSize} KB | Reducción: ${reduction}%`);
+
+    // Reempaquetamos el Blob en un objeto File para que sea compatible con tu lógica de subida
+    const newFileName = file.name.replace(/\.[^/.]+$/, "") + ".webp";
+    return new File([compressedBlob], newFileName, { type: "image/webp" });
+
+  } catch (error) {
+    console.error("❌ [OPTIMIZACIÓN-ERROR] Falló la compresión, devolviendo original:", error);
+    return file; // Si falla, devolvemos el original para no bloquear al usuario
+  }
+}
+
+// Utilidad para depurar el CDN
+export async function auditCDNHeaders(url: string) {
+  try {
+    const response = await fetch(url, { method: "HEAD" });
+    const cacheStatus = response.headers.get("cf-cache-status") || "NO-HEADER";
+    const cacheControl = response.headers.get("cache-control") || "NO-HEADER";
+    const age = response.headers.get("age") || "0";
+
+    console.log(`🌐 [CDN-AUDIT] URL: ${url}`);
+    console.log(`👉 Status: ${cacheStatus} | Age: ${age}s | Policy: ${cacheControl}`);
+  } catch (error) {
+    console.log(`🌐 [CDN-AUDIT-FAILED] No se pudieron leer las cabeceras de ${url}`);
+  }
+}
+
+
+================================================
+FILE: src/utils/lib/media.ts
+================================================
+export function getExactAspectRatio(
+  width?: number | null,
+  height?: number | null,
+  resolution?: string | null,
+): number {
+  let w = width;
+  let h = height;
+
+  if ((!w || !h) && resolution && resolution.includes("x")) {
+    const [resW, resH] = resolution.toLowerCase().split("x").map(Number);
+    if (!isNaN(resW) && !isNaN(resH)) {
+      w = resW;
+      h = resH;
+    }
+  }
+
+  if (!w || !h) return 0.8;
+
+  return w / h;
+}
+
+export function getTailwindAspectClass(
+  width?: number | null,
+  height?: number | null,
+  resolution?: string | null,
+): string {
+  const ratio = getExactAspectRatio(width, height, resolution);
+
+  if (ratio > 1.4) return "aspect-video";
+  if (ratio > 1.1) return "aspect-[3/2]";
+  if (ratio < 0.5) return "aspect-[9/20]";
+  if (ratio < 0.75) return "aspect-[2/3]";
+  if (ratio >= 0.75 && ratio <= 1.1) return "aspect-square";
+
+  return "aspect-[4/5]";
+}
+
+
+
+================================================
+FILE: src/utils/lib/routes.ts
+================================================
+import { FeedItem } from "@/src/types/models";
+
+export function getFeedItemUrl(item: FeedItem, lang: string): string {
+  if (item.type === "prompt") {
+    return `/${lang}/${item.username}/p/${item.raw_id || item.id}`;
+  }
+
+  if (item.type === "directory") {
+    return `/${lang}/${item.username}/${item.slug}`;
+  }
+
+  return `/${lang}/${item.username}`;
+}
+
+
+
+================================================
+FILE: src/utils/lib/string.ts
+================================================
+export const slugifyUsername = (username: string, maxChars: number = 30): string => {
+  return username
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, "_")
+    .replace(/[^a-z0-9_]/g, "")
+    .slice(0, maxChars);
+};
+
+
+
+================================================
 FILE: tests/auth.spec.ts
 ================================================
 import { test, expect } from "@playwright/test";
@@ -11144,6 +12501,49 @@ test('get started link', async ({ page }) => {
 
   // Expects page to have a heading with the name of Installation.
   await expect(page.getByRole('heading', { name: 'Installation' })).toBeVisible();
+});
+
+
+
+================================================
+FILE: tests/identity.spec.ts
+================================================
+import { test, expect } from "@playwright/test";
+
+test.describe("Flujo de Cambio de Identidad", () => {
+  test("Un usuario puede cambiar su nombre y es redirigido al login", async ({ page }) => {
+    await page.goto("/es/settings/profile");
+
+    const input = page.getByPlaceholder(/Nuevo nombre/i);
+    await input.fill("Eduard_Ventos_2026");
+
+    await page.getByRole("button", { name: /Guardar/i }).click();
+
+    await expect(page).toHaveURL(/\/login\?updated=true/, { timeout: 10000 });
+
+    await page.getByPlaceholder("EMAIL O USUARIO").fill("eduard_ventos_2026");
+
+    await page.getByPlaceholder("••••••••").fill("TuPasswordSeguro123!");
+
+    await page.getByRole("button", { name: /Entrar/i }).click();
+
+    await expect(page).toHaveURL(/.*\/studio/, { timeout: 15000 });
+
+    const userDisplay = page.locator("text=@eduard_ventos_2026");
+    await expect(userDisplay).toBeVisible();
+  });
+
+  test("Error al intentar usar un nombre de usuario ya existente", async ({ page }) => {
+    await page.goto("/es/settings/profile");
+
+    await page.getByPlaceholder(/Nuevo nombre/i).fill("admin");
+    await page.getByRole("button", { name: /Guardar/i }).click();
+
+    const toastError = page.locator("text=Este nombre ya está en uso");
+    await expect(toastError).toBeVisible();
+
+    await expect(page).not.toHaveURL(/\/login/);
+  });
 });
 
 

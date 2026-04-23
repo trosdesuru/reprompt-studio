@@ -72,6 +72,7 @@ def generate_upload_url(
                 "Bucket": settings.R2_BUCKET_NAME,
                 "Key": object_key,
                 "ContentType": request.content_type,
+                "CacheControl": "public, max-age=31536000, immutable",
             },
             ExpiresIn=3600,
         )

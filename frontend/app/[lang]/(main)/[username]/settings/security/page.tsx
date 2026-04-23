@@ -2,10 +2,12 @@
 
 import { useState, useRef } from "react";
 import { useAuthStore } from "@/src/store/authStore";
-import { api } from "@/src/services/api"; // Asegúrate de que esta ruta coincida con tu API
+import { api } from "@/src/services/api";
 import { toast } from "react-hot-toast";
 import { Button } from "@/src/system/atoms/Button";
+import { Input } from "@/src/system/atoms/Input/Input";
 import { IconShieldLock, IconAlertTriangle } from "@tabler/icons-react";
+import { SettingsSectionHeader } from "@/src/features/settings/components/SettingsSectionHeader";
 
 export default function SecuritySettingsPage() {
   const user = useAuthStore((state) => state.user);
@@ -14,7 +16,6 @@ export default function SecuritySettingsPage() {
   const [error, setError] = useState<string | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
 
-  // 🚀 HIGH PERFORMANCE SUBMIT: Usamos FormData en lugar de controlar cada input
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsLoading(true);
@@ -25,7 +26,6 @@ export default function SecuritySettingsPage() {
     const newPassword = formData.get("newPassword") as string;
     const confirmPassword = formData.get("confirmPassword") as string;
 
-    // Validación de Frontera (Confianza Cero)
     if (newPassword !== confirmPassword) {
       setError("Las contraseñas nuevas no coinciden.");
       setIsLoading(false);
@@ -39,14 +39,13 @@ export default function SecuritySettingsPage() {
     }
 
     try {
-      // Sustituye esto por tu llamada real a la API
       await api.cambiarPassword({
         current_password: currentPassword,
         new_password: newPassword,
       });
 
       toast.success("Contraseña actualizada con éxito");
-      formRef.current?.reset(); // Limpiamos el formulario nativamente
+      formRef.current?.reset();
     } catch (err: any) {
       setError(err.message || "Fallo al actualizar la contraseña");
       toast.error("No se pudo cambiar la contraseña");
@@ -58,78 +57,62 @@ export default function SecuritySettingsPage() {
   if (!user) return null;
 
   return (
-    <div className="max-w-2xl animate-fade-in">
-      <div className="mb-8">
-        <h1 className="text-2xl font-black font-mono uppercase flex items-center gap-3">
-          <IconShieldLock className="text-(--accent-color)" size={28} />
-          Seguridad y Acceso
-        </h1>
-        <p className="text-sm text-muted-foreground mt-2">
-          Gestiona tu contraseña y protege tu cuenta de Reprompt.
-        </p>
-      </div>
+    // 🟢 Eliminado overflow-auto. Usamos space-y-8 para separar cabecera y formulario
+    <div className="animate-fade-in space-y-8 w-full">
+      <SettingsSectionHeader
+        title="Seguridad y Acceso"
+        description="Gestiona tu contraseña y protege tu cuenta de Reprompt."
+        icon={<IconShieldLock className="text-muted-foreground" size={24} />}
+      />
 
-      <div className="bg-background neo-border p-6 relative overflow-hidden">
-        {/* Decoración sutil */}
-        <div className="absolute top-0 right-0 w-32 h-32 bg-(--accent-color) opacity-5 blur-3xl rounded-full -translate-y-1/2 translate-x-1/2"></div>
+      {/* 🟢 LA TARJETA DEL FORMULARIO: padding-6 (p-6 md:p-8), bordes redondeados y overflow-hidden crítico */}
+      <div className="bg-background border border-border/50 rounded-xl p-6 md:p-8 relative overflow-hidden shadow-sm">
+        {/* El adorno visual. Gracias al overflow-hidden del padre, esto no generará scroll horizontal */}
+        <div className="absolute top-0 right-0 w-32 h-32 bg-primary opacity-5 blur-3xl rounded-full -translate-y-1/2 translate-x-1/2 pointer-events-none"></div>
 
-        <h2 className="text-lg font-bold border-b-2 border-(--border-color) pb-3 mb-6">
+        <h2 className="text-lg font-bold border-b border-border/50 pb-3 mb-6">
           Cambiar Contraseña
         </h2>
 
         {error && (
-          <div className="mb-6 p-3 bg-red-500/10 border border-red-500 text-red-500 text-sm font-bold flex items-center gap-2">
+          <div className="mb-6 p-3 bg-red-500/10 border border-red-500/50 text-red-500 text-sm font-bold flex items-center gap-2 rounded-md">
             <IconAlertTriangle size={18} /> {error}
           </div>
         )}
 
-        <form ref={formRef} onSubmit={handleSubmit} className="space-y-5">
-          <div className="space-y-2">
-            <label className="text-xs font-black font-mono uppercase tracking-widest text-muted-foreground">
-              Contraseña Actual
-            </label>
-            <input
-              type="password"
-              name="currentPassword"
-              required
-              className="w-full p-3 bg-(--bg-secondary) neo-border focus:outline-none focus:ring-2 focus:ring-(--accent-color) transition-all"
-              placeholder="••••••••"
-            />
-          </div>
+        <form ref={formRef} onSubmit={handleSubmit} className="space-y-5 relative z-10">
+          <Input
+            label="Contraseña Actual"
+            name="currentPassword"
+            type="password"
+            placeholder="••••••••"
+            required
+          />
 
-          <div className="space-y-2">
-            <label className="text-xs font-black font-mono uppercase tracking-widest text-muted-foreground">
-              Nueva Contraseña
-            </label>
-            <input
-              type="password"
-              name="newPassword"
-              required
-              minLength={8}
-              className="w-full p-3 bg-(--bg-secondary) neo-border focus:outline-none focus:ring-2 focus:ring-(--accent-color) transition-all"
-              placeholder="••••••••"
-            />
-          </div>
+          <Input
+            label="Nueva Contraseña"
+            name="newPassword"
+            type="password"
+            placeholder="••••••••"
+            required
+            minLength={8}
+          />
 
-          <div className="space-y-2">
-            <label className="text-xs font-black font-mono uppercase tracking-widest text-muted-foreground">
-              Confirmar Nueva Contraseña
-            </label>
-            <input
-              type="password"
-              name="confirmPassword"
-              required
-              minLength={8}
-              className="w-full p-3 bg-(--bg-secondary) neo-border focus:outline-none focus:ring-2 focus:ring-(--accent-color) transition-all"
-              placeholder="••••••••"
-            />
-          </div>
+          <Input
+            label="Confirmar Nueva Contraseña"
+            name="confirmPassword"
+            type="password"
+            placeholder="••••••••"
+            required
+            minLength={8}
+          />
 
-          <div className="pt-4 border-t-2 border-(--border-color) flex items-center justify-between">
+          {/* 🟢 FOOTER DEL FORMULARIO */}
+          <div className="pt-6 mt-6 border-t border-border/50 flex flex-col sm:flex-row items-center justify-between gap-4">
             <p className="text-xs text-muted-foreground font-mono">
-              La sesión actual se mantendrá activa.
+              La sesión actual se mantendrá activa tras guardar.
             </p>
-            <Button type="submit" isLoading={isLoading} className="min-w-37.5">
+            <Button type="submit" isLoading={isLoading} className="w-full sm:w-auto min-w-37.5">
               {isLoading ? "Guardando..." : "Actualizar Clave"}
             </Button>
           </div>

@@ -59,18 +59,27 @@ class PromptService:
         base_url = settings.R2_PUBLIC_URL.rstrip("/") + "/"
         temp_key = data.image_url.replace(base_url, "")
 
+        head = s3_client.head_object(Bucket=settings.R2_BUCKET_NAME, Key=temp_key)
+        size_bytes = head["ContentLength"]
+        size_kb = size_bytes / 1024
+
+        logger.info(
+            f"📥 [QUARANTINE-IN] Recibido desde Temp: {temp_key} | Tamaño: {size_kb:.2f} KB"
+        )
+
         if not temp_key.startswith(f"temp/{current_user.id}/"):
             raise HTTPException(status_code=403, detail="Ruta de cuarentena inválida.")
 
         try:
+            # 🟢 Aumentamos el rango a 8KB para pillar todos los metadatos JPEG/WebP
             response = s3_client.get_object(
                 Bucket=settings.R2_BUCKET_NAME,
                 Key=temp_key,
-                Range="bytes=0-2048",
+                Range="bytes=0-8192",
             )
             file_bytes = response["Body"].read()
         except Exception as e:
-            logger.error(f"Error descargando archivo temporal: {e}")
+            logger.error(f"❌ [QUARANTINE-ERROR] Fallo al descargar bytes: {e}")
             raise HTTPException(
                 status_code=404, detail="Archivo temporal no encontrado."
             )
@@ -85,7 +94,13 @@ class PromptService:
         try:
             with Image.open(BytesIO(file_bytes)) as img:
                 width, height = img.size
-        except Exception:
+                logger.info(
+                    f"📏 [QUARANTINE-SIZE] Imagen detectada en Backend: {width}x{height}"
+                )
+        except Exception as e:
+            logger.warning(
+                f"⚠️ [QUARANTINE-WARN] PIL no pudo leer dimensiones de los 8KB: {e}"
+            )
             pass
 
         if not width and data.resolution and "x" in data.resolution.lower():

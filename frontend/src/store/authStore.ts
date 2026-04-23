@@ -4,6 +4,8 @@ import { api } from "@/src/services/api";
 interface User {
   username: string;
   role: string;
+  id?: string | number;
+  avatarUrl?: string | null;
 }
 
 interface AuthState {

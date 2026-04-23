@@ -1,20 +1,32 @@
 "use client";
 
+import Link from "next/link";
 import { useSettingsNavigation } from "../hooks/useSettingsNavigation";
-import { SidebarNavLink } from "./SidebarNavLink";
+import {
+  SidebarHeading,
+  SidebarDivider,
+  getSidebarItemClasses,
+} from "@/src/system/organisms/Sidebar";
 
 export function SettingsSidebar() {
   const links = useSettingsNavigation();
 
   return (
-    <nav className="flex flex-col gap-2">
-      <p className="text-[10px] font-black font-mono text-muted-foreground uppercase tracking-widest px-4 mb-2">
-        Ajustes de Usuario
-      </p>
+    <nav className="flex flex-col gap-1 pt-6">
+      <SidebarHeading>Ajustes Generales</SidebarHeading>
 
-      {links.map((link) => (
-        <SidebarNavLink key={link.href} {...link} />
-      ))}
+      <div className="px-3 flex flex-col gap-1">
+        {links.map((link) => (
+          <Link key={link.href} href={link.href} className={getSidebarItemClasses(link.isActive)}>
+            <span className={link.isActive ? "text-primary" : "text-muted-foreground"}>
+              {link.icon}
+            </span>
+            <span className="font-mono font-medium text-xs tracking-widest flex-1 text-left">{link.label}</span>
+          </Link>
+        ))}
+      </div>
+
+      <SidebarDivider className="my-4" />
     </nav>
   );
 }
