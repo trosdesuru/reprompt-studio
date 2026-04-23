@@ -1,7 +1,7 @@
 "use client";
 
 import { useAuthStore } from "@/src/store/authStore";
-import { MenuItem } from "@/src/system/atoms/Menu/MenuItem";
+import { MenuItem } from "@/src/system/atoms/Dropdown/MenuItem";
 import { IconLogout } from "@tabler/icons-react";
 
 export function LogoutMenuItem() {
@@ -9,8 +9,8 @@ export function LogoutMenuItem() {
 
   return (
     <MenuItem
-      icon={<IconLogout size={18} />}
-      label="Cerrar Sesión"
+      icon={<IconLogout size={16} />}
+      label="Cerrar sesión"
       onClick={logout}
       variant="danger"
     />

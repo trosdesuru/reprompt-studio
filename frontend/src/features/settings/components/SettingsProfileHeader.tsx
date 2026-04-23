@@ -1,8 +1,8 @@
 "use client";
 
-import Image from "next/image";
 import { useAuthStore } from "@/src/store/authStore";
 import { UserBadge } from "@/src/features/user/components/UserBadge";
+import { UserAvatar } from "@/src/system/atoms/Avatar/UserAvatar";
 
 export function SettingsProfileHeader() {
   const user = useAuthStore((state) => state.user);
@@ -11,21 +11,12 @@ export function SettingsProfileHeader() {
 
   return (
     <div className="flex items-center gap-6 pb-6 mb-4">
-      <div className="relative shrink-0 w-20 h-20 md:w-28 md:h-28 rounded-full bg-muted/20 border-2 border-border/30 flex items-center justify-center overflow-hidden shadow-sm group">
-        {user.avatarUrl ? (
-          <Image src={user.avatarUrl} alt={user.username} fill className="object-cover" />
-        ) : (
-          <div className="w-full h-full p-4 md:p-6 bg-[#131313] flex items-center justify-center">
-            <Image
-              src="/logo-brand-white.svg"
-              alt="Reprompt Default Avatar"
-              width={60}
-              height={60}
-              className="opacity-90 group-hover:scale-110 transition-transform duration-500"
-            />
-          </div>
-        )}
-      </div>
+      <UserAvatar 
+        username={user.username} 
+        avatarUrl={user.avatarUrl} 
+        size="2xl" 
+        className="shadow-sm" 
+      />
 
       <div className="flex flex-col">
         <div className="flex flex-col">

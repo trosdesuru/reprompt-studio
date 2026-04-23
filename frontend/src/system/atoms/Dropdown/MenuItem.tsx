@@ -2,10 +2,11 @@ import React from "react";
 
 interface MenuItemProps {
   icon: React.ReactNode;
-  label: string;
+  label: React.ReactNode;
   onClick?: () => void;
   variant?: "default" | "danger";
   className?: string;
+  disabled?: boolean;
 }
 
 export function MenuItem({
@@ -14,17 +15,25 @@ export function MenuItem({
   onClick,
   variant = "default",
   className = "",
+  disabled = false,
 }: MenuItemProps) {
   const baseClass =
-    "flex items-center gap-3 p-3 text-sm font-bold neo-border border-transparent transition-all text-left uppercase tracking-wide w-full";
+    "flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-colors text-left w-full disabled:opacity-50 disabled:cursor-not-allowed";
+
   const variantClass =
     variant === "danger"
-      ? "text-red-500 hover:bg-red-500/10 hover:border-red-500/50"
-      : "text-foreground hover:bg-muted/30 hover:border-(--border-color)";
+      ? "text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10"
+      : "text-foreground hover:bg-muted";
 
   return (
-    <button onClick={onClick} className={`${baseClass} ${variantClass} ${className}`}>
-      {icon} {label}
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      className={`${baseClass} ${variantClass} ${className}`}
+      role="menuitem"
+    >
+      <span className="shrink-0 opacity-70">{icon}</span>
+      <span className="truncate">{label}</span>
     </button>
   );
 }

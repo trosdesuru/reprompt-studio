@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useState, useEffect } from "react";
 import { useAuthStore } from "@/src/store/authStore";
 import { useTheme } from "@/src/utils/hooks/useTheme";
-import { UserDropdown } from "../../organisms/Header/UserDropdown";
+import { UserDropdown } from "@/src/features/user/components/UserDropdown";
 import { NotificationDropdown } from "../../molecules/Navbar/NotificationDropdown";
 import { IconAlbum, IconSun, IconMoon, IconScanTraces } from "@tabler/icons-react";
 
@@ -56,7 +56,6 @@ export function NavbarActions() {
           <UserDropdown />
         </>
       ) : (
-        /* Usuario NO Autenticado */
         <Link
           href="/es/login"
           className="text-sm font-bold px-4 py-2 bg-foreground text-background rounded-lg hover:opacity-90 transition-opacity"

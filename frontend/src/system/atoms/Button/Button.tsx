@@ -13,10 +13,10 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
   ) => {
     const variants = {
       primary:
-        "bg-accent-color text-white neo-border neo-shadow-accent hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0px_0px_var(--brand-accent)] active:translate-x-[4px] active:translate-y-[4px] active:shadow-none font-bold uppercase tracking-wide",
+        "bg-accent-color text-foreground neo-border neo-shadow-accent hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0px_0px_var(--brand-accent)] active:translate-x-[4px] active:translate-y-[4px] active:shadow-none font-bold uppercase tracking-wide",
 
       secondary:
-        "bg-background text-brand neo-border neo-shadow hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0px_0px_var(--brand-shadow)] active:translate-x-[4px] active:translate-y-[4px] active:shadow-none font-bold uppercase tracking-wide",
+        "bg-background text-foreground neo-border neo-shadow hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0px_0px_var(--brand-shadow)] active:translate-x-[4px] active:translate-y-[4px] active:shadow-none font-bold uppercase tracking-wide",
 
       danger:
         "text-red-600 bg-secondary border border-border shadow-sm hover:bg-red-600 hover:text-white hover:border-red-600 transition-colors font-medium tracking-tight",
