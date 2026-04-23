@@ -93,10 +93,11 @@ def test_ssrf_and_path_traversal_evasion(client: TestClient, normal_user: User):
     }
 
     with patch("app.services.prompt_service.s3_client", mock_s3_client), patch(
-        "app.services.prompt_service.validate_magic_bytes", return_value=True
+        "app.services.storage.s3_client", mock_s3_client
     ), patch(
-        "app.services.prompt_service.move_to_permanent", return_value=False
-    ):  # Evitamos que llegue a storage.py
+        "app.services.prompt_service.validate_magic_bytes",
+        return_value={"ContentLength": 1024},
+    ):
 
         res_1 = client.post(
             "/api/prompts/save",
