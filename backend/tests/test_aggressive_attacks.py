@@ -64,7 +64,8 @@ def test_cloudflare_r2_outage_during_save(
         "app.services.prompt_service.s3_client.get_object",
         return_value=mock_s3_response,
     ), patch(
-        "app.services.prompt_service.validate_magic_bytes", return_value=True
+        "app.services.prompt_service.validate_magic_bytes",
+        return_value={"ContentLength": 1024},
     ), patch(
         "app.services.prompt_service.move_to_permanent", return_value=False
     ):

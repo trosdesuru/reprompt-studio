@@ -136,7 +136,10 @@ def test_ssrf_and_path_traversal_evasion(client: TestClient, normal_user: User):
     # https://r2.reprompt.studio.atacante.com/temp/...
     malicious_url_2 = f"{base_url}.hacker.com/temp/{normal_user.id}/virus.png"
 
-    with patch("app.services.prompt_service.validate_magic_bytes", return_value=True):
+    with patch(
+        "app.services.prompt_service.validate_magic_bytes",
+        return_value={"ContentLength": 1024},
+    ):
 
         res_1 = client.post(
             "/api/prompts/save",

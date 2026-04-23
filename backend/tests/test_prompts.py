@@ -31,7 +31,8 @@ def test_save_prompt_success(client: TestClient, normal_user: User):
     ), patch(
         "app.services.prompt_service.validate_magic_bytes", return_value=True
     ), patch(
-        "app.services.prompt_service.move_to_permanent", return_value=True
+        "app.services.prompt_service.s3_client.head_object",
+        return_value={"ContentLength": 1024},
     ), patch(
         "app.services.embedding_service.EmbeddingService.generate_vector",
         return_value=[0.0] * 384,

@@ -57,7 +57,6 @@ export default function SecuritySettingsPage() {
   if (!user) return null;
 
   return (
-    // 🟢 Eliminado overflow-auto. Usamos space-y-8 para separar cabecera y formulario
     <div className="animate-fade-in space-y-8 w-full">
       <SettingsSectionHeader
         title="Seguridad y Acceso"
@@ -65,9 +64,7 @@ export default function SecuritySettingsPage() {
         icon={<IconShieldLock className="text-muted-foreground" size={24} />}
       />
 
-      {/* 🟢 LA TARJETA DEL FORMULARIO: padding-6 (p-6 md:p-8), bordes redondeados y overflow-hidden crítico */}
       <div className="bg-background border border-border/50 rounded-xl p-6 md:p-8 relative overflow-hidden shadow-sm">
-        {/* El adorno visual. Gracias al overflow-hidden del padre, esto no generará scroll horizontal */}
         <div className="absolute top-0 right-0 w-32 h-32 bg-primary opacity-5 blur-3xl rounded-full -translate-y-1/2 translate-x-1/2 pointer-events-none"></div>
 
         <h2 className="text-lg font-bold border-b border-border/50 pb-3 mb-6">
@@ -107,7 +104,6 @@ export default function SecuritySettingsPage() {
             minLength={8}
           />
 
-          {/* 🟢 FOOTER DEL FORMULARIO */}
           <div className="pt-6 mt-6 border-t border-border/50 flex flex-col sm:flex-row items-center justify-between gap-4">
             <p className="text-xs text-muted-foreground font-mono">
               La sesión actual se mantendrá activa tras guardar.
