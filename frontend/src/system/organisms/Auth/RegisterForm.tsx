@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRegister } from "@/src/features/auth/hooks/useRegister";
 
 import { FormField } from "@/src/system/molecules/FormField";
-import { Button } from "@/src/system/atoms/Button";
+import { Button } from "@/src/system/atoms/Button/Button";
 import { FormHeader } from "../../atoms/Login/FormHeader";
 
 interface RegisterFormProps {

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { api } from "@/src/services/api";
-import { Button } from "@/src/system/atoms/Button";
+import { Button } from "@/src/system/atoms/Button/Button";
 import { IconKey, IconX } from "@tabler/icons-react";
 
 interface ChangePasswordModalProps {

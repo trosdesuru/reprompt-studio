@@ -1,5 +1,5 @@
 import { usePathname, useParams } from "next/navigation";
-import { IconUserEdit, IconLock, IconPalette } from "@tabler/icons-react";
+import { IconLock, IconPalette, IconUserSquareRounded } from "@tabler/icons-react";
 import { ReactNode } from "react";
 
 export interface NavLink {
@@ -21,7 +21,7 @@ export function useSettingsNavigation(): NavLink[] {
     {
       href: `${basePath}/profile`,
       label: "Perfil Público",
-      icon: <IconUserEdit size={20} />,
+      icon: <IconUserSquareRounded size={20} />,
       isActive: pathname.includes(`${basePath}/profile`),
     },
     {

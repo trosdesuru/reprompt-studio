@@ -1,5 +1,5 @@
 // frontend/features/admin/components/AuditTable.tsx
-import { Button } from "@/src/system/atoms/Button";
+import { Button } from "@/src/system/atoms/Button/Button";
 import { AuditLog } from "@/src/features/admin/admin.types";
 
 interface AuditTableProps {

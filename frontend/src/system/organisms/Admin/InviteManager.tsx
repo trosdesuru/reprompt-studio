@@ -1,5 +1,5 @@
 // frontend/features/admin/components/InviteManager.tsx
-import { Button } from "@/src/system/atoms/Button";
+import { Button } from "@/src/system/atoms/Button/Button";
 
 interface InviteManagerProps {
   onGenerate: (role: string) => void;

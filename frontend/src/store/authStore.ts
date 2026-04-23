@@ -1,11 +1,14 @@
 import { create } from "zustand";
 import { api } from "@/src/services/api";
 
-interface User {
+export interface User {
   username: string;
   role: string;
   id?: string | number;
   avatarUrl?: string | null;
+  fullName?: string | null;
+  profession?: string | null;
+  age?: number;
 }
 
 interface AuthState {
@@ -13,6 +16,7 @@ interface AuthState {
   isAuthenticated: boolean;
   isLoadingAuth: boolean;
   hasCheckedInitialAuth: boolean;
+  updateUser: (data: Partial<User>) => void;
   updateLocalUsername: (newUsername: string) => void;
 
   login: (userData: User) => void;
@@ -51,6 +55,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       set({ user: { ...currentUser, username: newUsername } });
     }
   },
+  updateUser: (data: any) =>
+    set((state) => ({
+      user: state.user ? { ...state.user, ...data } : null,
+    })),
 
   login: (userData) => {
     console.log(`[AUTH_STORE] Sesión iniciada localmente: @${userData.username}`);

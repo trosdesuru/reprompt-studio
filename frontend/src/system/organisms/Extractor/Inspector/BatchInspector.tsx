@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { BatchItem, SkippedFile } from "@/src/features/extractor/hooks/usePromptExtractor";
 import { ExtractedPromptData } from "@/src/features/extractor/utils/promptParser";
-import { Button } from "@/src/system/atoms/Button";
+import { Button } from "@/src/system/atoms/Button/Button";
 import { IconTrash, IconDeviceFloppy, IconAlertTriangle, IconX } from "@tabler/icons-react";
 import { api } from "@/src/services/api";
 import { handleError } from "@/src/utils/errors/ErrorHandler";

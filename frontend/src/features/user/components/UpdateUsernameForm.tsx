@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useAuthStore } from "@/src/store/authStore";
 import { useUpdateUsername } from "@/src/features/user/hooks/useUpdateUsername";
-import { Button } from "@/src/system/atoms/Button";
+import { Button } from "@/src/system/atoms/Button/Button";
 import { slugifyUsername } from "@/src/utils/lib/string";
 import { IconAt } from "@tabler/icons-react";
 

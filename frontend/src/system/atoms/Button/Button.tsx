@@ -13,10 +13,10 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
   ) => {
     const variants = {
       primary:
-        "bg-accent text-white neo-border neo-shadow-accent hover:brightness-110 font-bold uppercase tracking-wide",
+        "bg-accent-color text-white neo-border neo-shadow-accent hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0px_0px_var(--brand-accent)] active:translate-x-[4px] active:translate-y-[4px] active:shadow-none font-bold uppercase tracking-wide",
 
       secondary:
-        "bg-transparent text-primary neo-border neo-shadow hover:bg-gray-100 dark:hover:bg-gray-800 font-bold uppercase tracking-wide",
+        "bg-background text-brand neo-border neo-shadow hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0px_0px_var(--brand-shadow)] active:translate-x-[4px] active:translate-y-[4px] active:shadow-none font-bold uppercase tracking-wide",
 
       danger:
         "text-red-600 bg-secondary border border-border shadow-sm hover:bg-red-600 hover:text-white hover:border-red-600 transition-colors font-medium tracking-tight",
@@ -40,7 +40,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         disabled={disabled || isLoading}
         className={`
           inline-flex items-center justify-center rounded-md transition-all duration-200 
-          focus:outline-none focus:ring-2 focus:ring-var(--accent-color) focus:ring-offset-2 focus:ring-offset-background
+          focus:outline-none focus:ring-2 focus:ring-accent-color focus:ring-offset-2 focus:ring-offset-background
           disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none
           ${variants[variant]} 
           ${sizes[size]} 

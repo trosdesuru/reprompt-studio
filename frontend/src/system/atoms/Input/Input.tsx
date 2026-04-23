@@ -41,7 +41,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
             id={inputId}
             type={currentType}
             className={`
-              w-full bg-secondary border-2 border-color rounded-lg p-2 ml-4 text-foreground
+              w-full bg-brackground border-2 border-color rounded-lg p-2 text-foreground
               focus:outline-none focus:ring-2 focus:ring-accent-color transition-all
               overflow-auto
               ${icon ? "pl-12" : ""} 
@@ -60,7 +60,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
               aria-label={isPasswordVisible ? "Ocultar contraseña" : "Mostrar contraseña"}
               tabIndex={-1}
             >
-              {isPasswordVisible ? <IconEyeOff size={20} /> : <IconEye size={20} />}
+              {isPasswordVisible ? <IconEye size={20} /> : <IconEyeOff size={20} />}
             </button>
           )}
         </div>

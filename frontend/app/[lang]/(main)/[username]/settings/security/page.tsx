@@ -4,7 +4,7 @@ import { useState, useRef } from "react";
 import { useAuthStore } from "@/src/store/authStore";
 import { api } from "@/src/services/api";
 import { toast } from "react-hot-toast";
-import { Button } from "@/src/system/atoms/Button";
+import { Button } from "@/src/system/atoms/Button/Button";
 import { Input } from "@/src/system/atoms/Input/Input";
 import { IconShieldLock, IconAlertTriangle } from "@tabler/icons-react";
 import { SettingsSectionHeader } from "@/src/features/settings/components/SettingsSectionHeader";
@@ -67,12 +67,12 @@ export default function SecuritySettingsPage() {
       <div className="bg-background border border-border/50 rounded-xl p-6 md:p-8 relative overflow-hidden shadow-sm">
         <div className="absolute top-0 right-0 w-32 h-32 bg-primary opacity-5 blur-3xl rounded-full -translate-y-1/2 translate-x-1/2 pointer-events-none"></div>
 
-        <h2 className="text-lg font-bold border-b border-border/50 pb-3 mb-6">
+        <h2 className="text-lg font-mono font-bold border-b border-border/50 pb-3 mb-6">
           Cambiar Contraseña
         </h2>
 
         {error && (
-          <div className="mb-6 p-3 bg-red-500/10 border border-red-500/50 text-red-500 text-sm font-bold flex items-center gap-2 rounded-md">
+          <div className="mb-6 p-3 bg-red-400/10 border border-red-500/60 text-red-600 text-sm font-medium flex items-center gap-2 rounded-md">
             <IconAlertTriangle size={18} /> {error}
           </div>
         )}
@@ -108,7 +108,7 @@ export default function SecuritySettingsPage() {
             <p className="text-xs text-muted-foreground font-mono">
               La sesión actual se mantendrá activa tras guardar.
             </p>
-            <Button type="submit" isLoading={isLoading} className="w-full sm:w-auto min-w-37.5">
+            <Button variant="secondary" type="submit" isLoading={isLoading} className="w-full sm:w-auto min-w-37.5 font-mono text-xs">
               {isLoading ? "Guardando..." : "Actualizar Clave"}
             </Button>
           </div>
