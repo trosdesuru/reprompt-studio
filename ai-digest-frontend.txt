@@ -46,14 +46,10 @@ Directory structure:
     │           │   │   └── [prompt_id]/
     │           │   │       ├── loading.tsx
     │           │   │       └── page.tsx
-    │           │   ├── profile/
-    │           │   │   └── page.tsx
     │           │   └── settings/
     │           │       ├── layout.tsx
     │           │       ├── appearance/
     │           │       │   └── page.tsx
-    │           │       ├── components/
-    │           │       │   └── SettingsSidebar.tsx
     │           │       ├── profile/
     │           │       │   └── page.tsx
     │           │       └── security/
@@ -139,13 +135,17 @@ Directory structure:
     │   │   │   └── hooks/
     │   │   │       └── useSearch.ts
     │   │   ├── settings/
-    │   │   │   ├── layout.tsx
     │   │   │   ├── components/
+    │   │   │   │   ├── SettingsProfileHeader.tsx
+    │   │   │   │   ├── SettingsSectionHeader.tsx
     │   │   │   │   ├── SettingsSidebar.tsx
     │   │   │   │   └── SidebarNavLink.tsx
     │   │   │   └── hooks/
     │   │   │       └── useSettingsNavigation.tsx
     │   │   ├── studio/
+    │   │   │   ├── components/
+    │   │   │   │   └── Sidebar/
+    │   │   │   │       └── StudioSidebar.tsx
     │   │   │   └── hooks/
     │   │   │       ├── useDirectoryActions.ts
     │   │   │       ├── useDirectoryDnd.ts
@@ -155,11 +155,23 @@ Directory structure:
     │   │   │       ├── useStudioSync.ts
     │   │   │       └── useUpdatePromptMetadata.ts
     │   │   ├── theme/
-    │   │   │   └── components/
-    │   │   │       └── ThemeMenuItem.tsx
+    │   │   │   ├── components/
+    │   │   │   │   ├── ThemeMenuItem.tsx
+    │   │   │   │   ├── ThemePreview.tsx
+    │   │   │   │   └── ThemeSelectorCard.tsx
+    │   │   │   └── constants/
+    │   │   │       └── themeConfigs.ts
     │   │   └── user/
     │   │       ├── components/
-    │   │       │   └── UpdateUsernameForm.tsx
+    │   │       │   ├── ChangePersonalDataModal.tsx
+    │   │       │   ├── ChangeUsernameFormStep.tsx
+    │   │       │   ├── ChangeUsernameModal.tsx
+    │   │       │   ├── ChangeUsernameWarningStep.tsx
+    │   │       │   ├── PersonalDataSettingsSection.tsx
+    │   │       │   ├── UpdatePersonalDataForm.tsx
+    │   │       │   ├── UpdateUsernameForm.tsx
+    │   │       │   ├── UserDropdown.tsx
+    │   │       │   └── UsernameSettingsSection.tsx
     │   │       └── hooks/
     │   │           └── useUpdateUsername.ts
     │   ├── services/
@@ -186,18 +198,28 @@ Directory structure:
     │   │   └── useStudioUI.ts
     │   ├── system/
     │   │   ├── atoms/
-    │   │   │   ├── Button.tsx
-    │   │   │   ├── FadeIn.tsx
-    │   │   │   ├── Heading.tsx
-    │   │   │   ├── MediaCover.tsx
-    │   │   │   ├── PageLoader.tsx
+    │   │   │   ├── Animations/
+    │   │   │   │   └── FadeIn.tsx
+    │   │   │   ├── Avatar/
+    │   │   │   │   └── Avatar.tsx
+    │   │   │   ├── Badge/
+    │   │   │   │   └── Badge.tsx
+    │   │   │   ├── Brand/
+    │   │   │   │   └── BrandText.tsx
+    │   │   │   ├── Button/
+    │   │   │   │   └── Button.tsx
     │   │   │   ├── Dropdown/
     │   │   │   │   └── MenuItem.tsx
+    │   │   │   ├── Heading/
+    │   │   │   │   └── Heading.tsx
+    │   │   │   ├── Input/
+    │   │   │   │   └── Input.tsx
+    │   │   │   ├── Loader/
+    │   │   │   │   ├── MediaCover.tsx
+    │   │   │   │   └── PageLoader.tsx
     │   │   │   ├── Login/
     │   │   │   │   ├── AuthSeparator.tsx
     │   │   │   │   └── FormHeader.tsx
-    │   │   │   ├── Menu/
-    │   │   │   │   └── MenuItem.tsx
     │   │   │   ├── Navbar/
     │   │   │   │   └── NavbarActions.tsx
     │   │   │   └── Studio/
@@ -230,6 +252,8 @@ Directory structure:
     │   │   │   │   └── PromptErrorState.tsx
     │   │   │   ├── Media/
     │   │   │   │   └── LazyImage.tsx
+    │   │   │   ├── Modal/
+    │   │   │   │   └── Modal.tsx
     │   │   │   ├── Navbar/
     │   │   │   │   ├── NavbarMobile.tsx
     │   │   │   │   ├── NavbarSearch.test.tsx
@@ -269,8 +293,6 @@ Directory structure:
     │   │   │   │   │   └── index.tsx
     │   │   │   │   └── Inspector/
     │   │   │   │       └── BatchInspector.tsx
-    │   │   │   ├── Header/
-    │   │   │   │   └── UserDropdown.tsx
     │   │   │   ├── Layout/
     │   │   │   │   ├── AppToaster.tsx
     │   │   │   │   ├── GlobalProgress.tsx
@@ -290,6 +312,15 @@ Directory structure:
     │   │   │   ├── Search/
     │   │   │   │   └── SearchResults/
     │   │   │   │       └── SearchResults.tsx
+    │   │   │   ├── Sidebar/
+    │   │   │   │   ├── index.ts
+    │   │   │   │   ├── SidebarActionGroup.tsx
+    │   │   │   │   ├── SidebarActiveIndicator.tsx
+    │   │   │   │   ├── SidebarContainer.tsx
+    │   │   │   │   ├── SidebarDivider.tsx
+    │   │   │   │   ├── SidebarHeading.tsx
+    │   │   │   │   ├── SidebarItemIcon.tsx
+    │   │   │   │   └── utils.ts
     │   │   │   ├── Studio/
     │   │   │   │   ├── PromptGrid.tsx
     │   │   │   │   └── StudioSidebar.tsx
@@ -905,15 +936,15 @@ FILE: app/globals.css
    ============================ */
 :root {
   --brand-bg: #fefdf3;
-  --brand-text: #1d1f21;
-  --brand-muted: #f4f4f5;
-  
+  --brand-text: #292929;
+  --brand-muted: #f5f5f5;
   --brand-muted-text: #4c4c4c;
-  
   --brand-border: #1d1f21;
-  
   --brand-accent: #084c51;
   
+  /* 🟢 Tu color fuerte para fondos claros (Vibrante) */
+  --brand-text-strong: #dc3b6e;
+
   --brand-shadow: #dc3b6e;
 
   --background: var(--brand-bg);
@@ -953,14 +984,14 @@ FILE: app/globals.css
   --brand-bg: #111111;
   --brand-text: #e7e7e7;
   --brand-muted: #171717;
-  
   --brand-muted-text: #898989;
-  
   --brand-border: #3f3f46;
-  
   --brand-accent: #1bccd8;
   
-  --brand-shadow: #272727;
+  /* 🟢 Tu color fuerte adaptado a fondos oscuros (Ligeramente más brillante para ganar contraste) */
+  --brand-text-strong: #ff5c8d; 
+  
+  --brand-shadow: #e7e7e7;
 
   --primary-foreground: #000000;
   --accent-foreground: #000000;
@@ -1029,7 +1060,6 @@ body {
    6. CONFIGURACIÓN DE TAILWIND
    ============================ */
 @theme inline {
-
   --font-prompt: var(--font-prompt);
 
   --color-border: var(--border);
@@ -1037,6 +1067,10 @@ body {
   --color-ring: var(--ring);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  
+  /* 🟢 AQUÍ ESTÁ LA MAGIA: Le enseñamos a Tailwind v4 a usar tu variable */
+  --color-brand-strong: var(--brand-text-strong);
+
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
   --color-secondary: var(--secondary);
@@ -1062,7 +1096,6 @@ body {
   0% {
     background-position: -200% center;
   }
-
   100% {
     background-position: 200% center;
   }
@@ -1248,7 +1281,7 @@ FILE: app/[lang]/(auth)/discord/callback/page.tsx
 import { useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { api } from "@/src/services/api";
-import { PageLoader } from "@/src/system/atoms/PageLoader";
+import { PageLoader } from "@/src/system/atoms/Loader/PageLoader";
 import toast from "react-hot-toast";
 
 export default function DiscordCallbackPage() {
@@ -1305,7 +1338,7 @@ import { useEffect, useRef, Suspense } from "react";
 import { useRouter, useSearchParams, useParams } from "next/navigation";
 import { api } from "@/src/services/api";
 import { useAuthStore } from "@/src/store/authStore";
-import { PageLoader } from "@/src/system/atoms/PageLoader";
+import { PageLoader } from "@/src/system/atoms/Loader/PageLoader";
 import toast from "react-hot-toast";
 
 function CallbackLogic() {
@@ -1471,7 +1504,7 @@ FILE: app/[lang]/(main)/layout.tsx
 "use client";
 
 import { Navbar } from "@/src/system/organisms/Navbar/Navbar";
-import { FadeIn } from "@/src/system/atoms/FadeIn";
+import { FadeIn } from "@/src/system/atoms/Animations/FadeIn";
 
 export default function MainLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -1571,7 +1604,7 @@ export default function Home({ params }: { params: Promise<{ lang: string }> }) 
 ================================================
 FILE: app/[lang]/(main)/[username]/loading.tsx
 ================================================
-import { PageLoader } from "@/src/system/atoms/PageLoader";
+import { PageLoader } from "@/src/system/atoms/Loader/PageLoader";
 
 export default function ProfileLoading() {
   return <PageLoader text="Conectando con el studio..." />;
@@ -1586,7 +1619,7 @@ FILE: app/[lang]/(main)/[username]/page.tsx
 
 import { use } from "react";
 import Link from "next/link";
-import { PageLoader } from "@/src/system/atoms/PageLoader";
+import { PageLoader } from "@/src/system/atoms/Loader/PageLoader";
 import { IconPhotoOff, IconFolder } from "@tabler/icons-react";
 
 import { PromptCard } from "@/src/system/molecules/Studio/PromptCard";
@@ -1704,7 +1737,7 @@ import { IconFolder, IconPhotoOff } from "@tabler/icons-react";
 
 import { PromptCard } from "@/src/system/molecules/Studio/PromptCard";
 import { usePublicDirectory } from "@/src/features/public/hooks/usePublicDirectory";
-import { FadeIn } from "@/src/system/atoms/FadeIn";
+import { FadeIn } from "@/src/system/atoms/Animations/FadeIn";
 import { Breadcrumbs } from "@/src/system/molecules/Navigation/Breadcrumbs";
 import { useAuthStore } from "@/src/store/authStore";
 
@@ -1807,7 +1840,7 @@ export default function PublicDirectoryPage({
 ================================================
 FILE: app/[lang]/(main)/[username]/p/[prompt_id]/loading.tsx
 ================================================
-import { PageLoader } from "@/src/system/atoms/PageLoader";
+import { PageLoader } from "@/src/system/atoms/Loader/PageLoader";
 
 export default function PromptLoading() {
   return <PageLoader text="Desencriptando metadata..." />;
@@ -1823,7 +1856,7 @@ FILE: app/[lang]/(main)/[username]/p/[prompt_id]/page.tsx
 
 import { use } from "react";
 import { usePublicPrompt } from "@/src/features/public/hooks/usePublicPrompt";
-import { PageLoader } from "@/src/system/atoms/PageLoader";
+import { PageLoader } from "@/src/system/atoms/Loader/PageLoader";
 import { PromptErrorState } from "@/src/system/molecules/Feedback/PromptErrorState";
 import { PromptDetailView } from "@/src/system/organisms/PromptDetail/PromptDetailView";
 
@@ -1864,24 +1897,26 @@ export default function PromptDetailPage({ params, searchParams }: PromptDetailP
 
 
 ================================================
-FILE: app/[lang]/(main)/[username]/profile/page.tsx
-================================================
-[Empty file]
-
-
-================================================
 FILE: app/[lang]/(main)/[username]/settings/layout.tsx
 ================================================
 import { SettingsSidebar } from "@/src/features/settings/components/SettingsSidebar";
+import { SettingsProfileHeader } from "@/src/features/settings/components/SettingsProfileHeader";
 
 export default function SettingsLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="container mx-auto max-w-6xl px-4 py-12 animate-fade-in">
-      <div className="flex flex-col md:flex-row gap-10">
-        <aside className="w-full md:w-64 shrink-0">
-          <SettingsSidebar />
-        </aside>
-        <main className="flex-1 bg-(--bg-secondary) neo-border p-8 min-h-125">{children}</main>
+    <div className="flex flex-col min-h-[calc(100vh-4rem)] bg-background p-4 md:p-8 animate-fade-in">
+      <div className="w-full max-w-7xl mx-auto flex flex-col flex-1">
+        <SettingsProfileHeader />
+
+        <div className="flex flex-1 overflow-hidden mt-4 md:mt-0">
+          <aside className="w-64 md:w-72 bg-muted/5 hidden md:flex flex-col shrink-0 rounded-l-lg">
+            <SettingsSidebar />
+          </aside>
+
+          <main className="flex-1 overflow-y-auto custom-scrollbar pl-4 md:pl-10 py-2">
+            <div className="flex flex-col max-w-2xl w-full">{children}</div>
+          </main>
+        </div>
       </div>
     </div>
   );
@@ -1894,130 +1929,36 @@ FILE: app/[lang]/(main)/[username]/settings/appearance/page.tsx
 ================================================
 "use client";
 
+import { SettingsSectionHeader } from "@/src/features/settings/components/SettingsSectionHeader";
+import { ThemeSelectorCard } from "@/src/features/theme/components/ThemeSelectorCard";
 import { useTheme } from "@/src/utils/hooks/useTheme";
-import { IconPalette, IconSun, IconMoon } from "@tabler/icons-react";
+import { IconDeviceDesktop } from "@tabler/icons-react";
 
 export default function AppearanceSettingsPage() {
   const { isDark, toggleTheme } = useTheme();
 
   return (
-    <div className="max-w-3xl animate-fade-in">
-      <div className="mb-8">
-        <h1 className="text-2xl font-black font-mono uppercase flex items-center gap-3">
-          <IconPalette className="text-(--accent-color)" size={28} />
-          Apariencia
-        </h1>
-        <p className="text-sm text-muted-foreground mt-2">
-          Personaliza cómo se ve Reprompt en este dispositivo.
-        </p>
-      </div>
+    <div className="max-w-3xl animate-fade-in space-y-8">
+      <SettingsSectionHeader
+        title="Opciones de Tema"
+        description="Personaliza cómo se ve Reprompt en este dispositivo."
+        icon={<IconDeviceDesktop className="text-foreground" size={24} />}
+      />
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* TEMA CLARO */}
-        <button
-          // 🟢 Si está en oscuro, el click lo cambia. Si ya está en claro, no hace nada.
+        <ThemeSelectorCard
+          themeType="light"
+          isActive={!isDark}
           onClick={() => isDark && toggleTheme()}
-          className={`flex flex-col items-start gap-4 p-4 text-left transition-all ${
-            !isDark // 🟢 Evaluamos si NO es oscuro (es decir, es claro)
-              ? "neo-border border-(--accent-color) bg-(--accent-color)/5 neo-shadow-accent"
-              : "neo-border bg-background hover:neo-shadow"
-          }`}
-        >
-          {/* Mini-Preview UI (Imita la interfaz de Reprompt) */}
-          <div className="w-full h-32 bg-gray-100 border-2 border-gray-300 rounded-sm flex flex-col p-2 gap-2">
-            <div className="w-full h-4 bg-white border border-gray-200"></div>
-            <div className="flex gap-2 flex-1">
-              <div className="w-1/3 h-full bg-gray-200"></div>
-              <div className="w-2/3 h-full bg-white border border-gray-200"></div>
-            </div>
-          </div>
-          <div className="flex items-center gap-2 font-bold uppercase tracking-wider text-sm w-full">
-            <IconSun size={20} className={!isDark ? "text-(--accent-color)" : "text-foreground"} />
-            Tema Claro
-            {!isDark && (
-              <span className="ml-auto text-xs bg-(--accent-color) text-white px-2 py-0.5">
-                Activo
-              </span>
-            )}
-          </div>
-        </button>
+        />
 
-        {/* TEMA OSCURO */}
-        <button
-          // 🟢 Si no está en oscuro (está en claro), el click lo cambia.
+        <ThemeSelectorCard
+          themeType="dark"
+          isActive={isDark}
           onClick={() => !isDark && toggleTheme()}
-          className={`flex flex-col items-start gap-4 p-4 text-left transition-all ${
-            isDark
-              ? "neo-border border-(--accent-color) bg-(--accent-color)/5 neo-shadow-accent"
-              : "neo-border bg-[#0a0a0a] border-gray-800 hover:neo-shadow"
-          }`}
-        >
-          {/* Mini-Preview UI Oscuro */}
-          <div className="w-full h-32 bg-[#121212] border-2 border-gray-800 rounded-sm flex flex-col p-2 gap-2">
-            <div className="w-full h-4 bg-[#1a1a1a] border border-gray-800"></div>
-            <div className="flex gap-2 flex-1">
-              <div className="w-1/3 h-full bg-[#1e1e1e]"></div>
-              <div className="w-2/3 h-full bg-[#1a1a1a] border border-gray-800"></div>
-            </div>
-          </div>
-          <div className="flex items-center gap-2 font-bold uppercase tracking-wider text-sm text-white w-full">
-            <IconMoon size={20} className={isDark ? "text-(--accent-color)" : "text-gray-400"} />
-            Tema Oscuro
-            {isDark && (
-              <span className="ml-auto text-xs bg-(--accent-color) text-white px-2 py-0.5">
-                Activo
-              </span>
-            )}
-          </div>
-        </button>
+        />
       </div>
     </div>
-  );
-}
-
-
-
-================================================
-FILE: app/[lang]/(main)/[username]/settings/components/SettingsSidebar.tsx
-================================================
-"use client";
-
-import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { IconUserEdit, IconLock, IconPalette } from "@tabler/icons-react";
-
-export function SettingsSidebar({ username, lang }: { username: string; lang: string }) {
-  const pathname = usePathname();
-  const basePath = `/${lang}/${username}/settings`;
-
-  const links = [
-    { href: `${basePath}/profile`, label: "Perfil Público", icon: <IconUserEdit size={20} /> },
-    { href: `${basePath}/security`, label: "Seguridad", icon: <IconLock size={20} /> },
-    { href: `${basePath}/appearance`, label: "Apariencia", icon: <IconPalette size={20} /> },
-  ];
-
-  return (
-    <nav className="flex flex-col gap-2">
-      <p className="text-[10px] font-black font-mono text-muted-foreground uppercase tracking-widest px-4 mb-2">
-        Ajustes de Usuario
-      </p>
-      {links.map((link) => {
-        const isActive = pathname === link.href;
-        return (
-          <Link
-            key={link.href}
-            href={link.href}
-            className={`flex items-center gap-3 px-4 py-3 font-bold transition-all neo-border ${
-              isActive
-                ? "bg-(--accent-color) text-white border-transparent neo-shadow-accent"
-                : "hover:bg-muted/10 border-transparent hover:border-(--border-color)"
-            }`}
-          >
-            {link.icon} {link.label}
-          </Link>
-        );
-      })}
-    </nav>
   );
 }
 
@@ -2031,7 +1972,11 @@ FILE: app/[lang]/(main)/[username]/settings/profile/page.tsx
 import { use, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/src/store/authStore";
-import { UpdateUsernameForm } from "@/src/features/user/components/UpdateUsernameForm";
+import { SettingsSectionHeader } from "@/src/features/settings/components/SettingsSectionHeader";
+import { IconUserSquareRounded } from "@tabler/icons-react";
+
+import { UsernameSettingsSection } from "@/src/features/user/components/UsernameSettingsSection";
+import { PersonalDataSettingsSection } from "@/src/features/user/components/PersonalDataSettingsSection";
 
 export default function ProfileSettingsPage({
   params,
@@ -2041,46 +1986,37 @@ export default function ProfileSettingsPage({
   const { lang, username } = use(params);
   const router = useRouter();
   const { user, isLoadingAuth } = useAuthStore();
-
   const decodedUsername = decodeURIComponent(username);
 
-  // Guardián de Rutas (Directriz 10: Confianza Cero)
   useEffect(() => {
     if (!isLoadingAuth) {
       if (!user) {
         router.push(`/${lang}/login`);
       } else if (user.username !== decodedUsername) {
-        console.warn("🚫 Intento de acceso a ajustes ajenos.");
         router.push(`/${lang}/${encodeURIComponent(user.username)}/settings/profile`);
       }
     }
   }, [user, isLoadingAuth, decodedUsername, lang, router]);
 
-  if (isLoadingAuth || user?.username !== decodedUsername) {
-    return null; // O un skeleton de carga
-  }
+  if (isLoadingAuth || user?.username !== decodedUsername || !user) return null;
 
   return (
-    <div className="max-w-2xl animate-fade-in space-y-8">
-      {/* Cabecera de la Página */}
-      <header>
-        <h1 className="text-2xl font-black tracking-tighter uppercase">Perfil Público</h1>
-        <p className="text-sm text-muted-foreground mt-2">
-          Gestiona tu identidad y cómo te ven los demás en la comunidad.
-        </p>
-      </header>
+    <div className="text-brand-text font-mono animate-fade-in space-y-8 w-full">
+      <SettingsSectionHeader
+        title="Perfil Público"
+        description="Gestiona tu identidad visual, datos personales y tu nombre de usuario."
+        icon={<IconUserSquareRounded className="text-brand" size={24} />}
+      />
 
-      {/* AQUÍ APILAREMOS LOS MÓDULOS EN EL FUTURO:
-        <UpdateAvatarForm />
-        <UpdateBioForm />
-      */}
-      
-      <div className="space-y-8">
-        <UpdateUsernameForm lang={lang} />
+      <div className="space-y-8 pt-4">
+        <UsernameSettingsSection user={user} lang={lang} />
+
+        <PersonalDataSettingsSection user={user} lang={lang} />
       </div>
     </div>
   );
 }
+
 
 
 ================================================
@@ -2090,10 +2026,12 @@ FILE: app/[lang]/(main)/[username]/settings/security/page.tsx
 
 import { useState, useRef } from "react";
 import { useAuthStore } from "@/src/store/authStore";
-import { api } from "@/src/services/api"; // Asegúrate de que esta ruta coincida con tu API
+import { api } from "@/src/services/api";
 import { toast } from "react-hot-toast";
-import { Button } from "@/src/system/atoms/Button";
+import { Button } from "@/src/system/atoms/Button/Button";
+import { Input } from "@/src/system/atoms/Input/Input";
 import { IconShieldLock, IconAlertTriangle } from "@tabler/icons-react";
+import { SettingsSectionHeader } from "@/src/features/settings/components/SettingsSectionHeader";
 
 export default function SecuritySettingsPage() {
   const user = useAuthStore((state) => state.user);
@@ -2102,7 +2040,6 @@ export default function SecuritySettingsPage() {
   const [error, setError] = useState<string | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
 
-  // 🚀 HIGH PERFORMANCE SUBMIT: Usamos FormData en lugar de controlar cada input
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsLoading(true);
@@ -2113,7 +2050,6 @@ export default function SecuritySettingsPage() {
     const newPassword = formData.get("newPassword") as string;
     const confirmPassword = formData.get("confirmPassword") as string;
 
-    // Validación de Frontera (Confianza Cero)
     if (newPassword !== confirmPassword) {
       setError("Las contraseñas nuevas no coinciden.");
       setIsLoading(false);
@@ -2127,14 +2063,13 @@ export default function SecuritySettingsPage() {
     }
 
     try {
-      // Sustituye esto por tu llamada real a la API
       await api.cambiarPassword({
         current_password: currentPassword,
         new_password: newPassword,
       });
 
       toast.success("Contraseña actualizada con éxito");
-      formRef.current?.reset(); // Limpiamos el formulario nativamente
+      formRef.current?.reset();
     } catch (err: any) {
       setError(err.message || "Fallo al actualizar la contraseña");
       toast.error("No se pudo cambiar la contraseña");
@@ -2146,78 +2081,58 @@ export default function SecuritySettingsPage() {
   if (!user) return null;
 
   return (
-    <div className="max-w-2xl animate-fade-in">
-      <div className="mb-8">
-        <h1 className="text-2xl font-black font-mono uppercase flex items-center gap-3">
-          <IconShieldLock className="text-(--accent-color)" size={28} />
-          Seguridad y Acceso
-        </h1>
-        <p className="text-sm text-muted-foreground mt-2">
-          Gestiona tu contraseña y protege tu cuenta de Reprompt.
-        </p>
-      </div>
+    <div className="animate-fade-in space-y-8 w-full">
+      <SettingsSectionHeader
+        title="Seguridad y Acceso"
+        description="Gestiona tu contraseña y protege tu cuenta de Reprompt."
+        icon={<IconShieldLock className="text-muted-foreground" size={24} />}
+      />
 
-      <div className="bg-background neo-border p-6 relative overflow-hidden">
-        {/* Decoración sutil */}
-        <div className="absolute top-0 right-0 w-32 h-32 bg-(--accent-color) opacity-5 blur-3xl rounded-full -translate-y-1/2 translate-x-1/2"></div>
+      <div className="bg-background border border-border/50 rounded-xl p-6 md:p-8 relative overflow-hidden shadow-sm">
+        <div className="absolute top-0 right-0 w-32 h-32 bg-primary opacity-5 blur-3xl rounded-full -translate-y-1/2 translate-x-1/2 pointer-events-none"></div>
 
-        <h2 className="text-lg font-bold border-b-2 border-(--border-color) pb-3 mb-6">
+        <h2 className="text-lg font-mono font-bold border-b border-border/50 pb-3 mb-6">
           Cambiar Contraseña
         </h2>
 
         {error && (
-          <div className="mb-6 p-3 bg-red-500/10 border border-red-500 text-red-500 text-sm font-bold flex items-center gap-2">
+          <div className="mb-6 p-3 bg-red-400/10 border border-red-500/60 text-red-600 text-sm font-medium flex items-center gap-2 rounded-md">
             <IconAlertTriangle size={18} /> {error}
           </div>
         )}
 
-        <form ref={formRef} onSubmit={handleSubmit} className="space-y-5">
-          <div className="space-y-2">
-            <label className="text-xs font-black font-mono uppercase tracking-widest text-muted-foreground">
-              Contraseña Actual
-            </label>
-            <input
-              type="password"
-              name="currentPassword"
-              required
-              className="w-full p-3 bg-(--bg-secondary) neo-border focus:outline-none focus:ring-2 focus:ring-(--accent-color) transition-all"
-              placeholder="••••••••"
-            />
-          </div>
+        <form ref={formRef} onSubmit={handleSubmit} className="space-y-5 relative z-10">
+          <Input
+            label="Contraseña Actual"
+            name="currentPassword"
+            type="password"
+            placeholder="••••••••"
+            required
+          />
 
-          <div className="space-y-2">
-            <label className="text-xs font-black font-mono uppercase tracking-widest text-muted-foreground">
-              Nueva Contraseña
-            </label>
-            <input
-              type="password"
-              name="newPassword"
-              required
-              minLength={8}
-              className="w-full p-3 bg-(--bg-secondary) neo-border focus:outline-none focus:ring-2 focus:ring-(--accent-color) transition-all"
-              placeholder="••••••••"
-            />
-          </div>
+          <Input
+            label="Nueva Contraseña"
+            name="newPassword"
+            type="password"
+            placeholder="••••••••"
+            required
+            minLength={8}
+          />
 
-          <div className="space-y-2">
-            <label className="text-xs font-black font-mono uppercase tracking-widest text-muted-foreground">
-              Confirmar Nueva Contraseña
-            </label>
-            <input
-              type="password"
-              name="confirmPassword"
-              required
-              minLength={8}
-              className="w-full p-3 bg-(--bg-secondary) neo-border focus:outline-none focus:ring-2 focus:ring-(--accent-color) transition-all"
-              placeholder="••••••••"
-            />
-          </div>
+          <Input
+            label="Confirmar Nueva Contraseña"
+            name="confirmPassword"
+            type="password"
+            placeholder="••••••••"
+            required
+            minLength={8}
+          />
 
-          <div className="pt-4 border-t-2 border-(--border-color) flex items-center justify-between">
+          <div className="pt-6 mt-6 border-t border-border/50 flex flex-col sm:flex-row items-center justify-between gap-4">
             <p className="text-xs text-muted-foreground font-mono">
-              La sesión actual se mantendrá activa.
+              La sesión actual se mantendrá activa tras guardar.
             </p>
-            <Button type="submit" isLoading={isLoading} className="min-w-37.5">
+            <Button variant="secondary" type="submit" isLoading={isLoading} className="w-full sm:w-auto min-w-37.5 font-mono text-xs">
               {isLoading ? "Guardando..." : "Actualizar Clave"}
             </Button>
           </div>
@@ -3314,7 +3229,7 @@ FILE: src/features/auth/components/LogoutMenuItem.tsx
 "use client";
 
 import { useAuthStore } from "@/src/store/authStore";
-import { MenuItem } from "@/src/system/atoms/Menu/MenuItem";
+import { MenuItem } from "@/src/system/atoms/Dropdown/MenuItem";
 import { IconLogout } from "@tabler/icons-react";
 
 export function LogoutMenuItem() {
@@ -3322,8 +3237,8 @@ export function LogoutMenuItem() {
 
   return (
     <MenuItem
-      icon={<IconLogout size={18} />}
-      label="Cerrar Sesión"
+      icon={<IconLogout size={16} />}
+      label="Cerrar sesión"
       onClick={logout}
       variant="danger"
     />
@@ -4805,28 +4720,61 @@ export function useSearch() {
 
 
 ================================================
-FILE: src/features/settings/layout.tsx
+FILE: src/features/settings/components/SettingsProfileHeader.tsx
 ================================================
-import { SettingsSidebar } from "@/src/features/settings/components/SettingsSidebar";
+"use client";
 
-export default function SettingsLayout({
-  children,
-  params,
-}: {
-  children: React.ReactNode;
-  params: { lang: string; username: string };
-}) {
+import { useAuthStore } from "@/src/store/authStore";
+import { UserBadge } from "@/src/system/atoms/Badge/Badge";
+import { UserAvatar } from "@/src/system/atoms/Avatar/Avatar";
+
+export function SettingsProfileHeader() {
+  const user = useAuthStore((state) => state.user);
+
+  if (!user) return null;
+
   return (
-    <div className="container mx-auto max-w-6xl px-4 py-12">
-      <div className="flex flex-col md:flex-row gap-8">
-        <aside>
-          <SettingsSidebar username={params.username} lang={params.lang} />
-        </aside>
+    <div className="flex items-center gap-6 pb-6 mb-4">
+      <UserAvatar 
+        username={user.username} 
+        avatarUrl={user.avatarUrl} 
+        size="2xl" 
+        className="shadow-sm" 
+      />
 
-        <main className="flex-1 min-w-0">
-          <div className="bg-(--bg-secondary) neo-border p-6 md:p-8">{children}</div>
-        </main>
+      <div className="flex flex-col">
+        <div className="flex flex-col">
+          <h1 className="text-xl md:text-xl font-black tracking-tighter text-foreground lowercase">
+            {user.username}
+          </h1>
+        </div>
+
+        <div className="flex items-center gap-3 mt-2">
+          <UserBadge role={user.role} />
+        </div>
       </div>
+    </div>
+  );
+}
+
+
+================================================
+FILE: src/features/settings/components/SettingsSectionHeader.tsx
+================================================
+interface SettingsSectionHeaderProps {
+  title: string;
+  description?: string;
+  icon?: React.ReactNode;
+}
+
+export function SettingsSectionHeader({ title, icon }: SettingsSectionHeaderProps) {
+  return (
+    <div className="pb-4 border-b border-border/80 mb-6">
+      <div className="flex items-center">
+        {icon && <span className="mr-2">{icon}</span>}
+        <h2 className="text-xl font-mono font-medium tracking-tight">{title}</h2>
+      </div>
+      {/* <p className="text-sm font-mono text-muted-foreground mt-1">{description}</p> */}
     </div>
   );
 }
@@ -4838,21 +4786,34 @@ FILE: src/features/settings/components/SettingsSidebar.tsx
 ================================================
 "use client";
 
+import Link from "next/link";
 import { useSettingsNavigation } from "../hooks/useSettingsNavigation";
-import { SidebarNavLink } from "./SidebarNavLink";
+import {
+  SidebarHeading,
+  SidebarDivider,
+  getSidebarItemClasses,
+} from "@/src/system/organisms/Sidebar";
 
 export function SettingsSidebar() {
   const links = useSettingsNavigation();
 
   return (
-    <nav className="flex flex-col gap-2">
-      <p className="text-[10px] font-black font-mono text-muted-foreground uppercase tracking-widest px-4 mb-2">
-        Ajustes de Usuario
-      </p>
+    <nav className="flex flex-col gap-1 pt-6">
+      <SidebarHeading>Ajustes Generales</SidebarHeading>
 
-      {links.map((link) => (
-        <SidebarNavLink key={link.href} {...link} />
-      ))}
+      <SidebarDivider className="my-4" />
+      <div className="px-3 flex flex-col gap-1">
+        {links.map((link) => (
+          <Link key={link.href} href={link.href} className={getSidebarItemClasses(link.isActive)}>
+            <span className={link.isActive ? "text-primary" : "text-muted-foreground"}>
+              {link.icon}
+            </span>
+            <span className="font-mono font-medium text-xs tracking-widest flex-1 text-left">
+              {link.label}
+            </span>
+          </Link>
+        ))}
+      </div>
     </nav>
   );
 }
@@ -4864,18 +4825,20 @@ FILE: src/features/settings/components/SidebarNavLink.tsx
 ================================================
 import Link from "next/link";
 import { NavLink } from "../hooks/useSettingsNavigation";
+import {
+  getSidebarItemClasses,
+  SidebarActiveIndicator,
+  SidebarItemIcon,
+} from "@/src/system/organisms/Sidebar";
 
 export function SidebarNavLink({ href, label, icon, isActive }: NavLink) {
   return (
-    <Link
-      href={href}
-      className={`flex items-center gap-3 px-4 py-3 font-bold transition-all neo-border ${
-        isActive
-          ? "bg-(--accent-color) text-white border-transparent neo-shadow-accent"
-          : "hover:bg-muted/10 border-transparent hover:border-(--border-color)"
-      }`}
-    >
-      {icon} {label}
+    <Link href={href} className={getSidebarItemClasses(isActive)}>
+      {isActive && <SidebarActiveIndicator />}
+
+      <SidebarItemIcon isActive={isActive}>{icon}</SidebarItemIcon>
+
+      <span className="flex-1 text-left">{label}</span>
     </Link>
   );
 }
@@ -4886,7 +4849,7 @@ export function SidebarNavLink({ href, label, icon, isActive }: NavLink) {
 FILE: src/features/settings/hooks/useSettingsNavigation.tsx
 ================================================
 import { usePathname, useParams } from "next/navigation";
-import { IconUserEdit, IconLock, IconPalette } from "@tabler/icons-react";
+import { IconLock, IconPalette, IconUserSquareRounded } from "@tabler/icons-react";
 import { ReactNode } from "react";
 
 export interface NavLink {
@@ -4908,7 +4871,7 @@ export function useSettingsNavigation(): NavLink[] {
     {
       href: `${basePath}/profile`,
       label: "Perfil Público",
-      icon: <IconUserEdit size={20} />,
+      icon: <IconUserSquareRounded size={20} />,
       isActive: pathname.includes(`${basePath}/profile`),
     },
     {
@@ -4924,6 +4887,91 @@ export function useSettingsNavigation(): NavLink[] {
       isActive: pathname.includes(`${basePath}/appearance`),
     },
   ];
+}
+
+
+
+================================================
+FILE: src/features/studio/components/Sidebar/StudioSidebar.tsx
+================================================
+"use client";
+
+import { IconFolderPlus, IconCloudUpload, IconFolder } from "@tabler/icons-react";
+import { useStudioUI, Directory } from "@/src/store/useStudioUI";
+import { useFileUploader } from "@/src/features/extractor/hooks/useFileUploader";
+import { useDirectoryActions } from "@/src/features/studio/hooks/useDirectoryActions";
+import { useDroppable } from "@dnd-kit/core";
+
+import {
+  SidebarContainer,
+  SidebarDivider,
+  getSidebarItemClasses,
+} from "@/src/system/organisms/Sidebar/SidebarCore";
+import { SidebarDirectory } from "@/src/system/molecules/Studio/SidebarDirectory";
+
+export function StudioSidebar() {
+  const { directories, activeDirectoryId, setActiveDirectory } = useStudioUI();
+  const { createDirectory } = useDirectoryActions();
+  const { handleUploadClick } = useFileUploader();
+
+  const { setNodeRef: setRootDropRef, isOver: isRootOver } = useDroppable({
+    id: "root-zone",
+    data: { type: "root" },
+  });
+
+  const handleCreateRootFolder = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const name = window.prompt("Nombre de la nueva carpeta principal:");
+    if (name?.trim()) await createDirectory(name.trim(), null);
+  };
+
+  const isRootActive = activeDirectoryId === null;
+
+  return (
+    <SidebarContainer>
+      <div className="px-3 mb-1 group relative">
+        <div
+          ref={setRootDropRef}
+          onClick={() => setActiveDirectory(null)}
+          role="button"
+          className={getSidebarItemClasses(isRootActive, isRootOver)}
+        >
+          <IconFolder size={18} stroke={1.5} />
+          <span className="tracking-widest flex-1 text-left text-xs">
+            <span className="font-mono font-medium lowercase text-foreground/70">reprompt</span>{" "}
+            root
+          </span>
+
+          <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            <button
+              onClick={handleCreateRootFolder}
+              className="p-1 hover:bg-primary/20 rounded text-primary/80 transition-colors"
+              title="Nueva carpeta en Root"
+            >
+              <IconFolderPlus size={14} stroke={2} />
+            </button>
+            <button
+              onClick={handleUploadClick}
+              className="p-1 hover:bg-primary/20 rounded text-primary/80 transition-colors"
+              title="Subir a Root"
+            >
+              <IconCloudUpload size={14} stroke={2} />
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <SidebarDivider />
+
+      <div className="px-3 flex flex-col gap-1">
+        {directories
+          .filter((d: Directory) => d.parent_id === null)
+          .map((dir: Directory) => (
+            <SidebarDirectory key={dir.id} directory={dir} />
+          ))}
+      </div>
+    </SidebarContainer>
+  );
 }
 
 
@@ -5370,28 +5418,504 @@ FILE: src/features/theme/components/ThemeMenuItem.tsx
 ================================================
 "use client";
 
-import { useTheme } from "@/src/utils/hooks/useTheme";
-import { MenuItem } from "@/src/system/atoms/Menu/MenuItem";
-import { IconSun, IconMoon } from "@tabler/icons-react";
+import { useTheme } from "next-themes";
+import { MenuItem } from "@/src/system/atoms/Dropdown/MenuItem";
+import { IconSun, IconMoon, IconDeviceDesktop } from "@tabler/icons-react";
+import { useEffect, useState } from "react";
 
 export function ThemeMenuItem() {
-  const { isDark, toggleTheme } = useTheme();
+  const { theme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => setMounted(true), []);
+
+  if (!mounted) return <MenuItem icon={<IconDeviceDesktop size={16} />} label="Tema" disabled />;
+
+  const isDark = theme === "dark";
 
   return (
     <MenuItem
       icon={
         isDark ? (
-          <IconSun size={18} className="text-yellow-500" />
+          <IconSun size={16} className="text-yellow-500" />
         ) : (
-          <IconMoon size={18} className="text-blue-500" />
+          <IconMoon size={16} className="text-slate-600" />
         )
       }
-      label={isDark ? "Modo Claro" : "Modo Oscuro"}
-      onClick={toggleTheme}
+      label={isDark ? "Cambiar a modo claro" : "Cambiar a modo oscuro"}
+      onClick={() => setTheme(isDark ? "light" : "dark")}
     />
   );
 }
 
+
+
+================================================
+FILE: src/features/theme/components/ThemePreview.tsx
+================================================
+import { ThemeColors } from "../constants/themeConfigs";
+
+export function ThemePreview({ colors }: { colors: ThemeColors }) {
+  return (
+    <div
+      className={`w-full h-36 p-3 flex flex-col gap-2 border-b border-border/10 ${colors.wrapper}`}
+    >
+      <div
+        className={`w-full h-5 rounded-md flex items-center px-2 gap-1.5 border ${colors.header}`}
+      >
+        <div className={`w-2 h-2 rounded-full ${colors.dots}`} />
+        <div className={`w-2 h-2 rounded-full ${colors.dots}`} />
+        <div className={`w-8 h-2 rounded-full ml-2 ${colors.lines}`} />
+      </div>
+
+      <div className="flex gap-2 flex-1">
+        <div className={`w-1/4 h-full rounded-md flex flex-col gap-1.5 p-1.5 ${colors.sidebar}`}>
+          <div className={`w-full h-2 rounded-full ${colors.lines}`} />
+          <div className={`w-3/4 h-2 rounded-full ${colors.lines}`} />
+          <div className={`w-1/2 h-2 rounded-full mt-2 ${colors.lines}`} />
+        </div>
+
+        <div
+          className={`w-3/4 h-full rounded-md border p-2 flex flex-col gap-1.5 ${colors.content}`}
+        >
+          <div className={`w-1/3 h-2.5 rounded-full ${colors.primaryLine}`} />
+          <div className={`w-full h-1.5 rounded-full mt-1 ${colors.contentLines}`} />
+          <div className={`w-5/6 h-1.5 rounded-full ${colors.contentLines}`} />
+          <div className={`w-4/6 h-1.5 rounded-full ${colors.contentLines}`} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+
+================================================
+FILE: src/features/theme/components/ThemeSelectorCard.tsx
+================================================
+"use client";
+
+import { IconCircleCheckFilled, IconCircle } from "@tabler/icons-react";
+import { ThemePreview } from "./ThemePreview";
+import { THEME_CONFIGS, ThemeOption } from "../constants/themeConfigs";
+import { BrandText } from "@/src/system/atoms/Brand/BrandText";
+
+interface ThemeSelectorCardProps {
+  themeType: ThemeOption;
+  isActive: boolean;
+  onClick: () => void;
+}
+
+export function ThemeSelectorCard({ themeType, isActive, onClick }: ThemeSelectorCardProps) {
+  const config = THEME_CONFIGS[themeType] || THEME_CONFIGS.light;
+
+  return (
+    <button
+      onClick={onClick}
+      type="button"
+      className={`
+        flex flex-col text-left transition-all duration-200 rounded-xl overflow-hidden border-2 cursor-pointer group outline-none h-full
+        ${
+          isActive
+            ? "border-primary ring-1 ring-primary shadow-sm"
+            : "border-border/50 hover:border-border hover:shadow-sm"
+        }
+      `}
+    >
+      <ThemePreview colors={config.colors} />
+
+      <div className="p-4 flex items-start justify-between w-full bg-background flex-1">
+        <div className="flex flex-col pr-4">
+          <span className="font-mono font-bold text-md text-foreground">{config.title}</span>
+          <span className="font-mono text-sm text-muted-foreground mt-1 leading-relaxed">
+            <BrandText text={config.description} />
+          </span>
+        </div>
+
+        <div
+          className={`transition-colors shrink-0 ${isActive ? "text-primary" : "text-muted-foreground group-hover:text-foreground"}`}
+        >
+          {isActive ? <IconCircleCheckFilled size={20} /> : <IconCircle size={20} stroke={1.5} />}
+        </div>
+      </div>
+    </button>
+  );
+}
+
+
+
+================================================
+FILE: src/features/theme/constants/themeConfigs.ts
+================================================
+export type ThemeOption = "light" | "dark" | string;
+
+export interface ThemeColors {
+  wrapper: string;
+  header: string;
+  dots: string;
+  lines: string;
+  sidebar: string;
+  content: string;
+  primaryLine: string;
+  contentLines: string;
+}
+
+export const THEME_CONFIGS: Record<
+  ThemeOption,
+  { title: string; description: string; colors: ThemeColors }
+> = {
+  light: {
+    title: "Tema Claro",
+    description: "Un aspecto limpio y luminoso, ideal para trabajar de día.",
+    colors: {
+      wrapper: "bg-[#f6f8fa]",
+      header: "bg-white border-gray-200",
+      dots: "bg-gray-300",
+      lines: "bg-gray-200",
+      sidebar: "bg-white border-gray-200",
+      content: "bg-white border-gray-200",
+      primaryLine: "bg-primary/40",
+      contentLines: "bg-gray-100",
+    },
+  },
+  dark: {
+    title: "Tema Oscuro",
+    description: "El tema oscuro original de reprompt.",
+    colors: {
+      wrapper: "bg-[#0d1117]",
+      header: "bg-[#161b22] border-gray-800",
+      dots: "bg-gray-600",
+      lines: "bg-gray-700",
+      sidebar: "bg-[#161b22] border-transparent",
+      content: "bg-[#010409] border-gray-800",
+      primaryLine: "bg-primary/50",
+      contentLines: "bg-gray-800",
+    },
+  },
+};
+
+
+
+================================================
+FILE: src/features/user/components/ChangePersonalDataModal.tsx
+================================================
+"use client";
+
+import { useState, useEffect } from "react";
+import { IconInfoCircle, IconX, IconArrowRight } from "@tabler/icons-react";
+import { Button } from "@/src/system/atoms/Button/Button";
+import { UpdatePersonalDataForm } from "./UpdatePersonalDataForm";
+
+interface ChangePersonalDataModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+}
+
+export function ChangePersonalDataModal({ isOpen, onClose }: ChangePersonalDataModalProps) {
+  const [step, setStep] = useState<1 | 2>(1);
+
+  useEffect(() => {
+    if (!isOpen) setTimeout(() => setStep(1), 200);
+  }, [isOpen]);
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm animate-in fade-in duration-200">
+      <div className="bg-background border border-border/50 shadow-2xl rounded-xl w-full max-w-md overflow-hidden animate-in zoom-in-95 relative flex flex-col">
+        <button
+          onClick={onClose}
+          className="absolute top-4 right-4 p-1 text-muted-foreground hover:text-foreground transition-colors z-10"
+        >
+          <IconX size={20} />
+        </button>
+
+        {step === 1 ? (
+          <div className="p-8 flex flex-col">
+            <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mb-6 border border-primary/20">
+              <IconInfoCircle size={24} className="text-primary" />
+            </div>
+            <h3 className="text-xl font-bold mb-2">Tu Perfil Público</h3>
+            <p className="text-sm text-muted-foreground mb-6">
+              Añadir tu nombre y profesión ayuda a otros creadores a conocerte mejor.
+            </p>
+            <ul className="space-y-3 text-xs text-muted-foreground mb-8">
+              <li className="flex gap-2">✅ Estos datos serán visibles en tu perfil.</li>
+              <li className="flex gap-2">✅ Ayuda a mejorar tus recomendaciones.</li>
+              <li className="flex gap-2">✅ Puedes borrarlos cuando quieras.</li>
+            </ul>
+            <div className="flex justify-end gap-3 pt-4 border-t border-border/30">
+              <Button variant="secondary" size="sm" onClick={onClose}>
+                Cancelar
+              </Button>
+              <Button variant="primary" size="sm" onClick={() => setStep(2)}>
+                Continuar <IconArrowRight size={16} className="ml-2" />
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <UpdatePersonalDataForm onSuccess={onClose} />
+        )}
+      </div>
+    </div>
+  );
+}
+
+
+
+================================================
+FILE: src/features/user/components/ChangeUsernameFormStep.tsx
+================================================
+import { IconUserSquareRounded } from "@tabler/icons-react";
+import { UpdateUsernameForm } from "./UpdateUsernameForm";
+
+interface ChangeUsernameFormStepProps {
+  lang: string;
+}
+
+export function ChangeUsernameFormStep({ lang }: ChangeUsernameFormStepProps) {
+  return (
+    <div className="flex flex-col">
+      <div className="flex items-center gap-3 p-4 border-b border-border bg-muted/10">
+        <IconUserSquareRounded size={20} className="text-primary" />
+        <h3 className="text-base font-bold text-foreground">Nuevo nombre de usuario</h3>
+      </div>
+
+      <div className="p-4">
+        <UpdateUsernameForm lang={lang} />
+      </div>
+    </div>
+  );
+}
+
+
+
+================================================
+FILE: src/features/user/components/ChangeUsernameModal.tsx
+================================================
+"use client";
+
+import { useState, useEffect } from "react";
+import { Modal } from "@/src/system/molecules/Modal/Modal";
+import { ChangeUsernameWarningStep } from "./ChangeUsernameWarningStep";
+import { ChangeUsernameFormStep } from "./ChangeUsernameFormStep";
+
+interface ChangeUsernameModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  lang: string;
+}
+
+export function ChangeUsernameModal({ isOpen, onClose, lang }: ChangeUsernameModalProps) {
+  const [step, setStep] = useState<1 | 2>(1);
+
+  useEffect(() => {
+    if (!isOpen) setTimeout(() => setStep(1), 200);
+  }, [isOpen]);
+
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} maxWidth="max-w-sm">
+      {step === 1 && <ChangeUsernameWarningStep onClose={onClose} onConfirm={() => setStep(2)} />}
+
+      {step === 2 && <ChangeUsernameFormStep lang={lang} />}
+    </Modal>
+  );
+}
+
+
+
+================================================
+FILE: src/features/user/components/ChangeUsernameWarningStep.tsx
+================================================
+import { IconAlertTriangle } from "@tabler/icons-react";
+import { Button } from "@/src/system/atoms/Button/Button";
+
+interface ChangeUsernameWarningStepProps {
+  onClose: () => void;
+  onConfirm: () => void;
+}
+
+export function ChangeUsernameWarningStep({ onClose, onConfirm }: ChangeUsernameWarningStepProps) {
+  return (
+    <div className="flex flex-col">
+      <div className="px-5 pt-5 pb-1">
+        <h3 className="text-lg font-bold text-foreground">Cambiar nombre de usuario</h3>
+      </div>
+
+      <div className="mx-5 mt-3 p-3.5 bg-amber-500/10 border border-amber-500/30 rounded-lg flex gap-3 items-start">
+        <IconAlertTriangle className="text-amber-600 shrink-0 mt-0.5" size={20} />
+        <p className="text-sm text-amber-600 font-medium leading-relaxed">
+          No cambies tu username antes de leer la siguiente información.
+        </p>
+      </div>
+
+      <div className="px-5 mt-5 mb-6">
+        <ul className="flex flex-col gap-3 text-sm text-muted-foreground">
+          <li className="flex gap-2.5 items-start">
+            <span className="text-amber-500 font-black mt-0.5">•</span>
+            <span className="leading-relaxed">
+              <strong>Reprompt</strong> no realizará las redirecciones de la{" "}
+              <strong>antigua URL</strong>.
+            </span>
+          </li>
+
+          <li className="flex gap-2.5 items-start">
+            <span className="text-amber-500 font-black mt-0.5">•</span>
+            <span className="leading-relaxed">
+              Tu antigua URL devolverá un <strong>Error 404</strong> inmediato. Actualiza tus
+              enlaces.
+            </span>
+          </li>
+
+          <li className="flex gap-2.5 items-start">
+            <span className="text-amber-500 font-black mt-0.5">•</span>
+            <span className="leading-relaxed">
+              Es posible que los cambios se retrasen <strong>unos minutos</strong> en propagarse por
+              la base de datos.
+            </span>
+          </li>
+        </ul>
+      </div>
+
+      <div className="p-4 border-t border-border bg-muted/10 flex justify-end gap-3">
+        <Button variant="secondary" size="sm" onClick={onClose}>
+          Cancelar
+        </Button>
+        <Button variant="primary" size="sm" onClick={onConfirm}>
+          Entendido, continuar
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+
+
+================================================
+FILE: src/features/user/components/PersonalDataSettingsSection.tsx
+================================================
+"use client";
+
+import { useState } from "react";
+import { User } from "@/src/store/authStore";
+import { Button } from "@/src/system/atoms/Button/Button";
+import { IconId } from "@tabler/icons-react";
+import { ChangePersonalDataModal } from "./ChangePersonalDataModal";
+
+export function PersonalDataSettingsSection({ user }: { user: User }) {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  return (
+    <div className="flex flex-col md:flex-row gap-6 md:items-center justify-between border-b border-border/30 pb-8">
+      <div className="flex-1">
+        <h3 className="text-lg font-bold">Datos Personales</h3>
+        <p className="text-sm text-muted-foreground mt-1 leading-relaxed">
+          Nombre:{" "}
+          <span className="text-foreground font-medium">{user.fullName || "Sin definir"}</span> •
+          Profesión:{" "}
+          <span className="text-foreground font-medium">{user.profession || "Creador"}</span>
+        </p>
+      </div>
+
+      <Button
+        variant="secondary"
+        className="shrink-0 gap-2 font-mono text-xs tracking-widest uppercase"
+        onClick={() => setIsModalOpen(true)}
+      >
+        <IconId size={16} />
+        Editar Datos
+      </Button>
+
+      <ChangePersonalDataModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
+    </div>
+  );
+}
+
+
+
+================================================
+FILE: src/features/user/components/UpdatePersonalDataForm.tsx
+================================================
+"use client";
+
+import { useState } from "react";
+import { useAuthStore } from "@/src/store/authStore";
+import { Input } from "@/src/system/atoms/Input/Input";
+import { Button } from "@/src/system/atoms/Button/Button";
+import { IconUser, IconBriefcase, IconCalendarEvent } from "@tabler/icons-react";
+import { toast } from "react-hot-toast";
+
+export function UpdatePersonalDataForm({ onSuccess }: { onSuccess: () => void }) {
+  const { user, updateUser } = useAuthStore();
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setIsLoading(true);
+
+    const formData = new FormData(e.currentTarget);
+    const fullName = formData.get("fullName") as string;
+    const profession = formData.get("profession") as string;
+    const age = formData.get("age") as string;
+
+    try {
+      // TODO: Aquí conectarás con tu endpoint de API: api.user.updateProfile(...)
+      await new Promise((resolve) => setTimeout(resolve, 800)); // Simulación
+
+      // Actualizamos el store global (Zustand)
+      updateUser({ fullName, profession, age: parseInt(age) });
+
+      toast.success("Perfil actualizado");
+      onSuccess(); // Cierra el modal automáticamente al terminar
+    } catch (error) {
+      toast.error("Error al guardar los cambios");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="flex flex-col animate-in fade-in duration-300">
+      <div className="p-6 md:p-8 space-y-5">
+        <Input
+          label="Nombre Completo"
+          name="fullName"
+          defaultValue={user?.fullName || ""}
+          placeholder="Tu nombre y apellidos"
+          icon={<IconUser size={18} />}
+        />
+
+        <div className="grid grid-cols-3 gap-4">
+          <div className="col-span-1">
+            <Input
+              label="Edad"
+              name="age"
+              type="number"
+              defaultValue={user?.age || ""}
+              placeholder="00"
+              icon={<IconCalendarEvent size={18} />}
+            />
+          </div>
+          <div className="col-span-2">
+            <Input
+              label="Profesión"
+              name="profession"
+              defaultValue={user?.profession || ""}
+              placeholder="Ej: Prompt Engineer"
+              icon={<IconBriefcase size={18} />}
+            />
+          </div>
+        </div>
+      </div>
+
+      <div className="p-4 bg-muted/5 border-t border-border/30 flex justify-end">
+        <Button type="submit" isLoading={isLoading} className="w-full sm:w-auto">
+          Guardar Perfil
+        </Button>
+      </div>
+    </form>
+  );
+}
 
 
 ================================================
@@ -5402,9 +5926,9 @@ FILE: src/features/user/components/UpdateUsernameForm.tsx
 import { useEffect, useState } from "react";
 import { useAuthStore } from "@/src/store/authStore";
 import { useUpdateUsername } from "@/src/features/user/hooks/useUpdateUsername";
-import { Button } from "@/src/system/atoms/Button";
-import { IconUserEdit, IconAt } from "@tabler/icons-react";
+import { Button } from "@/src/system/atoms/Button/Button";
 import { slugifyUsername } from "@/src/utils/lib/string";
+import { IconAt } from "@tabler/icons-react";
 
 export function UpdateUsernameForm({ lang }: { lang: string }) {
   const { user } = useAuthStore();
@@ -5423,10 +5947,9 @@ export function UpdateUsernameForm({ lang }: { lang: string }) {
   };
 
   return (
-    <section className="bg-background neo-border p-6 relative overflow-hidden">
-      <div className="flex items-center gap-3 border-b-2 border-(--border-color) pb-4 mb-6">
-        <IconUserEdit size={24} className="text-(--accent-color)" />
-        <h2 className="text-lg font-bold uppercase font-mono">Nombre de Usuario</h2>
+    <section>
+      <div className="flex items-center gap-3 mb-2">
+        <h3 className="text-md font-medium font-mono text-foreground/90">username</h3>
       </div>
 
       <form onSubmit={onSave} className="space-y-4">
@@ -5438,24 +5961,19 @@ export function UpdateUsernameForm({ lang }: { lang: string }) {
             type="text"
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
-            placeholder="nuevo_nombre"
-            className="w-full bg-(--bg-secondary) neo-border p-4 pl-12 font-mono text-lg focus:outline-none focus:ring-2 focus:ring-(--accent-color) transition-all"
+            placeholder="nuevo nombre de usuario"
+            className="w-full bg-secondary neo-border p-2.5 pl-10 font-mono text-md focus:outline-none focus:ring-2 focus:ring-accent/70 transition-all"
           />
         </div>
 
-        <div className="bg-muted/10 p-4 neo-border border-dashed border-muted-foreground/30">
-          <p className="text-[10px] font-mono text-muted-foreground uppercase leading-relaxed">
-            Vista previa de tu URL: <br />
-            <span className="text-(--accent-color) font-bold">
+        <div className="bg-muted/10">
+          <p className="text-xs font-mono text-foreground/50 leading-relaxed">
+            Vista previa de tu URL <br />
+            <span className="text-foreground font-medium">
               reprompt.studio/{lang}/{slugifyUsername(inputValue) || "..."}
             </span>
           </p>
         </div>
-
-        <p className="text-[10px] text-red-500/70 font-mono uppercase italic">
-          * Al cambiar tu nombre, tu sesión se cerrará por seguridad y la URL antigua dejará de
-          funcionar.
-        </p>
 
         <div className="flex justify-end pt-2">
           <Button
@@ -5469,6 +5987,160 @@ export function UpdateUsernameForm({ lang }: { lang: string }) {
         </div>
       </form>
     </section>
+  );
+}
+
+
+
+================================================
+FILE: src/features/user/components/UserDropdown.tsx
+================================================
+"use client";
+
+import { useState, useRef } from "react";
+import { useRouter, usePathname } from "next/navigation";
+import { useAuthStore } from "@/src/store/authStore";
+import { useClickOutside } from "@/src/utils/hooks/useClickOutside";
+import { MenuItem } from "@/src/system/atoms/Dropdown/MenuItem";
+import { LogoutMenuItem } from "@/src/features/auth/components/LogoutMenuItem";
+import { ThemeMenuItem } from "@/src/features/theme/components/ThemeMenuItem";
+import { UserAvatar } from "@/src/system/atoms/Avatar/Avatar";
+import { IconDeviceDesktop, IconLockSquareRounded, IconSettings, IconShieldLock, IconUserSquareRounded } from "@tabler/icons-react";
+
+export function UserDropdown() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const { user } = useAuthStore();
+  const [isOpen, setIsOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useClickOutside(menuRef, () => setIsOpen(false));
+
+  if (!user) return null;
+
+  const lang = pathname?.split("/")[1] || "es";
+
+  const navigate = (path: string) => {
+    router.push(path);
+    setIsOpen(false);
+  };
+
+  return (
+    <div className="relative" ref={menuRef}>
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="flex rounded-full transition-opacity hover:opacity-85 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+        aria-expanded={isOpen}
+        aria-haspopup="true"
+      >
+        <UserAvatar username={user.username} avatarUrl={user.avatarUrl} size="sm" />
+      </button>
+
+      {isOpen && (
+        <div
+          className="absolute right-0 mt-2 w-72 bg-background border border-border shadow-lg rounded-xl z-50 animate-in fade-in zoom-in-95 duration-100 origin-top-right flex flex-col overflow-hidden"
+          role="menu"
+        >
+          <div className="flex items-center gap-3 p-4 border-b border-border bg-muted/10">
+            <UserAvatar username={user.username} avatarUrl={user.avatarUrl} size="md" />
+            <div className="flex flex-col overflow-hidden">
+              <span className="text-sm font-bold text-foreground truncate">@{user.username}</span>
+              <span className="text-xs font-medium text-muted-foreground capitalize mt-0.5">
+                {user.role}
+              </span>
+            </div>
+          </div>
+
+          <div className="p-1.5 flex flex-col gap-0.5 border-b border-border">
+            <MenuItem
+              icon={<IconUserSquareRounded size={16} />}
+              label="Perfil"
+              onClick={() =>
+                navigate(`/${lang}/${encodeURIComponent(user.username)}/settings/profile`)
+              }
+            />
+
+            <MenuItem
+              icon={<IconLockSquareRounded size={16} />}
+              label="Seguridad y Privacidad"
+              onClick={() =>
+                navigate(`/${lang}/${encodeURIComponent(user.username)}/settings/security`)
+              }
+            />
+
+            <MenuItem
+              icon={<IconDeviceDesktop size={16} />}
+              label="Apariencia"
+              onClick={() =>
+                navigate(`/${lang}/${encodeURIComponent(user.username)}/settings/appearance`)
+              }
+            />
+
+            {user.role === "admin" && (
+              <MenuItem
+                icon={<IconShieldLock size={16} />}
+                label="Panel Admin"
+                onClick={() => navigate(`/${lang}/admin`)}
+              />
+            )}
+          </div>
+
+          <div className="p-1.5 flex flex-col gap-0.5 border-b border-border">
+            <ThemeMenuItem />
+          </div>
+
+          <div className="p-1.5 bg-muted/5">
+            <LogoutMenuItem />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+
+
+================================================
+FILE: src/features/user/components/UsernameSettingsSection.tsx
+================================================
+"use client";
+
+import { useState } from "react";
+import { User } from "@/src/store/authStore";
+import { Button } from "@/src/system/atoms/Button/Button";
+import { IconEdit } from "@tabler/icons-react";
+import { ChangeUsernameModal } from "@/src/features/user/components/ChangeUsernameModal";
+
+interface UsernameSettingsSectionProps {
+  user: User;
+  lang: string;
+}
+
+export function UsernameSettingsSection({ user, lang }: UsernameSettingsSectionProps) {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  return (
+    <div className="flex flex-col md:flex-row gap-6 md:items-center justify-between border-b border-border/30 pb-8">
+      <div className="flex-1">
+        <h3 className="text-lg font-bold">Nombre de Usuario</h3>
+        <p className="text-sm text-muted-foreground mt-1">
+          Tu nombre actual es{" "}
+          <strong className="font-black text-brand-strong">@{user.username}</strong>. Este nombre se
+          usa para tu URL pública.
+        </p>
+      </div>
+
+      <Button
+        variant="secondary"
+        className="shrink-0 gap-2 font-mono text-xs tracking-widest uppercase"
+        onClick={() => setIsModalOpen(true)}
+      >
+        <IconEdit size={16} />
+        Cambiar Nombre
+      </Button>
+
+      <ChangeUsernameModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} lang={lang} />
+    </div>
   );
 }
 
@@ -6128,9 +6800,14 @@ FILE: src/store/authStore.ts
 import { create } from "zustand";
 import { api } from "@/src/services/api";
 
-interface User {
+export interface User {
   username: string;
   role: string;
+  id?: string | number;
+  avatarUrl?: string | null;
+  fullName?: string | null;
+  profession?: string | null;
+  age?: number;
 }
 
 interface AuthState {
@@ -6138,6 +6815,7 @@ interface AuthState {
   isAuthenticated: boolean;
   isLoadingAuth: boolean;
   hasCheckedInitialAuth: boolean;
+  updateUser: (data: Partial<User>) => void;
   updateLocalUsername: (newUsername: string) => void;
 
   login: (userData: User) => void;
@@ -6176,6 +6854,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       set({ user: { ...currentUser, username: newUsername } });
     }
   },
+  updateUser: (data: any) =>
+    set((state) => ({
+      user: state.user ? { ...state.user, ...data } : null,
+    })),
 
   login: (userData) => {
     console.log(`[AUTH_STORE] Sesión iniciada localmente: @${userData.username}`);
@@ -6556,86 +7238,7 @@ export const useStudioUI = create<StudioUIState>((set, get) => ({
 
 
 ================================================
-FILE: src/system/atoms/Button.tsx
-================================================
-import { ButtonHTMLAttributes, forwardRef } from "react";
-
-interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: "primary" | "secondary" | "danger" | "ghost";
-  size?: "sm" | "md" | "lg";
-  isLoading?: boolean;
-}
-
-export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
-  (
-    { className = "", variant = "primary", size = "md", isLoading, children, disabled, ...props },
-    ref,
-  ) => {
-    const variants = {
-      primary: "bg-[var(--accent-color)] text-white hover:brightness-110",
-      secondary:
-        "bg-[var(--bg-secondary)] text-[var(--text-primary)] hover:bg-gray-100 dark:hover:bg-gray-800",
-      danger: "bg-red-600 text-white hover:bg-red-500",
-      ghost:
-        "bg-transparent border-transparent shadow-none hover:bg-gray-200 dark:hover:bg-gray-800 text-[var(--text-secondary)]",
-    };
-
-    const sizes = {
-      sm: "px-4 py-2 text-sm",
-      md: "px-6 py-3 text-base",
-      lg: "px-10 py-4 text-lg font-bold",
-    };
-
-    const brutalistClasses = variant === "ghost" ? "" : "neo-border neo-shadow";
-
-    return (
-      <button
-        ref={ref}
-        disabled={disabled || isLoading}
-        className={`
-          inline-flex items-center justify-center font-bold uppercase tracking-wide transition-all duration-200
-          disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none
-          ${variants[variant]} 
-          ${sizes[size]} 
-          ${brutalistClasses}
-          ${className}
-        `}
-        {...props}
-      >
-        {isLoading && (
-          <svg
-            className="animate-spin -ml-1 mr-3 h-5 w-5 text-current"
-            xmlns="http://www.w3.org/2000/svg"
-            fill="none"
-            viewBox="0 0 24 24"
-          >
-            <circle
-              className="opacity-25"
-              cx="12"
-              cy="12"
-              r="10"
-              stroke="currentColor"
-              strokeWidth="4"
-            ></circle>
-            <path
-              className="opacity-75"
-              fill="currentColor"
-              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-            ></path>
-          </svg>
-        )}
-        {children}
-      </button>
-    );
-  },
-);
-
-Button.displayName = "Button";
-
-
-
-================================================
-FILE: src/system/atoms/FadeIn.tsx
+FILE: src/system/atoms/Animations/FadeIn.tsx
 ================================================
 "use client";
 
@@ -6670,7 +7273,291 @@ export function FadeIn({ children, duration = 0.5, delay = 0, y = 10, className 
 
 
 ================================================
-FILE: src/system/atoms/Heading.tsx
+FILE: src/system/atoms/Avatar/Avatar.tsx
+================================================
+import Image from "next/image";
+
+interface UserAvatarProps {
+  username: string;
+  avatarUrl?: string | null;
+  size?: "sm" | "md" | "lg" | "xl" | "2xl";
+  className?: string;
+}
+
+export function UserAvatar({ username, avatarUrl, size = "md", className = "" }: UserAvatarProps) {
+  const sizeClasses = {
+    sm: "w-8 h-8",
+    md: "w-10 h-10",
+    lg: "w-16 h-16",
+    xl: "w-24 h-24",
+    "2xl": "w-20 h-20 md:w-28 md:h-28",
+  };
+
+  const fallbackPadding = {
+    sm: "p-2",
+    md: "p-2.5",
+    lg: "p-4",
+    xl: "p-6",
+    "2xl": "p-5 md:p-8",
+  };
+
+  return (
+    <div
+      className={`
+        ${sizeClasses[size]} 
+        shrink-0 rounded-full flex items-center justify-center overflow-hidden
+        border-2 border-border/30 bg-muted/20 relative group
+        ${className}
+      `}
+      aria-label={`Avatar de ${username}`}
+    >
+      {avatarUrl ? (
+        <Image
+          src={avatarUrl}
+          alt={`Imagen de perfil de ${username}`}
+          fill
+          sizes="(max-width: 768px) 100vw, 33vw"
+          className="object-cover"
+        />
+      ) : (
+        <div
+          className={`w-full h-full bg-[#131313] flex items-center justify-center relative ${fallbackPadding[size]}`}
+        >
+          <div className="relative w-full h-full">
+            <Image
+              src="/logo-white.svg"
+              alt="Reprompt Default Avatar"
+              fill
+              className="object-contain opacity-90 group-hover:scale-110 transition-transform duration-500"
+            />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+
+
+================================================
+FILE: src/system/atoms/Badge/Badge.tsx
+================================================
+"use client";
+
+type UserRole = "voyager" | "artist" | "admin" | string;
+
+interface UserBadgeProps {
+  role?: UserRole;
+  id?: string;
+  username?: string;
+  avatarUrl?: string;
+}
+
+export function UserBadge({ role = "voyager" }: UserBadgeProps) {
+  const badgeConfig: Record<string, { label: string; classes: string }> = {
+    voyager: {
+      label: "Voyager",
+      classes: "bg-muted text-muted-foreground border-border/50",
+    },
+    artist: {
+      label: "Artist",
+      classes:
+        "bg-primary/10 text-primary border-primary/30 shadow-[0_0_10px_rgba(var(--primary-rgb),0.1)]",
+    },
+    admin: {
+      label: "Admin",
+      classes: "text-amber-400 font-medium border-amber-500",
+    },
+  };
+
+  const currentRole = role.toLowerCase();
+  const config = badgeConfig[currentRole] || badgeConfig.voyager;
+
+  return (
+    <span
+      className={`
+        px-2.5 py-0.5 text-xs font-mono lowercase tracking-widest 
+        rounded-md border transition-all duration-300
+        ${config.classes}
+      `}
+    >
+      {config.label}
+    </span>
+  );
+}
+
+
+
+================================================
+FILE: src/system/atoms/Brand/BrandText.tsx
+================================================
+interface BrandTextProps {
+  text: string;
+  brandName?: string;
+  className?: string;
+}
+
+export function BrandText({
+  text,
+  brandName = "reprompt",
+  className = "",
+}: BrandTextProps) {
+  if (!text) return null;
+  const parts = text.split(new RegExp(`(${brandName})`, "gi"));
+
+  return (
+    <span className={className}>
+      {parts.map((part, index) => {
+        if (part.toLowerCase() === brandName.toLowerCase()) {
+          return (
+            <span
+              key={index}
+              className="font-black font-mono tracking-tighter bg-clip-text text-transparent bg-linear-to-r from-primary to-foreground"
+            >
+              {part}
+            </span>
+          );
+        }
+        return <span key={index}>{part}</span>;
+      })}
+    </span>
+  );
+}
+
+
+
+================================================
+FILE: src/system/atoms/Button/Button.tsx
+================================================
+import { ButtonHTMLAttributes, forwardRef } from "react";
+
+interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
+  variant?: "primary" | "secondary" | "danger" | "ghost" | "outline";
+  size?: "sm" | "md" | "lg";
+  isLoading?: boolean;
+}
+
+export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
+  (
+    { className = "", variant = "primary", size = "md", isLoading, children, disabled, ...props },
+    ref,
+  ) => {
+    const variants = {
+      primary:
+        "bg-accent-color text-foreground neo-border neo-shadow-accent hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0px_0px_var(--brand-accent)] active:translate-x-[4px] active:translate-y-[4px] active:shadow-none font-bold uppercase tracking-wide",
+
+      secondary:
+        "bg-background text-foreground neo-border neo-shadow hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0px_0px_var(--brand-shadow)] active:translate-x-[4px] active:translate-y-[4px] active:shadow-none font-bold uppercase tracking-wide",
+
+      danger:
+        "text-red-600 bg-secondary border border-border shadow-sm hover:bg-red-600 hover:text-white hover:border-red-600 transition-colors font-medium tracking-tight",
+
+      ghost:
+        "bg-transparent text-muted-foreground hover:text-foreground hover:bg-muted/50 border border-transparent font-medium tracking-tight",
+
+      outline:
+        "bg-transparent border border-border text-foreground shadow-sm hover:border-foreground/30 font-medium tracking-tight",
+    };
+
+    const sizes = {
+      sm: "px-3 py-1.5 text-xs",
+      md: "px-4 py-2 text-sm",
+      lg: "px-6 py-3 text-base",
+    };
+
+    return (
+      <button
+        ref={ref}
+        disabled={disabled || isLoading}
+        className={`
+          inline-flex items-center justify-center rounded-md transition-all duration-200 
+          focus:outline-none focus:ring-2 focus:ring-accent-color focus:ring-offset-2 focus:ring-offset-background
+          disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none
+          ${variants[variant]} 
+          ${sizes[size]} 
+          ${className}
+        `}
+        {...props}
+      >
+        {isLoading && (
+          <svg
+            className="animate-spin -ml-1 mr-2 h-4 w-4 text-current"
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+          >
+            <circle
+              className="opacity-25"
+              cx="12"
+              cy="12"
+              r="10"
+              stroke="currentColor"
+              strokeWidth="4"
+            ></circle>
+            <path
+              className="opacity-75"
+              fill="currentColor"
+              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+            ></path>
+          </svg>
+        )}
+        {children}
+      </button>
+    );
+  },
+);
+
+Button.displayName = "Button";
+
+
+
+================================================
+FILE: src/system/atoms/Dropdown/MenuItem.tsx
+================================================
+import React from "react";
+
+interface MenuItemProps {
+  icon: React.ReactNode;
+  label: React.ReactNode;
+  onClick?: () => void;
+  variant?: "default" | "danger";
+  className?: string;
+  disabled?: boolean;
+}
+
+export function MenuItem({
+  icon,
+  label,
+  onClick,
+  variant = "default",
+  className = "",
+  disabled = false,
+}: MenuItemProps) {
+  const baseClass =
+    "flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-colors text-left w-full disabled:opacity-50 disabled:cursor-not-allowed";
+
+  const variantClass =
+    variant === "danger"
+      ? "text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10"
+      : "text-foreground hover:bg-muted";
+
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      className={`${baseClass} ${variantClass} ${className}`}
+      role="menuitem"
+    >
+      <span className="shrink-0 opacity-70">{icon}</span>
+      <span className="truncate">{label}</span>
+    </button>
+  );
+}
+
+
+
+================================================
+FILE: src/system/atoms/Heading/Heading.tsx
 ================================================
 import React from "react";
 import { cn } from "@/src/utils/lib/cn";
@@ -6686,10 +7573,8 @@ interface HeadingProps extends React.HTMLAttributes<HTMLHeadingElement> {
 export function Heading({ level = "h2", children, className, ...props }: HeadingProps) {
   const Component = level;
 
-  // Estilos base: Limpios, legibles, sin decoraciones
-  const baseStyles = "font-sans text-foreground tracking-tight";
+  const baseStyles = "font-mono text-foreground tracking-tight";
 
-  // Jerarquía tipográfica minimalista
   const sizeStyles = {
     h1: "text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tighter",
     h2: "text-3xl md:text-4xl font-bold",
@@ -6709,7 +7594,87 @@ export function Heading({ level = "h2", children, className, ...props }: Heading
 
 
 ================================================
-FILE: src/system/atoms/MediaCover.tsx
+FILE: src/system/atoms/Input/Input.tsx
+================================================
+"use client";
+
+import React, { useState, useId } from "react";
+import { IconEye, IconEyeOff } from "@tabler/icons-react";
+
+export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
+  label?: string;
+  error?: string;
+  icon?: React.ReactNode;
+}
+
+export const Input = React.forwardRef<HTMLInputElement, InputProps>(
+  ({ label, error, icon, type = "text", className = "", ...props }, ref) => {
+    const autoId = useId();
+    const inputId = props.id || autoId;
+
+    const [isPasswordVisible, setIsPasswordVisible] = useState(false);
+    const isPasswordType = type === "password";
+    const currentType = isPasswordType && isPasswordVisible ? "text" : type;
+
+    return (
+      <div className="space-y-2 w-full">
+        {label && (
+          <label
+            htmlFor={inputId}
+            className="text-xs font-black font-mono uppercase tracking-widest text-muted-foreground block"
+          >
+            {label}
+          </label>
+        )}
+
+        <div className="relative">
+          {icon && (
+            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground">
+              {icon}
+            </span>
+          )}
+
+          <input
+            ref={ref}
+            id={inputId}
+            type={currentType}
+            className={`
+              w-full bg-brackground border-2 border-color rounded-lg p-2 text-foreground
+              focus:outline-none focus:ring-2 focus:ring-accent-color transition-all
+              overflow-auto
+              ${icon ? "pl-12" : ""} 
+              ${isPasswordType ? "pr-12" : ""}
+              ${error ? "border-red-500 focus:ring-red-500" : ""}
+              ${className}
+            `}
+            {...props}
+          />
+
+          {isPasswordType && (
+            <button
+              type="button"
+              onClick={() => setIsPasswordVisible(!isPasswordVisible)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-muted-foreground hover:text-foreground transition-colors"
+              aria-label={isPasswordVisible ? "Ocultar contraseña" : "Mostrar contraseña"}
+              tabIndex={-1}
+            >
+              {isPasswordVisible ? <IconEye size={20} /> : <IconEyeOff size={20} />}
+            </button>
+          )}
+        </div>
+
+        {error && <p className="text-xs font-bold text-red-500 animate-fade-in">{error}</p>}
+      </div>
+    );
+  },
+);
+
+Input.displayName = "Input";
+
+
+
+================================================
+FILE: src/system/atoms/Loader/MediaCover.tsx
 ================================================
 "use client";
 
@@ -6757,7 +7722,7 @@ export function MediaCover({ src, alt }: MediaCoverProps) {
 
 
 ================================================
-FILE: src/system/atoms/PageLoader.tsx
+FILE: src/system/atoms/Loader/PageLoader.tsx
 ================================================
 interface PageLoaderProps {
   text?: string;
@@ -6768,50 +7733,14 @@ export function PageLoader({ text = "Procesando petición..." }: PageLoaderProps
     <div className="min-h-[60vh] flex items-center justify-center w-full bg-background">
       <p
         className="font-mono text-sm tracking-widest
-                   bg-gradient-to-r from-zinc-600/40 via-zinc-100 to-zinc-600/40
-                   bg-[length:250%_auto]
+                   bg-linear-to-r from-zinc-600/40 via-zinc-100 to-zinc-600/40
+                   bg-size-[250%_auto]
                    bg-clip-text text-transparent
                    animate-ai-shimmer"
       >
         {text}
       </p>
     </div>
-  );
-}
-
-
-
-================================================
-FILE: src/system/atoms/Dropdown/MenuItem.tsx
-================================================
-import React from "react";
-
-interface MenuItemProps {
-  icon: React.ReactNode;
-  label: string;
-  onClick?: () => void;
-  variant?: "default" | "danger";
-  className?: string;
-}
-
-export function MenuItem({
-  icon,
-  label,
-  onClick,
-  variant = "default",
-  className = "",
-}: MenuItemProps) {
-  const baseClass =
-    "flex items-center gap-3 p-3 text-sm font-bold neo-border border-transparent transition-all text-left uppercase tracking-wide w-full";
-  const variantClass =
-    variant === "danger"
-      ? "text-red-500 hover:bg-red-500/10 hover:border-red-500/50"
-      : "text-foreground hover:bg-muted/30 hover:border-(--border-color)";
-
-  return (
-    <button onClick={onClick} className={`${baseClass} ${variantClass} ${className}`}>
-      {icon} {label}
-    </button>
   );
 }
 
@@ -6863,35 +7792,6 @@ export function FormHeader() {
 
 
 ================================================
-FILE: src/system/atoms/Menu/MenuItem.tsx
-================================================
-import React from "react";
-
-interface MenuItemProps {
-  icon: React.ReactNode;
-  label: string;
-  onClick: () => void;
-  variant?: "default" | "danger";
-}
-
-export function MenuItem({ icon, label, onClick, variant = "default" }: MenuItemProps) {
-  const baseClass =
-    "flex items-center gap-3 p-3 text-sm font-bold neo-border border-transparent transition-all text-left uppercase tracking-wide w-full";
-  const variantClass =
-    variant === "danger"
-      ? "text-red-500 hover:bg-red-500/10 hover:border-red-500/50"
-      : "text-foreground hover:bg-muted/30 hover:border-(--border-color)";
-
-  return (
-    <button onClick={onClick} className={`${baseClass} ${variantClass}`}>
-      {icon} {label}
-    </button>
-  );
-}
-
-
-
-================================================
 FILE: src/system/atoms/Navbar/NavbarActions.tsx
 ================================================
 "use client";
@@ -6900,7 +7800,7 @@ import Link from "next/link";
 import { useState, useEffect } from "react";
 import { useAuthStore } from "@/src/store/authStore";
 import { useTheme } from "@/src/utils/hooks/useTheme";
-import { UserDropdown } from "../../organisms/Header/UserDropdown";
+import { UserDropdown } from "@/src/features/user/components/UserDropdown";
 import { NotificationDropdown } from "../../molecules/Navbar/NotificationDropdown";
 import { IconAlbum, IconSun, IconMoon, IconScanTraces } from "@tabler/icons-react";
 
@@ -6952,7 +7852,6 @@ export function NavbarActions() {
           <UserDropdown />
         </>
       ) : (
-        /* Usuario NO Autenticado */
         <Link
           href="/es/login"
           className="text-sm font-bold px-4 py-2 bg-foreground text-background rounded-lg hover:opacity-90 transition-opacity"
@@ -6980,6 +7879,11 @@ import {
   IconTrash,
   IconCloudLock,
 } from "@tabler/icons-react";
+import {
+  getSidebarTreeItemClasses,
+  SidebarActiveIndicator,
+  SidebarActionGroup,
+} from "@/src/system/organisms/Sidebar";
 
 interface SidebarDirectoryItemProps {
   directory: Directory;
@@ -7030,16 +7934,9 @@ export const SidebarDirectoryItem = ({
       {...listeners}
       onClick={onSelect}
       onDoubleClick={onRename}
-      className={`
-        group font-mono flex items-center py-1.5 px-2 mx-2 rounded-md transition-all duration-200 relative
-        ${isSelected ? "bg-primary/5 text-foreground font-medium" : "text-muted-foreground hover:text-foreground"}
-        ${isOver ? "bg-primary/10 ring-2 ring-primary/30 border-dashed" : "hover:bg-secondary/40 border border-transparent"}
-        ${isDragging ? "bg-background border-dashed border-primary/50" : ""}
-      `}
+      className={getSidebarTreeItemClasses(isSelected, isOver, isDragging)}
     >
-      {isSelected && (
-        <div className="absolute left-0 w-1 h-6 bg-primary rounded-r-full shadow-[0_0_8px_rgba(var(--primary-rgb),0.4)] top-1/2 -translate-y-1/2" />
-      )}
+      {isSelected && <SidebarActiveIndicator />}
 
       <span
         className="w-4 h-4 mr-1 flex items-center justify-center z-10 hover:bg-muted/50 rounded transition-colors"
@@ -7050,7 +7947,10 @@ export const SidebarDirectoryItem = ({
 
       <span className="mr-2 relative flex items-center justify-center">
         {isOpen ? (
-          <IconFolderOpen size={16} className={isSelected ? "text-primary/70" : "text-foreground/40"} />
+          <IconFolderOpen
+            size={16}
+            className={isSelected ? "text-primary/70" : "text-foreground/40"}
+          />
         ) : (
           <IconFolder size={16} className={isSelected ? "text-primary/70" : "text-foreground/40"} />
         )}
@@ -7064,7 +7964,7 @@ export const SidebarDirectoryItem = ({
 
       <span className="text-sm truncate flex-1">{directory.name}</span>
 
-      <div className="opacity-0 group-hover:opacity-100 flex items-center gap-1 transition-opacity pointer-events-auto">
+      <SidebarActionGroup>
         <button
           className="p-1 hover:bg-primary/20 rounded transition-colors text-primary/70"
           title="Nueva Subcarpeta"
@@ -7079,10 +7979,11 @@ export const SidebarDirectoryItem = ({
         >
           <IconTrash size={14} />
         </button>
-      </div>
+      </SidebarActionGroup>
     </div>
   );
 };
+
 
 
 ================================================
@@ -7860,7 +8761,7 @@ FILE: src/system/molecules/Cards/PromptImageViewer.tsx
 
 import { IconPhotoOff } from "@tabler/icons-react";
 import { LazyImage } from "@/src/system/molecules/Media/LazyImage";
-import { FadeIn } from "@/src/system/atoms/FadeIn";
+import { FadeIn } from "@/src/system/atoms/Animations/FadeIn";
 
 interface PromptImageViewerProps {
   imageUrl: string | null;
@@ -7910,7 +8811,7 @@ import {
   IconX,
 } from "@tabler/icons-react";
 import { SavedPrompt } from "@/src/types/models";
-import { FadeIn } from "@/src/system/atoms/FadeIn";
+import { FadeIn } from "@/src/system/atoms/Animations/FadeIn";
 import { cn } from "@/lib/utils";
 
 interface PromptMetadataPanelProps {
@@ -8199,7 +9100,7 @@ export function usePromptCard() {
 FILE: src/system/molecules/Feedback/FeedState.tsx
 ================================================
 import { IconDatabaseOff, IconAlertTriangle } from "@tabler/icons-react";
-import { PageLoader } from "../../atoms/PageLoader";
+import { PageLoader } from "../../atoms/Loader/PageLoader";
 
 interface FeedStateProps {
   type: "loading" | "empty" | "error";
@@ -8328,6 +9229,55 @@ export function LazyImage({
           ${className}
         `}
       />
+    </div>
+  );
+}
+
+
+
+================================================
+FILE: src/system/molecules/Modal/Modal.tsx
+================================================
+"use client";
+
+import { useEffect } from "react";
+import { IconX } from "@tabler/icons-react";
+
+interface ModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  children: React.ReactNode;
+  maxWidth?: string;
+}
+
+export function Modal({ isOpen, onClose, children, maxWidth = "max-w-md" }: ModalProps) {
+  useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    if (isOpen) {
+      window.addEventListener("keydown", handleEsc);
+    }
+    return () => window.removeEventListener("keydown", handleEsc);
+  }, [isOpen, onClose]);
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm animate-in fade-in duration-200">
+      <div
+        className={`bg-background border border-border/50 shadow-xl rounded-xl w-full ${maxWidth} overflow-hidden animate-in zoom-in-95 duration-200 relative flex flex-col`}
+      >
+        <button
+          onClick={onClose}
+          className="absolute top-4 right-4 p-1 text-muted-foreground hover:text-foreground transition-colors z-10 rounded-md focus:outline-none focus:ring-2 focus:ring-primary/50"
+          aria-label="Cerrar modal"
+        >
+          <IconX size={20} />
+        </button>
+
+        {children}
+      </div>
     </div>
   );
 }
@@ -9237,7 +10187,7 @@ export function AuthTabs({ isLogin, onToggle }: AuthTabsProps) {
 FILE: src/system/organisms/Admin/AuditTable.tsx
 ================================================
 // frontend/features/admin/components/AuditTable.tsx
-import { Button } from "@/src/system/atoms/Button";
+import { Button } from "@/src/system/atoms/Button/Button";
 import { AuditLog } from "@/src/features/admin/admin.types";
 
 interface AuditTableProps {
@@ -9663,7 +10613,7 @@ export function GarbageCollectorModule() {
 FILE: src/system/organisms/Admin/InviteManager.tsx
 ================================================
 // frontend/features/admin/components/InviteManager.tsx
-import { Button } from "@/src/system/atoms/Button";
+import { Button } from "@/src/system/atoms/Button/Button";
 
 interface InviteManagerProps {
   onGenerate: (role: string) => void;
@@ -9708,7 +10658,7 @@ export function InviteManager({ onGenerate, isLoading, inviteCode }: InviteManag
 FILE: src/system/organisms/Admin/SecurityModule.tsx
 ================================================
 // frontend/features/admin/components/SecurityModule.tsx
-import { Button } from "@/src/system/atoms/Button";
+import { Button } from "@/src/system/atoms/Button/Button";
 
 export function SecurityModule({ onRevokeAll }: { onRevokeAll: () => void }) {
   return (
@@ -10169,7 +11119,7 @@ FILE: src/system/organisms/Auth/ChangePasswordModal.tsx
 
 import { useState } from "react";
 import { api } from "@/src/services/api";
-import { Button } from "@/src/system/atoms/Button";
+import { Button } from "@/src/system/atoms/Button/Button";
 import { IconKey, IconX } from "@tabler/icons-react";
 
 interface ChangePasswordModalProps {
@@ -10249,7 +11199,7 @@ import { useState } from "react";
 import { useRegister } from "@/src/features/auth/hooks/useRegister";
 
 import { FormField } from "@/src/system/molecules/FormField";
-import { Button } from "@/src/system/atoms/Button";
+import { Button } from "@/src/system/atoms/Button/Button";
 import { FormHeader } from "../../atoms/Login/FormHeader";
 
 interface RegisterFormProps {
@@ -10563,7 +11513,7 @@ FILE: src/system/organisms/Extractor/Inspector/BatchInspector.tsx
 import { useState } from "react";
 import { BatchItem, SkippedFile } from "@/src/features/extractor/hooks/usePromptExtractor";
 import { ExtractedPromptData } from "@/src/features/extractor/utils/promptParser";
-import { Button } from "@/src/system/atoms/Button";
+import { Button } from "@/src/system/atoms/Button/Button";
 import { IconTrash, IconDeviceFloppy, IconAlertTriangle, IconX } from "@tabler/icons-react";
 import { api } from "@/src/services/api";
 import { handleError } from "@/src/utils/errors/ErrorHandler";
@@ -10861,82 +11811,6 @@ export function BatchInspector({
 
 
 ================================================
-FILE: src/system/organisms/Header/UserDropdown.tsx
-================================================
-"use client";
-
-import { useState, useRef } from "react";
-import { useRouter, usePathname } from "next/navigation";
-import { useAuthStore } from "@/src/store/authStore";
-import { useClickOutside } from "@/src/utils/hooks/useClickOutside";
-import { MenuItem } from "@/src/system/atoms/Dropdown/MenuItem";
-import { IconMenu2, IconX, IconSettings, IconDashboard, IconLogout } from "@tabler/icons-react";
-
-export function UserDropdown() {
-  const router = useRouter();
-  const pathname = usePathname();
-  const { user, logout } = useAuthStore();
-  const [isOpen, setIsOpen] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
-
-  useClickOutside(menuRef, () => setIsOpen(false));
-
-  if (!user) return null;
-
-  const lang = pathname?.split("/")[1] || "es";
-  const navigate = (path: string) => {
-    router.push(path);
-    setIsOpen(false);
-  };
-
-  return (
-    <div className="relative" ref={menuRef}>
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className={`p-2 neo-border transition-all ${isOpen ? "bg-(--accent-color) text-white" : "bg-background"}`}
-      >
-        {isOpen ? <IconX size={24} /> : <IconMenu2 size={24} />}
-      </button>
-
-      {isOpen && (
-        <div className="absolute right-0 mt-3 w-64 bg-(--bg-secondary) neo-border neo-shadow z-50 animate-fade-in">
-          <div className="p-4 border-b-2 border-(--border-color) bg-background">
-            <p className="text-sm font-bold">@{user.username}</p>
-            <p className="text-[10px] font-mono text-(--accent-color) uppercase">{user.role}</p>
-          </div>
-
-          <div className="p-2 flex flex-col gap-1">
-            <MenuItem
-              icon={<IconSettings size={18} />}
-              label="Configuración"
-              onClick={() => navigate(`/${lang}/${user.username}/settings/profile`)}
-            />
-            {user.role === "admin" && (
-              <MenuItem
-                icon={<IconDashboard size={18} />}
-                label="Panel Admin"
-                onClick={() => navigate(`/${lang}/admin`)}
-              />
-            )}
-          </div>
-
-          <div className="p-2 bg-background border-t-2 border-(--border-color)">
-            <MenuItem
-              icon={<IconLogout size={18} />}
-              label="Cerrar Sesión"
-              onClick={logout}
-              variant="danger"
-            />
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-
-
-================================================
 FILE: src/system/organisms/Layout/AppToaster.tsx
 ================================================
 "use client";
@@ -11035,7 +11909,7 @@ FILE: src/system/organisms/Layout/Hero.tsx
 ================================================
 "use client";
 
-import { Heading } from "@/src/system/atoms/Heading";
+import { Heading } from "@/src/system/atoms/Heading/Heading";
 
 export function Hero() {
   return (
@@ -11060,7 +11934,7 @@ FILE: src/system/organisms/Media/UniversalMediaCard.tsx
 
 import React from "react";
 import { MediaCardData, MediaVariant } from "@/src/types/models";
-import { MediaCover } from "@/src/system/atoms/MediaCover";
+import { MediaCover } from "@/src/system/atoms/Loader/MediaCover";
 import { MediaOverlay } from "@/src/system/molecules/MediaOverlay";
 import { cn } from "@/src/utils/lib/cn";
 
@@ -11400,12 +12274,12 @@ export function PageHeader({
         <div className="w-full mx-auto space-y-6">
           <div className="flex justify-between items-center gap-4">
             <div>
-              <h1 className="text-2xl text-foreground/90 font-black tracking-tighter flex items-center gap-2">
-                <span className="text-foreground/90">{icon}</span>
+              <h1 className="text-xl sm:text-2xl text-foreground/90 font-black tracking-tighter flex items-center gap-2">
+                <span className="text-foreground/60">{icon}</span>
                 {title}{" "}
-                {subtitle && <span className="font-mono font-medium opacity-70">{subtitle}</span>}
+                {subtitle && <span className="font-mono font-medium text-foreground/60">{subtitle}</span>}
               </h1>
-              <p className="text-foreground/40 font-mono text-xs tracking-widest">
+              <p className="text-foreground/50 font-mono text-xs pt-1 tracking-widest">
                 {description}
               </p>
             </div>
@@ -11589,6 +12463,162 @@ export function SearchResults({
 
 
 ================================================
+FILE: src/system/organisms/Sidebar/index.ts
+================================================
+export { SidebarContainer } from "./SidebarContainer";
+export { SidebarDivider } from "./SidebarDivider";
+export { SidebarHeading } from "./SidebarHeading";
+export { SidebarActiveIndicator } from "./SidebarActiveIndicator";
+export { SidebarActionGroup } from "./SidebarActionGroup";
+export { SidebarItemIcon } from "./SidebarItemIcon";
+export { getSidebarItemClasses, getSidebarTreeItemClasses } from "./utils";
+
+
+
+================================================
+FILE: src/system/organisms/Sidebar/SidebarActionGroup.tsx
+================================================
+import React from "react";
+
+export function SidebarActionGroup({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="opacity-0 group-hover:opacity-100 flex items-center gap-1 transition-opacity pointer-events-auto">
+      {children}
+    </div>
+  );
+}
+
+
+
+================================================
+FILE: src/system/organisms/Sidebar/SidebarActiveIndicator.tsx
+================================================
+export function SidebarActiveIndicator() {
+  return (
+    <div className="absolute left-0 w-1 h-6 bg-primary rounded-r-full shadow-[0_0_8px_rgba(var(--primary-rgb),0.4)] top-1/2 -translate-y-1/2" />
+  );
+}
+
+
+
+================================================
+FILE: src/system/organisms/Sidebar/SidebarContainer.tsx
+================================================
+import React from "react";
+
+export function SidebarContainer({
+  children,
+  className = "",
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <aside
+      className={`w-72 border-r border-border/30 bg-muted/5 flex-col hidden md:flex h-full shrink-0 ${className}`}
+    >
+      <div className="pt-6 flex-1 overflow-y-auto custom-scrollbar flex flex-col gap-1">
+        {children}
+      </div>
+    </aside>
+  );
+}
+
+
+
+================================================
+FILE: src/system/organisms/Sidebar/SidebarDivider.tsx
+================================================
+export function SidebarDivider({ className = "" }: { className?: string }) {
+  return <div className={`mx-6 border-t border-border/10 my-2 shrink-0 ${className}`} />;
+}
+
+
+
+================================================
+FILE: src/system/organisms/Sidebar/SidebarHeading.tsx
+================================================
+import React from "react";
+
+export function SidebarHeading({
+  children,
+  className = "",
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <p
+      className={`text-[10px] font-black font-mono text-tertiary uppercase tracking-widest px-6 mb-2 ${className}`}
+    >
+      {children}
+    </p>
+  );
+}
+
+
+
+================================================
+FILE: src/system/organisms/Sidebar/SidebarItemIcon.tsx
+================================================
+import React from "react";
+
+export function SidebarItemIcon({
+  children,
+  isActive,
+}: {
+  children: React.ReactNode;
+  isActive: boolean;
+}) {
+  return (
+    <span
+      className={`transition-colors duration-200 ${isActive ? "text-primary" : "text-muted-foreground group-hover:text-foreground"}`}
+    >
+      {children}
+    </span>
+  );
+}
+
+
+
+================================================
+FILE: src/system/organisms/Sidebar/utils.ts
+================================================
+export function getSidebarItemClasses(isActive: boolean, isOverDropzone: boolean = false) {
+  const baseClasses =
+    "w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all border cursor-pointer";
+
+  const stateClasses = isActive
+    ? "bg-primary/10 text-primary border-primary/20 font-bold"
+    : "text-muted-foreground hover:bg-secondary/40 border-transparent font-medium";
+
+  const dropzoneClasses = isOverDropzone ? "ring-2 ring-primary border-dashed bg-primary/20" : "";
+
+  return `${baseClasses} ${stateClasses} ${dropzoneClasses}`.trim();
+}
+
+export function getSidebarTreeItemClasses(isActive: boolean, isOver: boolean, isDragging: boolean) {
+  const baseClasses =
+    "group font-mono flex items-center py-1.5 px-2 mx-2 rounded-md transition-all duration-200 relative";
+
+  let stateClasses = isActive
+    ? "bg-primary/5 text-foreground font-medium"
+    : "text-muted-foreground hover:text-foreground hover:bg-secondary/40 border border-transparent";
+
+  if (isOver) {
+    stateClasses = "bg-primary/10 ring-2 ring-primary/30 border-dashed";
+  }
+
+  if (isDragging) {
+    stateClasses = "bg-background border-dashed border-primary/50";
+  }
+
+  return `${baseClasses} ${stateClasses}`.trim();
+}
+
+
+
+================================================
 FILE: src/system/organisms/Studio/PromptGrid.tsx
 ================================================
 import { IconPhotoOff } from "@tabler/icons-react";
@@ -11675,7 +12705,7 @@ export function StudioSidebar() {
                   ? "bg-primary/10 text-primary border-primary/20 font-bold"
                   : "text-muted-foreground hover:bg-secondary/40 border-transparent font-medium"
               }
-              ${isRootOver ? "ring-2 ring-primary border-dashed bg-primary/20" : ""} 
+              ${isRootOver ? "ring-2 ring-primary border-dashed bg-primary/20" : ""}
             `}
           >
             <IconFolder size={18} stroke={1.5} />
@@ -11728,7 +12758,7 @@ import { useEffect, useRef, useCallback } from "react";
 import { IconX, IconLoader2 } from "@tabler/icons-react";
 import { UniversalMediaCard } from "@/src/system/organisms/Media/UniversalMediaCard";
 import { mapViewerToMediaCard } from "@/src/utils/adapters/mediaAdapters";
-import { PageLoader } from "@/src/system/atoms/PageLoader";
+import { PageLoader } from "@/src/system/atoms/Loader/PageLoader";
 
 interface ViewerPage {
   image_url: string;
@@ -11836,7 +12866,7 @@ import { useEffect, useRef } from "react";
 import { FeedItemCard } from "@/src/system/molecules/Cards/FeedItemCard";
 import { FeedState } from "@/src/system/molecules/Feedback/FeedState";
 import { FeedItem } from "@/src/types/models";
-import { FadeIn } from "../../atoms/FadeIn";
+import { FadeIn } from "../../atoms/Animations/FadeIn";
 
 interface PublicFeedGridProps {
   feed: FeedItem[];
@@ -11907,7 +12937,7 @@ FILE: src/system/templates/Studio/StudioWorkspace.tsx
 
 import { useMemo } from "react";
 import { useParams } from "next/navigation";
-import { PageLoader } from "@/src/system/atoms/PageLoader";
+import { PageLoader } from "@/src/system/atoms/Loader/PageLoader";
 import { DirectoryHeader } from "@/src/system/molecules/Studio/DirectoryHeader";
 import { PromptGrid } from "@/src/system/organisms/Studio/PromptGrid";
 

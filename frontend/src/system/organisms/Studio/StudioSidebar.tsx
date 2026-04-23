@@ -36,7 +36,7 @@ export function StudioSidebar() {
                   ? "bg-primary/10 text-primary border-primary/20 font-bold"
                   : "text-muted-foreground hover:bg-secondary/40 border-transparent font-medium"
               }
-              ${isRootOver ? "ring-2 ring-primary border-dashed bg-primary/20" : ""} 
+              ${isRootOver ? "ring-2 ring-primary border-dashed bg-primary/20" : ""}
             `}
           >
             <IconFolder size={18} stroke={1.5} />
