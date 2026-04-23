@@ -1,7 +1,7 @@
 import { ButtonHTMLAttributes, forwardRef } from "react";
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: "primary" | "secondary" | "danger" | "ghost";
+  variant?: "primary" | "secondary" | "danger" | "ghost" | "outline";
   size?: "sm" | "md" | "lg";
   isLoading?: boolean;
 }
@@ -12,39 +12,45 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     ref,
   ) => {
     const variants = {
-      primary: "bg-[var(--accent-color)] text-white hover:brightness-110",
+      primary:
+        "bg-accent text-white neo-border neo-shadow-accent hover:brightness-110 font-bold uppercase tracking-wide",
+
       secondary:
-        "bg-[var(--bg-secondary)] text-[var(--text-primary)] hover:bg-gray-100 dark:hover:bg-gray-800",
-      danger: "bg-red-600 text-white hover:bg-red-500",
+        "bg-transparent text-primary neo-border neo-shadow hover:bg-gray-100 dark:hover:bg-gray-800 font-bold uppercase tracking-wide",
+
+      danger:
+        "text-red-600 bg-secondary border border-border shadow-sm hover:bg-red-600 hover:text-white hover:border-red-600 transition-colors font-medium tracking-tight",
+
       ghost:
-        "bg-transparent border-transparent shadow-none hover:bg-gray-200 dark:hover:bg-gray-800 text-[var(--text-secondary)]",
+        "bg-transparent text-muted-foreground hover:text-foreground hover:bg-muted/50 border border-transparent font-medium tracking-tight",
+
+      outline:
+        "bg-transparent border border-border text-foreground shadow-sm hover:border-foreground/30 font-medium tracking-tight",
     };
 
     const sizes = {
-      sm: "px-4 py-2 text-sm",
-      md: "px-6 py-3 text-base",
-      lg: "px-10 py-4 text-lg font-bold",
+      sm: "px-3 py-1.5 text-xs",
+      md: "px-4 py-2 text-sm",
+      lg: "px-6 py-3 text-base",
     };
-
-    const brutalistClasses = variant === "ghost" ? "" : "neo-border neo-shadow";
 
     return (
       <button
         ref={ref}
         disabled={disabled || isLoading}
         className={`
-          inline-flex items-center justify-center font-bold uppercase tracking-wide transition-all duration-200
+          inline-flex items-center justify-center rounded-md transition-all duration-200 
+          focus:outline-none focus:ring-2 focus:ring-var(--accent-color) focus:ring-offset-2 focus:ring-offset-background
           disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none
           ${variants[variant]} 
           ${sizes[size]} 
-          ${brutalistClasses}
           ${className}
         `}
         {...props}
       >
         {isLoading && (
           <svg
-            className="animate-spin -ml-1 mr-3 h-5 w-5 text-current"
+            className="animate-spin -ml-1 mr-2 h-4 w-4 text-current"
             xmlns="http://www.w3.org/2000/svg"
             fill="none"
             viewBox="0 0 24 24"
