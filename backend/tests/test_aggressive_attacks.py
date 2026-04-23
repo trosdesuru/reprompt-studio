@@ -1,12 +1,10 @@
 import jwt
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
 from fastapi.testclient import TestClient
 from sqlmodel import Session, select
 from app.models.user import User
 from app.models.prompt import ImagePrompt
 from app.core.config import settings
-
-from unittest.mock import patch, MagicMock
 
 
 # =====================================================================
@@ -17,20 +15,13 @@ def test_hacker_forges_admin_jwt(client: TestClient, normal_user: User):
     Test Agresivo: El hacker se fabrica su propio token de admin usando
     un secreto falso, intentando engañar a la cerradura criptográfica.
     """
-    # El hacker crea un payload perfecto haciéndose pasar por administrador
     forged_payload = {"sub": normal_user.username, "role": "admin", "type": "access"}
-    # Lo firma con una clave inventada
     forged_token = jwt.encode(
         forged_payload, "clave_secreta_falsa_del_hacker", algorithm="HS256"
     )
-
-    # Inyectamos la cookie envenenada
     client.cookies.set("access_token", forged_token)
-
-    # Intentamos entrar al sanctum sanctorum
     response = client.get("/api/admin/database-stats")
 
-    # 🛡️ EXPECTATIVA: El servidor detecta que la firma (Hash) no coincide con su SECRET_KEY.
     assert response.status_code == 401
     assert "No autenticado" in response.json().get("detail", "")
 
@@ -58,22 +49,21 @@ def test_cloudflare_r2_outage_during_save(
         "image_url": f"{base_url}/temp/{normal_user.id}/valido.png",
     }
 
-    mock_s3_response = {"Body": MagicMock(read=MagicMock(return_value=b"fake_bytes"))}
+    # 🟢 EL ESCUDO GLOBAL DE S3
+    mock_s3_client = MagicMock()
+    mock_s3_client.get_object.return_value = {
+        "Body": MagicMock(read=MagicMock(return_value=b"fake_bytes"))
+    }
+    mock_s3_client.head_object.return_value = {"ContentLength": 1024}
 
-    with patch(
-        "app.services.prompt_service.s3_client.get_object",
-        return_value=mock_s3_response,
-    ), patch(
+    with patch("app.services.prompt_service.s3_client", mock_s3_client), patch(
         "app.services.prompt_service.validate_magic_bytes",
         return_value={"ContentLength": 1024},
-    ), patch(
-        "app.services.prompt_service.move_to_permanent", return_value=False
-    ):
-        response = client.post("/api/prompts/save", json=payload)
-        assert response.status_code == 500  # O la aserción que tuvieras
+    ), patch("app.services.prompt_service.move_to_permanent", return_value=False):
 
-    # 🛡️ EXPECTATIVA 2 (LA MÁS IMPORTANTE): Revisamos la base de datos SQL.
-    # No debe existir ningún registro con el título "Prompt Huérfano".
+        response = client.post("/api/prompts/save", json=payload)
+        assert response.status_code == 500
+
     fantasma = session.exec(
         select(ImagePrompt).where(ImagePrompt.title == "Prompt Huérfano")
     ).first()
@@ -88,7 +78,6 @@ def test_cloudflare_r2_outage_during_save(
 def test_layer_7_memory_exhaustion_attack(client: TestClient, normal_user: User):
     """
     Test Agresivo: El atacante envía un string gigante (1 Megabyte de letra 'A')
-    en el campo 'prompt' para intentar colapsar el parseador JSON o llenar la DB.
     """
     login_res = client.post(
         "/api/auth/login",
@@ -96,9 +85,7 @@ def test_layer_7_memory_exhaustion_attack(client: TestClient, normal_user: User)
     )
     client.cookies = login_res.cookies
 
-    # Generamos un string ridículamente largo
-    massive_string = "A" * 1_000_000  # 1 millón de caracteres
-
+    massive_string = "A" * 1_000_000
     base_url = settings.R2_PUBLIC_URL.rstrip("/")
     payload = {
         "title": "Ataque RAM",
@@ -107,10 +94,6 @@ def test_layer_7_memory_exhaustion_attack(client: TestClient, normal_user: User)
     }
 
     response = client.post("/api/prompts/save", json=payload)
-
-    # 🛡️ EXPECTATIVA: Pydantic intercepta el payload ANTES de que llegue a tu lógica
-    # de Python gracias al `max_length=20000` de tu esquema PromptCreate.
-    # Devuelve 422 Unprocessable Entity, salvando la RAM de tu servidor.
     assert response.status_code == 422
     error_msg = response.json()["detail"][0]["msg"]
     assert "String should have at most 20000 characters" in error_msg
