@@ -12,10 +12,8 @@ interface HeadingProps extends React.HTMLAttributes<HTMLHeadingElement> {
 export function Heading({ level = "h2", children, className, ...props }: HeadingProps) {
   const Component = level;
 
-  // Estilos base: Limpios, legibles, sin decoraciones
-  const baseStyles = "font-sans text-foreground tracking-tight";
+  const baseStyles = "font-mono text-foreground tracking-tight";
 
-  // Jerarquía tipográfica minimalista
   const sizeStyles = {
     h1: "text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tighter",
     h2: "text-3xl md:text-4xl font-bold",

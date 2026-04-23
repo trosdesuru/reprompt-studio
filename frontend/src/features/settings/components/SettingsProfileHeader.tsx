@@ -1,8 +1,8 @@
 "use client";
 
 import { useAuthStore } from "@/src/store/authStore";
-import { UserBadge } from "@/src/features/user/components/UserBadge";
-import { UserAvatar } from "@/src/system/atoms/Avatar/UserAvatar";
+import { UserBadge } from "@/src/system/atoms/Badge/Badge";
+import { UserAvatar } from "@/src/system/atoms/Avatar/Avatar";
 
 export function SettingsProfileHeader() {
   const user = useAuthStore((state) => state.user);

@@ -11,7 +11,7 @@ import {
   IconX,
 } from "@tabler/icons-react";
 import { SavedPrompt } from "@/src/types/models";
-import { FadeIn } from "@/src/system/atoms/FadeIn";
+import { FadeIn } from "@/src/system/atoms/Animations/FadeIn";
 import { cn } from "@/lib/utils";
 
 interface PromptMetadataPanelProps {

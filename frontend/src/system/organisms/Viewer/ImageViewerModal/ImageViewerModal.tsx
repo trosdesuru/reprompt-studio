@@ -4,7 +4,7 @@ import { useEffect, useRef, useCallback } from "react";
 import { IconX, IconLoader2 } from "@tabler/icons-react";
 import { UniversalMediaCard } from "@/src/system/organisms/Media/UniversalMediaCard";
 import { mapViewerToMediaCard } from "@/src/utils/adapters/mediaAdapters";
-import { PageLoader } from "@/src/system/atoms/PageLoader";
+import { PageLoader } from "@/src/system/atoms/Loader/PageLoader";
 
 interface ViewerPage {
   image_url: string;

@@ -1,5 +1,5 @@
 import { IconDatabaseOff, IconAlertTriangle } from "@tabler/icons-react";
-import { PageLoader } from "../../atoms/PageLoader";
+import { PageLoader } from "../../atoms/Loader/PageLoader";
 
 interface FeedStateProps {
   type: "loading" | "empty" | "error";

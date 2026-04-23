@@ -3,7 +3,7 @@
 import { useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { api } from "@/src/services/api";
-import { PageLoader } from "@/src/system/atoms/PageLoader";
+import { PageLoader } from "@/src/system/atoms/Loader/PageLoader";
 import toast from "react-hot-toast";
 
 export default function DiscordCallbackPage() {

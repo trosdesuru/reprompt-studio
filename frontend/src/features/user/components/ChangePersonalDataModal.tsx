@@ -44,10 +44,10 @@ export function ChangePersonalDataModal({ isOpen, onClose }: ChangePersonalDataM
               <li className="flex gap-2">✅ Puedes borrarlos cuando quieras.</li>
             </ul>
             <div className="flex justify-end gap-3 pt-4 border-t border-border/30">
-              <Button variant="ghost" onClick={onClose}>
+              <Button variant="secondary" size="sm" onClick={onClose}>
                 Cancelar
               </Button>
-              <Button onClick={() => setStep(2)}>
+              <Button variant="primary" size="sm" onClick={() => setStep(2)}>
                 Continuar <IconArrowRight size={16} className="ml-2" />
               </Button>
             </div>

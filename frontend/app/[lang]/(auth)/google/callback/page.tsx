@@ -4,7 +4,7 @@ import { useEffect, useRef, Suspense } from "react";
 import { useRouter, useSearchParams, useParams } from "next/navigation";
 import { api } from "@/src/services/api";
 import { useAuthStore } from "@/src/store/authStore";
-import { PageLoader } from "@/src/system/atoms/PageLoader";
+import { PageLoader } from "@/src/system/atoms/Loader/PageLoader";
 import toast from "react-hot-toast";
 
 function CallbackLogic() {

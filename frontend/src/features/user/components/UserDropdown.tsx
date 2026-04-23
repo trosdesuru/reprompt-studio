@@ -7,8 +7,8 @@ import { useClickOutside } from "@/src/utils/hooks/useClickOutside";
 import { MenuItem } from "@/src/system/atoms/Dropdown/MenuItem";
 import { LogoutMenuItem } from "@/src/features/auth/components/LogoutMenuItem";
 import { ThemeMenuItem } from "@/src/features/theme/components/ThemeMenuItem";
-import { UserAvatar } from "@/src/system/atoms/Avatar/UserAvatar";
-import { IconSettings, IconShieldLock } from "@tabler/icons-react";
+import { UserAvatar } from "@/src/system/atoms/Avatar/Avatar";
+import { IconDeviceDesktop, IconLockSquareRounded, IconSettings, IconShieldLock, IconUserSquareRounded } from "@tabler/icons-react";
 
 export function UserDropdown() {
   const router = useRouter();
@@ -56,12 +56,29 @@ export function UserDropdown() {
 
           <div className="p-1.5 flex flex-col gap-0.5 border-b border-border">
             <MenuItem
-              icon={<IconSettings size={16} />}
-              label="Configuración"
+              icon={<IconUserSquareRounded size={16} />}
+              label="Perfil"
               onClick={() =>
                 navigate(`/${lang}/${encodeURIComponent(user.username)}/settings/profile`)
               }
             />
+
+            <MenuItem
+              icon={<IconLockSquareRounded size={16} />}
+              label="Seguridad y Privacidad"
+              onClick={() =>
+                navigate(`/${lang}/${encodeURIComponent(user.username)}/settings/security`)
+              }
+            />
+
+            <MenuItem
+              icon={<IconDeviceDesktop size={16} />}
+              label="Apariencia"
+              onClick={() =>
+                navigate(`/${lang}/${encodeURIComponent(user.username)}/settings/appearance`)
+              }
+            />
+
             {user.role === "admin" && (
               <MenuItem
                 icon={<IconShieldLock size={16} />}

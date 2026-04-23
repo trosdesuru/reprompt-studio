@@ -6,7 +6,7 @@ import { IconFolder, IconPhotoOff } from "@tabler/icons-react";
 
 import { PromptCard } from "@/src/system/molecules/Studio/PromptCard";
 import { usePublicDirectory } from "@/src/features/public/hooks/usePublicDirectory";
-import { FadeIn } from "@/src/system/atoms/FadeIn";
+import { FadeIn } from "@/src/system/atoms/Animations/FadeIn";
 import { Breadcrumbs } from "@/src/system/molecules/Navigation/Breadcrumbs";
 import { useAuthStore } from "@/src/store/authStore";
 

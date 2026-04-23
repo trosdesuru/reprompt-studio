@@ -1,6 +1,6 @@
 "use client";
 
-import { Heading } from "@/src/system/atoms/Heading";
+import { Heading } from "@/src/system/atoms/Heading/Heading";
 
 export function Hero() {
   return (

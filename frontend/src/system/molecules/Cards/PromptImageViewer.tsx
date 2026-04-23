@@ -2,7 +2,7 @@
 
 import { IconPhotoOff } from "@tabler/icons-react";
 import { LazyImage } from "@/src/system/molecules/Media/LazyImage";
-import { FadeIn } from "@/src/system/atoms/FadeIn";
+import { FadeIn } from "@/src/system/atoms/Animations/FadeIn";
 
 interface PromptImageViewerProps {
   imageUrl: string | null;

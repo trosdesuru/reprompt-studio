@@ -3,7 +3,7 @@
 import { IconCircleCheckFilled, IconCircle } from "@tabler/icons-react";
 import { ThemePreview } from "./ThemePreview";
 import { THEME_CONFIGS, ThemeOption } from "../constants/themeConfigs";
-import { BrandText } from "@/src/system/atoms/BrandText";
+import { BrandText } from "@/src/system/atoms/Brand/BrandText";
 
 interface ThemeSelectorCardProps {
   themeType: ThemeOption;

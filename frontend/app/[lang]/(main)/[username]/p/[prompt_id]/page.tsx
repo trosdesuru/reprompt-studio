@@ -3,7 +3,7 @@
 
 import { use } from "react";
 import { usePublicPrompt } from "@/src/features/public/hooks/usePublicPrompt";
-import { PageLoader } from "@/src/system/atoms/PageLoader";
+import { PageLoader } from "@/src/system/atoms/Loader/PageLoader";
 import { PromptErrorState } from "@/src/system/molecules/Feedback/PromptErrorState";
 import { PromptDetailView } from "@/src/system/organisms/PromptDetail/PromptDetailView";
 

@@ -2,7 +2,7 @@
 
 import React from "react";
 import { MediaCardData, MediaVariant } from "@/src/types/models";
-import { MediaCover } from "@/src/system/atoms/MediaCover";
+import { MediaCover } from "@/src/system/atoms/Loader/MediaCover";
 import { MediaOverlay } from "@/src/system/molecules/MediaOverlay";
 import { cn } from "@/src/utils/lib/cn";
 

@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import { useParams } from "next/navigation";
-import { PageLoader } from "@/src/system/atoms/PageLoader";
+import { PageLoader } from "@/src/system/atoms/Loader/PageLoader";
 import { DirectoryHeader } from "@/src/system/molecules/Studio/DirectoryHeader";
 import { PromptGrid } from "@/src/system/organisms/Studio/PromptGrid";
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { Navbar } from "@/src/system/organisms/Navbar/Navbar";
-import { FadeIn } from "@/src/system/atoms/FadeIn";
+import { FadeIn } from "@/src/system/atoms/Animations/FadeIn";
 
 export default function MainLayout({ children }: { children: React.ReactNode }) {
   return (
