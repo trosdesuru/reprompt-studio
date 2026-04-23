@@ -1,11 +1,12 @@
 import uuid
 import logging
+import urllib.parse
 
 from rq import Queue
 from io import BytesIO
 from PIL import Image
 from typing import List, Optional, Any
-from fastapi import HTTPException
+from fastapi import HTTPException, status
 from sqlmodel import Session, select
 
 from worker import process_image_ai
@@ -53,23 +54,63 @@ class PromptService:
     @staticmethod
     def process_quarantined_upload(
         session: Session,
-        current_user: User,
+        current_user: "User",  # Type hint genérico si no lo importas directamente
         data: Any,
-    ) -> ImagePrompt:
+    ) -> "ImagePrompt":
+
+        # =================================================================
+        # 🛡️ 1. ESCUDO ANTI PATH-TRAVERSAL Y SSRF (EARLY RETURN / FAIL FAST)
+        # =================================================================
+        # Decodificamos la URL recibida para atrapar intentos de ofuscación
+        # Ej: '%2e%2e%2f' se decodifica como '../'
+        decoded_url = urllib.parse.unquote(data.image_url).lower()
+
+        if ".." in decoded_url or "../" in decoded_url:
+            logger.warning(
+                f"🚨 [SECURITY] Intento de Path Traversal detectado por el usuario {current_user.id}: {data.image_url}"
+            )
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Intento de evasión de directorio detectado (Path Traversal).",
+            )
+
+        # =================================================================
+        # 📂 2. PROCESAMIENTO Y VALIDACIÓN DE RUTAS
+        # =================================================================
         base_url = settings.R2_PUBLIC_URL.rstrip("/") + "/"
         temp_key = data.image_url.replace(base_url, "")
 
-        head = s3_client.head_object(Bucket=settings.R2_BUCKET_NAME, Key=temp_key)
-        size_bytes = head["ContentLength"]
-        size_kb = size_bytes / 1024
-
-        logger.info(
-            f"📥 [QUARANTINE-IN] Recibido desde Temp: {temp_key} | Tamaño: {size_kb:.2f} KB"
-        )
-
         if not temp_key.startswith(f"temp/{current_user.id}/"):
-            raise HTTPException(status_code=403, detail="Ruta de cuarentena inválida.")
+            logger.warning(
+                f"🚨 [SECURITY] Ruta de cuarentena inválida. Esperado: temp/{current_user.id}/, Recibido: {temp_key}"
+            )
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Ruta de cuarentena inválida o pertenece a otro usuario.",
+            )
 
+        # =================================================================
+        # 🔍 3. LECTURA DE METADATOS Y TAMAÑO
+        # =================================================================
+        try:
+            head = s3_client.head_object(Bucket=settings.R2_BUCKET_NAME, Key=temp_key)
+            size_bytes = head["ContentLength"]
+            size_kb = size_bytes / 1024
+            logger.info(
+                f"📥 [QUARANTINE-IN] Recibido desde Temp: {temp_key} | Tamaño: {size_kb:.2f} KB"
+            )
+        except Exception as e:
+            logger.error(
+                f"❌ [QUARANTINE-ERROR] No se pudo leer el head_object de {temp_key}: {e}"
+            )
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Archivo temporal no encontrado en el almacenamiento.",
+            )
+
+        # =================================================================
+        # 🛡️ 4. VALIDACIÓN DE BYTES MÁGICOS (SEGURIDAD DE ARCHIVOS)
+        # =================================================================
         try:
             # 🟢 Aumentamos el rango a 8KB para pillar todos los metadatos JPEG/WebP
             response = s3_client.get_object(
@@ -81,15 +122,23 @@ class PromptService:
         except Exception as e:
             logger.error(f"❌ [QUARANTINE-ERROR] Fallo al descargar bytes: {e}")
             raise HTTPException(
-                status_code=404, detail="Archivo temporal no encontrado."
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Error leyendo el contenido del archivo temporal.",
             )
 
         if not validate_magic_bytes(file_bytes):
-            delete_file(temp_key)
+            delete_file(temp_key)  # 🔥 Destruir archivo corrupto o malicioso
+            logger.warning(
+                f"🚨 [SECURITY] Magic bytes inválidos detectados. Archivo destruido: {temp_key}"
+            )
             raise HTTPException(
-                status_code=400, detail="El archivo está corrupto o es malicioso."
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="El archivo está corrupto o es malicioso.",
             )
 
+        # =================================================================
+        # 📐 5. EXTRACCIÓN DE DIMENSIONES (PIL)
+        # =================================================================
         width, height = None, None
         try:
             with Image.open(BytesIO(file_bytes)) as img:
@@ -107,13 +156,19 @@ class PromptService:
             try:
                 w, h = data.resolution.lower().split("x")
                 width, height = int(w.strip()), int(h.strip())
-            except:
+            except Exception:
                 pass
 
+        # =================================================================
+        # 📦 6. CONSOLIDACIÓN A ALMACENAMIENTO PERMANENTE Y DB
+        # =================================================================
         permanent_key = temp_key.replace("temp/", "prompts/", 1)
+
         if not move_to_permanent(temp_key, permanent_key):
+            logger.error(f"❌ [STORAGE-ERROR] Falló move_to_permanent para {temp_key}")
             raise HTTPException(
-                status_code=500, detail="Error interno al consolidar el archivo."
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Error interno al consolidar el archivo.",
             )
 
         final_image_url = f"{base_url}{permanent_key}"
@@ -148,6 +203,9 @@ class PromptService:
         session.commit()
         session.refresh(nuevo_prompt)
 
+        # =================================================================
+        # 🤖 7. ENVÍO A COLA DE BACKGROUND (WORKERS IA)
+        # =================================================================
         ai_queue.enqueue(
             process_image_ai, prompt_id=str(nuevo_prompt.id), job_timeout="5m"
         )
