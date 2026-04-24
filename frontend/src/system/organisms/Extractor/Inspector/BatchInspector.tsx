@@ -163,7 +163,7 @@ export function BatchInspector({
             onClick={onClearAll}
             variant="tertiary"
             disabled={isGlobalLoading}
-            className="text-destructive hover:bg-destructive/10"
+            className="text-sm!"
           >
             Descartar Todos
           </Button>
@@ -172,7 +172,7 @@ export function BatchInspector({
             variant="primary"
             onClick={handleSaveAll}
             isLoading={isGlobalLoading}
-            className="text-sm font-bold w-full sm:w-auto"
+            className="text-sm! w-full sm:w-auto"
           >
             <IconDeviceFloppy size={18} className="mr-2" /> Guardar Todo
           </Button>
