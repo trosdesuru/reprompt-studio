@@ -3,24 +3,15 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   // @ts-ignore
   allowedDevOrigins: ["develop.reprompt.studio"],
-  typescript: {
-    ignoreBuildErrors: true,
-  },
+  typescript: { ignoreBuildErrors: true },
 
   output: "standalone",
   transpilePackages: ["framer-motion"],
   images: {
     remotePatterns: [
-      {
-        protocol: "https",
-        hostname: "**pub-**.r2.dev",
-      },
-      {
-        protocol: "https",
-        hostname: "cdn.reprompt.studio",
-        port: "",
-        pathname: "/**",
-      },
+      { protocol: "https", hostname: "**pub-**.r2.dev" },
+      { protocol: "https", hostname: "cdn.reprompt.studio", port: "", pathname: "/**" },
+      { protocol: "https", hostname: "r2.reprompt.studio" },
     ],
     formats: ["image/avif", "image/webp"],
     minimumCacheTTL: 604800,

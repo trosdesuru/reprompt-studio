@@ -41,7 +41,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
             id={inputId}
             type={currentType}
             className={`
-              w-full bg-brackground border-2 border-color rounded-lg p-2 text-foreground
+              w-full bg-brackground border-2 border-color rounded-lg p-2 font-mono text-foreground
               focus:outline-none focus:ring-2 focus:ring-accent-color transition-all
               overflow-auto
               ${icon ? "pl-12" : ""} 

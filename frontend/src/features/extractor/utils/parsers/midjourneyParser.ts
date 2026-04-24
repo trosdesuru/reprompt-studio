@@ -10,7 +10,6 @@ export function parseMidjourney(description: string, rawText: string): Extracted
   if (description.includes("--") || description.includes("Job ID:")) {
     result.software = "Desconocido";
 
-    // Extraer resolución de --ar
     const arMatch = description.match(/--ar\s+([0-9:]+)/);
     if (arMatch) result.resolution = arMatch[1];
 

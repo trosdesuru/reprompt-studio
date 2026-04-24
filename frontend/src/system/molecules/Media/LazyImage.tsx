@@ -20,6 +20,15 @@ export function LazyImage({
   sizes = "(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw",
 }: LazyImageProps) {
   const [isLoaded, setIsLoaded] = useState(false);
+  const [hasError, setHasError] = useState(false);
+
+  if (hasError) {
+    return (
+      <div className="w-full h-full flex items-center justify-center bg-muted/10 neo-border">
+        <span className="text-[10px] font-mono text-muted-foreground uppercase">Error visual</span>
+      </div>
+    );
+  }
 
   return (
     <div className="relative w-full h-full overflow-hidden bg-muted/10">
@@ -51,6 +60,7 @@ export function LazyImage({
         onLoad={() => {
           setIsLoaded(true);
         }}
+        onError={() => setHasError(true)}
         className={`
           absolute inset-0 w-full h-full object-cover z-10
           transition-all duration-700 ease-in-out

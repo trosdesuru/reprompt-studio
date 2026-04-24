@@ -4,7 +4,6 @@ import { extractFileName } from "./stringUtils";
 export function parseComfy(jsonObj: any, rawText: string): ExtractedPromptData {
   const result: ExtractedPromptData = { prompt: "", rawText, software: "ComfyUI" };
 
-  // 1. Intentar por extraMetadata (Civitai)
   if (jsonObj.extraMetadata) {
     const meta =
       typeof jsonObj.extraMetadata === "string"
@@ -33,7 +32,7 @@ export function parseComfy(jsonObj: any, rawText: string): ExtractedPromptData {
       result.triggerWords = Array.isArray(meta.triggerWords)
         ? meta.triggerWords
             .flatMap((w: string) => w.split(","))
-            .map((w: string) => w.trim()) // 👈 Agregamos : string aquí
+            .map((w: string) => w.trim())
             .filter(Boolean)
         : [];
     }
@@ -41,7 +40,6 @@ export function parseComfy(jsonObj: any, rawText: string): ExtractedPromptData {
     if (result.prompt && result.steps) return result;
   }
 
-  // 2. Fallback: Rastreo de nodos manual
   if (jsonObj && typeof jsonObj === "object" && !Array.isArray(jsonObj)) {
     Object.values(jsonObj).forEach((node: any) => {
       if (typeof node !== "object" || !node) return;

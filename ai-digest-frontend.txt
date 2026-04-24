@@ -9750,7 +9750,7 @@ export function Breadcrumbs({ items, homeHref = "/" }: BreadcrumbsProps) {
             <IconChevronRight size={14} className="opacity-50" stroke={1.5} />
             {isLast || !item.href ? (
               <span
-                className="font-bold text-accent/80 tracking-widest truncate max-w-150px sm:max-w-300px"
+                className="font-bold text-xs text-accent/80 tracking-widest truncate max-w-150px sm:max-w-300px"
                 title={item.label}
               >
                 {item.label}
@@ -9758,7 +9758,7 @@ export function Breadcrumbs({ items, homeHref = "/" }: BreadcrumbsProps) {
             ) : (
               <Link
                 href={item.href}
-                className="hover:text-(--accent-color) transition-colors tracking-widest truncate max-w-150px sm:max-w-200px"
+                className="hover:text-(--accent-color) text-xs transition-colors tracking-widest truncate max-w-150px sm:max-w-200px"
                 title={item.label}
               >
                 {item.label}

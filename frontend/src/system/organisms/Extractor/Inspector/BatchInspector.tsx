@@ -36,22 +36,25 @@ export function BatchInspector({
     onUpdateStatus(item.id, "saving");
 
     try {
-      let finalImageUrl = null;
+      let finalWidth = 0;
+      let finalHeight = 0;
+      let finalImageUrl: string | null = null; // 🟢 FIX: Declaramos la variable que faltaba
 
       if (item.previewUrl && item.previewUrl.startsWith("blob:")) {
-        // 🟢 2. OPTIMIZACIÓN ANTES DE LA FIRMA
-        // Usamos item.file (el archivo original) y lo pasamos por la trituradora WebP
-        const archivoOptimizado = await optimizeAndLogImage(item.file);
+        // 🟢 FIX: TypeScript ahora sabe que esto devuelve { file, width, height }
+        const optimizedData = await optimizeAndLogImage(item.file);
+        const archivoOptimizado = optimizedData.file;
+        finalWidth = optimizedData.width;
+        finalHeight = optimizedData.height;
 
         const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
-        // 🟢 3. Pedimos el ticket usando los datos del archivo optimizado (.webp)
         const ticketRes = await fetchSeguro(`${API_URL}/prompts/generate-upload-url`, {
           method: "POST",
           credentials: "include",
           body: JSON.stringify({
             file_name: archivoOptimizado.name,
-            content_type: archivoOptimizado.type, // image/webp
+            content_type: archivoOptimizado.type,
           }),
         });
 
@@ -59,37 +62,21 @@ export function BatchInspector({
 
         const ticketData = await ticketRes.json();
         const uploadUrl = ticketData.upload_url;
-        const contentType = archivoOptimizado.type;
-        const fileSize = archivoOptimizado.size;
-
-        // --- 🕵️‍♂️ LOGS DE DIAGNÓSTICO QUIRÚRGICO ANTES DEL FETCH ---
+        
         const fetchOptions = {
           method: "PUT",
           headers: {
-            "Content-Type": contentType,
-            "Cache-Control": "public, max-age=31536000, immutable", // 🛡️ Contrato de caché estricto
+            "Content-Type": archivoOptimizado.type,
+            "Cache-Control": "public, max-age=31536000, immutable",
           },
-          body: archivoOptimizado, // 🟢 4. Subimos el WebP, no el Blob crudo
+          body: archivoOptimizado,
         };
 
-        console.log("🔴 === PRE-FLIGHT CHECK (R2 BATCH UPLOAD) ===");
-        console.log("👉 Archivo:", archivoOptimizado.name);
-        console.log("👉 Origen del Navegador:", window.location.origin);
-        console.log("👉 Objeto - Type:", contentType, "| Size:", fileSize, "bytes");
-        console.log("🔴 ==========================================");
-
-        // Subida directa a Cloudflare
         const uploadRes = await fetch(uploadUrl, fetchOptions);
 
-        console.log("🟢 === RESPUESTA DE R2 ===");
-        console.log("Status:", uploadRes.status, uploadRes.statusText);
-
         if (!uploadRes.ok) {
-          const errorText = await uploadRes.text();
-          console.error("❌ ERROR RAW DE R2 (XML):", errorText);
           throw new Error("Fallo la subida física a Cloudflare R2");
         }
-        console.log("🟢 =======================");
 
         finalImageUrl = ticketData.file_url;
       }
@@ -105,14 +92,14 @@ export function BatchInspector({
         cfg_scale: item.data.cfgScale,
         seed: item.data.seed,
         resolution: item.data.resolution,
+        width: finalWidth,
+        height: finalHeight,
         image_url: finalImageUrl,
         extra_data: {
           loras: item.data.loras || [],
           triggerWords: item.data.triggerWords || [],
         },
       };
-
-      console.log("👉 Payload a guardar en DB:", payload);
 
       await api.savePrompt(payload);
       onUpdateStatus(item.id, "success");

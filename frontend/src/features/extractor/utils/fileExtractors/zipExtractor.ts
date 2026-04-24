@@ -1,9 +1,9 @@
 import JSZip from "jszip";
-
+import { string } from "zod";
 
 export async function extractFilesFromZip(
   zipFile: File,
-  maxFilesAllowed: number, // 🟢 Usaremos este parámetro dinámico (10 o 200)
+  maxFilesAllowed: number,
 ): Promise<ZipExtractionResult> {
   const zip = new JSZip();
   const loadedZip = await zip.loadAsync(zipFile);
@@ -12,7 +12,7 @@ export async function extractFilesFromZip(
   const rejectedFiles: { name: string; reason: string }[] = [];
   let limitReached = false;
 
-  const supportedRegex = /\.(png|jpe?g|txt|json)$/i;
+  const supportedRegex = /\.(png|jpe?g|webp|txt|json)$/i;
   let fileCount = 0;
 
   for (const [filename, zipEntry] of Object.entries(loadedZip.files)) {
@@ -24,13 +24,12 @@ export async function extractFilesFromZip(
       continue;
     }
 
-    // 🟢 CORRECCIÓN 1 Y 2: Usamos maxFilesAllowed y activamos la bandera
     if (fileCount >= maxFilesAllowed) {
       rejectedFiles.push({
         name: filename,
         reason: `Requiere plan superior. Límite: ${maxFilesAllowed} archivos.`,
       });
-      limitReached = true; // 🟢 ¡Esto dispara el Pop-up de ventas!
+      limitReached = true;
       continue;
     }
 
@@ -59,7 +58,6 @@ export async function extractFilesFromZip(
     }
   }
 
-  // 🟢 CORRECCIÓN 3: Devolvemos las 3 cosas que pide la interfaz
   return { validFiles, rejectedFiles, limitReached };
 }
 
@@ -67,6 +65,7 @@ function getMimeType(filename: string): string {
   const lower = filename.toLowerCase();
   if (lower.endsWith(".png")) return "image/png";
   if (lower.endsWith(".jpg") || lower.endsWith(".jpeg")) return "image/jpeg";
+  if (lower.endsWith(".webp")) return "image/webp";
   if (lower.endsWith(".json")) return "application/json";
   return "text/plain";
 }
