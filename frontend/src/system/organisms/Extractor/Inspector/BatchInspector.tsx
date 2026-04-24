@@ -162,7 +162,7 @@ export function BatchInspector({
             onClick={onClearAll}
             variant="tertiary"
             disabled={isGlobalLoading}
-            className="text-destructive hover:bg-red-500/10"
+            className="text-destructive hover:bg-destructive/10"
           >
             Descartar Todos
           </Button>
