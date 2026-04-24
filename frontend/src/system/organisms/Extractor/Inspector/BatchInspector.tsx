@@ -172,7 +172,7 @@ export function BatchInspector({
             variant="primary"
             onClick={handleSaveAll}
             isLoading={isGlobalLoading}
-            className="w-full sm:w-auto"
+            className="text-sm font-bold w-full sm:w-auto"
           >
             <IconDeviceFloppy size={18} className="mr-2" /> Guardar Todo
           </Button>
