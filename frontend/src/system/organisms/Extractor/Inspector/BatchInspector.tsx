@@ -62,7 +62,7 @@ export function BatchInspector({
 
         const ticketData = await ticketRes.json();
         const uploadUrl = ticketData.upload_url;
-        
+
         const fetchOptions = {
           method: "PUT",
           headers: {
@@ -160,7 +160,7 @@ export function BatchInspector({
         <div className="flex w-full sm:w-auto gap-3">
           <Button
             onClick={onClearAll}
-            variant="ghost"
+            variant="tertiary"
             disabled={isGlobalLoading}
             className="text-red-500 hover:bg-red-500/10"
           >
