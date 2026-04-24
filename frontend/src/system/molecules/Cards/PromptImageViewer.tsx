@@ -7,18 +7,26 @@ import { FadeIn } from "@/src/system/atoms/Animations/FadeIn";
 interface PromptImageViewerProps {
   imageUrl: string | null;
   altText: string;
+  width?: number | null;
+  height?: number | null;
 }
 
-export function PromptImageViewer({ imageUrl, altText }: PromptImageViewerProps) {
+export function PromptImageViewer({ imageUrl, altText, width, height }: PromptImageViewerProps) {
+  // Calculamos la proporción matemática exacta
+  const exactAspectRatio = width && height ? `${width} / ${height}` : "auto";
+
   return (
     <FadeIn delay={0.1}>
-      <div className="relative w-full aspect-square md:aspect-4/5 bg-muted/10 neo-border neo-shadow overflow-hidden group">
+      <div
+        className="relative w-full bg-muted/10 neo-border neo-shadow overflow-hidden group"
+        style={{ aspectRatio: exactAspectRatio }}
+      >
         {imageUrl ? (
           <LazyImage
             src={imageUrl}
             alt={altText}
             priority={true}
-            className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.02]"
+            className="w-full h-full object-fill transition-transform duration-700 ease-out group-hover:scale-[1.02]"
             sizes="(max-width: 768px) 100vw, 50vw"
           />
         ) : (

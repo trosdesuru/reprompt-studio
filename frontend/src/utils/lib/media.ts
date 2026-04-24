@@ -15,20 +15,23 @@ export function getExactAspectRatio(
   }
 
   if (!w || !h) return 0.8;
-
   return w / h;
 }
 
-export function getTailwindAspectClass(
+export function getBoundedAspectRatio(
   width?: number | null,
   height?: number | null,
   resolution?: string | null,
 ): string {
   const ratio = getExactAspectRatio(width, height, resolution);
-  if (ratio > 1.1) return "aspect-[4/3]";
-  if (ratio < 0.5) return "aspect-[9/20]";
-  if (ratio < 0.75) return "aspect-[2/3]";
-  if (ratio >= 0.75 && ratio <= 1.1) return "aspect-square";
 
-  return "aspect-[4/5]"; // Fallback
+  if (ratio > 1.33) {
+    return "4 / 3";
+  }
+
+  if (ratio < 0.5) {
+    return "1 / 2";
+  }
+
+  return `${width} / ${height}`;
 }

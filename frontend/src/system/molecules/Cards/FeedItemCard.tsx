@@ -3,7 +3,8 @@ import { IconStack2, IconUser } from "@tabler/icons-react";
 import { LazyImage } from "../Media/LazyImage";
 import { FeedItem } from "@/src/types/models";
 import { getFeedItemUrl } from "@/src/utils/lib/routes";
-import { getTailwindAspectClass } from "@/src/utils/lib/media";
+import { ImageDebugOverlay } from "../../atoms/Debug/ImageDebugOverlay";
+import { getBoundedAspectRatio } from "@/src/utils/lib/media";
 
 interface FeedItemCardProps {
   item: FeedItem;
@@ -15,17 +16,44 @@ interface FeedItemCardProps {
 export function FeedItemCard({ item, lang, isPriority = false, index = 0 }: FeedItemCardProps) {
   const href = getFeedItemUrl(item, lang);
 
-  const aspectClass = getTailwindAspectClass(item.width, item.height, item.resolution);
+  // Calculamos el ratio exacto en lugar de usar clases Tailwind predefinidas
+  const boundedRatio = getBoundedAspectRatio(item.width, item.height, item.resolution);
+
+  // 🟢 LOG DE AUDITORÍA: Comparativa de Resoluciones
+  if (process.env.NODE_ENV === "development") {
+    const ratioFisico = item.width && item.height ? (item.width / item.height).toFixed(3) : "N/A";
+    let ratioMeta = "N/A";
+    if (item.resolution && item.resolution.includes("x")) {
+      const [w, h] = item.resolution.split("x");
+      ratioMeta = (Number(w) / Number(h)).toFixed(3);
+    }
+
+    console.log(
+      `📊 [FEED-CARD: ${item.raw_id || item.id}]\n` +
+        `   ├─ Físico (DB): ${item.width || "null"} x ${item.height || "null"} (Ratio: ${ratioFisico})\n` +
+        `   ├─ Metadata   : ${item.resolution || "null"} (Ratio: ${ratioMeta})\n` +
+        `   └─ CSS Final  : aspectRatio = ${boundedRatio}`,
+    );
+  }
 
   return (
     <Link
       href={href}
-      className={`group relative cursor-pointer bg-muted/10 neo-border overflow-hidden block transition-all hover:neo-shadow-accent ${aspectClass}`}
+      className="group relative cursor-pointer bg-muted/10 neo-border overflow-hidden block transition-all hover:neo-shadow-accent w-full"
+      style={{ aspectRatio: boundedRatio }}
     >
+      {/* 🟢 INYECTAMOS LA TELEMETRÍA (Solo visible al hacer hover en entorno dev) */}
+      <ImageDebugOverlay
+        id={item.raw_id || item.id}
+        width={item.width}
+        height={item.height}
+        resolution={item.resolution}
+      />
+
       {item.image_url ? (
         <LazyImage
           src={item.image_url}
-          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+          className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.02]"
           alt={item.title}
           priority={isPriority}
           index={index}

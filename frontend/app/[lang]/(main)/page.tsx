@@ -9,8 +9,8 @@ import { useHomeInteraction } from "@/src/features/home/hooks/useHomeInteraction
 
 import { Hero } from "@/src/system/organisms/Layout/Hero";
 import { FeedState } from "@/src/system/molecules/Feedback/FeedState";
-import { PublicFeedGrid } from "@/src/system/templates/Feed/PublicFeedGrid";
 import { SearchResults } from "@/src/system/organisms/Search/SearchResults/SearchResults";
+import { FeedLayout } from "@/src/system/templates/Feed/FeedLayout";
 
 const ImageViewerModal = dynamic(
   () =>
@@ -37,7 +37,8 @@ export default function Home({ params }: { params: Promise<{ lang: string }> }) 
 
       <div className="max-w-90rem mx-auto px-4 pb-12">
         {!search.query ? (
-          <PublicFeedGrid
+          <FeedLayout
+            title="Explora la comunidad"
             feed={publicFeed.feed}
             isLoading={publicFeed.isFeedLoading}
             lang={lang}

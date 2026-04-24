@@ -217,6 +217,8 @@ def get_public_feed(
                 "image_url": p.image_url,
                 "model": p.model,
                 "resolution": p.resolution,
+                "width": p.width,
+                "height": p.height,
             }
         )
 

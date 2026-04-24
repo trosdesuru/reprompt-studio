@@ -14,6 +14,14 @@ interface PromptDetailViewProps {
 export function PromptDetailView({ prompt, breadcrumbItems }: PromptDetailViewProps) {
   const isLandscape = prompt.width && prompt.height ? prompt.width / prompt.height > 1.2 : false;
 
+  // 🟢 LOG DE AUDITORÍA: El Prompt en su totalidad
+  if (process.env.NODE_ENV === "development") {
+    console.log("=========================================");
+    console.log(`🔎 [DETAIL-VIEW: ${prompt.id}] RADIOGRAFÍA DEL OBJETO:`);
+    console.log(JSON.parse(JSON.stringify(prompt))); // Copia profunda para evitar proxies de React
+    console.log("=========================================");
+  }
+
   const { handleSaveMetadata } = useUpdatePromptMetadata(String(prompt.id));
 
   return (
@@ -33,6 +41,8 @@ export function PromptDetailView({ prompt, breadcrumbItems }: PromptDetailViewPr
               <PromptImageViewer
                 imageUrl={prompt.image_url || null}
                 altText={prompt.title || "Imagen generada"}
+                width={prompt.width}
+                height={prompt.height}
               />
             </div>
           </section>
@@ -48,11 +58,7 @@ export function PromptDetailView({ prompt, breadcrumbItems }: PromptDetailViewPr
             </header>
 
             <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 pb-12">
-              <PromptMetadataPanel
-                prompt={prompt}
-                isOwner={true}
-                onSave={handleSaveMetadata}
-              />
+              <PromptMetadataPanel prompt={prompt} isOwner={true} onSave={handleSaveMetadata} />
             </div>
           </section>
         </div>

@@ -43,6 +43,8 @@ class StudioSaveRequest(BaseModel):
     steps: Optional[str] = Field(None, max_length=20)
     cfg_scale: Optional[str] = Field(None, max_length=20)
     seed: Optional[str] = Field(None, max_length=50)
+    width: Optional[int] = None
+    height: Optional[int] = None
     resolution: Optional[str] = Field(None, max_length=50)
     extra_data: Optional[Dict[str, Any]] = Field(default_factory=dict)
 

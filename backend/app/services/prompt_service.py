@@ -139,7 +139,9 @@ class PromptService:
         # =================================================================
         # 📐 5. EXTRACCIÓN DE DIMENSIONES (PIL)
         # =================================================================
-        width, height = None, None
+        width = getattr(data, "width", None)
+        height = getattr(data, "height", None)
+
         try:
             with Image.open(BytesIO(file_bytes)) as img:
                 width, height = img.size
@@ -152,7 +154,22 @@ class PromptService:
             )
             pass
 
-        if not width and data.resolution and "x" in data.resolution.lower():
+        if not width or not height:
+            try:
+                with Image.open(BytesIO(file_bytes)) as img:
+                    width, height = img.size
+                    logger.info(
+                        f"📏 [RESCATE] PIL extrajo dimensiones: {width}x{height}"
+                    )
+            except Exception as e:
+                logger.warning(f"⚠️ [QUARANTINE-WARN] PIL falló también: {e}")
+                pass
+
+        if (
+            not width
+            and getattr(data, "resolution", None)
+            and "x" in data.resolution.lower()
+        ):
             try:
                 w, h = data.resolution.lower().split("x")
                 width, height = int(w.strip()), int(h.strip())
