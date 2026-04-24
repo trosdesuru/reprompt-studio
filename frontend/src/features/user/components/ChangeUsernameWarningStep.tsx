@@ -49,7 +49,7 @@ export function ChangeUsernameWarningStep({ onClose, onConfirm }: ChangeUsername
       </div>
 
       <div className="p-4 border-t border-border bg-muted/10 flex justify-end gap-3">
-        <Button variant="secondary" size="sm" onClick={onClose}>
+        <Button variant="tertiary" size="sm" onClick={onClose}>
           Cancelar
         </Button>
         <Button variant="primary" size="sm" onClick={onConfirm}>

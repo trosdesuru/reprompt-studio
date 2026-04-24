@@ -1,7 +1,7 @@
 import { ButtonHTMLAttributes, forwardRef } from "react";
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: "primary" | "secondary" | "danger" | "ghost" | "outline";
+  variant?: "primary" | "secondary" | "tertiary" | "danger" | "ghost" | "outline";
   size?: "sm" | "md" | "lg";
   isLoading?: boolean;
 }
@@ -16,6 +16,9 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         "bg-accent-color text-foreground neo-border neo-shadow-accent hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0px_0px_var(--brand-accent)] active:translate-x-[4px] active:translate-y-[4px] active:shadow-none font-bold uppercase tracking-wide",
 
       secondary:
+        "bg-background text-foreground neo-border neo-shadow hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0px_0px_var(--brand-shadow)] active:translate-x-[4px] active:translate-y-[4px] active:shadow-none font-bold uppercase tracking-wide",
+
+      tertiary:
         "bg-background text-foreground neo-border neo-shadow hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0px_0px_var(--brand-shadow)] active:translate-x-[4px] active:translate-y-[4px] active:shadow-none font-bold uppercase tracking-wide",
 
       danger:
