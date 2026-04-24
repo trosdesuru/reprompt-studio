@@ -65,6 +65,8 @@
   /* 🟢 Tu color fuerte adaptado a fondos oscuros (Ligeramente más brillante para ganar contraste) */
   --brand-text-strong: #ff5c8d;
 
+  --brand-text-destructive: #ff5c8d;
+
   --brand-shadow: #e7e7e7;
 
   --primary-foreground: #000000;
