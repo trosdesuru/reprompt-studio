@@ -159,6 +159,7 @@ export function BatchInspector({
         </div>
         <div className="flex w-full sm:w-auto gap-3">
           <Button
+            size="md"
             onClick={onClearAll}
             variant="tertiary"
             disabled={isGlobalLoading}
@@ -166,7 +167,13 @@ export function BatchInspector({
           >
             Descartar Todos
           </Button>
-          <Button onClick={handleSaveAll} isLoading={isGlobalLoading} className="w-full sm:w-auto">
+          <Button
+            size="sm"
+            variant="primary"
+            onClick={handleSaveAll}
+            isLoading={isGlobalLoading}
+            className="w-full sm:w-auto"
+          >
             <IconDeviceFloppy size={18} className="mr-2" /> Guardar Todo
           </Button>
         </div>
