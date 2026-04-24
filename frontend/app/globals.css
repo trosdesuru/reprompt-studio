@@ -9,13 +9,13 @@
    ============================ */
 :root {
   --brand-bg: #fefdf3;
+  --brand-bg-surface: #fbfbfb;
   --brand-text: #292929;
   --brand-muted: #f5f5f5;
   --brand-muted-text: #4c4c4c;
   --brand-border: #1d1f21;
   --brand-accent: #084c51;
 
-  /* 🟢 Tu color fuerte para fondos claros (Vibrante) */
   --brand-text-strong: #dc3b6e;
 
   --brand-shadow: #dc3b6e;
@@ -26,7 +26,7 @@
   --card: var(--brand-bg);
   --card-foreground: var(--brand-text);
 
-  --popover: var(--brand-bg);
+  --popover: var(--brand-bg-surface);
   --popover-foreground: var(--brand-text);
 
   --primary: var(--brand-accent);
@@ -41,7 +41,7 @@
   --accent: var(--brand-accent);
   --accent-foreground: #ffffff;
 
-  --destructive: #ef4444;
+  --destructive: #dc3b6e;
 
   --border: var(--brand-border);
   --input: var(--brand-border);
@@ -55,6 +55,7 @@
    ================ */
 .dark {
   --brand-bg: #111111;
+  --brand-bg-surface: #2d2d2d;
   --brand-text: #e7e7e7;
   --brand-muted: #171717;
   --brand-muted-text: #898989;

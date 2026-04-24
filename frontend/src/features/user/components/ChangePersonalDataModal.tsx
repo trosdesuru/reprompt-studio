@@ -47,7 +47,7 @@ export function ChangePersonalDataModal({ isOpen, onClose }: ChangePersonalDataM
               <Button variant="tertiary" size="sm" onClick={onClose}>
                 Cancelar
               </Button>
-              <Button variant="primary" size="sm" onClick={() => setStep(2)}>
+              <Button variant="secondary" size="sm" onClick={() => setStep(2)}>
                 Continuar <IconArrowRight size={16} className="ml-2" />
               </Button>
             </div>
