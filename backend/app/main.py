@@ -14,6 +14,8 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from app.init_db import init_db
 
 from app.api.routes_auth import router as auth_router
+from app.api.routes_oauth import router as oauth_router
+from app.api.routes_users import router as users_router
 from app.api.routes_admin import router as admin_router
 from app.api.routes_public import router as public_router
 from app.api.routes_prompt import router as prompt_router
@@ -88,7 +90,6 @@ app = FastAPI(
 
 app.add_middleware(CorrelationIdMiddleware)
 
-# 🌐 CONFIGURACIÓN DE CORS
 ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "https://reprompt.studio",
@@ -125,8 +126,10 @@ async def openapi(username: str = Depends(get_current_username)):
     return app.openapi()
 
 
-# 🛣️ REGISTRO DE RUTAS (API ENDPOINTS)
-app.include_router(auth_router, prefix="/api/auth", tags=["Autenticación"])
+app.include_router(auth_router, prefix="/api/auth", tags=["Authentication"])
+app.include_router(oauth_router, prefix="/api/auth", tags=["OAuth"])
+app.include_router(users_router, prefix="/api/auth", tags=["User Profile"])
+app.include_router(admin_router, prefix="/api/auth/admin", tags=["Administration"])
 app.include_router(directories_router, prefix="/api/directories", tags=["Directorios"])
 app.include_router(prompt_router, prefix="/api/prompts", tags=["Studio Prompts"])
 app.include_router(search_router, prefix="/api/search", tags=["Búsqueda Inteligente"])

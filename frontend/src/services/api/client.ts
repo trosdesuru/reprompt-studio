@@ -33,7 +33,7 @@ export async function fetchSeguro(
   } catch (error) {
     throw new Error("No hay conexión con el servidor.");
   }
-
+  
   const serverRequestId = response.headers.get("X-Request-ID") || requestId;
 
   if (!response.ok && response.status !== 401) {

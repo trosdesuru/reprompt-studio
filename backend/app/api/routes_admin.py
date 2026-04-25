@@ -2,23 +2,25 @@ import os
 import logging
 import secrets
 
-from datetime import datetime, timedelta, timezone
-
-from sqlmodel import select, Session, func, delete, text
 from fastapi import APIRouter, Depends, Request, HTTPException, BackgroundTasks
+from sqlmodel import select, Session, func, delete, text
+from datetime import datetime, timedelta, timezone
 from pydantic import BaseModel
 
 from app.api.deps import get_optional_user, get_current_admin, get_session
 from app.models.user import User, AuditLog, InviteCode
-from app.core.redis_config import conn as redis_client
-from app.services.audit_service import AuditService
-from app.core.security import get_password_hash
 from app.models.user import AuditLog
 from app.models.directory import Directory
 from app.models.gallery import GalleryMetric
-from app.services.storage import s3_client
 from app.models.prompt import ImagePrompt
+
+from app.core.security import get_password_hash
+from app.core.redis_config import conn as redis_client
 from app.core.config import settings
+
+from app.services.audit_service import AuditService
+from app.services.storage import s3_client
+from app.services.auth_service import AuthService
 
 router = APIRouter()
 logger = logging.getLogger("backend")
@@ -443,3 +445,76 @@ def purge_entire_r2_bucket(
         raise HTTPException(
             status_code=500, detail=f"Fallo al purgar Cloudflare R2: {str(e)}"
         )
+
+
+# @router.get("/logs") -> OJO: Quítale el prefijo "" a la ruta porque se lo daremos en el main.py
+# @router.post("/invite-codes")
+# @router.get("/invites")
+# @router.get("/sessions")
+# @router.post("/sessions/revoke-all")
+@router.get("/logs")
+def get_audit_logs(
+    limit: int = 50,
+    current_admin: User = Depends(get_current_admin),
+    session: Session = Depends(get_session),
+):
+    statement = select(AuditLog).order_by(AuditLog.timestamp.desc()).limit(limit)
+    logs = session.exec(statement).all()
+    return {"status": "success", "logs": logs}
+
+
+@router.post("/invite-codes")
+def generate_invite_code(
+    role_requested: str = "voyager",
+    current_admin: User = Depends(get_current_admin),
+    session: Session = Depends(get_session),
+):
+    prefix = "VGR" if role_requested == "voyager" else "ART"
+    new_code_str = f"{prefix}-{secrets.token_hex(4).upper()}"
+
+    try:
+        new_invite = InviteCode(code=new_code_str)
+        session.add(new_invite)
+        session.commit()
+        session.refresh(new_invite)
+
+        AuditService.log_action(
+            session,
+            current_admin.username,
+            "INVITE_CREATED",
+            f"Generado código {role_requested.upper()}: {new_code_str}",
+        )
+
+        return {"status": "success", "message": "Código generado", "code": new_code_str}
+
+    except Exception as e:
+        session.rollback()
+        logger.error(f"❌ Fallo al insertar InviteCode en Neon: {e}")
+        raise HTTPException(status_code=500, detail=f"Error de base de datos: {str(e)}")
+
+
+@router.get("/invites")
+def list_invite_codes(
+    current_admin: User = Depends(get_current_admin),
+    session: Session = Depends(get_session),
+):
+    statement = (
+        select(InviteCode)
+        .where(InviteCode.is_used == False)
+        .order_by(InviteCode.created_at.desc())
+    )
+    invites = session.exec(statement).all()
+
+    return {"status": "success", "invites": invites}
+
+
+@router.get("/sessions")
+def list_active_sessions(current_admin: User = Depends(get_current_admin)):
+    sessions = AuthService.get_active_sessions(current_admin.username, redis_client)
+    return {"status": "success", "sessions": sessions}
+
+
+@router.post("/sessions/revoke-all")
+def revoke_all_sessions(current_admin: User = Depends(get_current_admin)):
+    AuthService.revoke_all_sessions(current_admin.username, redis_client)
+    return {"status": "success", "message": "Todas las sesiones han sido revocadas."}

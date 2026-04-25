@@ -12,7 +12,7 @@ export function SettingsSidebar() {
   const links = useSettingsNavigation();
 
   return (
-    <nav className="flex flex-col gap-1 pt-6">
+    <nav className="flex flex-col gap-1 pt-6 sticky">
       <SidebarHeading>Ajustes Generales</SidebarHeading>
 
       <SidebarDivider className="my-4" />

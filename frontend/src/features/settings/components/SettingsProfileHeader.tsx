@@ -2,21 +2,17 @@
 
 import { useAuthStore } from "@/src/store/authStore";
 import { UserBadge } from "@/src/system/atoms/Badge/Badge";
-import { UserAvatar } from "@/src/system/atoms/Avatar/Avatar";
+import { EditableAvatar } from "@/src/system/molecules/Avatar/EditableAvatar";
 
 export function SettingsProfileHeader() {
   const user = useAuthStore((state) => state.user);
+  console.log("[PROFILE HEADER] - Avatar", user?.avatarUrl);
 
   if (!user) return null;
 
   return (
-    <div className="flex items-center gap-6 pb-6 mb-4">
-      <UserAvatar 
-        username={user.username} 
-        avatarUrl={user.avatarUrl} 
-        size="2xl" 
-        className="shadow-sm" 
-      />
+    <div className="flex items-center gap-6 pb-6 mb-4 sticky">
+      <EditableAvatar username={user.username} avatarUrl={user.avatarUrl} size="xl" />
 
       <div className="flex flex-col">
         <div className="flex flex-col">

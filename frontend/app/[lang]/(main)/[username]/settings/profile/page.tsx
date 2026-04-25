@@ -42,7 +42,7 @@ export default function ProfileSettingsPage({
       <div className="space-y-8 pt-4">
         <UsernameSettingsSection user={user} lang={lang} />
 
-        <PersonalDataSettingsSection user={user} lang={lang} />
+        <PersonalDataSettingsSection user={user} />
       </div>
     </div>
   );
