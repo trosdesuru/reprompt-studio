@@ -16,9 +16,9 @@ export function PublicFeedGrid({ feed, lang }: PublicFeedGridProps) {
   if (!feed || feed.length === 0) return null;
 
   return (
-    <div className="flex gap-4 sm:gap-6 w-full items-start">
+    <div className="flex gap-4 sm:gap-2 w-full items-start">
       {columns.map((colItems, colIndex) => (
-        <div key={colIndex} className="flex flex-col gap-4 sm:gap-6 flex-1 min-w-0">
+        <div key={colIndex} className="flex flex-col gap-4 sm:gap-2 flex-1 min-w-0">
           {colItems.map((item, itemIndex) => {
             const globalIndex = colIndex + itemIndex * columnCount;
 

@@ -1,4 +1,4 @@
-import { IconAlertTriangle } from "@tabler/icons-react";
+import { IconAlertTriangle, IconArrowRight } from "@tabler/icons-react";
 import { Button } from "@/src/system/atoms/Button/Button";
 
 interface ChangeUsernameWarningStepProps {
@@ -53,7 +53,7 @@ export function ChangeUsernameWarningStep({ onClose, onConfirm }: ChangeUsername
           Cancelar
         </Button>
         <Button variant="secondary" size="sm" onClick={onConfirm}>
-          Entendido, continuar
+          Continuar <IconArrowRight size={16} className="ml-2" />
         </Button>
       </div>
     </div>

@@ -8,7 +8,7 @@ import { MenuItem } from "@/src/system/atoms/Dropdown/MenuItem";
 import { LogoutMenuItem } from "@/src/features/auth/components/LogoutMenuItem";
 import { ThemeMenuItem } from "@/src/features/theme/components/ThemeMenuItem";
 import { UserAvatar } from "@/src/system/atoms/Avatar/Avatar";
-import { IconDeviceDesktop, IconLockSquareRounded, IconSettings, IconShieldLock, IconUserSquareRounded } from "@tabler/icons-react";
+import { IconDeviceDesktop, IconLockSquareRounded, IconShieldLock, IconUserSquareRounded } from "@tabler/icons-react";
 
 export function UserDropdown() {
   const router = useRouter();

@@ -35,7 +35,7 @@ export default function RepromptPage({ params }: { params: Promise<{ lang: strin
           title="Extractor"
           subtitle="reprompt"
           description="Arrastra múltiples imágenes o archivos ZIP para extraer metadatos en lote."
-          icon={<IconScanTraces size={28} stroke={1.5} />}
+          icon={<IconScanTraces size={28} stroke={1.5} className="text-foreground" />}
           breadcrumbItems={[
             { label: "Mi Studio", href: `/${lang}/studio` },
             { label: "Extractor Reprompt" },

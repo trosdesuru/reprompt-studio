@@ -35,7 +35,7 @@ export default function Home({ params }: { params: Promise<{ lang: string }> }) 
 
       {globalError && <FeedState type="error" message={globalError} />}
 
-      <div className="max-w-90rem mx-auto px-4 pb-12">
+      <div className="max-w-90rem mx-auto px-4 md:px-8 pb-12">
         {!search.query ? (
           <FeedLayout
             title="Explora la comunidad"

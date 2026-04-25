@@ -18,12 +18,12 @@ export function MenuItem({
   disabled = false,
 }: MenuItemProps) {
   const baseClass =
-    "flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-colors text-left w-full disabled:opacity-50 disabled:cursor-not-allowed";
+    "flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md hover:bg-accent transition-colors text-left w-full disabled:opacity-50 disabled:cursor-not-allowed";
 
   const variantClass =
     variant === "danger"
-      ? "text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10"
-      : "text-foreground hover:bg-muted";
+      ? "text-destructive hover:bg-destructive/20 hover:text-destructive dark:hover:bg-red-500/10 dark:text-destructive/65 dark:hover:text-destructive"
+      : "text-foreground hover:bg-accent/10 hover:text-accent";
 
   return (
     <button

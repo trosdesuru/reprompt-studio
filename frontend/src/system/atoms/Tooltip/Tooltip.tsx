@@ -48,7 +48,7 @@ export function Tooltip({
       arrow: "fill-foreground"
     },
     rich: {
-      container: "bg-popover text-popover-foreground border border-border px-3 py-2 neo-shadow-sm",
+      container: "bg-surface text-popover-foreground border border-border px-3 py-2 neo-shadow-sm",
       arrow: "fill-popover"
     }
   };
