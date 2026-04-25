@@ -29,7 +29,7 @@ export function UserAvatar({ username, avatarUrl, size = "md", className = "" }:
       className={`
         ${sizeClasses[size]} 
         shrink-0 rounded-full flex items-center justify-center overflow-hidden
-        border-2 border-border/30 bg-muted/20 relative group
+        border-2 border-border/30 bg-accent relative group
         ${className}
       `}
       aria-label={`Avatar de ${username}`}
@@ -44,14 +44,14 @@ export function UserAvatar({ username, avatarUrl, size = "md", className = "" }:
         />
       ) : (
         <div
-          className={`w-full h-full bg-[#131313] flex items-center justify-center relative ${fallbackPadding[size]}`}
+          className={`w-full h-full bg-background flex items-center justify-center relative ${fallbackPadding[size]}`}
         >
           <div className="relative w-full h-full">
             <Image
               src="/logo-white.svg"
               alt="Reprompt Default Avatar"
               fill
-              className="object-contain opacity-90 group-hover:scale-110 transition-transform duration-500"
+              className="object-cover group-hover:scale-110 transition-transform duration-500"
             />
           </div>
         </div>
