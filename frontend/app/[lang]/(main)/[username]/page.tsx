@@ -43,16 +43,15 @@ export default function PublicProfilePage({
   return (
     <main className="max-h-screen bg-background p-4 md:p-8">
       <div className="max-w-7xl mx-auto space-y-8">
-        <div>
-          <Breadcrumbs items={breadcrumbItems} />
-        </div>
-
-        <header className="flex flex-col gap-2 border-b border-border pb-8">
-          <h1 className="text-4xl font-black tracking-tighter">@{data.user.username}</h1>
+        <header className="flex flex-col gap-2">
+          <h1 className="text-4xl font-prompt font-bold lowercase tracking-tighter">@{data.user.username}</h1>
           <p className="text-muted-foreground font-mono text-sm uppercase tracking-widest">
             {data.user.role}
           </p>
         </header>
+        <div className="border-b border-border pb-4">
+          <Breadcrumbs items={breadcrumbItems} />
+        </div>
 
         {data.directories.length > 0 && (
           <section className="space-y-4">
