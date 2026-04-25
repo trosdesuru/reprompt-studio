@@ -40,6 +40,7 @@ class User(SQLModel, table=True):
     hashed_password: Optional[str] = Field(default=None)
 
     role: str = Field(default="voyager")
+    avatar_url: Optional[str] = Field(default=None)
     storage_used: int = Field(default=0)
 
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))

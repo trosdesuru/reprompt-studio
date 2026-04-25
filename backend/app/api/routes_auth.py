@@ -4,26 +4,30 @@ import redis
 import logging
 import urllib.parse
 from app.core.config import settings
-from app.schemas.user import GoogleAuthRequest
-from app.schemas.user import DiscordAuthRequest
+from app.utils.storage import eliminar_de_r2
+
 from fastapi import APIRouter, Depends, Response, Cookie, HTTPException, status
 from fastapi.responses import JSONResponse
 from sqlalchemy import func
 from sqlmodel import Session, select
 
 from app.services.auth_service import AuthService
-from app.schemas.user import UsernameUpdate
 from app.services.audit_service import AuditService
 from app.core.db import get_session
 from app.api.deps import get_current_user, get_current_admin, RateLimiter
-from app.models.user import User, InviteCode, AuditLog
 
 from app.schemas.user import (
-    UserRegister,
-    UserLogin,
-    PasswordChange,
+    User,
+    InviteCode,
+    AuditLog,
     GoogleAuthRequest,
     GoogleJoinRequest,
+    DiscordAuthRequest,
+    UserRegister,
+    UserLogin,
+    AvatarUpdate,
+    UsernameUpdate,
+    PasswordChange,
 )
 
 # --- CONFIGURACIÓN DE ENTORNO ---
@@ -291,6 +295,46 @@ def change_my_username(
         "status": "success",
         "new_username": new_name,
         "message": "Identidad actualizada correctamente",
+    }
+
+
+@router.patch("/me/avatar")
+def update_my_avatar(
+    data: AvatarUpdate,
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    """
+    Actualiza el avatar del usuario.
+    Si ya tenía un avatar, destruye el antiguo en Cloudflare R2 para liberar espacio.
+    """
+    # 1. 🛡️ Sanitización de Seguridad: Asegurar que es un enlace de nuestro bucket
+    if data.avatar_url and not data.avatar_url.startswith(
+        settings.R2_PUBLIC_URL.rstrip("/")
+    ):
+        raise HTTPException(status_code=400, detail="URL de avatar no permitida.")
+
+    if current_user.avatar_url and current_user.avatar_url != data.avatar_url:
+        try:
+            eliminar_de_r2(current_user.avatar_url)
+        except Exception as e:
+            logger.warning(
+                f"⚠️ No se pudo borrar el avatar antiguo de {current_user.username}: {e}"
+            )
+
+    current_user.avatar_url = data.avatar_url
+    session.add(current_user)
+    session.commit()
+    session.refresh(current_user)
+
+    AuditService.log_action(
+        session, current_user.username, "AVATAR_UPDATE", "Avatar actualizado"
+    )
+
+    return {
+        "status": "success",
+        "message": "Avatar actualizado correctamente",
+        "avatar_url": current_user.avatar_url,
     }
 
 

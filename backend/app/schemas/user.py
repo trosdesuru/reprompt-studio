@@ -12,6 +12,10 @@ class UserLogin(BaseModel):
     password: str
 
 
+class AvatarUpdate(BaseModel):
+    avatar_url: str
+
+
 class UsernameUpdate(BaseModel):
     new_username: str
 
