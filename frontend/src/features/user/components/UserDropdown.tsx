@@ -8,7 +8,13 @@ import { MenuItem } from "@/src/system/atoms/Dropdown/MenuItem";
 import { LogoutMenuItem } from "@/src/features/auth/components/LogoutMenuItem";
 import { ThemeMenuItem } from "@/src/features/theme/components/ThemeMenuItem";
 import { UserAvatar } from "@/src/system/atoms/Avatar/Avatar";
-import { IconDeviceDesktop, IconLockSquareRounded, IconShieldLock, IconUserSquareRounded } from "@tabler/icons-react";
+import {
+  IconDeviceDesktop,
+  IconLockSquareRounded,
+  IconShieldLock,
+  IconUserSquareRounded,
+} from "@tabler/icons-react";
+import { Tooltip } from "@/src/system/atoms/Tooltip/Tooltip";
 
 export function UserDropdown() {
   const router = useRouter();
@@ -30,14 +36,16 @@ export function UserDropdown() {
 
   return (
     <div className="relative" ref={menuRef}>
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="flex rounded-full transition-opacity hover:opacity-85 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-        aria-expanded={isOpen}
-        aria-haspopup="true"
-      >
-        <UserAvatar username={user.username} avatarUrl={user.avatarUrl} size="sm" />
-      </button>
+      <Tooltip content="Menu" side="bottom">
+        <button
+          onClick={() => setIsOpen(!isOpen)}
+          className="flex rounded-full transition-opacity hover:opacity-85 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          aria-expanded={isOpen}
+          aria-haspopup="true"
+        >
+          <UserAvatar username={user.username} avatarUrl={user.avatarUrl} size="sm" />
+        </button>
+      </Tooltip>
 
       {isOpen && (
         <div

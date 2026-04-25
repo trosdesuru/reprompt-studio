@@ -10,6 +10,7 @@ import {
   IconInfoCircle,
   IconAlertTriangle,
 } from "@tabler/icons-react";
+import { Tooltip } from "../../atoms/Tooltip/Tooltip";
 
 export function NotificationDropdown() {
   const { notifications, unreadCount, markAsRead, markAllAsRead, clearAll } =
@@ -24,7 +25,6 @@ export function NotificationDropdown() {
       case "success":
         return <IconCheck size={16} className="text-green-500" />;
       case "error":
-        // 🟢 Usamos la paleta semántica destructiva del tema
         return <IconAlertTriangle size={16} className="text-destructive" />;
       case "warning":
         return <IconAlertTriangle size={16} className="text-yellow-500" />;
@@ -35,31 +35,33 @@ export function NotificationDropdown() {
 
   return (
     <div className="relative" ref={menuRef}>
-      {/* 🟢 TRIGGER: Usamos hover:bg-muted y text-accent */}
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="relative p-2 rounded-md transition-colors text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer"
-      >
-        {unreadCount > 0 ? (
-          <IconInbox size={24} className="text-accent" />
-        ) : (
-          <IconInbox size={24} />
-        )}
+      <Tooltip content="Notificaciones" side="bottom">
+        <button
+          onClick={() => setIsOpen(!isOpen)}
+          className="relative p-2 rounded-md transition-colors text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer"
+        >
+          {unreadCount > 0 ? (
+            <IconInbox size={24} className="text-accent" />
+          ) : (
+            <IconInbox size={24} />
+          )}
 
-        {/* 🟢 BADGE: Usamos bg-destructive para el rojo del sistema */}
-        {unreadCount > 0 && (
-          <span className="absolute top-1 right-1 flex items-center justify-center min-w-4.5 h-4.5 p-1 bg-destructive text-white text-[10px] font-black font-mono rounded-full border-2 border-background">
-            {unreadCount > 9 ? "9+" : unreadCount}
-          </span>
-        )}
-      </button>
+          {/* 🟢 BADGE: Usamos bg-destructive para el rojo del sistema */}
+          {unreadCount > 0 && (
+            <span className="absolute top-1 right-1 flex items-center justify-center min-w-4.5 h-4.5 p-1 bg-destructive text-white text-[10px] font-black font-mono rounded-full border-2 border-background">
+              {unreadCount > 9 ? "9+" : unreadCount}
+            </span>
+          )}
+        </button>
+      </Tooltip>
 
       {isOpen && (
-        // 🟢 CONTENEDOR: Aplicamos bg-popover, neo-border y neo-shadow para consistencia brutalista
         <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-popover text-popover-foreground neo-border neo-shadow rounded-lg flex flex-col z-100 animate-in fade-in-0 zoom-in-95 origin-top-right overflow-hidden">
           {/* Header */}
           <div className="p-4 border-b border-border bg-primary flex justify-between items-center">
-            <h3 className="text-sm text-secondary font-bold font-mono uppercase tracking-wide">Notificaciones</h3>
+            <h3 className="text-sm text-secondary font-bold font-mono uppercase tracking-wide">
+              Notificaciones
+            </h3>
             <div className="flex gap-2">
               {unreadCount > 0 && (
                 <button
@@ -125,4 +127,3 @@ export function NotificationDropdown() {
     </div>
   );
 }
-

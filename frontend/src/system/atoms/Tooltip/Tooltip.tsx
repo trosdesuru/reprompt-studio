@@ -18,7 +18,7 @@ const TooltipContent = React.forwardRef<
       sideOffset={sideOffset}
       className={cn(
         "z-100 overflow-hidden rounded-md shadow-lg animate-in fade-in-0 zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
-        className
+        className,
       )}
       {...props}
     />
@@ -31,35 +31,35 @@ interface SimpleTooltipProps {
   children: React.ReactNode;
   side?: "top" | "right" | "bottom" | "left";
   delayDuration?: number;
-  variant?: "default" | "rich"; 
+  variant?: "default" | "rich";
+  className?: string;
 }
 
-export function Tooltip({ 
-  content, 
-  children, 
-  side = "top", 
+export function Tooltip({
+  content,
+  children,
+  className,
+  side = "top",
   delayDuration = 200,
-  variant = "default"
+  variant = "default",
 }: SimpleTooltipProps) {
-  
   const styles = {
     default: {
-      container: "bg-foreground text-background px-3 py-1.5 text-[10px] font-mono font-bold uppercase tracking-widest",
-      arrow: "fill-foreground"
+      container:
+        "bg-foreground text-background px-3 py-1.5 text-[10px] font-mono font-bold uppercase tracking-widest",
+      arrow: "fill-foreground",
     },
     rich: {
       container: "bg-surface text-popover-foreground border border-border px-3 py-2 neo-shadow-sm",
-      arrow: "fill-popover"
-    }
+      arrow: "fill-popover",
+    },
   };
 
   return (
     <TooltipProvider delayDuration={delayDuration}>
       <TooltipRoot>
-        <TooltipTrigger asChild>
-          {children}
-        </TooltipTrigger>
-        <TooltipContent side={side} className={styles[variant].container}>
+        <TooltipTrigger asChild>{children}</TooltipTrigger>
+        <TooltipContent side={side} className={cn(styles[variant].container, className)}>
           {content}
           <TooltipPrimitive.Arrow className={styles[variant].arrow} />
         </TooltipContent>

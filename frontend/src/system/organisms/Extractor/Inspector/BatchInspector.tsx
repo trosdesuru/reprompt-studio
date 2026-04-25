@@ -82,7 +82,7 @@ export function BatchInspector({
       }
 
       const payload = {
-        title: `Gen - ${item.data.software || "IA"}`,
+        title: `${item.data.software || "IA"}`,
         prompt: item.data.prompt,
         negative_prompt: item.data.negativePrompt,
         software: item.data.software,

@@ -32,7 +32,7 @@ export function RichPromptTooltipContent({ prompt }: { prompt: SavedPrompt }) {
           </span>
           <span
             className={`text-xs font-semibold truncate ${
-              isMissing ? "text-destructive font-bold" : "text-foreground"
+              isMissing ? "text-foreground font-bold" : "text-destructive"
             }`}
           >
             {isMissing ? "N/A" : value}

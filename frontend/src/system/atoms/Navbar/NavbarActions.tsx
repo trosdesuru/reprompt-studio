@@ -7,6 +7,7 @@ import { useTheme } from "@/src/utils/hooks/useTheme";
 import { UserDropdown } from "@/src/features/user/components/UserDropdown";
 import { NotificationDropdown } from "../../molecules/Navbar/NotificationDropdown";
 import { IconAlbum, IconSun, IconMoon, IconScanTraces } from "@tabler/icons-react";
+import { Tooltip } from "../Tooltip/Tooltip";
 
 export function NavbarActions() {
   const user = useAuthStore((state) => state.user);
@@ -30,29 +31,43 @@ export function NavbarActions() {
       ) : user ? (
         <>
           <div className="flex items-center gap-2">
-            <Link
-              href="/es/studio"
-              className="flex items-center gap-2 px-4 py-2 bg-foreground text-background rounded-lg text-sm font-bold hover:opacity-90 transition-opacity"
+            <Tooltip content="Mi studio" side="bottom">
+              <Link
+                href="/es/studio"
+                className="flex items-center gap-2 px-4 py-2 bg-foreground text-background rounded-lg text-sm font-bold hover:opacity-90 transition-opacity"
+              >
+                <IconAlbum size={18} />
+                Studio
+              </Link>
+            </Tooltip>
+
+            <Tooltip
+              content="Extractor Reprompt"
+              side="bottom"
+              className="bg-accent text-secondary"
             >
-              <IconAlbum size={18} />
-              Studio
-            </Link>
-            <Link
-              href="/es/reprompt"
-              className="p-2 rounded-md text-muted-foreground hover:text-foreground transition-colors hover:bg-muted cursor-pointer"
-              title="Mi Estudio"
-            >
-              <IconScanTraces size={22} />
-            </Link>
+              <Link
+                href="/es/reprompt"
+                className="p-2 rounded-md text-muted-foreground hover:text-foreground transition-colors hover:bg-muted cursor-pointer"
+                title="Mi Estudio"
+              >
+                <IconScanTraces size={22} />
+              </Link>
+            </Tooltip>
           </div>
+
           <NotificationDropdown />
-          <button
-            onClick={toggleTheme}
-            className="p-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer transition-colors"
-            title="Cambiar tema"
-          >
-            {isDark ? <IconSun size={24} /> : <IconMoon size={24} />}
-          </button>
+
+          <Tooltip content="Cambiar Tema" side="bottom">
+            <button
+              onClick={toggleTheme}
+              className="p-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer transition-colors"
+              title="Cambiar tema"
+            >
+              {isDark ? <IconSun size={24} /> : <IconMoon size={24} />}
+            </button>
+          </Tooltip>
+
           <UserDropdown />
         </>
       ) : (
