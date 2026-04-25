@@ -1,5 +1,3 @@
-// src/utils/lib/image-optimizer.ts
-
 export interface OptimizedImage {
   file: File;
   width: number;

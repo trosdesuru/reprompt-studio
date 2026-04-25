@@ -15,11 +15,9 @@ from app.services.auth_service import AuthService
 from app.services.audit_service import AuditService
 from app.core.db import get_session
 from app.api.deps import get_current_user, get_current_admin, RateLimiter
+from app.models.user import User, InviteCode, AuditLog
 
 from app.schemas.user import (
-    User,
-    InviteCode,
-    AuditLog,
     GoogleAuthRequest,
     GoogleJoinRequest,
     DiscordAuthRequest,
