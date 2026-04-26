@@ -95,7 +95,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       if (username) {
         console.log(`✅ [AUTH_STORE] checkAuth exitoso: @${username}`);
         set({
-          user: { username, role },
+          user: {
+            ...userData,
+            username,
+            role,
+            avatarUrl: userData?.avatar_url || userData?.avatarUrl,
+          },
           isAuthenticated: true,
         });
       } else {

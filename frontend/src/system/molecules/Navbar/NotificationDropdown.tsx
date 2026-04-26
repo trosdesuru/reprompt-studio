@@ -58,8 +58,8 @@ export function NotificationDropdown() {
       {isOpen && (
         <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-popover text-popover-foreground neo-border neo-shadow rounded-lg flex flex-col z-100 animate-in fade-in-0 zoom-in-95 origin-top-right overflow-hidden">
           {/* Header */}
-          <div className="p-4 border-b border-border bg-primary flex justify-between items-center">
-            <h3 className="text-sm text-secondary font-bold font-mono uppercase tracking-wide">
+          <div className="p-4 border-b border-border bg-background flex justify-between items-center">
+            <h3 className="text-sm text-primary font-bold font-mono uppercase tracking-wide">
               Notificaciones
             </h3>
             <div className="flex gap-2">
@@ -95,9 +95,8 @@ export function NotificationDropdown() {
                 <div
                   key={n.id}
                   onClick={() => markAsRead(n.id)}
-                  // 🟢 ITEMS: Usamos bg-accent/10 para los no leídos y border-border/50
                   className={`p-4 border-b border-border/50 cursor-pointer transition-colors flex gap-3 ${
-                    n.read ? "bg-background opacity-70" : "bg-accent/10 hover:bg-accent/20"
+                    n.read ? "bg-background" : "bg-background hover:bg-secondary"
                   }`}
                 >
                   <div className="mt-0.5 shrink-0">{getIcon(n.type)}</div>

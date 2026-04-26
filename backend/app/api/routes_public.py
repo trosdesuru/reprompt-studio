@@ -214,6 +214,7 @@ def get_public_feed(
                 "title": p.title,
                 "prompt": p.prompt,
                 "username": user.username,
+                "avatar_url": user.avatar_url,
                 "image_url": p.image_url,
                 "model": p.model,
                 "resolution": p.resolution,

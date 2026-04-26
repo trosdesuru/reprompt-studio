@@ -21,10 +21,10 @@ export function UserAvatar({
   onClick,
 }: UserAvatarProps) {
   const sizeClasses = {
-    sm: "w-8 h-8",
-    md: "w-10 h-10",
-    lg: "w-16 h-16",
-    xl: "w-24 h-24",
+    sm: "w-8 h-8 text-xs",
+    md: "w-10 h-10 text-md",
+    lg: "w-16 h-16 text-lg",
+    xl: "w-24 h-24 text-3xl",
     "2xl": "w-20 h-20 md:w-28 md:h-28",
   };
 
@@ -33,7 +33,7 @@ export function UserAvatar({
       className={`
         ${sizeClasses[size]} 
         shrink-0 rounded-full flex items-center justify-center overflow-hidden
-        border-2 border-border/30 bg-accent relative group
+        bg-accent relative group
         ${editable && !isUploading ? "cursor-pointer hover:border-accent" : ""}
         ${className}
       `}
@@ -62,14 +62,10 @@ export function UserAvatar({
           className="object-cover"
         />
       ) : (
-        <div className="w-full h-full bg-background flex items-center justify-center p-2">
-          <Image
-            src="/logo-white.svg"
-            alt="Default Avatar"
-            width={32}
-            height={32}
-            className="opacity-30 group-hover:scale-110 transition-transform duration-500"
-          />
+        <div className="w-full h-full bg-popover flex items-center justify-center border-2 border-accent rounded-full">
+          <span className="text-secondary font-black font-prompt uppercase tracking-widest opacity-80 group-hover:scale-110 transition-transform duration-300">
+            {username ? username.substring(0, 2) : "??"}
+          </span>
         </div>
       )}
     </div>

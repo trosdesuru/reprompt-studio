@@ -35,7 +35,10 @@ export function useAvatarUpload(username: string, onAvatarUpdate?: (newUrl: stri
 
       const uploadRes = await fetch(upload_url, {
         method: "PUT",
-        headers: { "Content-Type": "image/webp", "Cache-Control": "public, max-age=31536000" },
+        headers: {
+          "Content-Type": "image/webp",
+          "Cache-Control": "public, max-age=31536000, immutable",
+        },
         body: optimizedFile,
       });
       if (!uploadRes.ok) throw new Error("Error subiendo a R2");
@@ -51,7 +54,7 @@ export function useAvatarUpload(username: string, onAvatarUpdate?: (newUrl: stri
       setLocalAvatar(file_url);
 
       if (user?.username === username && checkAuth) {
-        await checkAuth();
+        await checkAuth(true);
       }
 
       notify("Perfil", "Avatar actualizado con éxito", "success");

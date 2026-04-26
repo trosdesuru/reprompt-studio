@@ -1,10 +1,11 @@
 import Link from "next/link";
-import { IconStack2, IconUser } from "@tabler/icons-react";
+import { IconStack2 } from "@tabler/icons-react";
 import { LazyImage } from "../Media/LazyImage";
 import { FeedItem } from "@/src/types/models";
 import { getFeedItemUrl } from "@/src/utils/lib/routes";
 import { ImageDebugOverlay } from "../../atoms/Debug/ImageDebugOverlay";
 import { getBoundedAspectRatio } from "@/src/utils/lib/media";
+import { UserAvatar } from "../../atoms/Avatar/Avatar";
 
 interface FeedItemCardProps {
   item: FeedItem;
@@ -86,7 +87,7 @@ export function FeedItemCard({ item, lang, isPriority = false, index = 0 }: Feed
           {item.title}
         </h3>
         <div className="flex items-center gap-1.5 mt-1 text-white/80 text-xs font-mono">
-          <IconUser size={12} /> @{item.username}
+          <UserAvatar size="sm" username={item.username} /> @{item.username}
         </div>
       </div>
     </Link>

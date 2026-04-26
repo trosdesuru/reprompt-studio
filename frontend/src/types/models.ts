@@ -54,6 +54,7 @@ export interface FeedItem {
   type: "prompt" | "directory" | "studio";
   title: string;
   username: string;
+  avatar_url?: string | null;
   image_url?: string;
   width?: number;
   height?: number;

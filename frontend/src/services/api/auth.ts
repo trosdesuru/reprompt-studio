@@ -43,7 +43,16 @@ export const authApi = {
       body: JSON.stringify(data),
     }).then(JSON_DATA),
 
-  me: () => fetchSeguro(`${API_URL}/auth/me`, { method: "GET" }).then(JSON_DATA),
+  me: () =>
+    fetchSeguro(`${API_URL}/auth/me`, {
+      method: "GET",
+      cache: "no-store",
+      headers: {
+        "Cache-Control": "no-cache, no-store, must-revalidate",
+        Pragma: "no-cache",
+        Expires: "0",
+      },
+    }).then(JSON_DATA),
 
   generarInvitacion: (role: string = "voyager") =>
     fetchSeguro(`${API_URL}/auth/invite-codes?role_requested=${role}`, { method: "POST" }).then(
@@ -58,7 +67,8 @@ export const authApi = {
 
   refrescarToken: () => fetchSeguro(`${API_URL}/auth/refresh`, { method: "POST" }).then(JSON_DATA),
 
-  getGoogleAuthUrl: () => fetchSeguro(`${API_URL}/auth/google/url`, { method: "GET" }).then(JSON_DATA),
+  getGoogleAuthUrl: () =>
+    fetchSeguro(`${API_URL}/auth/google/url`, { method: "GET" }).then(JSON_DATA),
 
   verifyGoogleCode: (data: { code: string; redirect_uri: string }) =>
     fetchSeguro(`${API_URL}/auth/google/callback`, {

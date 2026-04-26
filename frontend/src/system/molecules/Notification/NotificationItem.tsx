@@ -23,7 +23,7 @@ export function NotificationItem({ notification: n, onRead }: NotificationItemPr
     <div
       onClick={onRead}
       className={`p-4 border-b border-border/50 cursor-pointer transition-colors flex gap-3 ${
-        n.read ? "bg-background opacity-70" : "bg-accent/10 hover:bg-accent/20"
+        n.read ? "bg-white opacity-70" : "bg-white hover:bg-muted"
       }`}
     >
       <div className="mt-0.5 shrink-0">{getNotificationIcon(n.type)}</div>

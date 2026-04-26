@@ -23,6 +23,7 @@ def get_current_user_profile(current_user: User = Depends(get_current_user)):
             "username": current_user.username,
             "role": current_user.role,
             "is_active": current_user.is_active,
+            "avatar_url": current_user.avatar_url,
         },
     }
 
