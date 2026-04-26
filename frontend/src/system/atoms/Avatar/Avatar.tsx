@@ -4,7 +4,7 @@ import { IconCamera, IconLoader2 } from "@tabler/icons-react";
 export interface UserAvatarProps {
   username: string;
   avatarUrl?: string | null;
-  size?: "sm" | "md" | "lg" | "xl" | "2xl";
+  size?: "xs" | "sm" | "md" | "lg" | "xl" | "2xl";
   className?: string;
   editable?: boolean;
   isUploading?: boolean;
@@ -21,6 +21,7 @@ export function UserAvatar({
   onClick,
 }: UserAvatarProps) {
   const sizeClasses = {
+    xs: "w-6 h-6 text-xs",
     sm: "w-8 h-8 text-xs",
     md: "w-10 h-10 text-md",
     lg: "w-16 h-16 text-lg",

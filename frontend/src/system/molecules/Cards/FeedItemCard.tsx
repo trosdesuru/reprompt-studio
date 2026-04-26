@@ -17,24 +17,15 @@ interface FeedItemCardProps {
 export function FeedItemCard({ item, lang, isPriority = false, index = 0 }: FeedItemCardProps) {
   const href = getFeedItemUrl(item, lang);
 
-  // Calculamos el ratio exacto en lugar de usar clases Tailwind predefinidas
   const boundedRatio = getBoundedAspectRatio(item.width, item.height, item.resolution);
 
-  // 🟢 LOG DE AUDITORÍA: Comparativa de Resoluciones
   if (process.env.NODE_ENV === "development") {
-    const ratioFisico = item.width && item.height ? (item.width / item.height).toFixed(3) : "N/A";
-    let ratioMeta = "N/A";
-    if (item.resolution && item.resolution.includes("x")) {
-      const [w, h] = item.resolution.split("x");
-      ratioMeta = (Number(w) / Number(h)).toFixed(3);
-    }
-
-    console.log(
-      `📊 [FEED-CARD: ${item.raw_id || item.id}]\n` +
-        `   ├─ Físico (DB): ${item.width || "null"} x ${item.height || "null"} (Ratio: ${ratioFisico})\n` +
-        `   ├─ Metadata   : ${item.resolution || "null"} (Ratio: ${ratioMeta})\n` +
-        `   └─ CSS Final  : aspectRatio = ${boundedRatio}`,
-    );
+    console.log(`🔍 [FEED ITEM DEBUG: @${item.username}]`, {
+      id: item.id,
+      username: item.username,
+      avatarUrl: item.avatar_url,
+      fullItem: item,
+    });
   }
 
   return (
@@ -43,7 +34,6 @@ export function FeedItemCard({ item, lang, isPriority = false, index = 0 }: Feed
       className="group relative cursor-pointer bg-muted/10 neo-border overflow-hidden block transition-all hover:neo-shadow-accent w-full"
       style={{ aspectRatio: boundedRatio }}
     >
-      {/* 🟢 INYECTAMOS LA TELEMETRÍA (Solo visible al hacer hover en entorno dev) */}
       <ImageDebugOverlay
         id={item.raw_id || item.id}
         width={item.width}
@@ -87,7 +77,8 @@ export function FeedItemCard({ item, lang, isPriority = false, index = 0 }: Feed
           {item.title}
         </h3>
         <div className="flex items-center gap-1.5 mt-1 text-white/80 text-xs font-mono">
-          <UserAvatar size="sm" username={item.username} /> @{item.username}
+          <UserAvatar size="xs" username={item.username} avatarUrl={item.avatar_url} />@
+          {item.username}
         </div>
       </div>
     </Link>
