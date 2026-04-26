@@ -2,6 +2,29 @@ import { fetchSeguro } from "./client";
 import { ENV } from "@/src/services/config/env";
 
 const API_URL = ENV.API_URL;
+
+export const SearchService = {
+  buscarEnStudio: async (query: string, limit: number = 20) => {
+    const startTime = performance.now();
+    try {
+      const params = new URLSearchParams({ q: query, limit: limit.toString() });
+      const response = await fetchSeguro(`${API_URL}/studio?${params.toString()}`, {
+        method: "GET",
+      });
+
+      if (process.env.NODE_ENV === "development") {
+        const duration = (performance.now() - startTime).toFixed(2);
+        console.info(`⚡ [SEARCH_TELEMETRY] Búsqueda de "${query}" completada en ${duration}ms`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error(`🚨 [SEARCH_ERROR] Fallo al buscar "${query}":`, error);
+      throw error;
+    }
+  },
+};
+
 export const searchApi = {
   buscar: (
     query: string,

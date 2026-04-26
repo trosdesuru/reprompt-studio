@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { NavbarSearch } from "../../molecules/Navbar/NavbarSearch";
 import { NavbarActions } from "../../atoms/Navbar/NavbarActions";
-import { NavbarMobile } from "../../molecules/Navbar/NavbarMobile";
+import { NavbarMobile } from "../../molecules/Navbar/Mobile/NavbarMobile";
 import Image from "next/image";
 
 export function Navbar() {

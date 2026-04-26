@@ -1,8 +1,8 @@
-// src/system/molecules/Search/UniversalSearchBar.tsx
 "use client";
 
 import { useRef, useEffect } from "react";
 import { IconSearch, IconLoader2, IconX } from "@tabler/icons-react";
+import { Tooltip } from "../../atoms/Tooltip/Tooltip";
 
 interface UniversalSearchBarProps {
   query: string;
@@ -40,6 +40,13 @@ export function UniversalSearchBar({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [enableKeyboardShortcut]);
 
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      inputRef.current?.focus();
+    }, 50);
+    return () => clearTimeout(timer);
+  }, []);
+
   return (
     <div className="relative flex items-center w-full h-10 bg-muted/20 border border-border/40 rounded-xl focus-within:border-(--accent-color)/50 focus-within:ring-1 focus-within:ring-(--accent-color)/20 transition-all backdrop-blur-sm">
       <form
@@ -71,7 +78,9 @@ export function UniversalSearchBar({
             onClick={onClear}
             className="pr-3 text-muted-foreground/40 hover:text-foreground transition-colors"
           >
-            <IconX size={14} />
+            <Tooltip className="z-9999" content="Cerrar">
+              <IconX size={14} />
+            </Tooltip>
           </button>
         )}
       </form>

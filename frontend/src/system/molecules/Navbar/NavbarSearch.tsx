@@ -1,58 +1,66 @@
 "use client";
 
-import React, { useCallback, useEffect, useRef } from "react";
+import React, { useState, useRef } from "react";
 import { useSearch } from "@/src/features/search/hooks/useSearch";
-import { SearchCategorySelector } from "./SearchCategorySelector";
-import { IconSearch, IconLoader2 } from "@tabler/icons-react";
-import { EH_CATEGORIES } from "@/src/constants/filters";
+import { useKeyboardShortcut } from "@/src/utils/hooks/useKeyboardShortcut";
+import { useClickOutside } from "@/src/utils/hooks/useClickOutside";
+
+import { Modal } from "@/src/system/molecules/Modal/Modal";
+import { UniversalSearchBar } from "@/src/system/molecules/Search/UniversalSearchBar";
+
+import { SearchTrigger, SemanticSearchHeader } from "./SearchComponents";
+import { SearchModalHeader } from "./SearchModaHeader";
 
 export function NavbarSearch() {
-  const { query, setQuery, handleSearch, activeCategories, toggleCategory, isLoading } = useSearch();
-  const inputRef = useRef<HTMLInputElement>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const { query, setQuery, handleSearch, isLoading } = useSearch();
 
-  const onSubmit = useCallback((e: React.FormEvent) => {
-    e.preventDefault();
-    handleSearch(e);
-  }, [handleSearch]);
+  const modalContentRef = useRef<HTMLDivElement>(null);
 
-  const onInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    setQuery(e.target.value);
-  }, [setQuery]);
+  useClickOutside(modalContentRef, () => {
+    if (isModalOpen) handleCloseAndClear();
+  });
 
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === '/' && document.activeElement?.tagName !== 'INPUT' && document.activeElement?.tagName !== 'TEXTAREA') {
-        e.preventDefault();
-        inputRef.current?.focus();
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
+  useKeyboardShortcut("/", () => {
+    setIsModalOpen(true);
+  });
+
+  const handleCloseAndClear = () => {
+    setQuery("");
+    setIsModalOpen(false);
+  };
+
+  const onExecuteSearch = () => {
+    if (!query.trim()) return;
+
+    const syntheticEvent = { preventDefault: () => {} } as React.FormEvent;
+    handleSearch(syntheticEvent);
+    handleCloseAndClear();
+  };
 
   return (
-    <div className="w-full max-w-2xl flex items-center h-10 bg-muted/30 dark:bg-white/0.03 border border-border/50 rounded-lg overflow-hidden focus-within:border-var(--accent-color)/50 focus-within:ring-1 focus-within:ring-var(--accent-color)/20 transition-all">
-      <SearchCategorySelector 
-        options={EH_CATEGORIES}
-        activeCategories={activeCategories} 
-        onToggle={toggleCategory} 
-      />
-      <form onSubmit={onSubmit} className="flex-1 h-full flex items-center relative">
-        <input 
-          ref={inputRef}
-          value={query}
-          onChange={onInputChange}
-          className="w-full h-full bg-transparent px-4 text-sm outline-none placeholder:text-muted-foreground/60"
-          placeholder="Buscar prompts, artistas... (Pulsa '/')"
-        />
-        <button 
-          type="submit" 
-          disabled={isLoading}
-          className="absolute right-3 text-muted-foreground hover:text-foreground disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-        >
-          {isLoading ? <IconLoader2 size={18} className="animate-spin" /> : <IconSearch size={18} stroke={2} />}
-        </button>
-      </form>
-    </div>
+    <>
+      <SearchTrigger onOpen={() => setIsModalOpen(true)} />
+
+      <Modal isOpen={isModalOpen} onClose={handleCloseAndClear} maxWidth="max-w-2xl">
+        <div ref={modalContentRef} className="flex flex-col w-full bg-background">
+          <div className="p-5 flex flex-col gap-4">
+            <SearchModalHeader />
+
+            <UniversalSearchBar
+              query={query}
+              isLoading={isLoading}
+              placeholder="Redefine tu búsqueda"
+              onQueryChange={setQuery}
+              onSubmit={onExecuteSearch}
+              onClear={() => setQuery("")}
+              enableKeyboardShortcut={true}
+            />
+
+            <SemanticSearchHeader />
+          </div>
+        </div>
+      </Modal>
+    </>
   );
 }
