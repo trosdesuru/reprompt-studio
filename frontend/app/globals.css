@@ -10,6 +10,8 @@
 :root {
   --brand-bg: #fefdf3;
   --brand-surface: #ffffff;
+  --brand-bg-badge-vyg: #ffffff;
+  --brand-artist: #0f89b5;
 
   --brand-text: #292929;
   --brand-muted: #f5f5f5;
@@ -23,6 +25,8 @@
   --brand-shadow: #dc3b6e;
 
   --background: var(--brand-bg);
+  --artist: var(--brand-artist);
+
   --foreground: var(--brand-text);
 
   --card: var(--brand-bg);
@@ -60,6 +64,7 @@
 .dark {
   --brand-bg: #181818;
   --brand-surface: #0f0f0f;
+  --brand-artist: #0f89b5;
 
   --brand-text: #e7e7e7;
   --brand-muted: #171717;
@@ -160,6 +165,7 @@ body {
   --color-input: var(--input);
   --color-ring: var(--ring);
   --color-background: var(--background);
+  --color-artist: var(--artist);
   --color-foreground: var(--foreground);
   --color-surface: var(--surface);
 

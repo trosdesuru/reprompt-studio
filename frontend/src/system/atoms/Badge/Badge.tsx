@@ -13,12 +13,12 @@ export function UserBadge({ role = "voyager" }: UserBadgeProps) {
   const badgeConfig: Record<string, { label: string; classes: string }> = {
     voyager: {
       label: "Voyager",
-      classes: "bg-muted text-muted-foreground border-border/50",
+      classes: "bg-gray-500",
     },
     artist: {
       label: "Artist",
       classes:
-        "bg-primary/10 text-primary border-primary/30 shadow-[0_0_10px_rgba(var(--primary-rgb),0.1)]",
+        "bg-artist border-secondary shadow-[0_0_10px_rgba(var(--primary-rgb),0.1)]",
     },
     admin: {
       label: "Admin",
@@ -32,8 +32,8 @@ export function UserBadge({ role = "voyager" }: UserBadgeProps) {
   return (
     <span
       className={`
-        px-2.5 py-0.5 text-xs font-mono lowercase tracking-widest 
-        rounded-md border transition-all duration-300
+        px-2.5 py-1 text-xs font-mono text-white font-bold lowercase tracking-widest 
+        rounded-md transition-all duration-300
         ${config.classes}
       `}
     >

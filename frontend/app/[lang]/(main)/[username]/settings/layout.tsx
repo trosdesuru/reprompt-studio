@@ -12,7 +12,7 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
             <SettingsSidebar />
           </aside>
 
-          <main className="flex-1 overflow-y-auto custom-scrollbar pl-4 md:pl-10 py-2">
+          <main className="flex-1 overflow-y-auto custom-scrollbar px-2 md:pl-10 py-2">
             <div className="flex flex-col max-w-2xl w-full">{children}</div>
           </main>
         </div>
