@@ -31,7 +31,7 @@ export function UsernameSettingsSection({ user, lang }: UsernameSettingsSectionP
         onClick={() => setIsModalOpen(true)}
       >
         <IconEdit size={16} />
-        Cambiar Nombre
+        Cambiar Username
       </Button>
 
       <ChangeUsernameModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} lang={lang} />

@@ -115,7 +115,7 @@ export function PromptMetadataPanel({ prompt, isOwner = true, onSave }: PromptMe
               onClick={() => setIsEditing(true)}
               className="flex items-center gap-2 px-3 py-1.5 text-xs font-mono uppercase tracking-widest border border-border hover:bg-muted rounded-md transition-colors"
             >
-              <IconEdit size={14} /> Editar Datos
+              <IconEdit size={14} /> Editar
             </button>
           )}
         </div>
