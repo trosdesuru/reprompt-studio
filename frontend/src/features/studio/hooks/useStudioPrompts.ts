@@ -7,7 +7,7 @@ import toast from "react-hot-toast";
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
 
 export function useStudioPrompts() {
-  const { activeDirectoryId, searchQuery } = useStudioUI();
+  const { activeDirectoryId, searchQuery, refreshKey } = useStudioUI();
   const user = useAuthStore((state) => state.user);
 
   const [debouncedQuery, setDebouncedQuery] = useState(searchQuery);
@@ -45,7 +45,7 @@ export function useStudioPrompts() {
     };
 
     fetchPrompts();
-  }, [activeDirectoryId, debouncedQuery]);
+  }, [activeDirectoryId, debouncedQuery, refreshKey]);
 
   const deletePrompt = async (promptId: string) => {
     const toastId = toast.loading("Exterminando rastro digital...");

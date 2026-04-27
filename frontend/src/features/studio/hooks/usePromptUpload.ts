@@ -8,8 +8,9 @@ import toast from "react-hot-toast";
 export function usePromptUpload() {
   const [isUploading, setIsUploading] = useState(false);
 
-  const uploadPrompt = async (fileOriginal: File) => {
+  const uploadPrompt = async (fileOriginal: File, targetDirectoryId: string | null = null) => {
     setIsUploading(true);
+    
     console.log(
       `🚀 [UPLOAD-START] Iniciando flujo de subida para: ${fileOriginal.name} (${(fileOriginal.size / 1024 / 1024).toFixed(2)} MB)`,
     );
@@ -17,17 +18,15 @@ export function usePromptUpload() {
     try {
       console.log(`⏳ [UPLOAD-STEP-1] Optimizando imagen en el cliente...`);
       const archivoOptimizado = await optimizeAndLogImage(fileOriginal);
-
-      // 💡 Extraemos el archivo real del contenedor para que el código quede más limpio
       const finalFile = archivoOptimizado.file;
 
-      // 🟢 PASO 2: Pedir URL pre-firmada
       console.log(
         `⏳ [UPLOAD-STEP-2] Solicitando URL pre-firmada al Backend para: ${finalFile.name} (${finalFile.type})`,
       );
+
       const resUrl = await api.prompts.getPresignedUrl({
         filename: finalFile.name,
-        contentType: finalFile.type, // 🟢 CORRECCIÓN: Pasamos el string del tipo MIME (ej. "image/webp")
+        contentType: finalFile.type,
       });
 
       if (!resUrl.ok) {
@@ -36,14 +35,13 @@ export function usePromptUpload() {
 
       const { url, public_url } = await resUrl.json();
       console.log(`✅ [UPLOAD-STEP-2] Firma obtenida. URL Pública esperada: ${public_url}`);
-
-      // 🟢 PASO 3: Subida directa a R2
       console.log(`☁️ [UPLOAD-STEP-3] Transfiriendo bytes a Cloudflare R2...`);
+
       const uploadRes = await fetch(url, {
         method: "PUT",
-        body: finalFile, // 🟢 CORRECCIÓN: Pasamos solo el archivo nativo a fetch
+        body: finalFile,
         headers: {
-          "Content-Type": finalFile.type, // 🟢 CORRECCIÓN: Usamos el tipo correcto
+          "Content-Type": finalFile.type,
           "Cache-Control": "public, max-age=31536000, immutable",
         },
       });
@@ -57,7 +55,6 @@ export function usePromptUpload() {
 
       console.log(`✅ [UPLOAD-STEP-3] Transferencia a R2 completada con éxito.`);
 
-      // 🟢 PASO 4: Finalización
       console.log(
         `🎉 [UPLOAD-FINISH] Flujo de subida perfecto. Pasando el testigo a la Cuarentena del Backend.`,
       );
@@ -65,6 +62,7 @@ export function usePromptUpload() {
       return {
         success: true,
         image_url: public_url,
+        directory_id: targetDirectoryId,
       };
     } catch (error: any) {
       console.error(`🚨 [UPLOAD-CRASH] El flujo de subida fue interrumpido:`, error);

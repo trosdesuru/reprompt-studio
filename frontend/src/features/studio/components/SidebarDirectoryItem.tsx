@@ -1,5 +1,6 @@
 import React from "react";
 import { Directory } from "@/src/store/useStudioUI";
+import { usePromptUpload } from "../hooks/usePromptUpload";
 import {
   IconChevronDown,
   IconChevronRight,
@@ -27,6 +28,7 @@ interface SidebarDirectoryItemProps {
   setBothRefs: (node: HTMLElement | null) => void;
   attributes: any;
   listeners: any;
+  onSavePromptToDB?: (imageUrl: string, directoryId: string) => Promise<void>;
   onSelect: (e: React.MouseEvent) => void;
   onToggle: (e: React.MouseEvent) => void;
   onRename: (e: React.MouseEvent) => void;
