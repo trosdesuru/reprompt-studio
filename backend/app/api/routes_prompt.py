@@ -26,6 +26,10 @@ class BatchDeleteRequest(BaseModel):
     prompt_ids: List[uuid.UUID]
 
 
+class PromptPatchRequest(BaseModel):
+    directory_id: Optional[str] = None
+
+
 class PresignedUrlRequest(BaseModel):
     file_name: str
     content_type: str
@@ -142,6 +146,24 @@ def obtener_prompts_studio(
     """Obtiene las imágenes para el PromptGrid."""
     resultados = PromptService.get_studio_prompts(session, current_user, directory_id)
     return {"status": "success", "data": resultados}
+
+
+@router.patch("/{prompt_id}")
+def actualizar_prompt(
+    prompt_id: uuid.UUID,
+    data: PromptPatchRequest,
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+
+    prompt_actualizado = PromptService.update_prompt_directory(
+        session=session,
+        current_user=current_user,
+        prompt_id=prompt_id,
+        new_directory_id=data.directory_id,
+    )
+
+    return {"status": "success", "data": prompt_actualizado}
 
 
 @router.delete("/{prompt_id}")

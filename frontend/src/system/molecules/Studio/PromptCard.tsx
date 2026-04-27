@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { IconPhoto, IconTrash } from "@tabler/icons-react";
 import { usePromptCard } from "@/src/system/molecules/Cards/hooks/usePromptCard";
+import { usePromptDnd } from "@/src/features/studio/hooks/usePromptDnd";
 import { PromptCardActions } from "../Cards/PromptCardActions";
 import { LazyImage } from "../Media/LazyImage";
 import { PromptCardSnippet } from "../Cards/PromptCardSnippet";
@@ -34,11 +35,23 @@ export function PromptCard({
   isPriority = false,
 }: PromptCardProps) {
   const { setIsHovered, isMenuOpen, setIsMenuOpen, copied, handleCopy } = usePromptCard();
+  const { attributes, listeners, setNodeRef, isDragging } = usePromptDnd(item);
   const href = `/${lang}/${authorUsername}/p/${item.id}${isStudio ? "?from=studio" : ""}`;
 
   return (
     <div
-      className="group relative flex flex-col h-full bg-background rounded-xl border border-border/50 shadow-xs hover:shadow-md hover:border-border transition-all duration-200 overflow-hidden"
+      ref={setNodeRef}
+      {...attributes}
+      {...listeners}
+      style={{
+        opacity: isDragging ? 0.3 : 1,
+        cursor: isDragging ? "grabbing" : "grab",
+      }}
+      className={`group relative flex flex-col h-full bg-background rounded-xl border transition-all duration-200 overflow-hidden ${
+        isDragging
+          ? "border-accent ring-2 ring-accent scale-95"
+          : "border-border/50 shadow-xs hover:shadow-md hover:border-border"
+      }`}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => {
         setIsHovered(false);
@@ -89,16 +102,13 @@ export function PromptCard({
                 <IconPhoto size={32} stroke={1.5} />
               </div>
             )}
-
             <div className="absolute inset-x-0 bottom-0 p-3 pt-12 bg-linear-to-t from-background/95 via-background/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200 ease-in-out flex flex-col gap-1.5 pointer-events-none group-hover:pointer-events-auto">
               <p className="text-[9px] text-muted-foreground font-mono font-semibold uppercase tracking-wider drop-shadow-sm line-clamp-1">
                 {item.model || "Base Model"}
               </p>
-
               <PromptCardSnippet promptText={item.prompt} copied={copied} onCopy={handleCopy} />
             </div>
           </div>
-
           <div className="p-2.5 sm:p-3 bg-background flex-1 flex items-center">
             <h3 className="font-semibold text-xs sm:text-sm text-foreground/90 w-full truncate">
               {item.software || "Sin título"}

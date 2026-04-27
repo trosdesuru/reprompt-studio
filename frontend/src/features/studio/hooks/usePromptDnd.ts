@@ -5,12 +5,12 @@ export function usePromptDnd(prompt: SavedPrompt) {
   const {
     attributes,
     listeners,
-    setNodeRef: setDraggableRef,
+    setNodeRef,
     isDragging,
   } = useDraggable({
     id: `prompt-${prompt.id}`,
     data: { type: "prompt", prompt },
   });
 
-  return { attributes, listeners, setDraggableRef, isDragging };
+  return { attributes, listeners, setNodeRef, isDragging };
 }

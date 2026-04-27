@@ -167,6 +167,7 @@ Directory structure:
     │   │   │   └── hooks/
     │   │   │       ├── useDirectoryActions.ts
     │   │   │       ├── useDirectoryDnd.ts
+    │   │   │       ├── usePromptDnd.ts
     │   │   │       ├── usePromptUpload.ts
     │   │   │       ├── useStudioDnd.ts
     │   │   │       ├── useStudioPrompts.ts
@@ -5585,6 +5586,7 @@ FILE: src/features/studio/components/SidebarDirectoryItem.tsx
 ================================================
 import React from "react";
 import { Directory } from "@/src/store/useStudioUI";
+import { usePromptUpload } from "../hooks/usePromptUpload";
 import {
   IconChevronDown,
   IconChevronRight,
@@ -5612,6 +5614,7 @@ interface SidebarDirectoryItemProps {
   setBothRefs: (node: HTMLElement | null) => void;
   attributes: any;
   listeners: any;
+  onSavePromptToDB?: (imageUrl: string, directoryId: string) => Promise<void>;
   onSelect: (e: React.MouseEvent) => void;
   onToggle: (e: React.MouseEvent) => void;
   onRename: (e: React.MouseEvent) => void;
@@ -6032,6 +6035,28 @@ export function useDirectoryDnd(directory: Directory) {
 
 
 ================================================
+FILE: src/features/studio/hooks/usePromptDnd.ts
+================================================
+import { useDraggable } from "@dnd-kit/core";
+import { SavedPrompt } from "@/src/types/models";
+
+export function usePromptDnd(prompt: SavedPrompt) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef: setDraggableRef,
+    isDragging,
+  } = useDraggable({
+    id: `prompt-${prompt.id}`,
+    data: { type: "prompt", prompt },
+  });
+
+  return { attributes, listeners, setDraggableRef, isDragging };
+}
+
+
+
+================================================
 FILE: src/features/studio/hooks/usePromptUpload.ts
 ================================================
 // src/features/studio/hooks/usePromptUpload.ts
@@ -6044,8 +6069,9 @@ import toast from "react-hot-toast";
 export function usePromptUpload() {
   const [isUploading, setIsUploading] = useState(false);
 
-  const uploadPrompt = async (fileOriginal: File) => {
+  const uploadPrompt = async (fileOriginal: File, targetDirectoryId: string | null = null) => {
     setIsUploading(true);
+    
     console.log(
       `🚀 [UPLOAD-START] Iniciando flujo de subida para: ${fileOriginal.name} (${(fileOriginal.size / 1024 / 1024).toFixed(2)} MB)`,
     );
@@ -6053,17 +6079,15 @@ export function usePromptUpload() {
     try {
       console.log(`⏳ [UPLOAD-STEP-1] Optimizando imagen en el cliente...`);
       const archivoOptimizado = await optimizeAndLogImage(fileOriginal);
-
-      // 💡 Extraemos el archivo real del contenedor para que el código quede más limpio
       const finalFile = archivoOptimizado.file;
 
-      // 🟢 PASO 2: Pedir URL pre-firmada
       console.log(
         `⏳ [UPLOAD-STEP-2] Solicitando URL pre-firmada al Backend para: ${finalFile.name} (${finalFile.type})`,
       );
+
       const resUrl = await api.prompts.getPresignedUrl({
         filename: finalFile.name,
-        contentType: finalFile.type, // 🟢 CORRECCIÓN: Pasamos el string del tipo MIME (ej. "image/webp")
+        contentType: finalFile.type,
       });
 
       if (!resUrl.ok) {
@@ -6072,14 +6096,13 @@ export function usePromptUpload() {
 
       const { url, public_url } = await resUrl.json();
       console.log(`✅ [UPLOAD-STEP-2] Firma obtenida. URL Pública esperada: ${public_url}`);
-
-      // 🟢 PASO 3: Subida directa a R2
       console.log(`☁️ [UPLOAD-STEP-3] Transfiriendo bytes a Cloudflare R2...`);
+
       const uploadRes = await fetch(url, {
         method: "PUT",
-        body: finalFile, // 🟢 CORRECCIÓN: Pasamos solo el archivo nativo a fetch
+        body: finalFile,
         headers: {
-          "Content-Type": finalFile.type, // 🟢 CORRECCIÓN: Usamos el tipo correcto
+          "Content-Type": finalFile.type,
           "Cache-Control": "public, max-age=31536000, immutable",
         },
       });
@@ -6093,7 +6116,6 @@ export function usePromptUpload() {
 
       console.log(`✅ [UPLOAD-STEP-3] Transferencia a R2 completada con éxito.`);
 
-      // 🟢 PASO 4: Finalización
       console.log(
         `🎉 [UPLOAD-FINISH] Flujo de subida perfecto. Pasando el testigo a la Cuarentena del Backend.`,
       );
@@ -6101,6 +6123,7 @@ export function usePromptUpload() {
       return {
         success: true,
         image_url: public_url,
+        directory_id: targetDirectoryId,
       };
     } catch (error: any) {
       console.error(`🚨 [UPLOAD-CRASH] El flujo de subida fue interrumpido:`, error);
@@ -6121,12 +6144,16 @@ FILE: src/features/studio/hooks/useStudioDnd.ts
 ================================================
 import { useState } from "react";
 import { useSensor, useSensors, PointerSensor, DragStartEvent, DragEndEvent } from "@dnd-kit/core";
-import { Directory } from "@/src/store/useStudioUI";
+import { Directory, useStudioUI } from "@/src/store/useStudioUI";
 import { useDirectoryActions } from "./useDirectoryActions";
+import { fetchSeguro } from "@/src/services/api/client";
+import toast from "react-hot-toast";
 
 export function useStudioDnd() {
   const { moveDirectory } = useDirectoryActions();
   const [activeDragDir, setActiveDragDir] = useState<Directory | null>(null);
+  const [activeDragItem, setActiveDragItem] = useState<any | null>(null);
+  const triggerRefresh = useStudioUI((state) => state.triggerRefresh);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -6136,29 +6163,58 @@ export function useStudioDnd() {
 
   const handleDragStart = (event: DragStartEvent) => {
     const { active } = event;
+    setActiveDragItem(active.data.current);
+
     if (active.data.current?.type === "directory") {
       setActiveDragDir(active.data.current.directory);
     }
   };
 
-  const handleDragEnd = (event: DragEndEvent) => {
+  const handleDragEnd = async (event: DragEndEvent) => {
     setActiveDragDir(null);
+    setActiveDragItem(null);
     const { active, over } = event;
 
     if (!over) return;
 
     const isTargetRoot = over.id === "root-zone";
     const targetDirId = isTargetRoot ? null : String(over.id).replace("dir-", "");
-    const draggedDirId = String(active.id).replace("dir-", "");
-
-    if (draggedDirId === (targetDirId || "root")) return;
 
     if (active.data.current?.type === "directory") {
+      const draggedDirId = String(active.id).replace("dir-", "");
+
+      if (draggedDirId === (targetDirId || "root")) return;
       moveDirectory(draggedDirId, targetDirId);
+    }
+
+    if (active.data.current?.type === "prompt") {
+      const promptId = String(active.id).replace("prompt-", "");
+      const currentDirId = active.data.current.prompt.directory_id;
+      if (currentDirId === targetDirId || (!currentDirId && !targetDirId)) return;
+
+      const toastId = toast.loading("Moviendo prompt...");
+
+      try {
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
+        const res = await fetchSeguro(`${API_URL}/prompts/${promptId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ directory_id: targetDirId }),
+        });
+
+        if (!res.ok) throw new Error("No se pudo mover el prompt");
+
+        toast.success("Prompt organizado", { id: toastId });
+
+        triggerRefresh();
+      } catch (error) {
+        toast.error("Error al mover el prompt", { id: toastId });
+        console.error("DND Error:", error);
+      }
     }
   };
 
-  return { sensors, activeDragDir, handleDragStart, handleDragEnd };
+  return { sensors, activeDragItem, handleDragStart, handleDragEnd };
 }
 
 
@@ -6175,7 +6231,7 @@ import toast from "react-hot-toast";
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
 
 export function useStudioPrompts() {
-  const { activeDirectoryId, searchQuery } = useStudioUI();
+  const { activeDirectoryId, searchQuery, refreshKey } = useStudioUI();
   const user = useAuthStore((state) => state.user);
 
   const [debouncedQuery, setDebouncedQuery] = useState(searchQuery);
@@ -6213,7 +6269,7 @@ export function useStudioPrompts() {
     };
 
     fetchPrompts();
-  }, [activeDirectoryId, debouncedQuery]);
+  }, [activeDirectoryId, debouncedQuery, refreshKey]);
 
   const deletePrompt = async (promptId: string) => {
     const toastId = toast.loading("Exterminando rastro digital...");
@@ -8158,6 +8214,9 @@ interface StudioUIState {
   searchQuery: string;
   isSearching: boolean;
 
+  refreshKey: number;
+  triggerRefresh: () => void;
+
   setDirectories: (dirs: Directory[]) => void;
   setActiveDirectory: (id: string | null) => void;
   setSearchQuery: (query: string) => void;
@@ -8171,6 +8230,9 @@ export const useStudioUI = create<StudioUIState>((set, get) => ({
   activeDirectoryId: null,
   searchQuery: "",
   isSearching: false,
+
+  refreshKey: 0,
+  triggerRefresh: () => set((state) => ({ refreshKey: state.refreshKey + 1 })),
 
   setDirectories: (directories) => set({ directories }),
   setActiveDirectory: (activeDirectoryId) => set({ activeDirectoryId }),

@@ -7,9 +7,10 @@ import toast from "react-hot-toast";
 
 export function useStudioDnd() {
   const { moveDirectory } = useDirectoryActions();
+  const triggerRefresh = useStudioUI((state) => state.triggerRefresh);
+
   const [activeDragDir, setActiveDragDir] = useState<Directory | null>(null);
   const [activeDragItem, setActiveDragItem] = useState<any | null>(null);
-  const triggerRefresh = useStudioUI((state) => state.triggerRefresh);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -20,7 +21,6 @@ export function useStudioDnd() {
   const handleDragStart = (event: DragStartEvent) => {
     const { active } = event;
     setActiveDragItem(active.data.current);
-
     if (active.data.current?.type === "directory") {
       setActiveDragDir(active.data.current.directory);
     }
@@ -29,8 +29,8 @@ export function useStudioDnd() {
   const handleDragEnd = async (event: DragEndEvent) => {
     setActiveDragDir(null);
     setActiveDragItem(null);
-    const { active, over } = event;
 
+    const { active, over } = event;
     if (!over) return;
 
     const isTargetRoot = over.id === "root-zone";
@@ -38,7 +38,6 @@ export function useStudioDnd() {
 
     if (active.data.current?.type === "directory") {
       const draggedDirId = String(active.id).replace("dir-", "");
-
       if (draggedDirId === (targetDirId || "root")) return;
       moveDirectory(draggedDirId, targetDirId);
     }
@@ -46,6 +45,7 @@ export function useStudioDnd() {
     if (active.data.current?.type === "prompt") {
       const promptId = String(active.id).replace("prompt-", "");
       const currentDirId = active.data.current.prompt.directory_id;
+
       if (currentDirId === targetDirId || (!currentDirId && !targetDirId)) return;
 
       const toastId = toast.loading("Moviendo prompt...");
@@ -61,7 +61,6 @@ export function useStudioDnd() {
         if (!res.ok) throw new Error("No se pudo mover el prompt");
 
         toast.success("Prompt organizado", { id: toastId });
-
         triggerRefresh();
       } catch (error) {
         toast.error("Error al mover el prompt", { id: toastId });
@@ -70,5 +69,5 @@ export function useStudioDnd() {
     }
   };
 
-  return { sensors, activeDragItem, handleDragStart, handleDragEnd };
+  return { sensors, activeDragItem, activeDragDir, handleDragStart, handleDragEnd };
 }

@@ -301,3 +301,40 @@ class PromptService:
 
         session.commit()
         return len(prompts_a_borrar), [p.id for p in prompts_a_borrar]
+
+    @staticmethod
+    def update_prompt_directory(
+        session: Session,
+        current_user: User,
+        prompt_id: uuid.UUID,
+        new_directory_id: Optional[str],
+    ) -> "ImagePrompt":
+
+        prompt = session.exec(
+            select(ImagePrompt)
+            .where(ImagePrompt.id == prompt_id)
+            .where(ImagePrompt.user_id == current_user.id)
+        ).first()
+
+        if not prompt:
+            raise HTTPException(
+                status_code=404, detail="Prompt no encontrado o no tienes permisos."
+            )
+
+        parsed_dir_id = None
+        if new_directory_id and new_directory_id != "null":
+            try:
+                parsed_dir_id = uuid.UUID(new_directory_id)
+            except ValueError:
+                raise HTTPException(
+                    status_code=400, detail="ID de directorio inválido."
+                )
+
+        prompt.directory_id = parsed_dir_id
+        session.add(prompt)
+        session.commit()
+        session.refresh(prompt)
+
+        prompt.embedding = []
+
+        return prompt
