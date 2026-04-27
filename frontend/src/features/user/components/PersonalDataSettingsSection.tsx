@@ -15,9 +15,9 @@ export function PersonalDataSettingsSection({ user }: { user: User }) {
         <h3 className="text-lg font-bold">Datos Personales</h3>
         <p className="text-sm text-muted-foreground mt-1 leading-relaxed">
           Nombre:{" "}
-          <span className="text-foreground font-medium">{user.fullName || "Sin definir"}</span> •
+          <span className="text-destructive font-bold">{user.fullName || "Sin definir"}</span> •
           Profesión:{" "}
-          <span className="text-foreground font-medium">{user.profession || "Creador"}</span>
+          <span className="text-destructive font-bold">{user.profession || "Sin definir"}</span>
         </p>
       </div>
 
@@ -27,7 +27,7 @@ export function PersonalDataSettingsSection({ user }: { user: User }) {
         onClick={() => setIsModalOpen(true)}
       >
         <IconId size={16} />
-        Editar
+        Modificar Datos
       </Button>
 
       <ChangePersonalDataModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
