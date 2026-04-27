@@ -67,7 +67,7 @@ export function WorkspaceHeader() {
         className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-xs font-bold hover:bg-primary/90 transition-all shadow-sm active:scale-95 shrink-0 ml-4"
       >
         <IconScanTraces size={16} />
-        <span className="hidden sm:inline tracking-widest">DATA EXTRACTOR</span>
+        <span className="hidden sm:inline tracking-widest">Extractor</span>
       </Link>
     </header>
   );
