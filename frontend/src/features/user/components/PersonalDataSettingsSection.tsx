@@ -27,7 +27,7 @@ export function PersonalDataSettingsSection({ user }: { user: User }) {
         onClick={() => setIsModalOpen(true)}
       >
         <IconId size={16} />
-        Editar Datos
+        Editar
       </Button>
 
       <ChangePersonalDataModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
