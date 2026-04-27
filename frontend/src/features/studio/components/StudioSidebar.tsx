@@ -2,7 +2,7 @@
 
 import { IconFolderPlus, IconCloudUpload, IconFolder } from "@tabler/icons-react";
 import { useStudioUI, Directory } from "@/src/store/useStudioUI";
-import { SidebarDirectory } from "../../molecules/Studio/SidebarDirectory";
+import { SidebarDirectory } from "@/src/system/molecules/Studio/SidebarDirectory";
 import { useFileUploader } from "@/src/features/extractor/hooks/useFileUploader";
 import { useDirectoryActions } from "@/src/features/studio/hooks/useDirectoryActions";
 import { useDroppable } from "@dnd-kit/core";

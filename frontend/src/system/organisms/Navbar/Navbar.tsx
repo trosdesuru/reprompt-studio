@@ -1,13 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { NavbarSearch } from "../../molecules/Navbar/NavbarSearch";
-import { NavbarActions } from "../../atoms/Navbar/NavbarActions";
-import { NavbarMobile } from "../../molecules/Navbar/Mobile/NavbarMobile";
 import Image from "next/image";
+import { NavbarSearch } from "@/src/features/layout/components/NavbarSearch";
+import { NavbarActions } from "@/src/features/layout/components/NavbarActions";
+import { NavbarMobile } from "../../molecules/Navbar/Mobile/NavbarMobile";
 
 export function Navbar() {
-
   return (
     <nav className="sticky top-0 z-50 w-full bg-background/40 backdrop-blur-md border-b border-border shadow-sm">
       <div className="max-w-90rem mx-auto px-4 md:px-8 h-16 flex items-center justify-between gap-4 lg:gap-8">

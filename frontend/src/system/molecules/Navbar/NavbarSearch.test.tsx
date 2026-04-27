@@ -3,7 +3,7 @@ import "@testing-library/jest-dom";
 import userEvent from "@testing-library/user-event";
 import { useSearch } from "@/src/features/search/hooks/useSearch";
 import { render, screen, fireEvent } from "@testing-library/react";
-import { NavbarSearch } from "./NavbarSearch";
+import { NavbarSearch } from "../../organisms/Navigation/NavbarSearch";
 
 jest.mock("@/src/features/search/hooks/useSearch");
 const mockUseSearch = useSearch as jest.MockedFunction<typeof useSearch>;

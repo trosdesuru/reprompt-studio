@@ -1,17 +1,17 @@
 "use client";
 
-import { useAuthForm } from "@/src/features/auth/hooks/useAuthForm";
-import { AuthTabs } from "../../molecules/Tabs/AuthTabs";
-import { AuthHeader } from "../../molecules/Auth/AuthHeader";
-import { SocialLogins } from "../../molecules/Auth/SocialLogins";
-import { AuthSeparator } from "../../atoms/Login/AuthSeparator";
-import { CredentialsForm } from "../../molecules/Auth/CredentialsForm";
+import { useAuthForm } from "../hooks/useAuthForm";
+import { AuthTabs } from "@/src/system/molecules/Tabs/AuthTabs";
+import { AuthHeader } from "./AuthHeader";
+import { SocialLogins } from "./SocialLogins";
+import { AuthSeparator } from "@/src/system/atoms/Login/AuthSeparator";
+import { CredentialsForm } from "./CredentialsForm";
 
 interface AuthFormProps {
   lang: string;
 }
 
-export function AuthForm({lang}: AuthFormProps) {
+export function AuthForm({ lang }: AuthFormProps) {
   const { state, actions } = useAuthForm();
 
   if (state.oauthPending) {

@@ -5,9 +5,9 @@ import { useState, useEffect } from "react";
 import { useAuthStore } from "@/src/store/authStore";
 import { useTheme } from "@/src/utils/hooks/useTheme";
 import { UserDropdown } from "@/src/features/user/components/UserDropdown";
-import { NotificationDropdown } from "../../molecules/Navbar/NotificationDropdown";
+import { NotificationDropdown } from "@/src/system/molecules/Navbar/NotificationDropdown";
 import { IconAlbum, IconSun, IconMoon, IconScanTraces } from "@tabler/icons-react";
-import { Tooltip } from "../Tooltip/Tooltip";
+import { Tooltip } from "@/src/system/atoms/Tooltip/Tooltip";
 
 export function NavbarActions() {
   const user = useAuthStore((state) => state.user);

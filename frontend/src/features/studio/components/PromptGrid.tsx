@@ -1,7 +1,7 @@
 "use client";
 
 import { PromptCard } from "@/src/system/molecules/Studio/PromptCard";
-import { FadeIn } from "../../atoms/Animations/FadeIn";
+import { FadeIn } from "@/src/system/atoms/Animations/FadeIn";
 import { IconPhotoOff } from "@tabler/icons-react";
 import { SavedPrompt } from "@/src/types/models";
 import { useAuthStore } from "@/src/store/authStore";

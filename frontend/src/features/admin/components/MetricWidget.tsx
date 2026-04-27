@@ -1,4 +1,4 @@
-export function MetricCard({ title, value, icon }: { title: string; value: string | number; icon: React.ReactNode }) {
+export function MetricWidget({ title, value, icon }: { title: string; value: string | number; icon: React.ReactNode }) {
   return (
     <div className="bg-background border border-border p-5 rounded-xl shadow-sm flex items-center justify-between hover:shadow-md transition-shadow">
       <div>

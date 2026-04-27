@@ -2,7 +2,7 @@
 
 import { use } from "react"; // 🟢 Importamos el nuevo hook de React
 import Link from "next/link";
-import { RegisterForm } from "@/src/system/organisms/Auth/RegisterForm";
+import { RegisterForm } from "@/src/features/auth/components/RegisterForm";
 import { useRedirectIfAuthenticated } from "@/src/features/auth/hooks/useRedirectIfAuthenticated";
 
 // 🟢 Cambiamos el tipo para decirle a TypeScript que params es una Promesa

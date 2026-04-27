@@ -81,13 +81,8 @@ clean-docker:
 # ==========================================
 .PHONY: ai-front ai-back ai-full
 
-ai-front:
-	@echo "🧠 Extrayendo código limpio del Frontend..."
-	gitingest ./frontend \
-	--exclude-pattern "node_modules/*" \
-	--exclude-pattern ".next/*" \
-	-o ai-digest-frontend.txt
-	@echo "✅ Frontend extraído (ai-digest-frontend.txt)"
+DIR ?= ./frontend
+OUT_NAME = $(shell basename $(DIR))
 
 ai-system:
 	@echo "🧪 Extrayendo el corazón de Atomic Design (System)..."
@@ -96,6 +91,14 @@ ai-system:
 	--exclude-pattern "*.spec.ts" \
 	-o ai-digest-system.txt
 	@echo "✅ Sistema extraído (ai-digest-system.txt). Listo para refactorizar UI."
+
+ai-front:
+	@echo "🧠 Extrayendo código de $(DIR)..."
+	gitingest $(DIR) \
+	--exclude-pattern "node_modules/*" \
+	--exclude-pattern ".next/*" \
+	-o ai-digest-$(OUT_NAME).txt
+	@echo "✅ Código extraído en ai-digest-$(OUT_NAME).txt"
 
 ai-back:
 	@echo "🧠 Extrayendo código limpio del Backend..."

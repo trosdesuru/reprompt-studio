@@ -19,13 +19,16 @@ export function usePromptUpload() {
       console.log(`⏳ [UPLOAD-STEP-1] Optimizando imagen en el cliente...`);
       const archivoOptimizado = await optimizeAndLogImage(fileOriginal);
 
+      // 💡 Extraemos el archivo real del contenedor para que el código quede más limpio
+      const finalFile = archivoOptimizado.file;
+
       // 🟢 PASO 2: Pedir URL pre-firmada
       console.log(
-        `⏳ [UPLOAD-STEP-2] Solicitando URL pre-firmada al Backend para: ${archivoOptimizado.name} (${archivoOptimizado.type})`,
+        `⏳ [UPLOAD-STEP-2] Solicitando URL pre-firmada al Backend para: ${finalFile.name} (${finalFile.type})`,
       );
       const resUrl = await api.prompts.getPresignedUrl({
-        filename: archivoOptimizado.name,
-        contentType: archivoOptimizado.type,
+        filename: finalFile.name,
+        contentType: finalFile.type, // 🟢 CORRECCIÓN: Pasamos el string del tipo MIME (ej. "image/webp")
       });
 
       if (!resUrl.ok) {
@@ -39,9 +42,9 @@ export function usePromptUpload() {
       console.log(`☁️ [UPLOAD-STEP-3] Transfiriendo bytes a Cloudflare R2...`);
       const uploadRes = await fetch(url, {
         method: "PUT",
-        body: archivoOptimizado,
+        body: finalFile, // 🟢 CORRECCIÓN: Pasamos solo el archivo nativo a fetch
         headers: {
-          "Content-Type": archivoOptimizado.type,
+          "Content-Type": finalFile.type, // 🟢 CORRECCIÓN: Usamos el tipo correcto
           "Cache-Control": "public, max-age=31536000, immutable",
         },
       });

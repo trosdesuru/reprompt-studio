@@ -81,13 +81,24 @@ Directory structure:
     │   ├── features/
     │   │   ├── admin/
     │   │   │   ├── admin.types.ts
+    │   │   │   ├── components/
+    │   │   │   │   ├── AdminHeader.tsx
+    │   │   │   │   ├── AuditTable.tsx
+    │   │   │   │   ├── DatabaseModule.tsx
+    │   │   │   │   ├── MetricWidget.tsx
+    │   │   │   │   ├── QuotaBar.tsx
+    │   │   │   │   └── SecurityModule.tsx
     │   │   │   └── hooks/
     │   │   │       ├── useAdminDashboard.ts
     │   │   │       └── useAdminGuard.ts
     │   │   ├── auth/
     │   │   │   ├── AuthProvider.tsx
     │   │   │   ├── components/
-    │   │   │   │   └── LogoutMenuItem.tsx
+    │   │   │   │   ├── AuthForm.tsx
+    │   │   │   │   ├── AuthHeader.tsx
+    │   │   │   │   ├── CredentialsForm.tsx
+    │   │   │   │   ├── LogoutMenuItem.tsx
+    │   │   │   │   └── SocialLogins.tsx
     │   │   │   └── hooks/
     │   │   │       ├── useAuthForm.tsx
     │   │   │       ├── useCredentialsAuth.ts
@@ -125,6 +136,10 @@ Directory structure:
     │   │   ├── image-viewer/
     │   │   │   └── hooks/
     │   │   │       └── useViewerSync.ts
+    │   │   ├── layout/
+    │   │   │   └── components/
+    │   │   │       ├── NavbarActions.tsx
+    │   │   │       └── NavbarSearch.tsx
     │   │   ├── public/
     │   │   │   └── hooks/
     │   │   │       ├── usePublicDirectory.ts
@@ -144,6 +159,10 @@ Directory structure:
     │   │   │       └── useSettingsNavigation.tsx
     │   │   ├── studio/
     │   │   │   ├── components/
+    │   │   │   │   ├── CreateCollectionModal.tsx
+    │   │   │   │   ├── PromptGrid.tsx
+    │   │   │   │   ├── SidebarDirectoryItem.tsx
+    │   │   │   │   ├── StudioSidebar.tsx
     │   │   │   │   └── Sidebar/
     │   │   │   │       └── StudioSidebar.tsx
     │   │   │   └── hooks/
@@ -222,32 +241,16 @@ Directory structure:
     │   │   │   ├── Login/
     │   │   │   │   ├── AuthSeparator.tsx
     │   │   │   │   └── FormHeader.tsx
-    │   │   │   ├── Navbar/
-    │   │   │   │   └── NavbarActions.tsx
     │   │   │   ├── Notification/
     │   │   │   │   └── NotificationTrigger.tsx
-    │   │   │   ├── Studio/
-    │   │   │   │   └── SidebarDirectoryItem.tsx
     │   │   │   └── Tooltip/
     │   │   │       └── Tooltip.tsx
     │   │   ├── molecules/
     │   │   │   ├── FormField.tsx
     │   │   │   ├── MediaOverlay.tsx
-    │   │   │   ├── Admin/
-    │   │   │   │   ├── AdminHeader.tsx
-    │   │   │   │   ├── AdminLoadingScreen.tsx
-    │   │   │   │   ├── MetricCard.tsx
-    │   │   │   │   ├── MetricWidget.tsx
-    │   │   │   │   ├── QuotaBar.tsx
-    │   │   │   │   └── SectionTitle.tsx
-    │   │   │   ├── Auth/
-    │   │   │   │   ├── AuthHeader.tsx
-    │   │   │   │   ├── CredentialsForm.tsx
-    │   │   │   │   └── SocialLogins.tsx
     │   │   │   ├── Avatar/
     │   │   │   │   └── EditableAvatar.tsx
     │   │   │   ├── Cards/
-    │   │   │   │   ├── CreateCollectionModal.tsx
     │   │   │   │   ├── FeedItemCard.tsx
     │   │   │   │   ├── PromptCardActions.tsx
     │   │   │   │   ├── PromptCardSnippet.tsx
@@ -266,11 +269,15 @@ Directory structure:
     │   │   │   ├── Modal/
     │   │   │   │   └── Modal.tsx
     │   │   │   ├── Navbar/
-    │   │   │   │   ├── NavbarMobile.tsx
     │   │   │   │   ├── NavbarSearch.test.tsx
-    │   │   │   │   ├── NavbarSearch.tsx
     │   │   │   │   ├── NotificationDropdown.tsx
-    │   │   │   │   └── SearchCategorySelector.tsx
+    │   │   │   │   ├── SearchCategorySelector.tsx
+    │   │   │   │   ├── SearchComponents.tsx
+    │   │   │   │   ├── SearchModaHeader.tsx
+    │   │   │   │   └── Mobile/
+    │   │   │   │       ├── MobileMenuPrimitives.tsx
+    │   │   │   │       ├── MobileMenuViews.tsx
+    │   │   │   │       └── NavbarMobile.tsx
     │   │   │   ├── Navigation/
     │   │   │   │   └── Breadcrumbs.tsx
     │   │   │   ├── Notification/
@@ -289,18 +296,6 @@ Directory structure:
     │   │   │   └── Tabs/
     │   │   │       └── AuthTabs.tsx
     │   │   ├── organisms/
-    │   │   │   ├── Admin/
-    │   │   │   │   ├── AuditTable.tsx
-    │   │   │   │   ├── DatabaseModule.tsx
-    │   │   │   │   ├── GarbageCollectorModule.tsx
-    │   │   │   │   ├── InviteManager.tsx
-    │   │   │   │   ├── SecurityModule.tsx
-    │   │   │   │   ├── StorageModule.tsx
-    │   │   │   │   └── UserActivityModal.tsx
-    │   │   │   ├── Auth/
-    │   │   │   │   ├── AuthForm.tsx
-    │   │   │   │   ├── ChangePasswordModal.tsx
-    │   │   │   │   └── RegisterForm.tsx
     │   │   │   ├── Extractor/
     │   │   │   │   ├── Dropzone/
     │   │   │   │   │   ├── DropzoneContent.tsx
@@ -337,9 +332,6 @@ Directory structure:
     │   │   │   │   ├── SidebarHeading.tsx
     │   │   │   │   ├── SidebarItemIcon.tsx
     │   │   │   │   └── utils.ts
-    │   │   │   ├── Studio/
-    │   │   │   │   ├── PromptGrid.tsx
-    │   │   │   │   └── StudioSidebar.tsx
     │   │   │   └── Viewer/
     │   │   │       └── ImageViewerModal/
     │   │   │           └── ImageViewerModal.tsx
@@ -361,10 +353,13 @@ Directory structure:
     │       ├── format/
     │       │   └── formatHelper.ts
     │       ├── hooks/
+    │       │   ├── useAppRouter.ts
     │       │   ├── useAvatarUpload.ts
     │       │   ├── useClickOutside.ts
     │       │   ├── useInfiniteScroll.ts
+    │       │   ├── useKeyboardShortcut.ts
     │       │   ├── useResponsiveColumns.ts
+    │       │   ├── useScrollLock.ts
     │       │   └── useTheme.ts
     │       └── lib/
     │           ├── _media.ts
@@ -950,7 +945,7 @@ FILE: app/globals.css
    ============================ */
 :root {
   --brand-bg: #fefdf3;
-  --brand-surface: #fbfbfb;
+  --brand-surface: #ffffff;
 
   --brand-text: #292929;
   --brand-muted: #f5f5f5;
@@ -1000,7 +995,7 @@ FILE: app/globals.css
    ================ */
 .dark {
   --brand-bg: #181818;
-  --brand-surface: #1c1c1c;
+  --brand-surface: #0f0f0f;
 
   --brand-text: #e7e7e7;
   --brand-muted: #171717;
@@ -1459,7 +1454,7 @@ FILE: app/[lang]/(auth)/join/page.tsx
 
 import { use } from "react"; // 🟢 Importamos el nuevo hook de React
 import Link from "next/link";
-import { RegisterForm } from "@/src/system/organisms/Auth/RegisterForm";
+import { RegisterForm } from "@/src/features/auth/components/RegisterForm";
 import { useRedirectIfAuthenticated } from "@/src/features/auth/hooks/useRedirectIfAuthenticated";
 
 // 🟢 Cambiamos el tipo para decirle a TypeScript que params es una Promesa
@@ -1505,7 +1500,7 @@ FILE: app/[lang]/(auth)/login/page.tsx
 ================================================
 import { Suspense } from "react";
 import { IconLoader2 } from "@tabler/icons-react";
-import { AuthForm } from "@/src/system/organisms/Auth/AuthForm";
+import { AuthForm } from "@/src/features/auth/components/AuthForm"
 
 interface LoginPageProps {
   params: Promise<{ lang: string }> | { lang: string };
@@ -2186,23 +2181,21 @@ FILE: app/[lang]/(main)/admin/page.tsx
 ================================================
 "use client";
 
-import { useEffect } from "react";
+import { useEffect } from "react"
 import { useAdminGuard } from "@/src/features/admin/hooks/useAdminGuard";
 import { useAdminDashboard } from "@/src/features/admin/hooks/useAdminDashboard";
 
-// Organismos (Módulos Complejos)
-import { InviteManager } from "@/src/system/organisms/Admin/InviteManager";
-import { SecurityModule } from "@/src/system/organisms/Admin/SecurityModule";
-import { AuditTable } from "@/src/system/organisms/Admin/AuditTable";
-import { DatabaseModule } from "@/src/system/organisms/Admin/DatabaseModule";
-import { StorageModule } from "@/src/system/organisms/Admin/StorageModule";
-
-// Moléculas (Componentes UI puros extraídos)
-import { AdminHeader } from "@/src/system/molecules/Admin/AdminHeader";
-import { SectionTitle } from "@/src/system/molecules/Admin/SectionTitle";
-import { MetricWidget } from "@/src/system/molecules/Admin/MetricWidget";
-import { AdminLoadingScreen } from "@/src/system/molecules/Admin/AdminLoadingScreen";
-import { GarbageCollectorModule } from "@/src/system/organisms/Admin/GarbageCollectorModule";
+// 🏛️ Componentes de la Feature Admin (FSD - Ubicación corregida)
+import { InviteManager } from "@/src/features/admin/components/InviteManager";
+import { SecurityModule } from "@/src/features/admin/components/SecurityModule";
+import { AuditTable } from "@/src/features/admin/components/AuditTable";
+import { DatabaseModule } from "@/src/features/admin/components/DatabaseModule";
+import { StorageModule } from "@/src/features/admin/components/StorageModule";
+import { AdminHeader } from "@/src/features/admin/components/AdminHeader";
+import { SectionTitle } from "@/src/features/admin/components/SectionTitle";
+import { MetricWidget } from "@/src/features/admin/components/MetricWidget";
+import { AdminLoadingScreen } from "@/src/features/admin/components/AdminLoadingScreen";
+import { GarbageCollectorModule } from "@/src/features/admin/components/GarbageCollectorModule";
 
 export default function AdminDashboardPage() {
   const { user, isLoadingAuth, isAuthorized } = useAdminGuard();
@@ -2340,7 +2333,7 @@ FILE: app/[lang]/(main)/studio/page.tsx
 ================================================
 import { IconAlbum } from "@tabler/icons-react";
 import { PageHeader } from "@/src/system/organisms/Navigation/PageHeader";
-import { StudioSidebar } from "@/src/system/organisms/Studio/StudioSidebar";
+import { StudioSidebar } from "@/src/features/studio/components/StudioSidebar";
 import { StudioDndWrapper } from "@/src/system/molecules/Studio/StudioDndWrapper";
 import { StudioWorkspace } from "@/src/system/templates/Studio/StudioWorkspace";
 
@@ -3133,6 +3126,440 @@ export interface AuditLog {
 
 
 ================================================
+FILE: src/features/admin/components/AdminHeader.tsx
+================================================
+export function AdminHeader({ username }: { username: string }) {
+  return (
+    <header className="border-b-4 border-border pb-6">
+      <h1 className="text-4xl md:text-6xl font-black font-mono uppercase italic tracking-tighter">
+        Admin<span className="text-(--accent-color)">_</span>Terminal
+      </h1>
+      <p className="text-muted-foreground font-mono text-sm mt-2">
+        Acceso concedido a: <span className="text-foreground font-bold">@{username}</span> [ROOT_ACCESS]
+      </p>
+    </header>
+  );
+}
+
+
+
+================================================
+FILE: src/features/admin/components/AuditTable.tsx
+================================================
+// frontend/features/admin/components/AuditTable.tsx
+import { Button } from "@/src/system/atoms/Button/Button";
+import { AuditLog } from "@/src/features/admin/admin.types";
+
+interface AuditTableProps {
+  logs: AuditLog[];
+  isLoading: boolean;
+  onRefresh: () => void;
+}
+
+export function AuditTable({ logs, isLoading, onRefresh }: AuditTableProps) {
+  return (
+    <section className="bg-(--bg-secondary) p-6 neo-border neo-shadow">
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-2xl font-black font-mono uppercase">Registro de Actividad</h2>
+        <Button
+          onClick={onRefresh}
+          isLoading={isLoading}
+          variant="ghost"
+          size="sm"
+          className="text-xs"
+        >
+          ACTUALIZAR_LOGS
+        </Button>
+      </div>
+
+      <div className="overflow-x-auto">
+        <table className="w-full text-left font-mono text-xs border-collapse">
+          <thead>
+            <tr className="border-b-2 border-(--border-color) bg-background/50">
+              <th className="p-4 uppercase font-black opacity-60">Timestamp</th>
+              <th className="p-4 uppercase font-black opacity-60">Operador</th>
+              <th className="p-4 uppercase font-black opacity-60">Acción</th>
+              <th className="p-4 uppercase font-black opacity-60">Detalles de Operación</th>
+            </tr>
+          </thead>
+          <tbody>
+            {logs.length === 0 ? (
+              <tr>
+                <td colSpan={4} className="p-10 text-center opacity-40 italic">
+                  No hay registros de sistema disponibles.
+                </td>
+              </tr>
+            ) : (
+              logs.map((log) => (
+                <tr
+                  key={log.id}
+                  className="border-b border-(--border-color) hover:bg-background/30 transition-colors"
+                >
+                  <td className="p-4 whitespace-nowrap opacity-70">
+                    {new Date(log.timestamp).toLocaleString()}
+                  </td>
+                  <td className="p-4 font-black text-(--accent-color)">@{log.username}</td>
+                  <td className="p-4">
+                    <span className="px-2 py-1 bg-foreground text-background font-black text-[9px]">
+                      {log.action}
+                    </span>
+                  </td>
+                  <td className="p-4 max-w-md truncate hover:whitespace-normal" title={log.details}>
+                    {log.details}
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+
+
+
+================================================
+FILE: src/features/admin/components/DatabaseModule.tsx
+================================================
+"use client";
+
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import toast from "react-hot-toast";
+import { api } from "@/src/services/api";
+import { DatabaseStatsResponse } from "@/src/services/api/admin";
+import {
+  IconUsers,
+  IconPhoto,
+  IconDatabaseShare,
+  IconDotsVertical,
+  IconTrash,
+  IconKey,
+  IconStar,
+  IconBan,
+  IconExternalLink,
+} from "@tabler/icons-react";
+import { MetricCard } from "./MetricWidget";
+import { QuotaBar } from "./QuotaBar";
+
+export function DatabaseModule() {
+  const [stats, setStats] = useState<DatabaseStatsResponse | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+
+  const fetchStats = async () => {
+    try {
+      const data = await api.admin.getDatabaseStats();
+      setStats(data);
+    } catch (err: any) {
+      setError(err.message || "Error de conexión");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchStats();
+  }, []);
+
+  const handleAction = async (
+    userId: string,
+    action: "upgrade" | "deactivate" | "activate" | "reset_password",
+  ) => {
+    setOpenMenuId(null);
+    try {
+      const res = await api.admin.manageUser(userId, action);
+      if (action === "reset_password") {
+        alert(
+          `🚨 NUEVA CONTRASEÑA GENERADA:\n\n${res.new_password}\n\nCópiala antes de cerrar. No se volverá a mostrar.`,
+        );
+      } else {
+        toast.success(res.message);
+      }
+      fetchStats();
+    } catch (err: any) {
+      toast.error(err.message || "Fallo al ejecutar acción");
+    }
+  };
+
+  const handleDelete = async (userId: string, username: string) => {
+    setOpenMenuId(null);
+    const code = prompt(
+      `¡PELIGRO! Vas a borrar a @${username} y TODAS sus imágenes de R2.\n\nEscribe EXTERMINAR para confirmar:`,
+    );
+
+    if (code === "EXTERMINAR") {
+      try {
+        toast.loading("Ejecutando exterminio en cascada...", { id: "delete" });
+        const res = await api.admin.deleteUser(userId);
+        toast.success(res.message, { id: "delete" });
+        fetchStats();
+      } catch (err: any) {
+        toast.error(err.message || "Fallo crítico en borrado", { id: "delete" });
+      }
+    }
+  };
+
+  if (error) return <div className="text-red-500 font-mono">{error}</div>;
+  if (isLoading || !stats)
+    return <div className="animate-pulse h-64 bg-muted/20 rounded-xl border border-border/50" />;
+
+  return (
+    <>
+      <div className="space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <MetricCard
+            title="Usuarios Totales"
+            value={stats.total_users.toLocaleString()}
+            icon={<IconUsers size={24} className="text-blue-500" />}
+          />
+          <MetricCard
+            title="Imágenes Indexadas"
+            value={stats.total_prompts.toLocaleString()}
+            icon={<IconPhoto size={24} className="text-purple-500" />}
+          />
+          <QuotaBar
+            label="Cuota Disco Neon DB (Free Tier)"
+            currentMb={stats.total_mb}
+            limitMb={stats.limit_mb}
+          />
+        </div>
+
+        <div className="bg-background border border-border rounded-xl shadow-sm overflow-hidden pb-32">
+          <div className="p-4 border-b border-border flex items-center gap-2 bg-muted/20">
+            <IconDatabaseShare size={18} className="text-muted-foreground" />
+            <h3 className="font-bold text-sm uppercase tracking-widest text-foreground">
+              Últimos Registros (Neon DB)
+            </h3>
+          </div>
+
+          <div className="overflow-x-auto min-h-300px">
+            <table className="w-full text-sm text-left">
+              <thead className="text-xs text-muted-foreground uppercase bg-muted/30 border-b border-border">
+                <tr>
+                  <th className="px-4 py-3 font-mono">Usuario</th>
+                  <th className="px-4 py-3 font-mono">Rol</th>
+                  <th className="px-4 py-3 font-mono">Status</th>
+                  <th className="px-4 py-3 font-mono text-right">Acciones</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {stats.users.map((user) => (
+                  <tr
+                    key={user.id}
+                    className={`transition-colors ${
+                      !user.is_active ? "opacity-50 bg-red-500/5" : "hover:bg-muted/10"
+                    }`}
+                  >
+                    <td className="px-4 py-3 font-medium text-foreground">
+                      @{user.username}
+                      {user.email && (
+                        <span className="block text-xs font-normal text-muted-foreground">
+                          {user.email}
+                        </span>
+                      )}
+                    </td>
+
+                    <td className="px-4 py-3">
+                      <span
+                        className={`px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider ${
+                          user.role === "admin"
+                            ? "bg-red-500/10 text-red-500 border border-red-500/20"
+                            : user.role === "artist"
+                              ? "bg-purple-500/10 text-purple-500 border border-purple-500/20"
+                              : "bg-muted text-muted-foreground border border-border"
+                        }`}
+                      >
+                        {user.role}
+                      </span>
+                    </td>
+
+                    <td className="px-4 py-3">
+                      {user.is_active ? (
+                        <span className="text-green-500 text-xs font-mono">● Activo</span>
+                      ) : (
+                        <span className="text-red-500 text-xs font-mono">⊗ BANEADO</span>
+                      )}
+                    </td>
+
+                    <td className="px-4 py-3 text-right relative">
+                      <button
+                        onClick={() => setOpenMenuId(openMenuId === user.id ? null : user.id)}
+                        className="p-1.5 hover:bg-muted rounded-md transition-colors"
+                      >
+                        <IconDotsVertical size={18} />
+                      </button>
+
+                      {openMenuId === user.id && (
+                        <div className="absolute right-8 top-10 z-50 w-52 bg-background border border-border rounded-lg shadow-xl py-1 animate-in fade-in zoom-in-95">
+                          <Link
+                            href={`/es/${user.username}`}
+                            target="_blank"
+                            className="flex items-center gap-2 px-3 py-2 text-xs hover:bg-muted/50 w-full text-left"
+                          >
+                            <IconExternalLink size={14} /> Ver Perfil Público
+                          </Link>
+
+                          {user.role === "voyager" && (
+                            <button
+                              onClick={() => handleAction(user.id, "upgrade")}
+                              className="flex items-center gap-2 px-3 py-2 text-xs text-purple-500 hover:bg-purple-500/10 w-full text-left"
+                            >
+                              <IconStar size={14} /> Ascender a Artist
+                            </button>
+                          )}
+
+                          <button
+                            onClick={() => handleAction(user.id, "reset_password")}
+                            className="flex items-center gap-2 px-3 py-2 text-xs text-yellow-600 hover:bg-yellow-500/10 w-full text-left border-t border-border/50 mt-1 pt-2"
+                          >
+                            <IconKey size={14} /> Forzar Nueva Clave
+                          </button>
+
+                          {user.is_active ? (
+                            <button
+                              onClick={() => handleAction(user.id, "deactivate")}
+                              className="flex items-center gap-2 px-3 py-2 text-xs text-orange-500 hover:bg-orange-500/10 w-full text-left"
+                            >
+                              <IconBan size={14} /> Shadowban (Pausar)
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => handleAction(user.id, "activate")}
+                              className="flex items-center gap-2 px-3 py-2 text-xs text-green-500 hover:bg-green-500/10 w-full text-left"
+                            >
+                              <IconBan size={14} /> Quitar Ban
+                            </button>
+                          )}
+
+                          <button
+                            onClick={() => handleDelete(user.id, user.username)}
+                            className="flex items-center gap-2 px-3 py-2 text-xs font-bold text-red-500 hover:bg-red-500/20 w-full text-left border-t border-red-500/20 mt-1 pt-2"
+                          >
+                            <IconTrash size={14} /> Exterminar Cuenta
+                          </button>
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
+
+
+================================================
+FILE: src/features/admin/components/MetricWidget.tsx
+================================================
+export function MetricWidget({ title, value, icon }: { title: string; value: string | number; icon: React.ReactNode }) {
+  return (
+    <div className="bg-background border border-border p-5 rounded-xl shadow-sm flex items-center justify-between hover:shadow-md transition-shadow">
+      <div>
+        <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-1">{title}</p>
+        <p className="text-3xl font-black text-foreground">{value}</p>
+      </div>
+      <div className="p-3 bg-muted/30 rounded-lg">
+        {icon}
+      </div>
+    </div>
+  );
+}
+
+
+
+================================================
+FILE: src/features/admin/components/QuotaBar.tsx
+================================================
+import { IconAlertTriangle } from "@tabler/icons-react";
+
+interface QuotaBarProps {
+  label: string;
+  currentMb: number;
+  limitMb: number;
+}
+
+export function QuotaBar({ label, currentMb, limitMb }: QuotaBarProps) {
+  const percentage = Math.min(100, Math.max(0, (currentMb / limitMb) * 100));
+
+  // Lógica de alerta visual
+  let colorClass = "bg-green-500";
+  if (percentage > 70) colorClass = "bg-yellow-500";
+  if (percentage > 90) colorClass = "bg-red-500 animate-pulse";
+
+  return (
+    <div className="bg-background border border-border p-4 rounded-xl shadow-sm">
+      <div className="flex justify-between items-end mb-2">
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+            {label}
+          </p>
+          <div className="flex items-baseline gap-1 mt-1">
+            <span className="text-2xl font-black text-foreground">{currentMb.toFixed(2)}</span>
+            <span className="text-xs font-mono text-muted-foreground mb-1">
+              / {limitMb.toLocaleString()} MB
+            </span>
+          </div>
+        </div>
+        <span className="text-xs font-mono font-bold">{percentage.toFixed(1)}%</span>
+      </div>
+
+      {/* La Barra de Progreso */}
+      <div className="h-2 w-full bg-muted rounded-full overflow-hidden relative">
+        <div
+          className={`h-full rounded-full transition-all duration-1000 ease-out ${colorClass}`}
+          style={{ width: `${percentage}%` }}
+        />
+      </div>
+
+      {percentage > 90 && (
+        <p className="text-[10px] text-red-500 mt-2 flex items-center gap-1 font-bold">
+          <IconAlertTriangle size={12} /> PELIGRO DE COLAPSO DE CUOTA
+        </p>
+      )}
+    </div>
+  );
+}
+
+
+
+================================================
+FILE: src/features/admin/components/SecurityModule.tsx
+================================================
+// frontend/features/admin/components/SecurityModule.tsx
+import { Button } from "@/src/system/atoms/Button/Button";
+
+export function SecurityModule({ onRevokeAll }: { onRevokeAll: () => void }) {
+  return (
+    <section className="bg-(--bg-secondary) p-6 neo-border neo-shadow flex flex-col gap-4 border-red-500/20">
+      <h2 className="text-xl font-black font-mono uppercase flex items-center gap-2 text-red-500">
+        <span className="w-3 h-3 bg-red-500 rounded-full animate-ping"></span> Seguridad
+      </h2>
+      <p className="text-xs text-(--text-secondary) leading-relaxed">
+        Gestión de sesiones activas en Redis. La revocación es instantánea y global.
+      </p>
+      <div className="mt-auto">
+        <Button
+          onClick={onRevokeAll}
+          className="w-full bg-red-600/10 hover:bg-red-600 hover:text-white border-red-600 text-red-500 transition-all font-black text-xs"
+        >
+          REVOCAR TODAS LAS SESIONES
+        </Button>
+      </div>
+    </section>
+  );
+}
+
+
+
+================================================
 FILE: src/features/admin/hooks/useAdminDashboard.ts
 ================================================
 // frontend/features/admin/hooks/useAdminDashboard.ts
@@ -3261,6 +3688,232 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
 
 ================================================
+FILE: src/features/auth/components/AuthForm.tsx
+================================================
+"use client";
+
+import { useAuthForm } from "../hooks/useAuthForm";
+import { AuthTabs } from "@/src/system/molecules/Tabs/AuthTabs";
+import { AuthHeader } from "./AuthHeader";
+import { SocialLogins } from "./SocialLogins";
+import { AuthSeparator } from "@/src/system/atoms/Login/AuthSeparator";
+import { CredentialsForm } from "./CredentialsForm";
+
+interface AuthFormProps {
+  lang: string;
+}
+
+export function AuthForm({ lang }: AuthFormProps) {
+  const { state, actions } = useAuthForm();
+
+  if (state.oauthPending) {
+    return (
+      <div className="w-full max-w-md mx-auto p-8 bg-(--bg-secondary) neo-border neo-shadow animate-in fade-in zoom-in-95 duration-300">
+        <div className="mb-8 text-center">
+          <h2 className="text-2xl font-black uppercase font-mono tracking-tighter">
+            Último <span className="text-(--accent-color)">Paso</span>
+          </h2>
+          <p className="text-xs font-mono text-(--text-secondary) mt-2 uppercase">
+            Vinculando: {state.oauthPending.email}
+          </p>
+        </div>
+
+        <form onSubmit={actions.handleOauthSubmit} className="flex flex-col gap-6">
+          <div className="relative">
+            <input
+              type="text"
+              required
+              placeholder="CÓDIGO DE INVITACIÓN"
+              value={state.inviteCode}
+              onChange={(e) => actions.setInviteCode(e.target.value.toUpperCase())}
+              className="w-full h-12 bg-background border border-border pl-4 pr-3 text-sm font-mono uppercase focus:outline-none focus:border-(--accent-color) transition-colors"
+              disabled={state.isLoading}
+              lang={lang}
+            />
+          </div>
+
+          <div className="flex flex-col-reverse sm:flex-row gap-4">
+            <button
+              type="button"
+              onClick={actions.cancelOauthFlow}
+              disabled={state.isLoading}
+              className="w-full sm:w-1/3 justify-center h-12 bg-transparent text-foreground border border-border hover:bg-muted font-mono uppercase text-xs font-black tracking-widest transition-colors disabled:opacity-50"
+              lang={lang}
+            >
+              Volver
+            </button>
+            <button
+              type="submit"
+              disabled={state.isLoading}
+              className="w-full sm:w-2/3 justify-center h-12 text-sm font-black uppercase font-mono tracking-widest bg-white text-black hover:bg-gray-200 neo-border transition-all disabled:opacity-50"
+            >
+              {state.isLoading ? "Procesando..." : "Completar"}
+            </button>
+          </div>
+        </form>
+      </div>
+    );
+  }
+
+  return (
+    <div className="w-full max-w-md mx-auto p-8 bg-(--bg-secondary) neo-border neo-shadow animate-in fade-in zoom-in-95 duration-300">
+      <AuthTabs isLogin={state.isLogin} onToggle={actions.setIsLogin} />
+
+      <div className="mt-8">
+        <AuthHeader isLogin={state.isLogin} />
+
+        <SocialLogins
+          isLoading={state.isLoading}
+          isGoogleLoading={state.isGoogleLoading}
+          isDiscordLoading={state.isDiscordLoading}
+          onGoogle={actions.handleGoogleLogin}
+          onDiscord={actions.handleDiscordLogin}
+        />
+
+        <AuthSeparator />
+
+        <CredentialsForm
+          isLogin={state.isLogin}
+          isLoading={state.isLoading}
+          isSocialLoading={state.isGoogleLoading || state.isDiscordLoading}
+          emailOrUser={state.emailOrUser}
+          password={state.password}
+          inviteCode={state.inviteCode}
+          isInviteLocked={state.isInviteLocked}
+          onEmailChange={actions.setEmailOrUser}
+          onPasswordChange={actions.setPassword}
+          onInviteChange={actions.setInviteCode}
+          onSubmit={actions.handleSubmit}
+        />
+      </div>
+    </div>
+  );
+}
+
+
+
+================================================
+FILE: src/features/auth/components/AuthHeader.tsx
+================================================
+// src/system/molecules/Auth/AuthHeader.tsx
+interface AuthHeaderProps {
+  isLogin: boolean;
+}
+
+export function AuthHeader({ isLogin }: AuthHeaderProps) {
+  return (
+    <div className="mb-8 text-center">
+      <h2 className="text-2xl font-black uppercase font-mono tracking-tighter">
+        {isLogin ? "Bienvenido de" : "Únete a la"}{" "}
+        <span className="text-(--accent-color)">{isLogin ? "Nuevo" : "Resistencia"}</span>
+      </h2>
+      <p className="text-xs font-mono text-(--text-secondary) mt-2 uppercase">
+        {isLogin ? "Accede para gestionar tus prompts" : "Almacena tu arte generado por IA"}
+      </p>
+    </div>
+  );
+}
+
+
+
+================================================
+FILE: src/features/auth/components/CredentialsForm.tsx
+================================================
+// src/system/molecules/Auth/CredentialsForm.tsx
+import { IconMail, IconLock, IconTicket, IconLoader2 } from "@tabler/icons-react";
+
+interface CredentialsFormProps {
+  // ... (Mismos props de antes, no cambian)
+  isLogin: boolean;
+  isLoading: boolean;
+  isSocialLoading: boolean;
+  emailOrUser: string;
+  password: string;
+  inviteCode: string;
+  isInviteLocked: boolean;
+  onEmailChange: (value: string) => void;
+  onPasswordChange: (value: string) => void;
+  onInviteChange: (value: string) => void;
+  onSubmit: (e: React.FormEvent) => void;
+}
+
+export function CredentialsForm({
+  isLogin, isLoading, isSocialLoading, emailOrUser, password,
+  inviteCode, isInviteLocked, onEmailChange, onPasswordChange, onInviteChange, onSubmit,
+}: CredentialsFormProps) {
+  return (
+    <form onSubmit={onSubmit} className="flex flex-col gap-5">
+      <div className="relative">
+        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-(--text-secondary)">
+          <IconMail size={18} />
+        </div>
+        <input
+          type="text"
+          required
+          placeholder={isLogin ? "EMAIL O USUARIO" : "CORREO ELECTRÓNICO"}
+          value={emailOrUser}
+          onChange={(e) => onEmailChange(e.target.value)}
+          className="w-full h-12 bg-background border border-border pl-10 pr-3 text-sm font-mono focus:outline-none focus:border-(--accent-color) transition-colors placeholder:text-(--text-secondary)/50"
+          disabled={isLoading}
+        />
+      </div>
+
+      <div className="relative">
+        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-(--text-secondary)">
+          <IconLock size={18} />
+        </div>
+        <input
+          type="password"
+          required
+          placeholder="••••••••"
+          value={password}
+          onChange={(e) => onPasswordChange(e.target.value)}
+          className="w-full h-12 bg-background border border-border pl-10 pr-3 text-sm font-mono focus:outline-none focus:border-(--accent-color) transition-colors placeholder:text-(--text-secondary)/50"
+          disabled={isLoading}
+        />
+      </div>
+
+      {!isLogin && (
+        <div className="relative animate-in slide-in-from-top-2 duration-200">
+          <div className={`absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none ${isInviteLocked ? "text-(--accent-color)" : "text-(--text-secondary)"}`}>
+            <IconTicket size={18} />
+          </div>
+          <input
+            type="text"
+            required
+            placeholder="CÓDIGO DE INVITACIÓN"
+            value={inviteCode}
+            onChange={(e) => onInviteChange(e.target.value.toUpperCase())}
+            readOnly={isInviteLocked}
+            className={`w-full h-12 border pl-10 pr-3 text-sm font-mono uppercase focus:outline-none transition-colors placeholder:text-(--text-secondary)/50 ${
+              isInviteLocked
+                ? "bg-(--accent-color)/10 border-(--accent-color) text-(--accent-color) font-black"
+                : "bg-background border-border focus:border-(--accent-color)"
+            }`}
+            disabled={isLoading}
+          />
+        </div>
+      )}
+
+      <button
+        type="submit"
+        disabled={isLoading || isSocialLoading}
+        className="w-full justify-center h-12 mt-2 text-sm font-black uppercase font-mono tracking-widest bg-white text-black hover:bg-gray-200 neo-border transition-all disabled:opacity-50"
+      >
+        {isLoading ? (
+          <IconLoader2 className="animate-spin mx-auto" size={20} />
+        ) : isLogin ? (
+          "Entrar"
+        ) : (
+          "Confirmar Acceso"
+        )}
+      </button>
+    </form>
+  );
+}
+
+
+================================================
 FILE: src/features/auth/components/LogoutMenuItem.tsx
 ================================================
 "use client";
@@ -3279,6 +3932,64 @@ export function LogoutMenuItem() {
       onClick={logout}
       variant="danger"
     />
+  );
+}
+
+
+
+================================================
+FILE: src/features/auth/components/SocialLogins.tsx
+================================================
+// src/system/molecules/Auth/SocialLogins.tsx
+import { IconBrandGoogleFilled, IconBrandDiscordFilled, IconLoader2 } from "@tabler/icons-react";
+
+interface SocialLoginsProps {
+  isLoading: boolean;
+  isGoogleLoading: boolean;
+  isDiscordLoading: boolean;
+  onGoogle: () => void;
+  onDiscord: () => void;
+}
+
+export function SocialLogins({
+  isLoading,
+  isGoogleLoading,
+  isDiscordLoading,
+  onGoogle,
+  onDiscord,
+}: SocialLoginsProps) {
+  const isDisabled = isLoading || isGoogleLoading || isDiscordLoading;
+
+  return (
+    <div className="flex flex-col gap-4">
+      <button
+        type="button"
+        onClick={onGoogle}
+        disabled={isDisabled}
+        className="flex items-center justify-center gap-3 w-full h-12 bg-transparent text-foreground border border-border hover:bg-muted font-mono uppercase text-xs font-black tracking-widest transition-colors disabled:opacity-50"
+      >
+        {isGoogleLoading ? (
+          <IconLoader2 className="animate-spin" size={18} />
+        ) : (
+          <IconBrandGoogleFilled size={18} className="text-red-500" />
+        )}
+        Continuar con Google
+      </button>
+
+      <button
+        type="button"
+        onClick={onDiscord}
+        disabled={isDisabled}
+        className="flex items-center justify-center gap-3 w-full h-12 bg-[#5865F2] text-white hover:bg-[#4752C4] neo-border font-mono uppercase text-xs font-black tracking-widest transition-colors disabled:opacity-50"
+      >
+        {isDiscordLoading ? (
+          <IconLoader2 className="animate-spin" size={18} />
+        ) : (
+          <IconBrandDiscordFilled size={18} />
+        )}
+        Continuar con Discord
+      </button>
+    </div>
   );
 }
 
@@ -4538,6 +5249,170 @@ export function useViewerSync(activeUrl: string) {
 
 
 ================================================
+FILE: src/features/layout/components/NavbarActions.tsx
+================================================
+"use client";
+
+import Link from "next/link";
+import { useState, useEffect } from "react";
+import { useAuthStore } from "@/src/store/authStore";
+import { useTheme } from "@/src/utils/hooks/useTheme";
+import { UserDropdown } from "@/src/features/user/components/UserDropdown";
+import { NotificationDropdown } from "@/src/system/molecules/Navbar/NotificationDropdown";
+import { IconAlbum, IconSun, IconMoon, IconScanTraces } from "@tabler/icons-react";
+import { Tooltip } from "@/src/system/atoms/Tooltip/Tooltip";
+
+export function NavbarActions() {
+  const user = useAuthStore((state) => state.user);
+  const isLoadingAuth = useAuthStore((state) => state.isLoadingAuth);
+
+  const { isDark, toggleTheme } = useTheme();
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  if (!isMounted) {
+    return <div className="hidden md:flex w-200px h-10 shrink-0" />;
+  }
+
+  return (
+    <div className="hidden md:flex items-center gap-1.5 lg:gap-1.5 shrink-0">
+      {isLoadingAuth ? (
+        <div className="w-32 h-9 rounded-lg bg-muted/40 animate-pulse"></div>
+      ) : user ? (
+        <>
+          <div className="flex items-center gap-2">
+            <Tooltip content="Mi studio" side="bottom">
+              <Link
+                href="/es/studio"
+                className="flex items-center gap-2 px-4 py-2 bg-foreground text-background rounded-lg text-sm font-bold hover:opacity-90 transition-opacity"
+              >
+                <IconAlbum size={18} />
+                Studio
+              </Link>
+            </Tooltip>
+
+            <Tooltip
+              content="Extractor Reprompt"
+              side="bottom"
+              className="bg-accent text-secondary"
+            >
+              <Link
+                href="/es/reprompt"
+                className="p-2 rounded-md text-muted-foreground hover:text-foreground transition-colors hover:bg-muted cursor-pointer"
+                title="Mi Estudio"
+              >
+                <IconScanTraces size={22} />
+              </Link>
+            </Tooltip>
+          </div>
+
+          <NotificationDropdown />
+
+          <Tooltip content="Cambiar Tema" side="bottom">
+            <button
+              onClick={toggleTheme}
+              className="p-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer transition-colors"
+              title="Cambiar tema"
+            >
+              {isDark ? <IconSun size={24} /> : <IconMoon size={24} />}
+            </button>
+          </Tooltip>
+
+          <UserDropdown />
+        </>
+      ) : (
+        <Link
+          href="/es/login"
+          className="text-sm font-bold px-4 py-2 bg-foreground text-background rounded-lg hover:opacity-90 transition-opacity"
+        >
+          Entrar
+        </Link>
+      )}
+    </div>
+  );
+}
+
+
+
+================================================
+FILE: src/features/layout/components/NavbarSearch.tsx
+================================================
+"use client";
+
+import React, { useState, useRef } from "react";
+import { useSearch } from "@/src/features/search/hooks/useSearch";
+import { useKeyboardShortcut } from "@/src/utils/hooks/useKeyboardShortcut";
+import { useClickOutside } from "@/src/utils/hooks/useClickOutside";
+
+import { Modal } from "@/src/system/molecules/Modal/Modal";
+import { UniversalSearchBar } from "@/src/system/molecules/Search/UniversalSearchBar";
+
+import { SearchModalHeader } from "@/src/system/molecules/Navbar/SearchModaHeader";
+import {
+  SearchTrigger,
+  SemanticSearchHeader,
+} from "@/src/system/molecules/Navbar/SearchComponents";
+
+export function NavbarSearch() {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const { query, setQuery, handleSearch, isLoading } = useSearch();
+
+  const modalContentRef = useRef<HTMLDivElement>(null);
+
+  useClickOutside(modalContentRef, () => {
+    if (isModalOpen) handleCloseAndClear();
+  });
+
+  useKeyboardShortcut("/", () => {
+    setIsModalOpen(true);
+  });
+
+  const handleCloseAndClear = () => {
+    setQuery("");
+    setIsModalOpen(false);
+  };
+
+  const onExecuteSearch = () => {
+    if (!query.trim()) return;
+
+    const syntheticEvent = { preventDefault: () => {} } as React.FormEvent;
+    handleSearch(syntheticEvent);
+    handleCloseAndClear();
+  };
+
+  return (
+    <>
+      <SearchTrigger onOpen={() => setIsModalOpen(true)} />
+
+      <Modal isOpen={isModalOpen} onClose={handleCloseAndClear} maxWidth="max-w-2xl">
+        <div ref={modalContentRef} className="flex flex-col w-full bg-background">
+          <div className="p-5 flex flex-col gap-4">
+            <SearchModalHeader />
+
+            <UniversalSearchBar
+              query={query}
+              isLoading={isLoading}
+              placeholder="Redefine tu búsqueda"
+              onQueryChange={setQuery}
+              onSubmit={onExecuteSearch}
+              onClear={() => setQuery("")}
+              enableKeyboardShortcut={true}
+            />
+
+            <SemanticSearchHeader />
+          </div>
+        </div>
+      </Modal>
+    </>
+  );
+}
+
+
+
+================================================
 FILE: src/features/public/hooks/usePublicDirectory.ts
 ================================================
 import { useState, useEffect } from "react";
@@ -4922,6 +5797,431 @@ export function useSettingsNavigation(): NavLink[] {
 
 
 ================================================
+FILE: src/features/studio/components/CreateCollectionModal.tsx
+================================================
+"use client";
+
+import { useState } from "react";
+import { api } from "@/src/services/api";
+import toast from "react-hot-toast";
+import { IconX, IconLock, IconWorld } from "@tabler/icons-react";
+import { useAuthStore } from "@/src/store/authStore";
+import { UpgradeModal } from "@/src/system/organisms/Modal/UpgradeModal";
+
+interface Props {
+  isOpen: boolean;
+  onClose: () => void;
+  onSuccess: () => void;
+}
+
+export function CreateDirectoryModal({ isOpen, onClose, onSuccess }: Props) {
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const [isPrivate, setIsPrivate] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const user = useAuthStore((state: any) => state.user);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+
+  if (!isOpen) return null;
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim()) return toast.error("El nombre es obligatorio");
+
+    setIsLoading(true);
+    try {
+      await api.directories.create({ name, description, is_private: isPrivate });
+      toast.success("Colección creada");
+      setName("");
+      setDescription("");
+      setIsPrivate(false);
+      onSuccess();
+      onClose();
+    } catch (error) {
+      toast.error("Error al crear la colección");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handlePrivacyToggle = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const role = user?.role?.toLowerCase() || "voyager";
+
+    console.log("Rol detectado:", role);
+
+    if (!isPrivate && role === "voyager") {
+      console.log("Bloqueando acción y abriendo Modal de Ventas...");
+      setShowUpgradeModal(true);
+    } else {
+      console.log("Cambiando estado de privacidad...");
+      setIsPrivate(!isPrivate);
+    }
+  };
+
+  return (
+    <>
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-4 animate-fade-in">
+        <div className="bg-background w-full max-w-md rounded-xl border border-border shadow-2xl overflow-hidden relative">
+          <button
+            onClick={onClose}
+            className="absolute top-4 right-4 text-muted-foreground hover:text-foreground"
+          >
+            <IconX size={20} />
+          </button>
+
+          <div className="p-6">
+            <h2 className="text-xl font-mono font-bold tracking-tight mb-6 text-(--accent-color)">
+              Nueva Colección
+            </h2>
+
+            <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-mono uppercase tracking-widest text-muted-foreground">
+                  Nombre
+                </label>
+                <input
+                  type="text"
+                  autoFocus
+                  placeholder="Ej. Cyberpunk Portraits"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="w-full bg-muted/10 border border-border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-(--accent-color)"
+                  disabled={isLoading}
+                />
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-mono uppercase tracking-widest text-muted-foreground">
+                  Descripción (Opcional)
+                </label>
+                <textarea
+                  placeholder="Un breve resumen de esta galería..."
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  className="w-full bg-muted/10 border border-border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-(--accent-color) resize-none h-20"
+                  disabled={isLoading}
+                />
+              </div>
+
+              <div
+                className="flex items-center gap-3 p-3 bg-muted/20 border border-border rounded-md mt-2 cursor-pointer transition-colors hover:bg-muted/30"
+                onClick={handlePrivacyToggle}
+              >
+                <div
+                  className={`p-2 rounded-full transition-colors ${isPrivate ? "bg-red-500/10 text-red-500" : "bg-green-500/10 text-green-500"}`}
+                >
+                  {isPrivate ? <IconLock size={18} /> : <IconWorld size={18} />}
+                </div>
+                <div className="flex flex-col flex-1 select-none">
+                  <span className="text-sm font-bold">
+                    {isPrivate ? "Colección Privada" : "Colección Pública"}
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    {isPrivate
+                      ? "Solo tú podrás verla."
+                      : "Visible en tu perfil para todo el mundo."}
+                  </span>
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="w-full mt-4 bg-accent/20 text-accent font-mono font-bold uppercase tracking-widest py-3 border border-accent rounded-md hover:bg-accent/30 transition-all disabled:opacity-50 cursor-pointer"
+              >
+                {isLoading ? "Creando..." : "Crear Colección"}
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+      <div style={{ position: "relative", zIndex: 99999 }}>
+        <UpgradeModal
+          isOpen={showUpgradeModal}
+          onClose={() => setShowUpgradeModal(false)}
+          title="Mantén tus Prompts en secreto"
+          message={
+            <>
+              Tu plan actual <strong>Voyager</strong> crea colecciones públicas por defecto. Pásate
+              al plan <strong className="text-primary">Artist</strong> para ocultar tus galerías de
+              miradas indiscretas y proteger tus prompts.
+            </>
+          }
+        />
+      </div>
+    </>
+  );
+}
+
+
+
+================================================
+FILE: src/features/studio/components/PromptGrid.tsx
+================================================
+"use client";
+
+import { PromptCard } from "@/src/system/molecules/Studio/PromptCard";
+import { FadeIn } from "@/src/system/atoms/Animations/FadeIn";
+import { IconPhotoOff } from "@tabler/icons-react";
+import { SavedPrompt } from "@/src/types/models";
+import { useAuthStore } from "@/src/store/authStore";
+
+interface PromptGridProps {
+  prompts: SavedPrompt[];
+  lang: string;
+  authorUsername: string;
+  onDelete: (id: string) => void;
+}
+
+export function PromptGrid({ prompts, lang, authorUsername, onDelete }: PromptGridProps) {
+  const { user } = useAuthStore();
+  const isOwner = user?.username === authorUsername;
+
+  if (!prompts || prompts.length === 0) {
+    return (
+      <div className="flex-1 min-h-[50vh] flex flex-col items-center justify-center text-muted-foreground/40 bg-muted/5">
+        <IconPhotoOff size={48} stroke={1.5} className="mb-4" />
+        <p className="text-sm font-mono uppercase tracking-widest text-center px-4">
+          Este directorio está vacío.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 sm:gap-6 w-full pb-24 items-start">
+      {prompts.map((prompt, index) => (
+        <div key={prompt.id} className="w-full">
+          <FadeIn delay={0.05} y={15}>
+            <PromptCard
+              item={prompt}
+              index={index}
+              lang={lang}
+              isStudio={true}
+              authorUsername={authorUsername}
+              isPriority={index < 8}
+              onDelete={isOwner ? onDelete : undefined}
+            />
+          </FadeIn>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+
+
+================================================
+FILE: src/features/studio/components/SidebarDirectoryItem.tsx
+================================================
+import React from "react";
+import { Directory } from "@/src/store/useStudioUI";
+import {
+  IconChevronDown,
+  IconChevronRight,
+  IconFolderOpen,
+  IconFolder,
+  IconFolderPlus,
+  IconTrash,
+  IconCloudLock,
+} from "@tabler/icons-react";
+import {
+  getSidebarTreeItemClasses,
+  SidebarActiveIndicator,
+  SidebarActionGroup,
+} from "@/src/system/organisms/Sidebar";
+
+interface SidebarDirectoryItemProps {
+  directory: Directory;
+  level: number;
+  isOpen: boolean;
+  isSelected: boolean;
+  isDragging: boolean;
+  isOver: boolean;
+  isEffectivelyPrivate: boolean;
+  hasChildren: boolean;
+  setBothRefs: (node: HTMLElement | null) => void;
+  attributes: any;
+  listeners: any;
+  onSelect: (e: React.MouseEvent) => void;
+  onToggle: (e: React.MouseEvent) => void;
+  onRename: (e: React.MouseEvent) => void;
+  onCreateSub: (e: React.MouseEvent) => void;
+  onDelete: (e: React.MouseEvent) => void;
+}
+
+export const SidebarDirectoryItem = ({
+  directory,
+  level,
+  isOpen,
+  isSelected,
+  isDragging,
+  isOver,
+  isEffectivelyPrivate,
+  hasChildren,
+  setBothRefs,
+  attributes,
+  listeners,
+  onSelect,
+  onToggle,
+  onRename,
+  onCreateSub,
+  onDelete,
+}: SidebarDirectoryItemProps) => {
+  return (
+    <div
+      ref={setBothRefs}
+      style={{
+        opacity: isDragging ? 0.4 : 1,
+        cursor: isDragging ? "grabbing" : "pointer",
+        paddingLeft: `${level * 12 + 12}px`,
+      }}
+      {...attributes}
+      {...listeners}
+      onClick={onSelect}
+      onDoubleClick={onRename}
+      className={getSidebarTreeItemClasses(isSelected, isOver, isDragging)}
+    >
+      {isSelected && <SidebarActiveIndicator />}
+
+      <span
+        className="w-4 h-4 mr-1 flex items-center justify-center z-10 hover:bg-muted/50 rounded transition-colors"
+        onClick={onToggle}
+      >
+        {hasChildren && (isOpen ? <IconChevronDown size={14} /> : <IconChevronRight size={14} />)}
+      </span>
+
+      <span className="mr-2 relative flex items-center justify-center">
+        {isOpen ? (
+          <IconFolderOpen
+            size={16}
+            className={isSelected ? "text-primary/70" : "text-foreground/40"}
+          />
+        ) : (
+          <IconFolder size={16} className={isSelected ? "text-primary/70" : "text-foreground/40"} />
+        )}
+
+        {isEffectivelyPrivate && (
+          <div className="absolute -bottom-1 -right-1.5 bg-background rounded-full p-px">
+            <IconCloudLock size={12} className="text-red-300" stroke={2} />
+          </div>
+        )}
+      </span>
+
+      <span className="text-sm truncate flex-1">{directory.name}</span>
+
+      <SidebarActionGroup>
+        <button
+          className="p-1 hover:bg-primary/20 rounded transition-colors text-primary/70"
+          title="Nueva Subcarpeta"
+          onClick={onCreateSub}
+        >
+          <IconFolderPlus size={14} />
+        </button>
+        <button
+          className="p-1 hover:bg-destructive/20 hover:text-destructive/90 text-muted-foreground/40 rounded transition-colors"
+          title="Eliminar"
+          onClick={onDelete}
+        >
+          <IconTrash size={14} />
+        </button>
+      </SidebarActionGroup>
+    </div>
+  );
+};
+
+
+
+================================================
+FILE: src/features/studio/components/StudioSidebar.tsx
+================================================
+"use client";
+
+import { IconFolderPlus, IconCloudUpload, IconFolder } from "@tabler/icons-react";
+import { useStudioUI, Directory } from "@/src/store/useStudioUI";
+import { SidebarDirectory } from "@/src/system/molecules/Studio/SidebarDirectory";
+import { useFileUploader } from "@/src/features/extractor/hooks/useFileUploader";
+import { useDirectoryActions } from "@/src/features/studio/hooks/useDirectoryActions";
+import { useDroppable } from "@dnd-kit/core";
+
+export function StudioSidebar() {
+  const { directories, activeDirectoryId, setActiveDirectory } = useStudioUI();
+  const { createDirectory } = useDirectoryActions();
+  const { handleUploadClick } = useFileUploader();
+
+  const { setNodeRef: setRootDropRef, isOver: isRootOver } = useDroppable({
+    id: "root-zone",
+    data: { type: "root" },
+  });
+
+  const handleCreateRootFolder = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const name = window.prompt("Nombre de la nueva carpeta principal:");
+    if (name?.trim()) await createDirectory(name.trim(), null);
+  };
+
+  return (
+    <aside className="w-72 border-r border-border/30 bg-muted/5 flex-col hidden md:flex h-full shrink-0">
+      <div className="pt-6 flex-1 overflow-y-auto custom-scrollbar flex flex-col gap-1">
+        <div className="px-3 mb-1 group relative">
+          <div
+            ref={setRootDropRef}
+            onClick={() => setActiveDirectory(null)}
+            className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs transition-all border cursor-pointer role="button" 
+              ${
+                activeDirectoryId === null
+                  ? "bg-primary/10 text-primary border-primary/20 font-bold"
+                  : "text-muted-foreground hover:bg-secondary/40 border-transparent font-medium"
+              }
+              ${isRootOver ? "ring-2 ring-primary border-dashed bg-primary/20" : ""}
+            `}
+          >
+            <IconFolder size={18} stroke={1.5} />
+            <span className="tracking-widest flex-1 text-left">
+              <span className="font-mono font-medium lowercase text-foreground/70">reprompt</span>{" "}
+              root
+            </span>
+
+            <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+              <button
+                onClick={handleCreateRootFolder}
+                className="p-1 hover:bg-primary/20 rounded text-primary/80 transition-colors"
+                title="Nueva carpeta en Root"
+              >
+                <IconFolderPlus size={14} stroke={2} />
+              </button>
+              <button
+                onClick={handleUploadClick}
+                className="p-1 hover:bg-primary/20 rounded text-primary/80 transition-colors"
+                title="Subir a Root"
+              >
+                <IconCloudUpload size={14} stroke={2} />
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div className="mx-6 border-t border-border/10 my-2" />
+
+        <div className="px-3 flex flex-col gap-1">
+          {directories
+            .filter((d: Directory) => d.parent_id === null)
+            .map((dir: Directory) => (
+              <SidebarDirectory key={dir.id} directory={dir} />
+            ))}
+        </div>
+      </div>
+    </aside>
+  );
+}
+
+
+
+================================================
 FILE: src/features/studio/components/Sidebar/StudioSidebar.tsx
 ================================================
 "use client";
@@ -4936,7 +6236,7 @@ import {
   SidebarContainer,
   SidebarDivider,
   getSidebarItemClasses,
-} from "@/src/system/organisms/Sidebar/SidebarCore";
+} from "@/src/system/organisms/Sidebar";
 import { SidebarDirectory } from "@/src/system/molecules/Studio/SidebarDirectory";
 
 export function StudioSidebar() {
@@ -5190,13 +6490,16 @@ export function usePromptUpload() {
       console.log(`⏳ [UPLOAD-STEP-1] Optimizando imagen en el cliente...`);
       const archivoOptimizado = await optimizeAndLogImage(fileOriginal);
 
+      // 💡 Extraemos el archivo real del contenedor para que el código quede más limpio
+      const finalFile = archivoOptimizado.file;
+
       // 🟢 PASO 2: Pedir URL pre-firmada
       console.log(
-        `⏳ [UPLOAD-STEP-2] Solicitando URL pre-firmada al Backend para: ${archivoOptimizado.name} (${archivoOptimizado.type})`,
+        `⏳ [UPLOAD-STEP-2] Solicitando URL pre-firmada al Backend para: ${finalFile.name} (${finalFile.type})`,
       );
       const resUrl = await api.prompts.getPresignedUrl({
-        filename: archivoOptimizado.name,
-        contentType: archivoOptimizado.type,
+        filename: finalFile.name,
+        contentType: finalFile.type, // 🟢 CORRECCIÓN: Pasamos el string del tipo MIME (ej. "image/webp")
       });
 
       if (!resUrl.ok) {
@@ -5210,9 +6513,9 @@ export function usePromptUpload() {
       console.log(`☁️ [UPLOAD-STEP-3] Transfiriendo bytes a Cloudflare R2...`);
       const uploadRes = await fetch(url, {
         method: "PUT",
-        body: archivoOptimizado,
+        body: finalFile, // 🟢 CORRECCIÓN: Pasamos solo el archivo nativo a fetch
         headers: {
-          "Content-Type": archivoOptimizado.type,
+          "Content-Type": finalFile.type, // 🟢 CORRECCIÓN: Usamos el tipo correcto
           "Cache-Control": "public, max-age=31536000, immutable",
         },
       });
@@ -6719,6 +8022,29 @@ import { fetchSeguro } from "./client";
 import { ENV } from "@/src/services/config/env";
 
 const API_URL = ENV.API_URL;
+
+export const SearchService = {
+  buscarEnStudio: async (query: string, limit: number = 20) => {
+    const startTime = performance.now();
+    try {
+      const params = new URLSearchParams({ q: query, limit: limit.toString() });
+      const response = await fetchSeguro(`${API_URL}/studio?${params.toString()}`, {
+        method: "GET",
+      });
+
+      if (process.env.NODE_ENV === "development") {
+        const duration = (performance.now() - startTime).toFixed(2);
+        console.info(`⚡ [SEARCH_TELEMETRY] Búsqueda de "${query}" completada en ${duration}ms`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error(`🚨 [SEARCH_ERROR] Fallo al buscar "${query}":`, error);
+      throw error;
+    }
+  },
+};
+
 export const searchApi = {
   buscar: (
     query: string,
@@ -7929,95 +9255,6 @@ export function FormHeader() {
 
 
 ================================================
-FILE: src/system/atoms/Navbar/NavbarActions.tsx
-================================================
-"use client";
-
-import Link from "next/link";
-import { useState, useEffect } from "react";
-import { useAuthStore } from "@/src/store/authStore";
-import { useTheme } from "@/src/utils/hooks/useTheme";
-import { UserDropdown } from "@/src/features/user/components/UserDropdown";
-import { NotificationDropdown } from "../../molecules/Navbar/NotificationDropdown";
-import { IconAlbum, IconSun, IconMoon, IconScanTraces } from "@tabler/icons-react";
-import { Tooltip } from "../Tooltip/Tooltip";
-
-export function NavbarActions() {
-  const user = useAuthStore((state) => state.user);
-  const isLoadingAuth = useAuthStore((state) => state.isLoadingAuth);
-
-  const { isDark, toggleTheme } = useTheme();
-  const [isMounted, setIsMounted] = useState(false);
-
-  useEffect(() => {
-    setIsMounted(true);
-  }, []);
-
-  if (!isMounted) {
-    return <div className="hidden md:flex w-200px h-10 shrink-0" />;
-  }
-
-  return (
-    <div className="hidden md:flex items-center gap-1.5 lg:gap-1.5 shrink-0">
-      {isLoadingAuth ? (
-        <div className="w-32 h-9 rounded-lg bg-muted/40 animate-pulse"></div>
-      ) : user ? (
-        <>
-          <div className="flex items-center gap-2">
-            <Tooltip content="Mi studio" side="bottom">
-              <Link
-                href="/es/studio"
-                className="flex items-center gap-2 px-4 py-2 bg-foreground text-background rounded-lg text-sm font-bold hover:opacity-90 transition-opacity"
-              >
-                <IconAlbum size={18} />
-                Studio
-              </Link>
-            </Tooltip>
-
-            <Tooltip
-              content="Extractor Reprompt"
-              side="bottom"
-              className="bg-accent text-secondary"
-            >
-              <Link
-                href="/es/reprompt"
-                className="p-2 rounded-md text-muted-foreground hover:text-foreground transition-colors hover:bg-muted cursor-pointer"
-                title="Mi Estudio"
-              >
-                <IconScanTraces size={22} />
-              </Link>
-            </Tooltip>
-          </div>
-
-          <NotificationDropdown />
-
-          <Tooltip content="Cambiar Tema" side="bottom">
-            <button
-              onClick={toggleTheme}
-              className="p-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer transition-colors"
-              title="Cambiar tema"
-            >
-              {isDark ? <IconSun size={24} /> : <IconMoon size={24} />}
-            </button>
-          </Tooltip>
-
-          <UserDropdown />
-        </>
-      ) : (
-        <Link
-          href="/es/login"
-          className="text-sm font-bold px-4 py-2 bg-foreground text-background rounded-lg hover:opacity-90 transition-opacity"
-        >
-          Entrar
-        </Link>
-      )}
-    </div>
-  );
-}
-
-
-
-================================================
 FILE: src/system/atoms/Notification/NotificationTrigger.tsx
 ================================================
 import { IconInbox } from "@tabler/icons-react";
@@ -8043,127 +9280,6 @@ export function NotificationTrigger({ unreadCount, onClick }: NotificationTrigge
     </button>
   );
 }
-
-
-
-================================================
-FILE: src/system/atoms/Studio/SidebarDirectoryItem.tsx
-================================================
-import React from "react";
-import { Directory } from "@/src/store/useStudioUI";
-import {
-  IconChevronDown,
-  IconChevronRight,
-  IconFolderOpen,
-  IconFolder,
-  IconFolderPlus,
-  IconTrash,
-  IconCloudLock,
-} from "@tabler/icons-react";
-import {
-  getSidebarTreeItemClasses,
-  SidebarActiveIndicator,
-  SidebarActionGroup,
-} from "@/src/system/organisms/Sidebar";
-
-interface SidebarDirectoryItemProps {
-  directory: Directory;
-  level: number;
-  isOpen: boolean;
-  isSelected: boolean;
-  isDragging: boolean;
-  isOver: boolean;
-  isEffectivelyPrivate: boolean;
-  hasChildren: boolean;
-  setBothRefs: (node: HTMLElement | null) => void;
-  attributes: any;
-  listeners: any;
-  onSelect: (e: React.MouseEvent) => void;
-  onToggle: (e: React.MouseEvent) => void;
-  onRename: (e: React.MouseEvent) => void;
-  onCreateSub: (e: React.MouseEvent) => void;
-  onDelete: (e: React.MouseEvent) => void;
-}
-
-export const SidebarDirectoryItem = ({
-  directory,
-  level,
-  isOpen,
-  isSelected,
-  isDragging,
-  isOver,
-  isEffectivelyPrivate,
-  hasChildren,
-  setBothRefs,
-  attributes,
-  listeners,
-  onSelect,
-  onToggle,
-  onRename,
-  onCreateSub,
-  onDelete,
-}: SidebarDirectoryItemProps) => {
-  return (
-    <div
-      ref={setBothRefs}
-      style={{
-        opacity: isDragging ? 0.4 : 1,
-        cursor: isDragging ? "grabbing" : "pointer",
-        paddingLeft: `${level * 12 + 12}px`,
-      }}
-      {...attributes}
-      {...listeners}
-      onClick={onSelect}
-      onDoubleClick={onRename}
-      className={getSidebarTreeItemClasses(isSelected, isOver, isDragging)}
-    >
-      {isSelected && <SidebarActiveIndicator />}
-
-      <span
-        className="w-4 h-4 mr-1 flex items-center justify-center z-10 hover:bg-muted/50 rounded transition-colors"
-        onClick={onToggle}
-      >
-        {hasChildren && (isOpen ? <IconChevronDown size={14} /> : <IconChevronRight size={14} />)}
-      </span>
-
-      <span className="mr-2 relative flex items-center justify-center">
-        {isOpen ? (
-          <IconFolderOpen
-            size={16}
-            className={isSelected ? "text-primary/70" : "text-foreground/40"}
-          />
-        ) : (
-          <IconFolder size={16} className={isSelected ? "text-primary/70" : "text-foreground/40"} />
-        )}
-
-        {isEffectivelyPrivate && (
-          <div className="absolute -bottom-1 -right-1.5 bg-background rounded-full p-px">
-            <IconCloudLock size={12} className="text-red-300" stroke={2} />
-          </div>
-        )}
-      </span>
-
-      <span className="text-sm truncate flex-1">{directory.name}</span>
-
-      <SidebarActionGroup>
-        <button
-          className="p-1 hover:bg-primary/20 rounded transition-colors text-primary/70"
-          title="Nueva Subcarpeta"
-          onClick={onCreateSub}
-        >
-          <IconFolderPlus size={14} />
-        </button>
-        <button
-          className="p-1 hover:bg-destructive/20 hover:text-destructive/90 text-muted-foreground/40 rounded transition-colors"
-          title="Eliminar"
-          onClick={onDelete}
-        >
-          <IconTrash size={14} />
-        </button>
-      </SidebarActionGroup>
-    </div>
-  );
-};
 
 
 
@@ -8351,321 +9467,6 @@ export function MediaOverlay({
 
 
 ================================================
-FILE: src/system/molecules/Admin/AdminHeader.tsx
-================================================
-export function AdminHeader({ username }: { username: string }) {
-  return (
-    <header className="border-b-4 border-border pb-6">
-      <h1 className="text-4xl md:text-6xl font-black font-mono uppercase italic tracking-tighter">
-        Admin<span className="text-(--accent-color)">_</span>Terminal
-      </h1>
-      <p className="text-muted-foreground font-mono text-sm mt-2">
-        Acceso concedido a: <span className="text-foreground font-bold">@{username}</span> [ROOT_ACCESS]
-      </p>
-    </header>
-  );
-}
-
-
-
-================================================
-FILE: src/system/molecules/Admin/AdminLoadingScreen.tsx
-================================================
-export function AdminLoadingScreen() {
-  return (
-    <div className="max-h-screen flex items-center justify-center font-mono text-foreground bg-background">
-      <span className="animate-pulse">CARGANDO PROTOCOLOS DE MANDO...</span>
-    </div>
-  );
-}
-
-
-
-================================================
-FILE: src/system/molecules/Admin/MetricCard.tsx
-================================================
-export function MetricCard({ title, value, icon }: { title: string; value: string | number; icon: React.ReactNode }) {
-  return (
-    <div className="bg-background border border-border p-5 rounded-xl shadow-sm flex items-center justify-between hover:shadow-md transition-shadow">
-      <div>
-        <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-1">{title}</p>
-        <p className="text-3xl font-black text-foreground">{value}</p>
-      </div>
-      <div className="p-3 bg-muted/30 rounded-lg">
-        {icon}
-      </div>
-    </div>
-  );
-}
-
-
-
-================================================
-FILE: src/system/molecules/Admin/MetricWidget.tsx
-================================================
-export function MetricWidget({ count, label }: { count: number; label: string }) {
-  return (
-    <div className="bg-muted/10 p-6 border border-border shadow-sm rounded-xl flex flex-col items-center justify-center text-center">
-      <span className="text-7xl font-black font-mono text-(--accent-color)">{count}</span>
-      <span className="text-[10px] font-bold uppercase tracking-widest mt-2 opacity-60">
-        {label}
-      </span>
-    </div>
-  );
-}
-
-
-
-================================================
-FILE: src/system/molecules/Admin/QuotaBar.tsx
-================================================
-import { IconAlertTriangle } from "@tabler/icons-react";
-
-interface QuotaBarProps {
-  label: string;
-  currentMb: number;
-  limitMb: number;
-}
-
-export function QuotaBar({ label, currentMb, limitMb }: QuotaBarProps) {
-  const percentage = Math.min(100, Math.max(0, (currentMb / limitMb) * 100));
-
-  // Lógica de alerta visual
-  let colorClass = "bg-green-500";
-  if (percentage > 70) colorClass = "bg-yellow-500";
-  if (percentage > 90) colorClass = "bg-red-500 animate-pulse";
-
-  return (
-    <div className="bg-background border border-border p-4 rounded-xl shadow-sm">
-      <div className="flex justify-between items-end mb-2">
-        <div>
-          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-            {label}
-          </p>
-          <div className="flex items-baseline gap-1 mt-1">
-            <span className="text-2xl font-black text-foreground">{currentMb.toFixed(2)}</span>
-            <span className="text-xs font-mono text-muted-foreground mb-1">
-              / {limitMb.toLocaleString()} MB
-            </span>
-          </div>
-        </div>
-        <span className="text-xs font-mono font-bold">{percentage.toFixed(1)}%</span>
-      </div>
-
-      {/* La Barra de Progreso */}
-      <div className="h-2 w-full bg-muted rounded-full overflow-hidden relative">
-        <div
-          className={`h-full rounded-full transition-all duration-1000 ease-out ${colorClass}`}
-          style={{ width: `${percentage}%` }}
-        />
-      </div>
-
-      {percentage > 90 && (
-        <p className="text-[10px] text-red-500 mt-2 flex items-center gap-1 font-bold">
-          <IconAlertTriangle size={12} /> PELIGRO DE COLAPSO DE CUOTA
-        </p>
-      )}
-    </div>
-  );
-}
-
-
-
-================================================
-FILE: src/system/molecules/Admin/SectionTitle.tsx
-================================================
-export function SectionTitle({ title, highlight }: { title: string; highlight: string }) {
-  return (
-    <div className="border-b-2 border-border pb-2">
-      <h2 className="text-2xl font-black font-mono uppercase italic">
-        {title} <span className="text-muted-foreground">{highlight}</span>
-      </h2>
-    </div>
-  );
-}
-
-
-
-================================================
-FILE: src/system/molecules/Auth/AuthHeader.tsx
-================================================
-// src/system/molecules/Auth/AuthHeader.tsx
-interface AuthHeaderProps {
-  isLogin: boolean;
-}
-
-export function AuthHeader({ isLogin }: AuthHeaderProps) {
-  return (
-    <div className="mb-8 text-center">
-      <h2 className="text-2xl font-black uppercase font-mono tracking-tighter">
-        {isLogin ? "Bienvenido de" : "Únete a la"}{" "}
-        <span className="text-(--accent-color)">{isLogin ? "Nuevo" : "Resistencia"}</span>
-      </h2>
-      <p className="text-xs font-mono text-(--text-secondary) mt-2 uppercase">
-        {isLogin ? "Accede para gestionar tus prompts" : "Almacena tu arte generado por IA"}
-      </p>
-    </div>
-  );
-}
-
-
-
-================================================
-FILE: src/system/molecules/Auth/CredentialsForm.tsx
-================================================
-// src/system/molecules/Auth/CredentialsForm.tsx
-import { IconMail, IconLock, IconTicket, IconLoader2 } from "@tabler/icons-react";
-
-interface CredentialsFormProps {
-  // ... (Mismos props de antes, no cambian)
-  isLogin: boolean;
-  isLoading: boolean;
-  isSocialLoading: boolean;
-  emailOrUser: string;
-  password: string;
-  inviteCode: string;
-  isInviteLocked: boolean;
-  onEmailChange: (value: string) => void;
-  onPasswordChange: (value: string) => void;
-  onInviteChange: (value: string) => void;
-  onSubmit: (e: React.FormEvent) => void;
-}
-
-export function CredentialsForm({
-  isLogin, isLoading, isSocialLoading, emailOrUser, password,
-  inviteCode, isInviteLocked, onEmailChange, onPasswordChange, onInviteChange, onSubmit,
-}: CredentialsFormProps) {
-  return (
-    <form onSubmit={onSubmit} className="flex flex-col gap-5">
-      <div className="relative">
-        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-(--text-secondary)">
-          <IconMail size={18} />
-        </div>
-        <input
-          type="text"
-          required
-          placeholder={isLogin ? "EMAIL O USUARIO" : "CORREO ELECTRÓNICO"}
-          value={emailOrUser}
-          onChange={(e) => onEmailChange(e.target.value)}
-          className="w-full h-12 bg-background border border-border pl-10 pr-3 text-sm font-mono focus:outline-none focus:border-(--accent-color) transition-colors placeholder:text-(--text-secondary)/50"
-          disabled={isLoading}
-        />
-      </div>
-
-      <div className="relative">
-        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-(--text-secondary)">
-          <IconLock size={18} />
-        </div>
-        <input
-          type="password"
-          required
-          placeholder="••••••••"
-          value={password}
-          onChange={(e) => onPasswordChange(e.target.value)}
-          className="w-full h-12 bg-background border border-border pl-10 pr-3 text-sm font-mono focus:outline-none focus:border-(--accent-color) transition-colors placeholder:text-(--text-secondary)/50"
-          disabled={isLoading}
-        />
-      </div>
-
-      {!isLogin && (
-        <div className="relative animate-in slide-in-from-top-2 duration-200">
-          <div className={`absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none ${isInviteLocked ? "text-(--accent-color)" : "text-(--text-secondary)"}`}>
-            <IconTicket size={18} />
-          </div>
-          <input
-            type="text"
-            required
-            placeholder="CÓDIGO DE INVITACIÓN"
-            value={inviteCode}
-            onChange={(e) => onInviteChange(e.target.value.toUpperCase())}
-            readOnly={isInviteLocked}
-            className={`w-full h-12 border pl-10 pr-3 text-sm font-mono uppercase focus:outline-none transition-colors placeholder:text-(--text-secondary)/50 ${
-              isInviteLocked
-                ? "bg-(--accent-color)/10 border-(--accent-color) text-(--accent-color) font-black"
-                : "bg-background border-border focus:border-(--accent-color)"
-            }`}
-            disabled={isLoading}
-          />
-        </div>
-      )}
-
-      <button
-        type="submit"
-        disabled={isLoading || isSocialLoading}
-        className="w-full justify-center h-12 mt-2 text-sm font-black uppercase font-mono tracking-widest bg-white text-black hover:bg-gray-200 neo-border transition-all disabled:opacity-50"
-      >
-        {isLoading ? (
-          <IconLoader2 className="animate-spin mx-auto" size={20} />
-        ) : isLogin ? (
-          "Entrar"
-        ) : (
-          "Confirmar Acceso"
-        )}
-      </button>
-    </form>
-  );
-}
-
-
-================================================
-FILE: src/system/molecules/Auth/SocialLogins.tsx
-================================================
-// src/system/molecules/Auth/SocialLogins.tsx
-import { IconBrandGoogleFilled, IconBrandDiscordFilled, IconLoader2 } from "@tabler/icons-react";
-
-interface SocialLoginsProps {
-  isLoading: boolean;
-  isGoogleLoading: boolean;
-  isDiscordLoading: boolean;
-  onGoogle: () => void;
-  onDiscord: () => void;
-}
-
-export function SocialLogins({
-  isLoading,
-  isGoogleLoading,
-  isDiscordLoading,
-  onGoogle,
-  onDiscord,
-}: SocialLoginsProps) {
-  const isDisabled = isLoading || isGoogleLoading || isDiscordLoading;
-
-  return (
-    <div className="flex flex-col gap-4">
-      <button
-        type="button"
-        onClick={onGoogle}
-        disabled={isDisabled}
-        className="flex items-center justify-center gap-3 w-full h-12 bg-transparent text-foreground border border-border hover:bg-muted font-mono uppercase text-xs font-black tracking-widest transition-colors disabled:opacity-50"
-      >
-        {isGoogleLoading ? (
-          <IconLoader2 className="animate-spin" size={18} />
-        ) : (
-          <IconBrandGoogleFilled size={18} className="text-red-500" />
-        )}
-        Continuar con Google
-      </button>
-
-      <button
-        type="button"
-        onClick={onDiscord}
-        disabled={isDisabled}
-        className="flex items-center justify-center gap-3 w-full h-12 bg-[#5865F2] text-white hover:bg-[#4752C4] neo-border font-mono uppercase text-xs font-black tracking-widest transition-colors disabled:opacity-50"
-      >
-        {isDiscordLoading ? (
-          <IconLoader2 className="animate-spin" size={18} />
-        ) : (
-          <IconBrandDiscordFilled size={18} />
-        )}
-        Continuar con Discord
-      </button>
-    </div>
-  );
-}
-
-
-
-================================================
 FILE: src/system/molecules/Avatar/EditableAvatar.tsx
 ================================================
 "use client";
@@ -8719,169 +9520,6 @@ export function EditableAvatar({
         accept="image/png, image/jpeg, image/webp"
         onChange={handleFileChange}
       />
-    </>
-  );
-}
-
-
-
-================================================
-FILE: src/system/molecules/Cards/CreateCollectionModal.tsx
-================================================
-"use client";
-
-import { useState } from "react";
-import { api } from "@/src/services/api";
-import toast from "react-hot-toast";
-import { IconX, IconLock, IconWorld } from "@tabler/icons-react";
-import { useAuthStore } from "@/src/store/authStore";
-import { UpgradeModal } from "../../organisms/Modal/UpgradeModal";
-
-interface Props {
-  isOpen: boolean;
-  onClose: () => void;
-  onSuccess: () => void;
-}
-
-export function CreateDirectoryModal({ isOpen, onClose, onSuccess }: Props) {
-  const [name, setName] = useState("");
-  const [description, setDescription] = useState("");
-  const [isPrivate, setIsPrivate] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-
-  const user = useAuthStore((state: any) => state.user);
-  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
-
-  if (!isOpen) return null;
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!name.trim()) return toast.error("El nombre es obligatorio");
-
-    setIsLoading(true);
-    try {
-      await api.directories.create({ name, description, is_private: isPrivate });
-      toast.success("Colección creada");
-      setName("");
-      setDescription("");
-      setIsPrivate(false);
-      onSuccess();
-      onClose();
-    } catch (error) {
-      toast.error("Error al crear la colección");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handlePrivacyToggle = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-
-    const role = user?.role?.toLowerCase() || "voyager";
-
-    console.log("Rol detectado:", role);
-
-    if (!isPrivate && role === "voyager") {
-      console.log("Bloqueando acción y abriendo Modal de Ventas...");
-      setShowUpgradeModal(true);
-    } else {
-      console.log("Cambiando estado de privacidad...");
-      setIsPrivate(!isPrivate);
-    }
-  };
-
-  return (
-    <>
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-4 animate-fade-in">
-        <div className="bg-background w-full max-w-md rounded-xl border border-border shadow-2xl overflow-hidden relative">
-          <button
-            onClick={onClose}
-            className="absolute top-4 right-4 text-muted-foreground hover:text-foreground"
-          >
-            <IconX size={20} />
-          </button>
-
-          <div className="p-6">
-            <h2 className="text-xl font-mono font-bold tracking-tight mb-6 text-(--accent-color)">
-              Nueva Colección
-            </h2>
-
-            <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-mono uppercase tracking-widest text-muted-foreground">
-                  Nombre
-                </label>
-                <input
-                  type="text"
-                  autoFocus
-                  placeholder="Ej. Cyberpunk Portraits"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="w-full bg-muted/10 border border-border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-(--accent-color)"
-                  disabled={isLoading}
-                />
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-mono uppercase tracking-widest text-muted-foreground">
-                  Descripción (Opcional)
-                </label>
-                <textarea
-                  placeholder="Un breve resumen de esta galería..."
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  className="w-full bg-muted/10 border border-border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-(--accent-color) resize-none h-20"
-                  disabled={isLoading}
-                />
-              </div>
-
-              <div
-                className="flex items-center gap-3 p-3 bg-muted/20 border border-border rounded-md mt-2 cursor-pointer transition-colors hover:bg-muted/30"
-                onClick={handlePrivacyToggle}
-              >
-                <div
-                  className={`p-2 rounded-full transition-colors ${isPrivate ? "bg-red-500/10 text-red-500" : "bg-green-500/10 text-green-500"}`}
-                >
-                  {isPrivate ? <IconLock size={18} /> : <IconWorld size={18} />}
-                </div>
-                <div className="flex flex-col flex-1 select-none">
-                  <span className="text-sm font-bold">
-                    {isPrivate ? "Colección Privada" : "Colección Pública"}
-                  </span>
-                  <span className="text-xs text-muted-foreground">
-                    {isPrivate
-                      ? "Solo tú podrás verla."
-                      : "Visible en tu perfil para todo el mundo."}
-                  </span>
-                </div>
-              </div>
-
-              <button
-                type="submit"
-                disabled={isLoading}
-                className="w-full mt-4 bg-accent/20 text-accent font-mono font-bold uppercase tracking-widest py-3 border border-accent rounded-md hover:bg-accent/30 transition-all disabled:opacity-50 cursor-pointer"
-              >
-                {isLoading ? "Creando..." : "Crear Colección"}
-              </button>
-            </form>
-          </div>
-        </div>
-      </div>
-      <div style={{ position: "relative", zIndex: 99999 }}>
-        <UpgradeModal
-          isOpen={showUpgradeModal}
-          onClose={() => setShowUpgradeModal(false)}
-          title="Mantén tus Prompts en secreto"
-          message={
-            <>
-              Tu plan actual <strong>Voyager</strong> crea colecciones públicas por defecto. Pásate
-              al plan <strong className="text-primary">Artist</strong> para ocultar tus galerías de
-              miradas indiscretas y proteger tus prompts.
-            </>
-          }
-        />
-      </div>
     </>
   );
 }
@@ -8983,7 +9621,17 @@ export function FeedItemCard({ item, lang, isPriority = false, index = 0 }: Feed
 ================================================
 FILE: src/system/molecules/Cards/PromptCardActions.tsx
 ================================================
+import { SavedPrompt } from "@/src/types/models";
 import { IconDotsVertical, IconFolder, IconTrash } from "@tabler/icons-react";
+
+interface PromptCardActionsProps {
+  item: SavedPrompt;
+  directories?: any[];
+  onAssign?: (promptId: string, dirId: string) => void;
+  onDelete?: (id: string) => void;
+  isOpen: boolean;
+  setIsOpen: (isOpen: boolean) => void;
+}
 
 export function PromptCardActions({
   item,
@@ -8992,7 +9640,7 @@ export function PromptCardActions({
   onDelete,
   isOpen,
   setIsOpen,
-}: any) {
+}: PromptCardActionsProps) {
   return (
     <div className="absolute top-3 right-3 z-50">
       <button
@@ -9009,16 +9657,20 @@ export function PromptCardActions({
       </button>
 
       {isOpen && (
-        <div className="absolute top-full right-0 w-48 bg-background border border-border rounded-xl shadow-xl z-50 animate-in fade-in zoom-in-95 hover:border-red-500/50">
-          {onAssign && directories.length > 0 && (
+        <div className="absolute top-full right-0 w-48 bg-background border border-border rounded-xl shadow-xl z-50 animate-in fade-in zoom-in-95 hover:border-red-500/50 overflow-hidden">
+          {onAssign && directories && directories.length > 0 && (
             <div className="px-3 py-2 border-b border-border/10">
               <label className="text-[10px] font-bold uppercase text-muted-foreground mb-1.5 flex items-center gap-1.5">
                 <IconFolder size={12} /> Colección
               </label>
               <select
-                className="w-full bg-muted/50 text-xs p-1.5 rounded border border-border"
+                className="w-full bg-muted/50 text-xs p-1.5 rounded border border-border outline-none focus:ring-1 focus:ring-accent"
                 value={item.directory_id || ""}
-                onChange={(e) => onAssign(item.id, e.target.value ? Number(e.target.value) : null)}
+                onChange={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onAssign(String(item.id), e.target.value);
+                }}
               >
                 <option value="">Suelto</option>
                 {directories.map((d: any) => (
@@ -9029,22 +9681,21 @@ export function PromptCardActions({
               </select>
             </div>
           )}
-          <button
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              if (window.confirm("¿Exterminar rastro digital?")) {
-                if (typeof onDelete === "function") {
-                  onDelete(item.id);
-                } else {
-                  console.error("❌ Error: onDelete no ha llegado al componente Actions.");
+
+          {onDelete && (
+            <button
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (window.confirm("¿Exterminar rastro digital?")) {
+                  onDelete(String(item.id));
                 }
-              }
-            }}
-            className="flex w-full h-full items-center gap-2 px-3 py-3 text-xs font-mono font-normal text-red-400 hover:bg-red-500/10"
-          >
-            <IconTrash size={14} /> Eliminar
-          </button>
+              }}
+              className="flex w-full h-full items-center gap-2 px-3 py-3 text-xs font-mono font-normal text-red-400 hover:bg-red-500/10 transition-colors"
+            >
+              <IconTrash size={14} /> Eliminar
+            </button>
+          )}
         </div>
       )}
     </div>
@@ -9679,8 +10330,10 @@ FILE: src/system/molecules/Modal/Modal.tsx
 ================================================
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { IconX } from "@tabler/icons-react";
+import { Tooltip } from "../../atoms/Tooltip/Tooltip";
 
 interface ModalProps {
   isOpen: boolean;
@@ -9690,6 +10343,12 @@ interface ModalProps {
 }
 
 export function Modal({ isOpen, onClose, children, maxWidth = "max-w-md" }: ModalProps) {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
@@ -9700,83 +10359,30 @@ export function Modal({ isOpen, onClose, children, maxWidth = "max-w-md" }: Moda
     return () => window.removeEventListener("keydown", handleEsc);
   }, [isOpen, onClose]);
 
-  if (!isOpen) return null;
+  if (!isOpen || !mounted) return null;
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm animate-in fade-in duration-200">
+  return createPortal(
+    <div className="fixed inset-0 z-9999 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm animate-in fade-in duration-200">
       <div
-        className={`bg-background border border-border/50 shadow-xl rounded-xl w-full ${maxWidth} overflow-hidden animate-in zoom-in-95 duration-200 relative flex flex-col`}
+        className={`
+          bg-background border border-border/50 rounded-xl w-full ${maxWidth} max-h-[90dvh] overflow-y-auto animate-in zoom-in-95 duration-200 relative flex flex-col
+          shadow-[0_0_40px_rgba(0,0,0,0.1)] dark:shadow-[0_0_40px_rgba(255,255,255,0.06)]
+          `}
       >
         <button
           onClick={onClose}
           className="absolute top-4 right-4 p-1 text-muted-foreground hover:text-foreground transition-colors z-10 rounded-md focus:outline-none focus:ring-2 focus:ring-primary/50"
           aria-label="Cerrar modal"
         >
-          <IconX size={20} />
+          <Tooltip className="z-99999" content="Cerrar">
+            <IconX size={20} />
+          </Tooltip>
         </button>
 
         {children}
       </div>
-    </div>
-  );
-}
-
-
-
-================================================
-FILE: src/system/molecules/Navbar/NavbarMobile.tsx
-================================================
-"use client";
-
-import { useState } from 'react';
-import Link from 'next/link';
-import { useAuthStore } from '@/src/store/authStore';
-import { useTheme } from '@/src/utils/hooks/useTheme';
-import { NavbarSearch } from './NavbarSearch';
-import { IconMenu2, IconX, IconArchive, IconSun, IconMoon, IconScanTraces } from '@tabler/icons-react';
-
-export function NavbarMobile() {
-  const [isOpen, setIsOpen] = useState(false);
-  const { user } = useAuthStore();
-  const { isDark, toggleTheme } = useTheme();
-
-  return (
-    <div className="md:hidden flex items-center gap-2">
-      <button 
-        onClick={() => setIsOpen(!isOpen)}
-        className="p-2 text-foreground hover:bg-muted rounded-md transition-colors"
-      >
-        {isOpen ? <IconX size={24} /> : <IconMenu2 size={24} />}
-      </button>
-
-      {isOpen && (
-        <div className="absolute top-16 left-0 w-full bg-background border-b border-border shadow-2xl p-4 flex flex-col gap-4 animate-in slide-in-from-top-2 z-50">
-          <NavbarSearch />
-          
-          <div className="flex flex-col gap-2 pt-2 border-t border-border/50">
-            {user ? (
-              <>
-                <Link href="/reprompt" onClick={() => setIsOpen(false)} className="flex items-center gap-3 p-3 rounded-md hover:bg-muted font-bold text-sm text-foreground transition-colors">
-                  <IconScanTraces size={20} /> Reprompt Studio
-                </Link>
-                <Link href="/studio" onClick={() => setIsOpen(false)} className="flex items-center gap-3 p-3 rounded-md hover:bg-muted font-bold text-sm text-foreground transition-colors">
-                  <IconArchive size={20} /> Mi Estudio
-                </Link>
-              </>
-            ) : (
-              <Link href="/login" onClick={() => setIsOpen(false)} className="p-3 text-center bg-foreground text-background rounded-lg font-bold text-sm">
-                Iniciar Sesión
-              </Link>
-            )}
-            
-            <button onClick={toggleTheme} className="flex items-center gap-3 p-3 rounded-md hover:bg-muted font-bold text-sm text-foreground transition-colors text-left">
-              {isDark ? <IconSun size={20} /> : <IconMoon size={20} />}
-              {isDark ? 'Modo Claro' : 'Modo Oscuro'}
-            </button>
-          </div>
-        </div>
-      )}
-    </div>
+    </div>,
+    document.body,
   );
 }
 
@@ -9790,7 +10396,7 @@ import "@testing-library/jest-dom";
 import userEvent from "@testing-library/user-event";
 import { useSearch } from "@/src/features/search/hooks/useSearch";
 import { render, screen, fireEvent } from "@testing-library/react";
-import { NavbarSearch } from "./NavbarSearch";
+import { NavbarSearch } from "../../organisms/Navigation/NavbarSearch";
 
 jest.mock("@/src/features/search/hooks/useSearch");
 const mockUseSearch = useSearch as jest.MockedFunction<typeof useSearch>;
@@ -9868,70 +10474,6 @@ describe("Organism: NavbarSearch", () => {
     });
   });
 });
-
-
-
-================================================
-FILE: src/system/molecules/Navbar/NavbarSearch.tsx
-================================================
-"use client";
-
-import React, { useCallback, useEffect, useRef } from "react";
-import { useSearch } from "@/src/features/search/hooks/useSearch";
-import { SearchCategorySelector } from "./SearchCategorySelector";
-import { IconSearch, IconLoader2 } from "@tabler/icons-react";
-import { EH_CATEGORIES } from "@/src/constants/filters";
-
-export function NavbarSearch() {
-  const { query, setQuery, handleSearch, activeCategories, toggleCategory, isLoading } = useSearch();
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  const onSubmit = useCallback((e: React.FormEvent) => {
-    e.preventDefault();
-    handleSearch(e);
-  }, [handleSearch]);
-
-  const onInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    setQuery(e.target.value);
-  }, [setQuery]);
-
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === '/' && document.activeElement?.tagName !== 'INPUT' && document.activeElement?.tagName !== 'TEXTAREA') {
-        e.preventDefault();
-        inputRef.current?.focus();
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
-
-  return (
-    <div className="w-full max-w-2xl flex items-center h-10 bg-muted/30 dark:bg-white/0.03 border border-border/50 rounded-lg overflow-hidden focus-within:border-var(--accent-color)/50 focus-within:ring-1 focus-within:ring-var(--accent-color)/20 transition-all">
-      <SearchCategorySelector 
-        options={EH_CATEGORIES}
-        activeCategories={activeCategories} 
-        onToggle={toggleCategory} 
-      />
-      <form onSubmit={onSubmit} className="flex-1 h-full flex items-center relative">
-        <input 
-          ref={inputRef}
-          value={query}
-          onChange={onInputChange}
-          className="w-full h-full bg-transparent px-4 text-sm outline-none placeholder:text-muted-foreground/60"
-          placeholder="Buscar prompts, artistas... (Pulsa '/')"
-        />
-        <button 
-          type="submit" 
-          disabled={isLoading}
-          className="absolute right-3 text-muted-foreground hover:text-foreground disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-        >
-          {isLoading ? <IconLoader2 size={18} className="animate-spin" /> : <IconSearch size={18} stroke={2} />}
-        </button>
-      </form>
-    </div>
-  );
-}
 
 
 
@@ -10167,6 +10709,358 @@ export function SearchCategorySelector({ options, activeCategories, onToggle }: 
 
 
 ================================================
+FILE: src/system/molecules/Navbar/SearchComponents.tsx
+================================================
+import { IconSearch, IconSparkles, IconX } from "@tabler/icons-react";
+import { useState } from "react";
+import { Tooltip } from "../../atoms/Tooltip/Tooltip";
+
+export const SearchTrigger = ({ onOpen }: { onOpen: () => void }) => (
+  <button
+    onClick={onOpen}
+    className="w-full max-w-sm lg:max-w-md flex items-center gap-3 h-10 px-3 bg-muted/30 dark:bg-white/0.1 border border-border/50 rounded-xl hover:bg-muted/50 hover:border-border focus:outline-none focus:ring-2 focus:ring-accent/50 transition-all text-muted-foreground group"
+    aria-label="Abrir buscador semántico"
+  >
+    <IconSearch size={16} className="group-hover:text-foreground transition-colors" />
+    <span className="text-sm truncate">Buscar conceptos, estilos...</span>
+
+    <kbd className="ml-auto hidden md:inline-flex h-5 items-center gap-1 rounded border border-border/50 bg-background px-1.5 font-mono text-[10px] font-medium text-muted-foreground">
+      Shift + /
+    </kbd>
+  </button>
+);
+
+export const SemanticSearchHeader = () => {
+  const [isVisible, setIsVisible] = useState(true);
+
+  if (!isVisible) return null;
+
+  return (
+    <div className="relative flex flex-col gap-3 p-5 border border-accent/50 rounded-md bg-accent/10 animate-in fade-in duration-300">
+      <button
+        onClick={() => setIsVisible(false)}
+        className="absolute top-3 right-3 p-1.5 text-accent/60 hover:text-accent hover:bg-accent/10 transition-colors rounded-md"
+        aria-label="Cerrar explicación"
+      >
+        <Tooltip className="z-9999" content="Cerrar Información">
+          <IconX size={16} stroke={2} />
+        </Tooltip>
+      </button>
+
+      <div className="flex items-center gap-3">
+        <div className="flex flex-col">
+          <div className="flex items-center gap-2">
+            <h2 className="text-md font-black tracking-tight text-foreground">
+              Búsqueda Semántica
+            </h2>
+            <span className="flex items-center gap-1 text-[9px] font-mono font-bold uppercase tracking-widest bg-accent/10 text-accent px-2 py-0.5 rounded-sm border border-accent">
+              <IconSparkles size={14} /> Motor IA
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <p className="text-sm text-muted-foreground leading-relaxed pr-6">
+        ¿No recuerdas la palabra exacta? No hay problema. El motor de{" "}
+        <span className="font-prompt font-bold text-[16px] text-foreground">reprompt</span> no lee
+        palabras, lee contexto y significado. Convierte tus frases en patrones de inteligencia
+        artificial para mostrarte los resultados que realmente capturan la esencia de lo que estás
+        buscando.
+      </p>
+    </div>
+  );
+};
+
+
+
+================================================
+FILE: src/system/molecules/Navbar/SearchModaHeader.tsx
+================================================
+export const SearchModalHeader = () => (
+  <div className="flex items-center gap-3 px-2 py-2">
+    <div className="flex flex-col">
+      <h2 className="text-xl font-black tracking-tight text-foreground">Buscador Global</h2>
+      <p className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground/60 mt-0.5">
+        Presiona Enter para buscar
+      </p>
+    </div>
+  </div>
+);
+
+
+
+================================================
+FILE: src/system/molecules/Navbar/Mobile/MobileMenuPrimitives.tsx
+================================================
+import Link from "next/link";
+import { IconX } from "@tabler/icons-react";
+import React from "react";
+
+export const MenuHeader = ({ onClose }: { onClose: () => void }) => (
+  <div className="flex items-center justify-between p-4 border-b border-border bg-background shrink-0">
+    <span className="font-black text-lg tracking-tighter">REPROMPT</span>
+    <button
+      onClick={onClose}
+      className="p-2 bg-muted/50 rounded-full text-foreground hover:bg-muted transition-colors"
+      aria-label="Cerrar menú"
+    >
+      <IconX size={24} />
+    </button>
+  </div>
+);
+
+export interface MenuLinkProps {
+  href: string;
+  icon: React.ElementType;
+  label: string;
+  onClick: () => void;
+  className?: string;
+}
+
+export const MenuLink = ({ href, icon: Icon, label, onClick, className = "" }: MenuLinkProps) => (
+  <Link
+    href={href}
+    onClick={onClick}
+    className={`flex items-center gap-3 p-3 rounded-md hover:bg-muted font-medium text-sm transition-colors ${className}`}
+  >
+    <Icon size={18} className="shrink-0" /> {label}
+  </Link>
+);
+
+export const MenuSection = ({ title, children }: { title: string; children: React.ReactNode }) => (
+  <div className="flex flex-col gap-1">
+    <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2 px-2">
+      {title}
+    </span>
+    {children}
+  </div>
+);
+
+
+
+================================================
+FILE: src/system/molecules/Navbar/Mobile/MobileMenuViews.tsx
+================================================
+import Link from "next/link";
+import { User } from "@/src/store/authStore";
+import { UserAvatar } from "@/src/system/atoms/Avatar/Avatar";
+import { MenuLink, MenuSection } from "./MobileMenuPrimitives";
+import {
+  IconSun,
+  IconMoon,
+  IconScanTraces,
+  IconUserSquareRounded,
+  IconLockSquareRounded,
+  IconDeviceDesktop,
+  IconShieldLock,
+  IconLogout,
+  IconAlbum,
+} from "@tabler/icons-react";
+
+export const UserProfileCard = ({ user }: { user: User }) => (
+  <div className="flex items-center gap-3 p-3 bg-muted/20 border border-border rounded-xl">
+    <UserAvatar username={user.username} avatarUrl={user.avatarUrl} size="md" />
+    <div className="flex flex-col">
+      <span className="text-sm font-bold text-foreground">@{user.username}</span>
+      <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-widest">
+        {user.role}
+      </span>
+    </div>
+  </div>
+);
+
+export const AuthenticatedView = ({
+  user,
+  lang,
+  onClose,
+}: {
+  user: User;
+  lang: string;
+  onClose: () => void;
+}) => (
+  <>
+    <UserProfileCard user={user} />
+
+    <MenuSection title="Herramientas">
+      <MenuLink
+        href={`/${lang}/studio`}
+        onClick={onClose}
+        icon={IconAlbum}
+        label="Mi Estudio"
+        className="font-bold"
+      />
+
+      <MenuLink
+        href={`/${lang}/reprompt`}
+        onClick={onClose}
+        icon={IconScanTraces}
+        label="Extractor Reprompt"
+        className="text-accent font-bold"
+      />
+    </MenuSection>
+
+    <MenuSection title="Cuenta">
+      <MenuLink
+        href={`/${lang}/${user.username}/settings/profile`}
+        onClick={onClose}
+        icon={IconUserSquareRounded}
+        label="Perfil"
+      />
+      <MenuLink
+        href={`/${lang}/${user.username}/settings/security`}
+        onClick={onClose}
+        icon={IconLockSquareRounded}
+        label="Seguridad"
+      />
+      <MenuLink
+        href={`/${lang}/${user.username}/settings/appearance`}
+        onClick={onClose}
+        icon={IconDeviceDesktop}
+        label="Apariencia"
+      />
+
+      {user.role === "admin" && (
+        <MenuLink
+          href={`/${lang}/admin`}
+          onClick={onClose}
+          icon={IconShieldLock}
+          label="Panel Admin"
+          className="text-amber-500"
+        />
+      )}
+    </MenuSection>
+  </>
+);
+
+export const GuestView = ({ lang, onClose }: { lang: string; onClose: () => void }) => (
+  <Link
+    href={`/${lang}/login`}
+    onClick={onClose}
+    className="p-3 text-center bg-foreground text-background rounded-lg font-bold text-sm mt-4"
+  >
+    Iniciar Sesión
+  </Link>
+);
+
+interface MenuFooterProps {
+  user: User | null;
+  isDark: boolean;
+  toggleTheme: () => void;
+  onLogout: () => void;
+  onClose: () => void;
+}
+
+export const MenuFooterActions = ({
+  user,
+  isDark,
+  toggleTheme,
+  onLogout,
+  onClose,
+}: MenuFooterProps) => (
+  <div className="mt-auto pt-8 flex flex-col gap-2">
+    <div className="border-t border-border/50 pt-4 flex flex-col gap-2">
+      <button
+        onClick={toggleTheme}
+        className="flex items-center justify-between p-3 rounded-md hover:bg-muted font-bold text-sm transition-colors w-full"
+      >
+        <span className="flex items-center gap-3">
+          {isDark ? <IconSun size={18} /> : <IconMoon size={18} />} Apariencia
+        </span>
+        <span className="text-xs text-muted-foreground font-mono">
+          {isDark ? "OSCURO" : "CLARO"}
+        </span>
+      </button>
+
+      {user && (
+        <button
+          onClick={() => {
+            onLogout();
+            onClose();
+          }}
+          className="flex items-center gap-3 p-3 rounded-md hover:bg-destructive/10 text-destructive font-bold text-sm transition-colors w-full"
+        >
+          <IconLogout size={18} /> Cerrar Sesión
+        </button>
+      )}
+    </div>
+  </div>
+);
+
+
+
+================================================
+FILE: src/system/molecules/Navbar/Mobile/NavbarMobile.tsx
+================================================
+"use client";
+
+import { useState } from "react";
+import { useAuthStore } from "@/src/store/authStore";
+import { useTheme } from "@/src/utils/hooks/useTheme";
+import { useScrollLock } from "@/src/utils/hooks/useScrollLock";
+import { useAppLocale } from "@/src/utils/hooks/useAppRouter";
+import { NavbarSearch } from "@/src/features/layout/components/NavbarSearch";
+import { IconMenu2 } from "@tabler/icons-react";
+
+// Importamos las piezas desde nuestros nuevos submódulos
+import { MenuHeader } from "./MobileMenuPrimitives";
+import { AuthenticatedView, GuestView, MenuFooterActions } from "./MobileMenuViews";
+
+export function NavbarMobile() {
+  const [isOpen, setIsOpen] = useState(false);
+  const { user, logout } = useAuthStore();
+  const { isDark, toggleTheme } = useTheme();
+  const lang = useAppLocale();
+
+  useScrollLock(isOpen);
+
+  const closeMenu = () => setIsOpen(false);
+
+  return (
+    <div className="md:hidden flex items-center gap-2">
+      <button
+        onClick={() => setIsOpen(true)}
+        className="p-2 text-foreground hover:bg-muted rounded-md transition-colors"
+        aria-label="Abrir menú móvil"
+      >
+        <IconMenu2 size={24} />
+      </button>
+
+      {isOpen && (
+        <div className="fixed inset-0 z-100 h-dvh bg-background/95 backdrop-blur-md flex flex-col animate-in slide-in-from-top-2 duration-200">
+          <MenuHeader onClose={closeMenu} />
+
+          <div className="flex-1 overflow-y-auto">
+            <div className="flex flex-col min-h-full p-4 pb-8">
+              <div className="flex flex-col gap-6">
+                <div className="w-full">
+                  <NavbarSearch />
+                </div>
+
+                {user ? (
+                  <AuthenticatedView user={user} lang={lang} onClose={closeMenu} />
+                ) : (
+                  <GuestView lang={lang} onClose={closeMenu} />
+                )}
+              </div>
+
+              <MenuFooterActions
+                user={user}
+                isDark={isDark}
+                toggleTheme={toggleTheme}
+                onLogout={logout}
+                onClose={closeMenu}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+
+
+================================================
 FILE: src/system/molecules/Navigation/Breadcrumbs.tsx
 ================================================
 import Link from "next/link";
@@ -10383,11 +11277,11 @@ export function NotificationPopover({
 ================================================
 FILE: src/system/molecules/Search/UniversalSearchBar.tsx
 ================================================
-// src/system/molecules/Search/UniversalSearchBar.tsx
 "use client";
 
 import { useRef, useEffect } from "react";
 import { IconSearch, IconLoader2, IconX } from "@tabler/icons-react";
+import { Tooltip } from "../../atoms/Tooltip/Tooltip";
 
 interface UniversalSearchBarProps {
   query: string;
@@ -10425,6 +11319,13 @@ export function UniversalSearchBar({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [enableKeyboardShortcut]);
 
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      inputRef.current?.focus();
+    }, 50);
+    return () => clearTimeout(timer);
+  }, []);
+
   return (
     <div className="relative flex items-center w-full h-10 bg-muted/20 border border-border/40 rounded-xl focus-within:border-(--accent-color)/50 focus-within:ring-1 focus-within:ring-(--accent-color)/20 transition-all backdrop-blur-sm">
       <form
@@ -10456,7 +11357,9 @@ export function UniversalSearchBar({
             onClick={onClear}
             className="pr-3 text-muted-foreground/40 hover:text-foreground transition-colors"
           >
-            <IconX size={14} />
+            <Tooltip className="z-9999" content="Cerrar">
+              <IconX size={14} />
+            </Tooltip>
           </button>
         )}
       </form>
@@ -10494,7 +11397,7 @@ FILE: src/system/molecules/Studio/PromptCard.tsx
 "use client";
 
 import Link from "next/link";
-import { IconPhoto } from "@tabler/icons-react";
+import { IconPhoto, IconTrash } from "@tabler/icons-react";
 import { usePromptCard } from "@/src/system/molecules/Cards/hooks/usePromptCard";
 import { PromptCardActions } from "../Cards/PromptCardActions";
 import { LazyImage } from "../Media/LazyImage";
@@ -10539,11 +11442,23 @@ export function PromptCard({
       }}
     >
       <div className="absolute top-2 right-2 z-30 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+        {onDelete && (
+          <button
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onDelete(String(item.id));
+            }}
+            className="p-1.5 bg-background/90 backdrop-blur-sm border border-border/50 text-red-500 hover:bg-red-500/10 hover:text-red-600 rounded-md transition-colors shadow-sm"
+            aria-label="Eliminar prompt"
+          >
+            <IconTrash size={16} />
+          </button>
+        )}
         <PromptCardActions
           item={item}
           directories={directories}
           onAssign={onAssign}
-          onDelete={onDelete}
           isOpen={isMenuOpen}
           setIsOpen={setIsMenuOpen}
         />
@@ -10712,7 +11627,7 @@ FILE: src/system/molecules/Studio/SidebarDirectory.tsx
 
 import { useState } from "react";
 import { useStudioUI, Directory } from "@/src/store/useStudioUI";
-import { SidebarDirectoryItem } from "../../atoms/Studio/SidebarDirectoryItem";
+import { SidebarDirectoryItem } from "@/src/features/studio/components/SidebarDirectoryItem";
 import { useDirectoryDnd } from "@/src/features/studio/hooks/useDirectoryDnd";
 import { useDirectoryActions } from "@/src/features/studio/hooks/useDirectoryActions";
 
@@ -10909,1106 +11824,6 @@ export function AuthTabs({ isLogin, onToggle }: AuthTabsProps) {
   );
 }
 
-
-
-================================================
-FILE: src/system/organisms/Admin/AuditTable.tsx
-================================================
-// frontend/features/admin/components/AuditTable.tsx
-import { Button } from "@/src/system/atoms/Button/Button";
-import { AuditLog } from "@/src/features/admin/admin.types";
-
-interface AuditTableProps {
-  logs: AuditLog[];
-  isLoading: boolean;
-  onRefresh: () => void;
-}
-
-export function AuditTable({ logs, isLoading, onRefresh }: AuditTableProps) {
-  return (
-    <section className="bg-(--bg-secondary) p-6 neo-border neo-shadow">
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-black font-mono uppercase">Registro de Actividad</h2>
-        <Button
-          onClick={onRefresh}
-          isLoading={isLoading}
-          variant="ghost"
-          size="sm"
-          className="text-xs"
-        >
-          ACTUALIZAR_LOGS
-        </Button>
-      </div>
-
-      <div className="overflow-x-auto">
-        <table className="w-full text-left font-mono text-xs border-collapse">
-          <thead>
-            <tr className="border-b-2 border-(--border-color) bg-background/50">
-              <th className="p-4 uppercase font-black opacity-60">Timestamp</th>
-              <th className="p-4 uppercase font-black opacity-60">Operador</th>
-              <th className="p-4 uppercase font-black opacity-60">Acción</th>
-              <th className="p-4 uppercase font-black opacity-60">Detalles de Operación</th>
-            </tr>
-          </thead>
-          <tbody>
-            {logs.length === 0 ? (
-              <tr>
-                <td colSpan={4} className="p-10 text-center opacity-40 italic">
-                  No hay registros de sistema disponibles.
-                </td>
-              </tr>
-            ) : (
-              logs.map((log) => (
-                <tr
-                  key={log.id}
-                  className="border-b border-(--border-color) hover:bg-background/30 transition-colors"
-                >
-                  <td className="p-4 whitespace-nowrap opacity-70">
-                    {new Date(log.timestamp).toLocaleString()}
-                  </td>
-                  <td className="p-4 font-black text-(--accent-color)">@{log.username}</td>
-                  <td className="p-4">
-                    <span className="px-2 py-1 bg-foreground text-background font-black text-[9px]">
-                      {log.action}
-                    </span>
-                  </td>
-                  <td className="p-4 max-w-md truncate hover:whitespace-normal" title={log.details}>
-                    {log.details}
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
-    </section>
-  );
-}
-
-
-
-================================================
-FILE: src/system/organisms/Admin/DatabaseModule.tsx
-================================================
-"use client";
-
-import { useEffect, useState } from "react";
-import Link from "next/link";
-import toast from "react-hot-toast";
-import { api } from "@/src/services/api";
-import { DatabaseStatsResponse } from "@/src/services/api/admin";
-import {
-  IconUsers,
-  IconPhoto,
-  IconDatabaseShare,
-  IconDotsVertical,
-  IconTrash,
-  IconKey,
-  IconStar,
-  IconBan,
-  IconExternalLink,
-  IconActivity,
-} from "@tabler/icons-react";
-import { MetricCard } from "../../molecules/Admin/MetricCard";
-import { QuotaBar } from "../../molecules/Admin/QuotaBar";
-import { UserActivityModal } from "./UserActivityModal";
-
-export function DatabaseModule() {
-  const [stats, setStats] = useState<DatabaseStatsResponse | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
-
-  const [activityModalUser, setActivityModalUser] = useState<{
-    id: string;
-    username: string;
-  } | null>(null);
-
-  const fetchStats = async () => {
-    try {
-      const data = await api.admin.getDatabaseStats();
-      setStats(data);
-    } catch (err: any) {
-      setError(err.message || "Error de conexión");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchStats();
-  }, []);
-
-  const handleAction = async (
-    userId: string,
-    action: "upgrade" | "deactivate" | "activate" | "reset_password",
-  ) => {
-    setOpenMenuId(null);
-    try {
-      const res = await api.admin.manageUser(userId, action);
-      if (action === "reset_password") {
-        alert(
-          `🚨 NUEVA CONTRASEÑA GENERADA:\n\n${res.new_password}\n\nCópiala antes de cerrar. No se volverá a mostrar.`,
-        );
-      } else {
-        toast.success(res.message);
-      }
-      fetchStats();
-    } catch (err: any) {
-      toast.error(err.message || "Fallo al ejecutar acción");
-    }
-  };
-
-  const handleDelete = async (userId: string, username: string) => {
-    setOpenMenuId(null);
-    const code = prompt(
-      `¡PELIGRO! Vas a borrar a @${username} y TODAS sus imágenes de R2.\n\nEscribe EXTERMINAR para confirmar:`,
-    );
-
-    if (code === "EXTERMINAR") {
-      try {
-        toast.loading("Ejecutando exterminio en cascada...", { id: "delete" });
-        const res = await api.admin.deleteUser(userId);
-        toast.success(res.message, { id: "delete" });
-        fetchStats();
-      } catch (err: any) {
-        toast.error(err.message || "Fallo crítico en borrado", { id: "delete" });
-      }
-    }
-  };
-
-  if (error) return <div className="text-red-500 font-mono">{error}</div>;
-  if (isLoading || !stats)
-    return <div className="animate-pulse h-64 bg-muted/20 rounded-xl border border-border/50" />;
-
-  return (
-    <>
-      <div className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <MetricCard
-            title="Usuarios Totales"
-            value={stats.total_users.toLocaleString()}
-            icon={<IconUsers size={24} className="text-blue-500" />}
-          />
-          <MetricCard
-            title="Imágenes Indexadas"
-            value={stats.total_prompts.toLocaleString()}
-            icon={<IconPhoto size={24} className="text-purple-500" />}
-          />
-          <QuotaBar
-            label="Cuota Disco Neon DB (Free Tier)"
-            currentMb={stats.total_mb}
-            limitMb={stats.limit_mb}
-          />
-        </div>
-
-        <div className="bg-background border border-border rounded-xl shadow-sm overflow-hidden pb-32">
-          <div className="p-4 border-b border-border flex items-center gap-2 bg-muted/20">
-            <IconDatabaseShare size={18} className="text-muted-foreground" />
-            <h3 className="font-bold text-sm uppercase tracking-widest text-foreground">
-              Últimos Registros (Neon DB)
-            </h3>
-          </div>
-
-          <div className="overflow-x-auto min-h-300px">
-            <table className="w-full text-sm text-left">
-              <thead className="text-xs text-muted-foreground uppercase bg-muted/30 border-b border-border">
-                <tr>
-                  <th className="px-4 py-3 font-mono">Usuario</th>
-                  <th className="px-4 py-3 font-mono">Rol</th>
-                  <th className="px-4 py-3 font-mono">Status</th>
-                  <th className="px-4 py-3 font-mono text-right">Acciones</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {stats.users.map((user) => (
-                  <tr
-                    key={user.id}
-                    className={`transition-colors ${
-                      !user.is_active ? "opacity-50 bg-red-500/5" : "hover:bg-muted/10"
-                    }`}
-                  >
-                    <td className="px-4 py-3 font-medium text-foreground">
-                      @{user.username}
-                      {user.email && (
-                        <span className="block text-xs font-normal text-muted-foreground">
-                          {user.email}
-                        </span>
-                      )}
-                    </td>
-
-                    <td className="px-4 py-3">
-                      <span
-                        className={`px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider ${
-                          user.role === "admin"
-                            ? "bg-red-500/10 text-red-500 border border-red-500/20"
-                            : user.role === "artist"
-                              ? "bg-purple-500/10 text-purple-500 border border-purple-500/20"
-                              : "bg-muted text-muted-foreground border border-border"
-                        }`}
-                      >
-                        {user.role}
-                      </span>
-                    </td>
-
-                    <td className="px-4 py-3">
-                      {user.is_active ? (
-                        <span className="text-green-500 text-xs font-mono">● Activo</span>
-                      ) : (
-                        <span className="text-red-500 text-xs font-mono">⊗ BANEADO</span>
-                      )}
-                    </td>
-
-                    <td className="px-4 py-3 text-right relative">
-                      <button
-                        onClick={() => setOpenMenuId(openMenuId === user.id ? null : user.id)}
-                        className="p-1.5 hover:bg-muted rounded-md transition-colors"
-                      >
-                        <IconDotsVertical size={18} />
-                      </button>
-
-                      {openMenuId === user.id && (
-                        <div className="absolute right-8 top-10 z-50 w-52 bg-background border border-border rounded-lg shadow-xl py-1 animate-in fade-in zoom-in-95">
-                          <Link
-                            href={`/es/${user.username}`}
-                            target="_blank"
-                            className="flex items-center gap-2 px-3 py-2 text-xs hover:bg-muted/50 w-full text-left"
-                          >
-                            <IconExternalLink size={14} /> Ver Perfil Público
-                          </Link>
-
-                          <button
-                            onClick={() => {
-                              setActivityModalUser({ id: user.id, username: user.username });
-                              setOpenMenuId(null);
-                            }}
-                            className="flex items-center gap-2 px-3 py-2 text-xs text-blue-500 hover:bg-blue-500/10 w-full text-left"
-                          >
-                            <IconActivity size={14} /> Ver Rastro de Actividad
-                          </button>
-
-                          {user.role === "voyager" && (
-                            <button
-                              onClick={() => handleAction(user.id, "upgrade")}
-                              className="flex items-center gap-2 px-3 py-2 text-xs text-purple-500 hover:bg-purple-500/10 w-full text-left"
-                            >
-                              <IconStar size={14} /> Ascender a Artist
-                            </button>
-                          )}
-
-                          <button
-                            onClick={() => handleAction(user.id, "reset_password")}
-                            className="flex items-center gap-2 px-3 py-2 text-xs text-yellow-600 hover:bg-yellow-500/10 w-full text-left border-t border-border/50 mt-1 pt-2"
-                          >
-                            <IconKey size={14} /> Forzar Nueva Clave
-                          </button>
-
-                          {user.is_active ? (
-                            <button
-                              onClick={() => handleAction(user.id, "deactivate")}
-                              className="flex items-center gap-2 px-3 py-2 text-xs text-orange-500 hover:bg-orange-500/10 w-full text-left"
-                            >
-                              <IconBan size={14} /> Shadowban (Pausar)
-                            </button>
-                          ) : (
-                            <button
-                              onClick={() => handleAction(user.id, "activate")}
-                              className="flex items-center gap-2 px-3 py-2 text-xs text-green-500 hover:bg-green-500/10 w-full text-left"
-                            >
-                              <IconBan size={14} /> Quitar Ban
-                            </button>
-                          )}
-
-                          <button
-                            onClick={() => handleDelete(user.id, user.username)}
-                            className="flex items-center gap-2 px-3 py-2 text-xs font-bold text-red-500 hover:bg-red-500/20 w-full text-left border-t border-red-500/20 mt-1 pt-2"
-                          >
-                            <IconTrash size={14} /> Exterminar Cuenta
-                          </button>
-                        </div>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-
-      {activityModalUser && (
-        <UserActivityModal
-          userId={activityModalUser.id}
-          username={activityModalUser.username}
-          onClose={() => setActivityModalUser(null)}
-        />
-      )}
-    </>
-  );
-}
-
-
-
-================================================
-FILE: src/system/organisms/Admin/GarbageCollectorModule.tsx
-================================================
-"use client";
-
-import { useState } from "react";
-import { api } from "@/src/services/api";
-import toast from "react-hot-toast";
-import { IconTrashX, IconLoader2, IconAlertTriangle } from "@tabler/icons-react";
-
-export function GarbageCollectorModule() {
-  const [isPurging, setIsPurging] = useState(false);
-  const [confirmStep, setConfirmStep] = useState(false);
-
-  const handlePurge = async () => {
-    if (!confirmStep) {
-      setConfirmStep(true);
-      setTimeout(() => setConfirmStep(false), 3000);
-      return;
-    }
-
-    setIsPurging(true);
-    try {
-      const result = await api.admin.runGarbageCollector();
-
-      toast.success(
-        <div>
-          <b>¡Purga Exitosa!</b>
-          <p className="text-xs mt-1">
-            Logs: {result.deleted_logs} | Invites: {result.deleted_invites} | Archivos R2:{" "}
-            {result.deleted_temp_files}
-          </p>
-        </div>,
-        { duration: 5000 },
-      );
-      setConfirmStep(false);
-    } catch (error: any) {
-      toast.error(error.message || "Fallo crítico en el recolector de basura");
-    } finally {
-      setIsPurging(false);
-    }
-  };
-
-  return (
-    <div className="bg-red-500/5 border border-red-500/20 p-6 rounded-xl shadow-sm flex flex-col justify-between h-full relative overflow-hidden group">
-      {/* Fondo de alerta sutil */}
-      <IconAlertTriangle
-        size={120}
-        className="absolute -right-6 -bottom-6 text-red-500/5 -rotate-12 group-hover:scale-110 transition-transform duration-700"
-      />
-
-      <div className="relative z-10 mb-6">
-        <h3 className="font-bold text-red-500 flex items-center gap-2 uppercase tracking-widest text-sm">
-          <IconTrashX size={18} /> Garbage Collector
-        </h3>
-        <p className="text-xs text-muted-foreground mt-2 font-mono">
-          Purga logs de +30 días, invitaciones usadas y vacía la carpeta{" "}
-          <code className="text-red-400">/temp</code> de Cloudflare R2 (+24h).
-        </p>
-      </div>
-
-      <button
-        onClick={handlePurge}
-        disabled={isPurging}
-        className={`relative z-10 w-full py-3 px-4 rounded-lg font-bold text-sm uppercase tracking-widest transition-all ${
-          isPurging
-            ? "bg-red-500/20 text-red-500 cursor-not-allowed"
-            : confirmStep
-              ? "bg-red-600 text-white hover:bg-red-700 animate-pulse"
-              : "bg-red-500/10 text-red-500 border border-red-500/20 hover:bg-red-500 hover:text-white"
-        }`}
-      >
-        {isPurging ? (
-          <span className="flex items-center justify-center gap-2">
-            <IconLoader2 size={18} className="animate-spin" /> Purgando Sistema...
-          </span>
-        ) : confirmStep ? (
-          "¿ESTÁS SEGURO? CLIC PARA PURGAR"
-        ) : (
-          "Ejecutar Purga del Sistema"
-        )}
-      </button>
-    </div>
-  );
-}
-
-
-
-================================================
-FILE: src/system/organisms/Admin/InviteManager.tsx
-================================================
-// frontend/features/admin/components/InviteManager.tsx
-import { Button } from "@/src/system/atoms/Button/Button";
-
-interface InviteManagerProps {
-  onGenerate: (role: string) => void;
-  isLoading: boolean;
-  inviteCode: string | null;
-}
-
-export function InviteManager({ onGenerate, isLoading, inviteCode }: InviteManagerProps) {
-  return (
-    <section className="bg-(--bg-secondary) p-6 neo-border neo-shadow flex flex-col gap-4">
-      <h2 className="text-xl font-black font-mono uppercase flex items-center gap-2">
-        <span className="w-3 h-3 bg-blue-500 rounded-full"></span> Invitaciones
-      </h2>
-      <p className="text-xs text-(--text-secondary) leading-relaxed">
-        Genera códigos únicos para nuevos usuarios.
-      </p>
-
-      <div className="flex flex-col gap-2 mt-2">
-        <Button onClick={() => onGenerate("voyager")} isLoading={isLoading} variant="primary">
-          + Código Voyager
-        </Button>
-        <Button onClick={() => onGenerate("artist")} isLoading={isLoading} variant="secondary">
-          + Código Artist
-        </Button>
-      </div>
-
-      {inviteCode && (
-        <div className="mt-4 p-4 bg-background border-2 border-dashed border-(--accent-color) flex flex-col items-center gap-2">
-          <span className="text-[10px] font-bold uppercase opacity-50">Código Activo:</span>
-          <code className="text-xl font-black text-(--accent-color) select-all tracking-widest">
-            {inviteCode}
-          </code>
-        </div>
-      )}
-    </section>
-  );
-}
-
-
-
-================================================
-FILE: src/system/organisms/Admin/SecurityModule.tsx
-================================================
-// frontend/features/admin/components/SecurityModule.tsx
-import { Button } from "@/src/system/atoms/Button/Button";
-
-export function SecurityModule({ onRevokeAll }: { onRevokeAll: () => void }) {
-  return (
-    <section className="bg-(--bg-secondary) p-6 neo-border neo-shadow flex flex-col gap-4 border-red-500/20">
-      <h2 className="text-xl font-black font-mono uppercase flex items-center gap-2 text-red-500">
-        <span className="w-3 h-3 bg-red-500 rounded-full animate-ping"></span> Seguridad
-      </h2>
-      <p className="text-xs text-(--text-secondary) leading-relaxed">
-        Gestión de sesiones activas en Redis. La revocación es instantánea y global.
-      </p>
-      <div className="mt-auto">
-        <Button
-          onClick={onRevokeAll}
-          className="w-full bg-red-600/10 hover:bg-red-600 hover:text-white border-red-600 text-red-500 transition-all font-black text-xs"
-        >
-          REVOCAR TODAS LAS SESIONES
-        </Button>
-      </div>
-    </section>
-  );
-}
-
-
-
-================================================
-FILE: src/system/organisms/Admin/StorageModule.tsx
-================================================
-"use client";
-
-import { useEffect, useState } from "react";
-import { api } from "@/src/services/api";
-import { StorageStatsResponse } from "@/src/services/api/admin";
-import toast from "react-hot-toast";
-import {
-  IconCloudDataConnection,
-  IconFiles,
-  IconAlertCircle,
-  IconServer,
-  IconFlame,
-} from "@tabler/icons-react";
-import { QuotaBar } from "../../molecules/Admin/QuotaBar";
-
-export function StorageModule() {
-  const [stats, setStats] = useState<StorageStatsResponse | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const [isPurging, setIsPurging] = useState(false);
-  const [confirmPurge, setConfirmPurge] = useState(false);
-
-  const fetchStorage = async () => {
-    try {
-      const data = await api.admin.getStorageStats();
-      setStats(data);
-    } catch (err: any) {
-      setError(err.message || "Error al conectar con Cloudflare R2");
-    }
-  };
-
-  useEffect(() => {
-    let isMounted = true;
-
-    const initialFetch = async () => {
-      try {
-        setIsLoading(true);
-        const data = await api.admin.getStorageStats();
-        if (isMounted) setStats(data);
-      } catch (err: any) {
-        if (isMounted) setError(err.message || "Error al conectar con Cloudflare R2");
-      } finally {
-        if (isMounted) setIsLoading(false);
-      }
-    };
-
-    initialFetch();
-    return () => {
-      isMounted = false;
-    };
-  }, []);
-
-  const handlePurge = async () => {
-    if (!confirmPurge) {
-      setConfirmPurge(true);
-      setTimeout(() => setConfirmPurge(false), 4000);
-      return;
-    }
-
-    const finalConfirm = prompt(
-      "ESTO BORRARÁ TODO EL BUCKET R2.\nEscribe DESTRUIR para confirmar:",
-    );
-    if (finalConfirm !== "DESTRUIR") {
-      setConfirmPurge(false);
-      return;
-    }
-
-    setIsPurging(true);
-    try {
-      toast.loading("Aniquilando bucket R2...", { id: "purge" });
-      const result = await api.admin.purgeStorage();
-      toast.success(result.message, { id: "purge", duration: 5000 });
-      await fetchStorage();
-    } catch (error: any) {
-      toast.error(error.message || "Fallo al purgar R2", { id: "purge" });
-    } finally {
-      setIsPurging(false);
-      setConfirmPurge(false);
-    }
-  };
-
-  if (error) {
-    return (
-      <div className="p-6 bg-red-500/10 border border-red-500/20 rounded-xl flex items-start gap-3 text-red-500">
-        <IconAlertCircle className="shrink-0 mt-0.5" />
-        <div>
-          <h3 className="font-bold">Alerta de Infraestructura (R2)</h3>
-          <p className="text-sm opacity-80">{error}</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (isLoading || !stats) {
-    return <StorageModuleSkeleton />;
-  }
-
-  const isStorageHealthy = stats.total_mb < 10000;
-
-  return (
-    <div className="space-y-6 animate-in fade-in duration-500">
-      <QuotaBar
-        label="Cuota Mensual Cloudflare R2 (Free Tier)"
-        currentMb={stats.total_mb}
-        limitMb={stats.limit_mb}
-      />
-
-      <div
-        className={`p-4 border rounded-xl flex items-center justify-between shadow-sm ${
-          isStorageHealthy
-            ? "bg-green-500/10 border-green-500/20"
-            : "bg-yellow-500/10 border-yellow-500/20"
-        }`}
-      >
-        <div className="flex items-center gap-3">
-          <IconCloudDataConnection
-            className={isStorageHealthy ? "text-green-500" : "text-yellow-500"}
-          />
-          <div>
-            <h3
-              className={`font-bold text-sm uppercase tracking-widest ${isStorageHealthy ? "text-green-600 dark:text-green-400" : "text-yellow-600 dark:text-yellow-400"}`}
-            >
-              Cloudflare R2 (Object Storage)
-            </h3>
-            <p className="text-xs text-muted-foreground font-mono">
-              {isStorageHealthy ? "Operativo y Saludable" : "Acercándose a cuota límite"}
-            </p>
-          </div>
-        </div>
-        <div className="flex items-center gap-2 text-xs font-mono">
-          <span className="relative flex h-3 w-3">
-            <span
-              className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${isStorageHealthy ? "bg-green-400" : "bg-yellow-400"}`}
-            ></span>
-            <span
-              className={`relative inline-flex rounded-full h-3 w-3 ${isStorageHealthy ? "bg-green-500" : "bg-yellow-500"}`}
-            ></span>
-          </span>
-          En línea
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="bg-background border border-border p-5 rounded-xl shadow-sm flex items-center justify-between">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-1">
-              Ancho de Disco
-            </p>
-            <p className="text-3xl font-black text-foreground">
-              {Number(stats.total_mb).toFixed(2)}{" "}
-              <span className="text-sm text-muted-foreground font-normal">MB</span>
-            </p>
-          </div>
-          <div className="p-3 bg-muted/30 rounded-lg text-blue-500">
-            <IconServer size={24} />
-          </div>
-        </div>
-
-        <div className="bg-background border border-border p-5 rounded-xl shadow-sm flex items-center justify-between">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-1">
-              Archivos en R2
-            </p>
-            <p className="text-3xl font-black text-foreground">
-              {stats.total_files.toLocaleString()}
-            </p>
-          </div>
-          <div className="p-3 bg-muted/30 rounded-lg text-purple-500">
-            <IconFiles size={24} />
-          </div>
-        </div>
-      </div>
-
-      <button
-        onClick={handlePurge}
-        disabled={isPurging}
-        className={`w-full py-3 px-4 rounded-xl font-bold text-sm uppercase tracking-widest transition-all flex items-center justify-center gap-2 ${
-          isPurging
-            ? "bg-red-500/20 text-red-500 cursor-not-allowed"
-            : confirmPurge
-              ? "bg-red-600 text-white hover:bg-red-700 animate-pulse border border-red-500 shadow-lg shadow-red-500/20"
-              : "bg-red-500/5 text-red-500 border border-red-500/20 hover:bg-red-500/10"
-        }`}
-      >
-        <IconFlame size={18} />
-        {isPurging
-          ? "Aniquilando..."
-          : confirmPurge
-            ? "¿SEGURO? ESTO BORRARÁ TODO EL BUCKET"
-            : "Purgar Bucket Completo (Hard Reset)"}
-      </button>
-    </div>
-  );
-}
-
-function StorageModuleSkeleton() {
-  return (
-    <div className="space-y-6">
-      <div className="h-74px bg-muted/40 rounded-xl animate-pulse border border-border/50"></div>
-      <div className="h-74px bg-muted/40 rounded-xl animate-pulse border border-border/50"></div>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="h-28 bg-muted/40 rounded-xl animate-pulse border border-border/50"></div>
-        <div className="h-28 bg-muted/40 rounded-xl animate-pulse border border-border/50"></div>
-      </div>
-      <div className="h-12 bg-muted/40 rounded-xl animate-pulse border border-border/50"></div>
-    </div>
-  );
-}
-
-
-
-================================================
-FILE: src/system/organisms/Admin/UserActivityModal.tsx
-================================================
-"use client";
-
-import { useEffect, useState } from "react";
-import { api } from "@/src/services/api";
-import { UserActivityResponse } from "@/src/services/api/admin";
-import { IconX, IconActivity, IconClock } from "@tabler/icons-react";
-
-interface UserActivityModalProps {
-  userId: string;
-  username: string;
-  onClose: () => void;
-}
-
-export function UserActivityModal({ userId, username, onClose }: UserActivityModalProps) {
-  const [data, setData] = useState<UserActivityResponse | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchActivity = async () => {
-      try {
-        const res = await api.admin.getUserActivity(userId);
-        setData(res);
-      } catch (error) {
-        console.error(error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchActivity();
-  }, [userId]);
-
-  return (
-    <div className="fixed inset-0 z-50 flex justify-end bg-black/40 backdrop-blur-sm animate-in fade-in">
-      <div className="w-full max-w-md h-full bg-background border-l border-border shadow-2xl flex flex-col animate-in slide-in-from-right-full">
-        {/* Cabecera */}
-        <div className="p-6 border-b border-border flex justify-between items-center">
-          <div>
-            <h2 className="text-xl font-black font-mono uppercase italic flex items-center gap-2">
-              <IconActivity className="text-(--accent-color)" /> Rastro
-            </h2>
-            <p className="text-muted-foreground font-mono text-sm mt-1 flex items-center gap-2">
-              @{username}
-              {data && (
-                <span
-                  className={`flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-full ${
-                    data.is_online
-                      ? "bg-green-500/10 text-green-500"
-                      : "bg-muted text-muted-foreground"
-                  }`}
-                >
-                  <span
-                    className={`w-2 h-2 rounded-full ${data.is_online ? "bg-green-500 animate-pulse" : "bg-muted-foreground"}`}
-                  ></span>
-                  {data.is_online ? "ONLINE" : "OFFLINE"}
-                </span>
-              )}
-            </p>
-          </div>
-          <button
-            onClick={onClose}
-            className="p-2 bg-muted/50 hover:bg-muted rounded-full transition-colors"
-          >
-            <IconX size={20} />
-          </button>
-        </div>
-
-        {/* Línea de tiempo (Timeline) */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-6">
-          {isLoading ? (
-            <div className="animate-pulse space-y-4">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="h-16 bg-muted/20 rounded-xl" />
-              ))}
-            </div>
-          ) : data?.logs.length === 0 ? (
-            <p className="text-center text-muted-foreground font-mono text-sm mt-10">
-              No hay registros recientes.
-            </p>
-          ) : (
-            <div className="relative border-l-2 border-border ml-3 space-y-8">
-              {data?.logs.map((log) => (
-                <div key={log.id} className="relative pl-6">
-                  {/* Punto en la línea de tiempo */}
-                  <div className="absolute -left-9px top-1 w-4 h-4 rounded-full bg-background border-2 border-(--accent-color)" />
-
-                  <div className="bg-muted/10 border border-border p-3 rounded-lg shadow-sm">
-                    <p className="text-xs font-bold uppercase tracking-widest text-(--accent-color) mb-1">
-                      {log.action}
-                    </p>
-                    <p className="text-sm text-foreground mb-2">{log.details}</p>
-                    <p className="text-[10px] text-muted-foreground font-mono flex items-center gap-1">
-                      <IconClock size={12} /> {new Date(log.timestamp).toLocaleString()}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-
-
-================================================
-FILE: src/system/organisms/Auth/AuthForm.tsx
-================================================
-"use client";
-
-import { useAuthForm } from "@/src/features/auth/hooks/useAuthForm";
-import { AuthTabs } from "../../molecules/Tabs/AuthTabs";
-import { AuthHeader } from "../../molecules/Auth/AuthHeader";
-import { SocialLogins } from "../../molecules/Auth/SocialLogins";
-import { AuthSeparator } from "../../atoms/Login/AuthSeparator";
-import { CredentialsForm } from "../../molecules/Auth/CredentialsForm";
-
-interface AuthFormProps {
-  lang: string;
-}
-
-export function AuthForm({lang}: AuthFormProps) {
-  const { state, actions } = useAuthForm();
-
-  if (state.oauthPending) {
-    return (
-      <div className="w-full max-w-md mx-auto p-8 bg-(--bg-secondary) neo-border neo-shadow animate-in fade-in zoom-in-95 duration-300">
-        <div className="mb-8 text-center">
-          <h2 className="text-2xl font-black uppercase font-mono tracking-tighter">
-            Último <span className="text-(--accent-color)">Paso</span>
-          </h2>
-          <p className="text-xs font-mono text-(--text-secondary) mt-2 uppercase">
-            Vinculando: {state.oauthPending.email}
-          </p>
-        </div>
-
-        <form onSubmit={actions.handleOauthSubmit} className="flex flex-col gap-6">
-          <div className="relative">
-            <input
-              type="text"
-              required
-              placeholder="CÓDIGO DE INVITACIÓN"
-              value={state.inviteCode}
-              onChange={(e) => actions.setInviteCode(e.target.value.toUpperCase())}
-              className="w-full h-12 bg-background border border-border pl-4 pr-3 text-sm font-mono uppercase focus:outline-none focus:border-(--accent-color) transition-colors"
-              disabled={state.isLoading}
-              lang={lang}
-            />
-          </div>
-
-          <div className="flex flex-col-reverse sm:flex-row gap-4">
-            <button
-              type="button"
-              onClick={actions.cancelOauthFlow}
-              disabled={state.isLoading}
-              className="w-full sm:w-1/3 justify-center h-12 bg-transparent text-foreground border border-border hover:bg-muted font-mono uppercase text-xs font-black tracking-widest transition-colors disabled:opacity-50"
-              lang={lang}
-            >
-              Volver
-            </button>
-            <button
-              type="submit"
-              disabled={state.isLoading}
-              className="w-full sm:w-2/3 justify-center h-12 text-sm font-black uppercase font-mono tracking-widest bg-white text-black hover:bg-gray-200 neo-border transition-all disabled:opacity-50"
-            >
-              {state.isLoading ? "Procesando..." : "Completar"}
-            </button>
-          </div>
-        </form>
-      </div>
-    );
-  }
-
-  return (
-    <div className="w-full max-w-md mx-auto p-8 bg-(--bg-secondary) neo-border neo-shadow animate-in fade-in zoom-in-95 duration-300">
-      <AuthTabs isLogin={state.isLogin} onToggle={actions.setIsLogin} />
-
-      <div className="mt-8">
-        <AuthHeader isLogin={state.isLogin} />
-
-        <SocialLogins
-          isLoading={state.isLoading}
-          isGoogleLoading={state.isGoogleLoading}
-          isDiscordLoading={state.isDiscordLoading}
-          onGoogle={actions.handleGoogleLogin}
-          onDiscord={actions.handleDiscordLogin}
-        />
-
-        <AuthSeparator />
-
-        <CredentialsForm
-          isLogin={state.isLogin}
-          isLoading={state.isLoading}
-          isSocialLoading={state.isGoogleLoading || state.isDiscordLoading}
-          emailOrUser={state.emailOrUser}
-          password={state.password}
-          inviteCode={state.inviteCode}
-          isInviteLocked={state.isInviteLocked}
-          onEmailChange={actions.setEmailOrUser}
-          onPasswordChange={actions.setPassword}
-          onInviteChange={actions.setInviteCode}
-          onSubmit={actions.handleSubmit}
-        />
-      </div>
-    </div>
-  );
-}
-
-
-
-================================================
-FILE: src/system/organisms/Auth/ChangePasswordModal.tsx
-================================================
-"use client";
-
-import { useState } from "react";
-import { api } from "@/src/services/api";
-import { Button } from "@/src/system/atoms/Button/Button";
-import { IconKey, IconX } from "@tabler/icons-react";
-
-interface ChangePasswordModalProps {
-  onClose: () => void;
-}
-
-export function ChangePasswordModal({ onClose }: ChangePasswordModalProps) {
-  const [pwdData, setPwdData] = useState({ old_password: "", new_password: "" });
-  const [isLoading, setIsLoading] = useState(false);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-    try {
-      await api.cambiarPassword(pwdData);
-      alert("✅ Contraseña actualizada con éxito");
-      onClose();
-    } catch (err: any) {
-      alert(`❌ Error: ${err.message}`);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 bg-black/80 z-100 flex items-center justify-center p-4 backdrop-blur-sm">
-      <form
-        onSubmit={handleSubmit}
-        className="bg-(--bg-secondary) p-8 neo-border neo-shadow flex flex-col gap-5 max-w-sm w-full animate-fade-in relative"
-      >
-        <button
-          type="button"
-          onClick={onClose}
-          className="absolute top-4 right-4 text-(--text-secondary) hover:text-red-500 transition-colors"
-        >
-          <IconX size={24} />
-        </button>
-
-        <h3 className="text-xl font-bold font-mono text-foreground uppercase flex items-center gap-2 border-b-2 border-(--border-color) pb-3">
-          <IconKey size={24} className="text-(--accent-color)" />
-          Cambiar Clave
-        </h3>
-
-        <input
-          type="password"
-          placeholder="Clave Actual"
-          required
-          className="neo-border p-3 bg-background text-foreground font-mono focus:outline-none focus:neo-shadow-accent transition-all"
-          value={pwdData.old_password}
-          onChange={(e) => setPwdData({ ...pwdData, old_password: e.target.value })}
-        />
-        <input
-          type="password"
-          placeholder="Nueva Clave"
-          required
-          className="neo-border p-3 bg-background text-foreground font-mono focus:outline-none focus:neo-shadow-accent transition-all"
-          value={pwdData.new_password}
-          onChange={(e) => setPwdData({ ...pwdData, new_password: e.target.value })}
-        />
-
-        <Button type="submit" variant="primary" isLoading={isLoading} className="mt-2 w-full">
-          Guardar Cambios
-        </Button>
-      </form>
-    </div>
-  );
-}
-
-
-
-================================================
-FILE: src/system/organisms/Auth/RegisterForm.tsx
-================================================
-"use client";
-
-import { useState } from "react";
-import { useRegister } from "@/src/features/auth/hooks/useRegister";
-
-import { FormField } from "@/src/system/molecules/FormField";
-import { Button } from "@/src/system/atoms/Button/Button";
-import { FormHeader } from "../../atoms/Login/FormHeader";
-
-interface RegisterFormProps {
-  lang: string;
-}
-
-export function RegisterForm({ lang }: RegisterFormProps) {
-  // 🟢 Lógica inyectada sin alterar
-  const { handleRegister, isLoading, error } = useRegister(lang);
-
-  const [formData, setFormData] = useState({
-    username: "",
-    password: "",
-    invite_code: "",
-  });
-
-  const onSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    await handleRegister(formData);
-  };
-
-  return (
-    <div className="w-full max-w-md mx-auto p-8 bg-(--bg-secondary) neo-border neo-shadow">
-      <div className="animate-in fade-in zoom-in-95 duration-300">
-        
-        {/* Cabecera idéntica al Login */}
-        <FormHeader />
-
-        {error && (
-          <div className="bg-red-500 text-white p-3 mb-6 font-bold neo-border text-xs font-mono uppercase text-center animate-in slide-in-from-top-2">
-            {error}
-          </div>
-        )}
-
-        <form onSubmit={onSubmit} className="space-y-6">
-          
-          <FormField
-            label="email"
-            name="username"
-            type="text"
-            value={formData.username}
-            onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-            placeholder="reprompt@mail.com"
-            autoComplete="username"
-            required
-          />
-
-          <FormField
-            label="Password"
-            name="password"
-            type="password"
-            value={formData.password}
-            onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-            autoComplete="new-password"
-            placeholder="••••••••"
-            required
-          />
-
-          <FormField
-            label="Código de invitación"
-            name="invite_code"
-            type="text"
-            value={formData.invite_code}
-            onChange={(e) => setFormData({ ...formData, invite_code: e.target.value.toUpperCase() })}
-            placeholder="ej. TROYA-A1234B56"
-            className="uppercase"
-            required
-          />
-
-          <Button
-            type="submit"
-            isLoading={isLoading}
-            className="w-full justify-center h-12 text-sm font-black uppercase tracking-widest"
-          >
-            {isLoading ? "Verificando..." : "Confirmar Acceso"}
-          </Button>
-        </form>
-      </div>
-    </div>
-  );
-}
 
 
 ================================================
@@ -12846,13 +12661,12 @@ FILE: src/system/organisms/Navbar/Navbar.tsx
 "use client";
 
 import Link from "next/link";
-import { NavbarSearch } from "../../molecules/Navbar/NavbarSearch";
-import { NavbarActions } from "../../atoms/Navbar/NavbarActions";
-import { NavbarMobile } from "../../molecules/Navbar/NavbarMobile";
 import Image from "next/image";
+import { NavbarSearch } from "@/src/features/layout/components/NavbarSearch";
+import { NavbarActions } from "@/src/features/layout/components/NavbarActions";
+import { NavbarMobile } from "../../molecules/Navbar/Mobile/NavbarMobile";
 
 export function Navbar() {
-
   return (
     <nav className="sticky top-0 z-50 w-full bg-background/40 backdrop-blur-md border-b border-border shadow-sm">
       <div className="max-w-90rem mx-auto px-4 md:px-8 h-16 flex items-center justify-between gap-4 lg:gap-8">
@@ -12893,21 +12707,19 @@ export function Navbar() {
 ================================================
 FILE: src/system/organisms/Navigation/NavbarSearch.tsx
 ================================================
-// src/system/organisms/Navigation/NavbarSearch.tsx
 "use client";
 
 import { UniversalSearchBar } from "../../molecules/Search/UniversalSearchBar";
 import { useVectorSearch } from "@/src/features/search/useVectorSearch";
-import { useSearchStore } from "@/src/store/searchStore"; // Para sincronizar con el feed
+import { useSearchStore } from "@/src/store/searchStore";
 
 export function NavbarSearch() {
-  const globalSearchStore = useSearchStore(); // Conectamos con el estado global de la página
+  const globalSearchStore = useSearchStore();
 
   const vector = useVectorSearch({ scope: "global" });
 
   const onSearchSubmit = async () => {
     await vector.handleExecute();
-    // Actualizamos el store global para que el feed principal cambie
     globalSearchStore.setResults(vector.results);
     globalSearchStore.setQuery(vector.query);
   };
@@ -13347,149 +13159,6 @@ export function getSidebarTreeItemClasses(isActive: boolean, isOver: boolean, is
 
 
 ================================================
-FILE: src/system/organisms/Studio/PromptGrid.tsx
-================================================
-"use client";
-
-import { PromptCard } from "@/src/system/molecules/Studio/PromptCard";
-import { FadeIn } from "../../atoms/Animations/FadeIn";
-import { IconPhotoOff } from "@tabler/icons-react";
-import { SavedPrompt } from "@/src/types/models";
-
-interface PromptGridProps {
-  prompts: SavedPrompt[];
-  lang: string;
-  authorUsername: string;
-  onDelete: (id: string) => void;
-}
-
-export function PromptGrid({ prompts, lang, authorUsername, onDelete }: PromptGridProps) {
-  if (!prompts || prompts.length === 0) {
-    return (
-      <div className="flex-1 min-h-[50vh] flex flex-col items-center justify-center text-muted-foreground/40 bg-muted/5">
-        <IconPhotoOff size={48} stroke={1.5} className="mb-4" />
-        <p className="text-sm font-mono uppercase tracking-widest text-center px-4">
-          Este directorio está vacío.
-        </p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="pt-8">
-      <h2 className="text-xl font-black font-mono uppercase tracking-widest text-(--accent-color) mb-6">
-        Mi Studio
-      </h2>
-
-      <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 sm:gap-6 w-full pb-24 items-start">
-        {prompts.map((prompt, index) => (
-          <div key={prompt.id} className="w-full">
-            <FadeIn delay={0.05} y={15}>
-              <PromptCard
-                item={prompt}
-                index={index}
-                lang={lang}
-                isStudio={true}
-                authorUsername={authorUsername}
-                isPriority={index < 8}
-                onDelete={onDelete}
-              />
-            </FadeIn>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-
-
-================================================
-FILE: src/system/organisms/Studio/StudioSidebar.tsx
-================================================
-"use client";
-
-import { IconFolderPlus, IconCloudUpload, IconFolder } from "@tabler/icons-react";
-import { useStudioUI, Directory } from "@/src/store/useStudioUI";
-import { SidebarDirectory } from "../../molecules/Studio/SidebarDirectory";
-import { useFileUploader } from "@/src/features/extractor/hooks/useFileUploader";
-import { useDirectoryActions } from "@/src/features/studio/hooks/useDirectoryActions";
-import { useDroppable } from "@dnd-kit/core";
-
-export function StudioSidebar() {
-  const { directories, activeDirectoryId, setActiveDirectory } = useStudioUI();
-  const { createDirectory } = useDirectoryActions();
-  const { handleUploadClick } = useFileUploader();
-
-  const { setNodeRef: setRootDropRef, isOver: isRootOver } = useDroppable({
-    id: "root-zone",
-    data: { type: "root" },
-  });
-
-  const handleCreateRootFolder = async (e: React.MouseEvent) => {
-    e.stopPropagation();
-    const name = window.prompt("Nombre de la nueva carpeta principal:");
-    if (name?.trim()) await createDirectory(name.trim(), null);
-  };
-
-  return (
-    <aside className="w-72 border-r border-border/30 bg-muted/5 flex-col hidden md:flex h-full shrink-0">
-      <div className="pt-6 flex-1 overflow-y-auto custom-scrollbar flex flex-col gap-1">
-        <div className="px-3 mb-1 group relative">
-          <div
-            ref={setRootDropRef}
-            onClick={() => setActiveDirectory(null)}
-            className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs transition-all border cursor-pointer role="button" 
-              ${
-                activeDirectoryId === null
-                  ? "bg-primary/10 text-primary border-primary/20 font-bold"
-                  : "text-muted-foreground hover:bg-secondary/40 border-transparent font-medium"
-              }
-              ${isRootOver ? "ring-2 ring-primary border-dashed bg-primary/20" : ""}
-            `}
-          >
-            <IconFolder size={18} stroke={1.5} />
-            <span className="tracking-widest flex-1 text-left">
-              <span className="font-mono font-medium lowercase text-foreground/70">reprompt</span>{" "}
-              root
-            </span>
-
-            <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-              <button
-                onClick={handleCreateRootFolder}
-                className="p-1 hover:bg-primary/20 rounded text-primary/80 transition-colors"
-                title="Nueva carpeta en Root"
-              >
-                <IconFolderPlus size={14} stroke={2} />
-              </button>
-              <button
-                onClick={handleUploadClick}
-                className="p-1 hover:bg-primary/20 rounded text-primary/80 transition-colors"
-                title="Subir a Root"
-              >
-                <IconCloudUpload size={14} stroke={2} />
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <div className="mx-6 border-t border-border/10 my-2" />
-
-        <div className="px-3 flex flex-col gap-1">
-          {directories
-            .filter((d: Directory) => d.parent_id === null)
-            .map((dir: Directory) => (
-              <SidebarDirectory key={dir.id} directory={dir} />
-            ))}
-        </div>
-      </div>
-    </aside>
-  );
-}
-
-
-
-================================================
 FILE: src/system/organisms/Viewer/ImageViewerModal/ImageViewerModal.tsx
 ================================================
 "use client";
@@ -13602,6 +13271,8 @@ FILE: src/system/templates/Feed/FeedLayout.tsx
 ================================================
 "use client";
 
+import { useMemo } from "react";
+import { useAuthStore } from "@/src/store/authStore";
 import { FeedItem } from "@/src/types/models";
 import { FeedHeader } from "@/src/system/molecules/Feed/FeedHeader";
 import { FeedSentinel } from "@/src/system/molecules/Feed/FeedSentinel";
@@ -13627,19 +13298,31 @@ export function FeedLayout({
   onLoadMore,
   onFilterClick,
 }: FeedLayoutProps) {
+  const { user } = useAuthStore();
+
+  const filteredFeed = useMemo(() => {
+    if (!user || !feed) return feed || [];
+
+    return feed.filter((item) => {
+      const itemAuthor = item.username;
+
+      return itemAuthor !== user.username;
+    });
+  }, [feed, user]);
+
   const sentinelRef = useInfiniteScroll({ hasMore, isLoading, onLoadMore });
 
   return (
     <div className="pt-8 w-full">
-      <FeedHeader title={title} count={feed.length} onFilterClick={onFilterClick} />
+      <FeedHeader title={title} count={filteredFeed.length} onFilterClick={onFilterClick} />
 
-      <PublicFeedGrid feed={feed} lang={lang} />
+      <PublicFeedGrid feed={filteredFeed} lang={lang} />
 
       <FeedSentinel
         ref={sentinelRef}
         isLoading={isLoading}
         hasMore={hasMore}
-        isEmpty={feed.length === 0}
+        isEmpty={filteredFeed.length === 0}
       />
     </div>
   );
@@ -13704,7 +13387,7 @@ import { useMemo } from "react";
 import { useParams } from "next/navigation";
 import { PageLoader } from "@/src/system/atoms/Loader/PageLoader";
 import { DirectoryHeader } from "@/src/system/molecules/Studio/DirectoryHeader";
-import { PromptGrid } from "@/src/system/organisms/Studio/PromptGrid";
+import { PromptGrid } from "@/src/features/studio/components/PromptGrid";
 
 import { useStudioPrompts } from "@/src/features/studio/hooks/useStudioPrompts";
 import { useStudioUI } from "@/src/store/useStudioUI";
@@ -13979,6 +13662,19 @@ export function detectImageFormat(width?: number, height?: number): ImageFormat 
 
 
 ================================================
+FILE: src/utils/hooks/useAppRouter.ts
+================================================
+import { usePathname } from "next/navigation";
+
+export function useAppLocale() {
+  const pathname = usePathname();
+  
+  return pathname?.split("/")[1] || "es";
+}
+
+
+
+================================================
 FILE: src/utils/hooks/useAvatarUpload.ts
 ================================================
 import { useState } from "react";
@@ -14117,6 +13813,31 @@ export function useInfiniteScroll({
 
 
 ================================================
+FILE: src/utils/hooks/useKeyboardShortcut.ts
+================================================
+import { useEffect } from "react";
+
+export function useKeyboardShortcut(targetKey: string, callback: (e: KeyboardEvent) => void) {
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const activeElement = document.activeElement?.tagName;
+      const isInputActive = activeElement === "INPUT" || activeElement === "TEXTAREA";
+
+      if (e.key === targetKey && !isInputActive) {
+        e.preventDefault();
+        callback(e);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [targetKey, callback]);
+}
+
+
+
+================================================
 FILE: src/utils/hooks/useResponsiveColumns.ts
 ================================================
 import { useState, useEffect, useMemo } from "react";
@@ -14147,6 +13868,29 @@ export function useResponsiveColumns<T>(items: T[]) {
   }, [items, columnCount]);
 
   return { columns, columnCount };
+}
+
+
+
+================================================
+FILE: src/utils/hooks/useScrollLock.ts
+================================================
+import { useEffect } from "react";
+
+export function useScrollLock(isLocked: boolean) {
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    if (isLocked) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "unset";
+    }
+
+    return () => {
+      document.body.style.overflow = "unset";
+    };
+  }, [isLocked]);
 }
 
 

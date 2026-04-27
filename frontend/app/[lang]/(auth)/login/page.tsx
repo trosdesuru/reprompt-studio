@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import { IconLoader2 } from "@tabler/icons-react";
-import { AuthForm } from "@/src/system/organisms/Auth/AuthForm";
+import { AuthForm } from "@/src/features/auth/components/AuthForm"
 
 interface LoginPageProps {
   params: Promise<{ lang: string }> | { lang: string };

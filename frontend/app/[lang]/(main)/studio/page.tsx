@@ -1,6 +1,6 @@
 import { IconAlbum } from "@tabler/icons-react";
 import { PageHeader } from "@/src/system/organisms/Navigation/PageHeader";
-import { StudioSidebar } from "@/src/system/organisms/Studio/StudioSidebar";
+import { StudioSidebar } from "@/src/features/studio/components/StudioSidebar";
 import { StudioDndWrapper } from "@/src/system/molecules/Studio/StudioDndWrapper";
 import { StudioWorkspace } from "@/src/system/templates/Studio/StudioWorkspace";
 

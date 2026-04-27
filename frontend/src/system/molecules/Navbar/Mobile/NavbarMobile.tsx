@@ -5,7 +5,7 @@ import { useAuthStore } from "@/src/store/authStore";
 import { useTheme } from "@/src/utils/hooks/useTheme";
 import { useScrollLock } from "@/src/utils/hooks/useScrollLock";
 import { useAppLocale } from "@/src/utils/hooks/useAppRouter";
-import { NavbarSearch } from "../NavbarSearch";
+import { NavbarSearch } from "@/src/features/layout/components/NavbarSearch";
 import { IconMenu2 } from "@tabler/icons-react";
 
 // Importamos las piezas desde nuestros nuevos submódulos

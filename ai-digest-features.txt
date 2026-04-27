@@ -1,0 +1,3201 @@
+Directory structure:
+└── features/
+    ├── admin/
+    │   ├── admin.types.ts
+    │   └── hooks/
+    │       ├── useAdminDashboard.ts
+    │       └── useAdminGuard.ts
+    ├── auth/
+    │   ├── AuthProvider.tsx
+    │   ├── components/
+    │   │   └── LogoutMenuItem.tsx
+    │   └── hooks/
+    │       ├── useAuthForm.tsx
+    │       ├── useCredentialsAuth.ts
+    │       ├── useOAuth.ts
+    │       ├── useRedirectIfAuthenticated.ts
+    │       ├── useRegister.ts
+    │       ├── useUpdateUsername.ts
+    │       └── oauth/
+    │           ├── useDiscordAuth.ts
+    │           ├── useGoogleAuth.ts
+    │           └── useOAuthPending.ts
+    ├── extractor/
+    │   ├── hooks/
+    │   │   ├── useFileUploader.ts
+    │   │   └── usePromptExtractor.ts
+    │   └── utils/
+    │       ├── promptParser.ts
+    │       ├── fileExtractors/
+    │       │   ├── index.ts
+    │       │   ├── jpegExtractor.ts
+    │       │   ├── pngExtractor.ts
+    │       │   ├── rawExtractor.ts
+    │       │   └── zipExtractor.ts
+    │       └── parsers/
+    │           ├── a1111Parser.ts
+    │           ├── comfyParser.ts
+    │           ├── midjourneyParser.ts
+    │           ├── stringUtils.ts
+    │           ├── types.ts
+    │           └── validation.ts
+    ├── home/
+    │   └── hooks/
+    │       ├── useHomeInteraction.ts
+    │       └── usePublicFeed.ts
+    ├── image-viewer/
+    │   └── hooks/
+    │       └── useViewerSync.ts
+    ├── public/
+    │   └── hooks/
+    │       ├── usePublicDirectory.ts
+    │       ├── usePublicProfile.ts
+    │       └── usePublicPrompt.ts
+    ├── search/
+    │   ├── useVectorSearch.ts
+    │   └── hooks/
+    │       └── useSearch.ts
+    ├── settings/
+    │   ├── components/
+    │   │   ├── SettingsProfileHeader.tsx
+    │   │   ├── SettingsSectionHeader.tsx
+    │   │   ├── SettingsSidebar.tsx
+    │   │   └── SidebarNavLink.tsx
+    │   └── hooks/
+    │       └── useSettingsNavigation.tsx
+    ├── studio/
+    │   ├── components/
+    │   │   └── Sidebar/
+    │   │       └── StudioSidebar.tsx
+    │   └── hooks/
+    │       ├── useDirectoryActions.ts
+    │       ├── useDirectoryDnd.ts
+    │       ├── usePromptUpload.ts
+    │       ├── useStudioDnd.ts
+    │       ├── useStudioPrompts.ts
+    │       ├── useStudioSync.ts
+    │       └── useUpdatePromptMetadata.ts
+    ├── theme/
+    │   ├── components/
+    │   │   ├── ThemeMenuItem.tsx
+    │   │   ├── ThemePreview.tsx
+    │   │   └── ThemeSelectorCard.tsx
+    │   └── constants/
+    │       └── themeConfigs.ts
+    └── user/
+        ├── components/
+        │   ├── ChangePersonalDataModal.tsx
+        │   ├── ChangeUsernameFormStep.tsx
+        │   ├── ChangeUsernameModal.tsx
+        │   ├── ChangeUsernameWarningStep.tsx
+        │   ├── PersonalDataSettingsSection.tsx
+        │   ├── UpdatePersonalDataForm.tsx
+        │   ├── UpdateUsernameForm.tsx
+        │   ├── UserDropdown.tsx
+        │   └── UsernameSettingsSection.tsx
+        └── hooks/
+            └── useUpdateUsername.ts
+
+================================================
+FILE: admin/admin.types.ts
+================================================
+// frontend/features/admin/admin.types.ts
+
+export interface AuditLog {
+  id: number;
+  username: string;
+  action: string;
+  details: string;
+  timestamp: string;
+}
+
+
+================================================
+FILE: admin/hooks/useAdminDashboard.ts
+================================================
+// frontend/features/admin/hooks/useAdminDashboard.ts
+import { useState, useCallback } from "react";
+import { api } from "@/src/services/api";
+import { AuditLog } from "../admin.types";
+
+export function useAdminDashboard() {
+  const [inviteCode, setInviteCode] = useState<string | null>(null);
+  const [isLoadingInvite, setIsLoadingInvite] = useState(false);
+
+  const [logs, setLogs] = useState<AuditLog[]>([]);
+  const [isLoadingLogs, setIsLoadingLogs] = useState(false);
+
+  const fetchLogs = useCallback(async () => {
+    setIsLoadingLogs(true);
+    try {
+      const data = await api.obtenerLogsAuditoria(20);
+      if (data.status === "success") {
+        setLogs(data.logs);
+      }
+    } catch (err) {
+      console.error("Error cargando logs:", err);
+    } finally {
+      setIsLoadingLogs(false);
+    }
+  }, []);
+
+  const handleGenerateInvite = async (role: string) => {
+    setIsLoadingInvite(true);
+    setInviteCode(null);
+    try {
+      const data = await api.generarInvitacion(role);
+      setInviteCode(data.code);
+    } catch (error: any) {
+      alert(`❌ Error: ${error.message}`);
+    } finally {
+      setIsLoadingInvite(false);
+    }
+  };
+
+  const handleRevokeAll = async () => {
+    if (
+      !confirm(
+        "⚠️ ¿Estás seguro? Esto invalidará todas las sesiones en Redis y te expulsará incluso a ti.",
+      )
+    )
+      return;
+    try {
+      const data = await api.revocarTodasLasSesiones();
+      if (data.status === "success") {
+        alert("🔒 Sesiones invalidadas con éxito.");
+        window.location.href = "/login";
+      }
+    } catch (err) {
+      alert("Error al comunicarse con Redis para revocar sesiones.");
+    }
+  };
+
+  return {
+    logs,
+    isLoadingLogs,
+    inviteCode,
+    isLoadingInvite,
+    fetchLogs,
+    handleGenerateInvite,
+    handleRevokeAll,
+  };
+}
+
+
+
+================================================
+FILE: admin/hooks/useAdminGuard.ts
+================================================
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useAuthStore } from "@/src/store/authStore";
+
+export function useAdminGuard() {
+  const { user, isLoadingAuth } = useAuthStore();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!isLoadingAuth && (!user || user.role !== "admin")) {
+      router.push("/");
+    }
+  }, [user, isLoadingAuth, router]);
+
+  const isAuthorized = !isLoadingAuth && user?.role === "admin";
+
+  return { user, isLoadingAuth, isAuthorized };
+}
+
+
+
+================================================
+FILE: auth/AuthProvider.tsx
+================================================
+"use client";
+
+import { useEffect } from "react";
+import { usePathname } from "next/navigation";
+import { useAuthStore } from "@/src/store/authStore";
+
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const { checkAuth, user, hasCheckedInitialAuth } = useAuthStore();
+  const pathname = usePathname() || "";
+
+  useEffect(() => {
+    const isAuthPage =
+      pathname.includes("/login") || pathname.includes("/join") || pathname.includes("/callback");
+
+    if (!isAuthPage) {
+      if (!user && !hasCheckedInitialAuth) {
+        checkAuth();
+      }
+    } else {
+      useAuthStore.setState({ isLoadingAuth: false });
+    }
+  }, [pathname, checkAuth, user, hasCheckedInitialAuth]);
+
+  return <>{children}</>;
+}
+
+
+
+================================================
+FILE: auth/components/LogoutMenuItem.tsx
+================================================
+"use client";
+
+import { useAuthStore } from "@/src/store/authStore";
+import { MenuItem } from "@/src/system/atoms/Dropdown/MenuItem";
+import { IconLogout } from "@tabler/icons-react";
+
+export function LogoutMenuItem() {
+  const logout = useAuthStore((state) => state.logout);
+
+  return (
+    <MenuItem
+      icon={<IconLogout size={16} />}
+      label="Cerrar sesión"
+      onClick={logout}
+      variant="danger"
+    />
+  );
+}
+
+
+
+================================================
+FILE: auth/hooks/useAuthForm.tsx
+================================================
+// src/features/auth/hooks/useAuthForm.ts
+import { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
+import { useOAuth } from "./useOAuth";
+import { useCredentialsAuth } from "./useCredentialsAuth";
+
+export function useAuthForm() {
+  const searchParams = useSearchParams();
+
+  // Dependencias
+  const oauth = useOAuth();
+  const credsAuth = useCredentialsAuth();
+
+  // Estado puro de la UI (Inputs)
+  const [isLogin, setIsLogin] = useState(true);
+  const [emailOrUser, setEmailOrUser] = useState("");
+  const [password, setPassword] = useState("");
+  const [inviteCode, setInviteCode] = useState("");
+  const [isInviteLocked, setIsInviteLocked] = useState(false);
+
+  // Manejo de código de invitación por URL
+  useEffect(() => {
+    const codeFromUrl = searchParams.get("code");
+    if (codeFromUrl) {
+      setIsLogin(false);
+      setInviteCode(codeFromUrl);
+      setIsInviteLocked(true);
+    }
+  }, [searchParams]);
+
+  // Wrappers para inyectar el estado actual en las funciones de los submódulos
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    credsAuth.handleCredentialsSubmit(isLogin, emailOrUser, password, inviteCode);
+  };
+
+  const handleOauthSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    oauth.handleOauthSubmit(inviteCode);
+  };
+
+  // Estado derivado para bloquear la UI si ALGO está cargando
+  const isAnyLoading = credsAuth.isCredsLoading || oauth.isOauthSubmitting;
+
+  return {
+    state: {
+      isLogin,
+      isLoading: isAnyLoading,
+      isGoogleLoading: oauth.isGoogleLoading,
+      isDiscordLoading: oauth.isDiscordLoading,
+      emailOrUser,
+      password,
+      inviteCode,
+      isInviteLocked,
+      oauthPending: oauth.oauthPending,
+    },
+    actions: {
+      setIsLogin,
+      setEmailOrUser,
+      setPassword,
+      setInviteCode,
+      handleSubmit,
+      handleOauthSubmit,
+      handleGoogleLogin: oauth.handleGoogleLogin,
+      handleDiscordLogin: oauth.handleDiscordLogin,
+      cancelOauthFlow: oauth.cancelOauthFlow,
+    },
+  };
+}
+
+
+================================================
+FILE: auth/hooks/useCredentialsAuth.ts
+================================================
+// src/features/auth/hooks/useCredentialsAuth.ts
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { api } from "@/src/services/api";
+import toast from "react-hot-toast";
+
+export function useCredentialsAuth() {
+  const router = useRouter();
+  const [isCredsLoading, setIsCredsLoading] = useState(false);
+
+  const handleCredentialsSubmit = async (
+    isLogin: boolean,
+    emailOrUser: string,
+    password: string,
+    inviteCode: string,
+  ) => {
+    setIsCredsLoading(true);
+    try {
+      if (isLogin) {
+        await api.login({ username: emailOrUser, password });
+        toast.success("¡Bienvenido de nuevo!");
+        router.push("/es/studio");
+      } else {
+        await api.register({ email: emailOrUser, password, invite_code: inviteCode });
+        toast.success("Cuenta creada con éxito");
+        await api.login({ username: emailOrUser, password });
+        router.push("/es/studio");
+      }
+    } catch (error: any) {
+      toast.error(error?.response?.data?.detail || "Error en la autenticación");
+    } finally {
+      setIsCredsLoading(false);
+    }
+  };
+
+  return { handleCredentialsSubmit, isCredsLoading };
+}
+
+
+
+================================================
+FILE: auth/hooks/useOAuth.ts
+================================================
+// src/features/auth/hooks/useOAuth.ts
+import { useGoogleAuth } from "./oauth/useGoogleAuth";
+import { useDiscordAuth } from "./oauth/useDiscordAuth";
+import { useOAuthPending } from "./oauth/useOAuthPending";
+
+export function useOAuth() {
+  // Inicializamos los micro-hooks
+  const googleAuth = useGoogleAuth();
+  const discordAuth = useDiscordAuth();
+  const pendingAuth = useOAuthPending();
+
+  // Devolvemos el contrato exacto que el useAuthForm espera
+  return {
+    // Estados
+    oauthPending: pendingAuth.oauthPending,
+    isGoogleLoading: googleAuth.isGoogleLoading,
+    isDiscordLoading: discordAuth.isDiscordLoading,
+    isOauthSubmitting: pendingAuth.isOauthSubmitting,
+
+    // Acciones
+    handleGoogleLogin: googleAuth.handleGoogleLogin,
+    handleDiscordLogin: discordAuth.handleDiscordLogin,
+    handleOauthSubmit: pendingAuth.handleOauthSubmit,
+    cancelOauthFlow: pendingAuth.cancelOauthFlow,
+  };
+}
+
+
+
+================================================
+FILE: auth/hooks/useRedirectIfAuthenticated.ts
+================================================
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useAuthStore } from "@/src/store/authStore";
+
+export function useRedirectIfAuthenticated(redirectTo: string = "/") {
+  const router = useRouter();
+  const { user, isLoadingAuth } = useAuthStore();
+
+  useEffect(() => {
+    if (!isLoadingAuth && user) {
+      router.replace(redirectTo);
+    }
+  }, [user, isLoadingAuth, router, redirectTo]);
+
+  return {
+    isChecking: isLoadingAuth,
+    isAuthenticated: !!user,
+  };
+}
+
+
+
+================================================
+FILE: auth/hooks/useRegister.ts
+================================================
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { api } from "@/src/services/api";
+
+interface RegisterFormData {
+  username: string;
+  password: string;
+  invite_code: string;
+}
+
+export const useRegister = (lang: string) => {
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const router = useRouter();
+
+  const handleRegister = async (formData: RegisterFormData) => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      await api.register(formData);
+
+      router.push(`/${lang}/login?registered=true`);
+    } catch (err: any) {
+      const errorMsg = err.response?.data?.detail || err.message || "Error crítico al registrarse";
+      setError(errorMsg);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return { handleRegister, isLoading, error };
+};
+
+
+
+================================================
+FILE: auth/hooks/useUpdateUsername.ts
+================================================
+import { useRouter } from "next/navigation";
+import { api } from "@/src/services/api";
+import toast from "react-hot-toast";
+
+export function useUpdateUsername(lang: string) {
+  const router = useRouter();
+
+  const handleUpdate = async (newName: string) => {
+    try {
+      await api.user.updateUsername(newName);
+
+      toast.success("Nombre actualizado. Redirigiendo...");
+
+      setTimeout(() => {
+        router.push(`/${lang}/login?updated=true`);
+      }, 1500);
+    } catch (error: any) {
+      toast.error(error.message || "Error al actualizar");
+    }
+  };
+
+  return { handleUpdate };
+}
+
+
+
+================================================
+FILE: auth/hooks/oauth/useDiscordAuth.ts
+================================================
+import { useState } from "react";
+import { api } from "@/src/services/api";
+import toast from "react-hot-toast";
+
+export function useDiscordAuth() {
+  const [isDiscordLoading, setIsDiscordLoading] = useState(false);
+
+  const handleDiscordLogin = async () => {
+    setIsDiscordLoading(true);
+    try {
+      const response = await api.auth.getDiscordAuthUrl();
+      if (response?.auth_url) {
+        window.location.href = response.auth_url;
+      } else {
+        throw new Error("El servidor no devolvió una URL válida");
+      }
+    } catch (error: any) {
+      console.error("❌ Error al iniciar Discord:", error);
+      toast.error(error.message || "Servicio de Discord no disponible en este momento.");
+    } finally {
+      setIsDiscordLoading(false);
+    }
+  };
+
+  return { isDiscordLoading, handleDiscordLogin };
+}
+
+
+
+================================================
+FILE: auth/hooks/oauth/useGoogleAuth.ts
+================================================
+import { useState } from "react";
+import { api } from "@/src/services/api";
+import toast from "react-hot-toast";
+
+export function useGoogleAuth() {
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+
+  const handleGoogleLogin = async () => {
+    setIsGoogleLoading(true);
+    try {
+      const response = await api.auth.getGoogleAuthUrl();
+      if (response?.auth_url) window.location.href = response.auth_url;
+    } catch (error: any) {
+      toast.error(error.message || "Error al conectar con Google");
+    } finally {
+      setIsGoogleLoading(false);
+    }
+  };
+
+  return { isGoogleLoading, handleGoogleLogin };
+}
+
+
+
+================================================
+FILE: auth/hooks/oauth/useOAuthPending.ts
+================================================
+import { useState, useEffect } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
+import { api } from "@/src/services/api";
+import toast from "react-hot-toast";
+
+export function useOAuthPending() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  const [oauthPending, setOauthPending] = useState<any>(null);
+  const [isOauthSubmitting, setIsOauthSubmitting] = useState(false);
+
+  useEffect(() => {
+    const pendingData = sessionStorage.getItem("oauth_pending");
+    if (pendingData) {
+      setOauthPending(JSON.parse(pendingData));
+    }
+  }, []);
+
+  const handleOauthSubmit = async (inviteCode: string) => {
+    if (!oauthPending) return;
+    setIsOauthSubmitting(true);
+    try {
+      await api.auth.registerGoogleUser({
+        token: oauthPending.token,
+        invite_code: inviteCode,
+        username: oauthPending.username,
+      });
+      sessionStorage.removeItem("oauth_pending");
+      toast.success("¡Cuenta VIP creada con éxito!");
+      window.location.href = "/es/studio";
+    } catch (error: any) {
+      toast.error(error.message || "Código inválido");
+    } finally {
+      setIsOauthSubmitting(false);
+    }
+  };
+
+  const cancelOauthFlow = () => {
+    setOauthPending(null);
+    sessionStorage.removeItem("oauth_pending");
+    if (searchParams.get("step") === "oauth_invite") {
+      router.replace("/es/login");
+    }
+  };
+
+  return {
+    oauthPending,
+    isOauthSubmitting,
+    handleOauthSubmit,
+    cancelOauthFlow,
+  };
+}
+
+
+
+================================================
+FILE: extractor/hooks/useFileUploader.ts
+================================================
+import { usePromptExtractor } from "@/src/features/extractor/hooks/usePromptExtractor";
+
+export function useFileUploader() {
+  const { processFiles } = usePromptExtractor();
+
+  const handleUploadClick = () => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.multiple = true;
+    input.onchange = (e) => {
+      const files = (e.target as HTMLInputElement).files;
+      if (files) processFiles(Array.from(files));
+    };
+    input.click();
+  };
+
+  return { handleUploadClick };
+}
+
+
+
+================================================
+FILE: extractor/hooks/usePromptExtractor.ts
+================================================
+import { useState, useCallback, useEffect, useRef } from "react";
+import { parsePromptData, ExtractedPromptData } from "../utils/promptParser";
+import { getRawTextFromFile } from "../utils/fileExtractors";
+import { extractFilesFromZip } from "../utils/fileExtractors/zipExtractor";
+import { handleError } from "@/src/utils/errors/ErrorHandler";
+import { useAuthStore } from "@/src/store/authStore";
+
+export interface BatchItem {
+  id: string;
+  file: File;
+  previewUrl: string | null;
+  data: ExtractedPromptData;
+  status: "idle" | "saving" | "success" | "error";
+}
+
+export interface SkippedFile {
+  name: string;
+  reason: string;
+}
+
+export function usePromptExtractor() {
+  const [isExtracting, setIsExtracting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [batch, setBatch] = useState<BatchItem[]>([]);
+  const [skippedFiles, setSkippedFiles] = useState<SkippedFile[]>([]);
+  const [upgradeModal, setUpgradeModal] = useState(false);
+
+  const { user } = useAuthStore();
+
+  const activeUrls = useRef<Set<string>>(new Set());
+
+  const closeUpgradeModal = useCallback(() => {
+    setUpgradeModal(false);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      activeUrls.current.forEach((url) => {
+        URL.revokeObjectURL(url);
+        console.log(`🗑️ RAM liberada (Cleanup): ${url}`);
+      });
+      activeUrls.current.clear();
+    };
+  }, []);
+
+  const processFiles = useCallback(
+    async (files: File[], fileRejections: any[] = []) => {
+      setUpgradeModal(false);
+      setIsExtracting(true);
+      setError(null);
+
+      let allFilesToProcess: File[] = [];
+      const currentSkipped: SkippedFile[] = fileRejections.map((r) => ({
+        name: r.file.name,
+        reason: "Formato no aceptado o archivo inválido.",
+      }));
+
+      const maxFilesAllowed = user?.role === "artist" ? 200 : 10;
+
+      try {
+        // 1. Fase de expansión (ZIPs) - Sigue siendo igual
+        for (const file of files) {
+          if (
+            file.type === "application/zip" ||
+            file.name.endsWith(".zip") ||
+            file.name.endsWith(".x-zip-compressed")
+          ) {
+            const unzipped = await extractFilesFromZip(file, maxFilesAllowed);
+            allFilesToProcess = [...allFilesToProcess, ...unzipped.validFiles];
+            currentSkipped.push(...unzipped.rejectedFiles);
+            if (unzipped.limitReached && user?.role === "voyager") setUpgradeModal(true);
+          } else {
+            if (allFilesToProcess.length < maxFilesAllowed) {
+              allFilesToProcess.push(file);
+            } else {
+              currentSkipped.push({ name: file.name, reason: "Límite de subida alcanzado" });
+              if (user?.role === "voyager") setUpgradeModal(true);
+            }
+          }
+        }
+
+        // 🚀 2. LA MAGIA: PROCESAMIENTO CONCURRENTE LIMITADO (2 a la vez)
+        const newBatchItems: BatchItem[] = [];
+        const queue = [...allFilesToProcess]; // Copiamos la lista de archivos
+
+        // Definimos un "trabajador" que procesa la cola
+        const worker = async () => {
+          while (queue.length > 0) {
+            const file = queue.shift(); // Sacamos el primer archivo de la lista
+            if (!file) continue;
+
+            try {
+              // Extracción de texto (Esta es la parte pesada de CPU)
+              const rawText = await getRawTextFromFile(file);
+              let parsedData = rawText
+                ? parsePromptData(rawText)
+                : {
+                    prompt: "",
+                    rawText: "",
+                    software: "Desconocido",
+                    negativePrompt: "",
+                    model: "",
+                    loras: [],
+                    extractionConfidence: 0,
+                  };
+
+              const previewUrl = file.type.startsWith("image/") ? URL.createObjectURL(file) : null;
+
+              newBatchItems.push({
+                id: crypto.randomUUID(),
+                file,
+                previewUrl,
+                data: parsedData as ExtractedPromptData,
+                status: "idle",
+              });
+            } catch (e) {
+              currentSkipped.push({ name: file.name, reason: "Error al procesar el archivo." });
+            }
+          }
+        };
+
+        // Lanzamos exactamente 2 trabajadores.
+        // El ventilador de tu Mac bajará de revoluciones al instante.
+        await Promise.all([worker(), worker()]);
+
+        // 3. Actualización de estado final
+        setSkippedFiles((prev) => [...prev, ...currentSkipped]);
+        if (newBatchItems.length > 0) setBatch((prev) => [...prev, ...newBatchItems]);
+      } catch (err: unknown) {
+        setError(handleError(err, "ExtractorBatch"));
+      } finally {
+        setIsExtracting(false);
+      }
+    },
+    [user],
+  );
+
+  const updateItemStatus = useCallback((id: string, status: BatchItem["status"]) => {
+    setBatch((prev) => prev.map((item) => (item.id === id ? { ...item, status } : item)));
+  }, []);
+
+  const updateItemData = useCallback((id: string, newData: Partial<ExtractedPromptData>) => {
+    setBatch((prev) =>
+      prev.map((item) => (item.id === id ? { ...item, data: { ...item.data, ...newData } } : item)),
+    );
+  }, []);
+
+  const removeItem = useCallback((id: string) => {
+    setBatch((prev) => {
+      const item = prev.find((p) => p.id === id);
+      if (item?.previewUrl) {
+        URL.revokeObjectURL(item.previewUrl);
+        activeUrls.current.delete(item.previewUrl);
+      }
+      return prev.filter((p) => p.id !== id);
+    });
+  }, []);
+
+  const clearBatch = useCallback(() => {
+    setBatch((prev) => {
+      prev.forEach((item) => {
+        if (item.previewUrl) {
+          URL.revokeObjectURL(item.previewUrl);
+          activeUrls.current.delete(item.previewUrl);
+        }
+      });
+      return [];
+    });
+    setSkippedFiles([]);
+    setError(null);
+  }, []);
+
+  const clearSkipped = useCallback(() => {
+    setSkippedFiles([]);
+  }, []);
+
+  return {
+    isExtracting,
+    error,
+    batch,
+    skippedFiles,
+    processFiles,
+    upgradeModal,
+    updateItemStatus,
+    updateItemData,
+    removeItem,
+    clearBatch,
+    clearSkipped,
+    closeUpgradeModal,
+  };
+}
+
+
+
+================================================
+FILE: extractor/utils/promptParser.ts
+================================================
+import { ExtractedPromptData, ExtractedPromptSchema } from "./parsers/validation";
+import { cleanNullBytes } from "./parsers/stringUtils";
+import { parseA1111 } from "./parsers/a1111Parser";
+import { parseComfy } from "./parsers/comfyParser";
+import { parseMidjourney } from "./parsers/midjourneyParser";
+
+export type { ExtractedPromptData };
+
+export function parsePromptData(rawText: string): ExtractedPromptData {
+  const cleanText = cleanNullBytes(rawText);
+  let parsed: Partial<ExtractedPromptData>;
+
+  if (cleanText.trim().startsWith("{")) {
+    try {
+      const jsonObj = JSON.parse(cleanText);
+      parsed = parseComfy(jsonObj, cleanText);
+    } catch {
+      parsed = parseA1111(cleanText);
+    }
+  } else if (/--ar|--v|--style|--niji|Job ID:/i.test(cleanText)) {
+    parsed = parseMidjourney(cleanText, rawText);
+    parsed.software = "Midjourney";
+  } else {
+    parsed = parseA1111(cleanText);
+  }
+
+  const validation = ExtractedPromptSchema.safeParse({
+    ...parsed,
+    rawText: rawText,
+  });
+
+  if (!validation.success) {
+    console.error("❌ Fallo en contrato de extracción:", validation.error.format());
+
+    return {
+      prompt: cleanText,
+      negativePrompt: "",
+      resolution: undefined,
+      rawText: rawText,
+      software: "Desconocido",
+      extractionConfidence: 0.1,
+    };
+  }
+
+  return validation.data;
+}
+
+
+
+================================================
+FILE: extractor/utils/fileExtractors/index.ts
+================================================
+import { extractPngMetadata } from "./pngExtractor";
+import { extractJpegMetadata } from "./jpegExtractor";
+import { extractRawText } from "./rawExtractor";
+
+export async function getRawTextFromFile(file: File): Promise<string | null> {
+  const type = file.type;
+
+  if (type === "image/png") {
+    return extractPngMetadata(file);
+  }
+
+  if (type === "image/jpeg" || type === "image/jpg") {
+    return extractJpegMetadata(file);
+  }
+
+  if (type === "text/plain" || type === "application/json") {
+    return extractRawText(file);
+  }
+
+  return null;
+}
+
+
+
+================================================
+FILE: extractor/utils/fileExtractors/jpegExtractor.ts
+================================================
+import exifr from "exifr";
+
+export async function extractJpegMetadata(file: File): Promise<string | null> {
+  try {
+    // Escaneamos solo lo necesario para no sobrecargar
+    const metadata = await exifr.parse(file, {
+      userComment: true,
+      xmp: true,
+      iptc: true,
+      // Nota: exifr busca en ImageDescription por defecto si no se filtra
+    });
+
+    if (!metadata) return null;
+
+    // 1. Prioridad: UserComment (Comfy/Civitai/A1111)
+    if (metadata.userComment) {
+      const raw =
+        typeof metadata.userComment === "string"
+          ? metadata.userComment
+          : new TextDecoder("utf-8").decode(metadata.userComment);
+
+      return raw.replace(/^(UNICODE|ASCII)\x00+/, "").trim();
+    }
+
+    // 2. Prioridad: ImageDescription (Midjourney/A1111 alternativo)
+    // exifr suele mapear 'Description' a 'ImageDescription'
+    if (metadata.ImageDescription) {
+      return metadata.ImageDescription.trim();
+    }
+
+    if (metadata.description) {
+      if (typeof metadata.description === "string") {
+        return metadata.description.trim();
+      }
+      if (Array.isArray(metadata.description)) {
+        return metadata.description.join(" ").trim();
+      }
+      return String(metadata.description).trim();
+    }
+
+    return null;
+  } catch (error) {
+    console.error("❌ Error en jpegExtractor:", error);
+    return null;
+  }
+}
+
+
+
+================================================
+FILE: extractor/utils/fileExtractors/pngExtractor.ts
+================================================
+import extract from "png-chunks-extract";
+import text from "png-chunk-text";
+
+export async function extractPngMetadata(file: File): Promise<string | null> {
+  const buffer = await file.arrayBuffer();
+  const chunks = extract(new Uint8Array(buffer));
+  const textChunks = chunks.filter((c: any) => c.name === "tEXt" || c.name === "iTXt");
+
+  for (const chunk of textChunks) {
+    const decoded = text.decode(chunk.data);
+    if (decoded.keyword === "parameters" || decoded.keyword === "Comment") {
+      return decoded.text;
+    }
+  }
+  return null;
+}
+
+
+================================================
+FILE: extractor/utils/fileExtractors/rawExtractor.ts
+================================================
+export async function extractRawText(file: File): Promise<string | null> {
+  return await file.text();
+}
+
+
+================================================
+FILE: extractor/utils/fileExtractors/zipExtractor.ts
+================================================
+import JSZip from "jszip";
+import { string } from "zod";
+
+export async function extractFilesFromZip(
+  zipFile: File,
+  maxFilesAllowed: number,
+): Promise<ZipExtractionResult> {
+  const zip = new JSZip();
+  const loadedZip = await zip.loadAsync(zipFile);
+
+  const validFiles: File[] = [];
+  const rejectedFiles: { name: string; reason: string }[] = [];
+  let limitReached = false;
+
+  const supportedRegex = /\.(png|jpe?g|webp|txt|json)$/i;
+  let fileCount = 0;
+
+  for (const [filename, zipEntry] of Object.entries(loadedZip.files)) {
+    if (
+      zipEntry.dir ||
+      filename.includes("__MACOSX") ||
+      filename.split("/").pop()?.startsWith(".")
+    ) {
+      continue;
+    }
+
+    if (fileCount >= maxFilesAllowed) {
+      rejectedFiles.push({
+        name: filename,
+        reason: `Requiere plan superior. Límite: ${maxFilesAllowed} archivos.`,
+      });
+      limitReached = true;
+      continue;
+    }
+
+    if (!supportedRegex.test(filename)) {
+      rejectedFiles.push({
+        name: filename.split("/").pop() || filename,
+        reason: "Formato no soportado",
+      });
+      continue;
+    }
+
+    try {
+      const blob = await zipEntry.async("blob");
+
+      if (blob.size > 50 * 1024 * 1024) {
+        rejectedFiles.push({ name: filename, reason: "Archivo demasiado grande (>50MB)." });
+        continue;
+      }
+
+      const mimeType = getMimeType(filename);
+      const file = new File([blob], filename.split("/").pop() || filename, { type: mimeType });
+      validFiles.push(file);
+      fileCount++;
+    } catch (e) {
+      rejectedFiles.push({ name: filename, reason: "Archivo corrupto dentro del ZIP" });
+    }
+  }
+
+  return { validFiles, rejectedFiles, limitReached };
+}
+
+function getMimeType(filename: string): string {
+  const lower = filename.toLowerCase();
+  if (lower.endsWith(".png")) return "image/png";
+  if (lower.endsWith(".jpg") || lower.endsWith(".jpeg")) return "image/jpeg";
+  if (lower.endsWith(".webp")) return "image/webp";
+  if (lower.endsWith(".json")) return "application/json";
+  return "text/plain";
+}
+
+
+
+================================================
+FILE: extractor/utils/parsers/a1111Parser.ts
+================================================
+import { ExtractedPromptData } from "./types";
+import { cleanA1111Prefixes } from "./stringUtils";
+
+export function parseA1111(rawText: string): ExtractedPromptData {
+  const result: ExtractedPromptData = {
+    prompt: "",
+    rawText,
+    software: "A1111",
+  };
+
+  const cleanText = cleanA1111Prefixes(rawText);
+
+  const negativePromptRegex = /Negative prompt:\s*([\s\S]*?)(?=\nSteps:|$)/i;
+  const negativeMatch = cleanText.match(negativePromptRegex);
+
+  if (negativeMatch) {
+    result.negativePrompt = negativeMatch[1].trim();
+    result.prompt = cleanText.split(/Negative prompt:/i)[0].trim();
+  } else {
+    result.prompt = cleanText.split(/\nSteps:/i)[0].trim();
+  }
+
+  const matchers = {
+    steps: /Steps:\s*([^,]+)/i,
+    sampler: /Sampler:\s*([^,]+)/i,
+    cfgScale: /CFG scale:\s*([^,]+)/i,
+    seed: /Seed:\s*([^,]+)/i,
+    resolution: /Size:\s*([^,]+)/i,
+    model: /Model:\s*([^,]+)/i,
+  };
+
+  Object.entries(matchers).forEach(([key, regex]) => {
+    const match = cleanText.match(regex);
+    if (match) (result as any)[key] = match[1].trim();
+  });
+
+  return result;
+}
+
+
+
+================================================
+FILE: extractor/utils/parsers/comfyParser.ts
+================================================
+import { ExtractedPromptData } from "./types";
+import { extractFileName } from "./stringUtils";
+
+export function parseComfy(jsonObj: any, rawText: string): ExtractedPromptData {
+  const result: ExtractedPromptData = { prompt: "", rawText, software: "ComfyUI" };
+
+  if (jsonObj.extraMetadata) {
+    const meta =
+      typeof jsonObj.extraMetadata === "string"
+        ? JSON.parse(jsonObj.extraMetadata)
+        : jsonObj.extraMetadata;
+
+    result.prompt = meta.prompt || result.prompt;
+    result.negativePrompt = meta.negativePrompt || "";
+    result.steps = meta.steps?.toString();
+    result.sampler = meta.sampler;
+    result.cfgScale = meta.cfgScale?.toString();
+    result.seed = meta.seed?.toString();
+
+    if (meta.images?.[0]) result.resolution = `${meta.images[0].width}x${meta.images[0].height}`;
+
+    if (meta.resources) {
+      result.model = meta.resources
+        .find((r: any) => r.type === "Checkpoint")
+        ?.modelVersionId?.toString();
+      result.loras = meta.resources
+        .filter((r: any) => r.type === "LORA")
+        .map((l: any) => ({ name: l.modelVersionId?.toString(), strength: l.strength }));
+    }
+
+    if (meta.triggerWords) {
+      result.triggerWords = Array.isArray(meta.triggerWords)
+        ? meta.triggerWords
+            .flatMap((w: string) => w.split(","))
+            .map((w: string) => w.trim())
+            .filter(Boolean)
+        : [];
+    }
+
+    if (result.prompt && result.steps) return result;
+  }
+
+  if (jsonObj && typeof jsonObj === "object" && !Array.isArray(jsonObj)) {
+    Object.values(jsonObj).forEach((node: any) => {
+      if (typeof node !== "object" || !node) return;
+
+      if (node.class_type?.includes("KSampler")) {
+        result.steps = node.inputs?.steps?.toString() || result.steps;
+        result.seed = node.inputs?.seed?.toString() || result.seed;
+        result.cfgScale = node.inputs?.cfg?.toString() || result.cfgScale;
+        result.sampler = node.inputs?.sampler_name || result.sampler;
+      }
+      if (node.class_type?.includes("CLIPTextEncode")) {
+        const text = node.inputs?.text;
+        const isNeg = node._meta?.title?.toLowerCase().includes("negative");
+        if (isNeg) result.negativePrompt = text;
+        else if (!result.prompt) result.prompt = text;
+      }
+      if (node.class_type === "LoraLoader") {
+        if (!result.loras) result.loras = [];
+        result.loras.push({
+          name: extractFileName(node.inputs?.lora_name),
+          strength: node.inputs?.strength_model,
+        });
+      }
+    });
+  }
+
+  return result;
+}
+
+
+
+================================================
+FILE: extractor/utils/parsers/midjourneyParser.ts
+================================================
+import { ExtractedPromptData } from "./types";
+
+export function parseMidjourney(description: string, rawText: string): ExtractedPromptData {
+  const result: ExtractedPromptData = {
+    prompt: description,
+    rawText,
+    software: "Desconocido",
+  };
+
+  if (description.includes("--") || description.includes("Job ID:")) {
+    result.software = "Desconocido";
+
+    const arMatch = description.match(/--ar\s+([0-9:]+)/);
+    if (arMatch) result.resolution = arMatch[1];
+
+    const noMatch = description.match(/--no\s+([^--]+)/);
+    if (noMatch) {
+      result.negativePrompt = noMatch[1].trim();
+    }
+  }
+
+  return result;
+}
+
+
+
+================================================
+FILE: extractor/utils/parsers/stringUtils.ts
+================================================
+export const cleanNullBytes = (text: string): string => {
+  return text.replace(/\0/g, "").trim();
+};
+
+export const cleanA1111Prefixes = (text: string): string => {
+  return text
+    .replace(/^UNICODE\x00/, "")
+    .replace(/^ASCII\x00\x00\x00/, "")
+    .trim();
+};
+
+export const extractFileName = (path: string): string => {
+  return path.split("/").pop() || path;
+};
+
+
+
+================================================
+FILE: extractor/utils/parsers/types.ts
+================================================
+export interface ExtractedPromptData {
+  prompt: string;
+  negativePrompt?: string;
+  steps?: string;
+  sampler?: string;
+  cfgScale?: string;
+  seed?: string;
+  model?: string;
+  software?: "A1111" | "ComfyUI" | "Midjourney" | "NovelAI" | "Desconocido";
+  resolution?: string;
+  loras?: Array<{ name: string; strength: string | number }>;
+  triggerWords?: string[];
+  rawText: string;
+}
+
+
+
+================================================
+FILE: extractor/utils/parsers/validation.ts
+================================================
+import { z } from "zod";
+
+export const ExtractedPromptSchema = z.object({
+  prompt: z
+    .string()
+    .min(1, "El prompt es obligatorio")
+    .transform((t) => t.trim()),
+  negativePrompt: z.string().default(""),
+  steps: z.string().optional(),
+  sampler: z.string().optional(),
+  cfgScale: z.string().optional(),
+  seed: z.string().optional(),
+  model: z.string().optional(),
+  resolution: z
+    .string()
+    .optional()
+    .transform((r) => r?.replace(/\s+/g, "")),
+  software: z.enum(["A1111", "ComfyUI", "Midjourney", "NovelAI", "Desconocido"]),
+  rawText: z.string(),
+  extractionConfidence: z.number().min(0).max(1).default(1),
+
+  loras: z
+    .array(
+      z.object({
+        name: z.string(),
+        strength: z.union([z.string(), z.number()]),
+      }),
+    )
+    .optional(),
+  triggerWords: z.array(z.string()).optional(),
+});
+
+export type ExtractedPromptData = z.infer<typeof ExtractedPromptSchema>;
+
+
+
+================================================
+FILE: home/hooks/useHomeInteraction.ts
+================================================
+import { useState, useCallback } from "react";
+import { api } from "@/src/services/api";
+import { useNotificationStore } from "@/src/store/notificationStore";
+import { useViewerSync } from "@/src/features/image-viewer/hooks/useViewerSync";
+import { GalleryItem } from "@/src/types/models";
+
+export function useHomeInteraction() {
+  const { notify } = useNotificationStore();
+  const [activeUrl, setActiveUrl] = useState("");
+  const [activeTitle, setActiveTitle] = useState("");
+
+  const viewerSync = useViewerSync(activeUrl);
+
+  const handleOpenVisor = useCallback((item: GalleryItem) => {
+    setActiveUrl(item.url);
+    setActiveTitle(item.title);
+    viewerSync.openViewer(item.url);
+    
+    // Disparamos la métrica en background sin esperar (Fire and Forget)
+    api.registerInteraction(item, "view").catch((err) => 
+      console.error("Fallo al registrar vista:", err)
+    );
+  }, [viewerSync]);
+
+  const handleDownloadTotal = useCallback(async (item: GalleryItem) => {
+    try {
+      notify("Descarga", `⬇️ Preparando ${item.title}...`, "info");
+      await api.downloadAll(item.url, item.title);
+      api.registerInteraction(item, "download").catch(console.error);
+      notify("Éxito", `✅ Descarga encolada: ${item.title}`, "success");
+    } catch (err) {
+      notify("Error", "❌ Falla crítica al encolar la descarga.", "error");
+    }
+  }, [notify]);
+
+  return {
+    activeTitle,
+    viewerSync,
+    handleOpenVisor,
+    handleDownloadTotal,
+  };
+}
+
+
+
+================================================
+FILE: home/hooks/usePublicFeed.ts
+================================================
+import { FeedItem } from "@/src/types/models";
+import { useState, useEffect, useCallback } from "react";
+import { api } from "@/src/services/api";
+
+export function usePublicFeed(query: string) {
+  const [feed, setFeed] = useState<FeedItem[]>([]);
+  const [isFeedLoading, setIsFeedLoading] = useState(false);
+  const [feedError, setFeedError] = useState<string | null>(null);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [hasMore, setHasMore] = useState(true);
+
+  const loadFeed = useCallback(
+    async (isInitial: boolean = false) => {
+      if (isFeedLoading || (!isInitial && !hasMore)) return;
+
+      setIsFeedLoading(true);
+      setFeedError(null);
+
+      try {
+        const currentCursor = isInitial ? null : nextCursor;
+        const res = await api.public.getFeed({
+          include_self: false,
+          cursor: currentCursor,
+        });
+
+        const data = await res.json();
+
+        if (data.status === "success") {
+          setFeed((prev) => (isInitial ? data.feed : [...prev, ...data.feed]));
+          setNextCursor(data.next_cursor);
+          setHasMore(!!data.next_cursor);
+        }
+      } catch (err) {
+        console.error("Error cargando feed:", err);
+        setFeedError("Hubo un problema al cargar el arte.");
+      } finally {
+        setIsFeedLoading(false);
+      }
+    },
+    [nextCursor, hasMore, isFeedLoading],
+  );
+
+  useEffect(() => {
+    if (query) return;
+    loadFeed(true);
+  }, [query]);
+
+  return {
+    feed,
+    isFeedLoading,
+    feedError,
+    hasMore,
+    loadMore: () => loadFeed(false),
+  };
+}
+
+
+
+================================================
+FILE: image-viewer/hooks/useViewerSync.ts
+================================================
+// frontend/features/image-viewer/hooks/useViewerSync.ts
+import { useState, useCallback } from "react";
+import { api } from "@/src/services/api";
+import { ViewerPageItem } from "@/src/types/models";
+
+export function useViewerSync(activeUrl: string) {
+  const [isViewerOpen, setIsViewerOpen] = useState(false);
+  const [viewerPages, setViewerPages] = useState<ViewerPageItem[]>([]);
+  const [isViewerLoading, setIsViewerLoading] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [hasMorePages, setHasMorePages] = useState(false);
+  const [currentViewerPage, setCurrentViewerPage] = useState(0);
+
+  const openViewer = async (targetUrl?: string) => {
+    const urlToFetch = targetUrl || activeUrl;
+
+    if (!urlToFetch) {
+      console.warn("⚠️ [QA DEBUG] openViewer abortado: targetUrl es undefined");
+      return;
+    }
+
+    setIsViewerOpen(true);
+    setIsViewerLoading(true);
+    setViewerPages([]);
+
+    try {
+      const res = await api.leer(urlToFetch, 0);
+      const dataArray = res.data || res.paginas || res.enlaces;
+
+      if (res.status === "success" || res.status === "ok" || (dataArray && dataArray.length > 0)) {
+        if (Array.isArray(dataArray) && dataArray.length > 0) {
+          console.log(`✅ [QA DEBUG] Guardando ${dataArray.length} imágenes en el estado.`);
+          setViewerPages(dataArray);
+          setHasMorePages(!!res.has_next);
+          setCurrentViewerPage(1);
+        } else {
+          console.warn(
+            "⚠️ [QA DEBUG] El Backend devolvió SUCCESS, pero el array de imágenes está VACÍO o no es un array válido.",
+          );
+          setViewerPages([]);
+        }
+      } else {
+        console.error(
+          "❌ [QA DEBUG] El Backend devolvió un status de ERROR o estructura irreconocible:",
+          res,
+        );
+        setViewerPages([]);
+      }
+    } catch (err) {
+      console.error("💥 [QA DEBUG - CAPA 2] Crash durante la petición de red:", err);
+    } finally {
+      setIsViewerLoading(false);
+    }
+  };
+
+  const closeViewer = () => {
+    setIsViewerOpen(false);
+    setViewerPages([]);
+  };
+
+  const loadNextPage = useCallback(async () => {
+    if (!hasMorePages || isLoadingMore) return;
+    setIsLoadingMore(true);
+
+    try {
+      const res = await api.leer(activeUrl, currentViewerPage);
+      const dataArray = res.data || res.paginas || res.enlaces;
+
+      if (Array.isArray(dataArray)) {
+        setViewerPages((prev) => [...prev, ...dataArray]);
+        setHasMorePages(!!res.has_next);
+
+        if (res.has_next) setCurrentViewerPage((prev) => prev + 1);
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsLoadingMore(false);
+    }
+  }, [activeUrl, currentViewerPage, hasMorePages, isLoadingMore]);
+
+  return {
+    viewerPages,
+    isViewerLoading,
+    isLoadingMore,
+    isViewerOpen,
+    openViewer,
+    closeViewer,
+    hasMorePages,
+    loadNextPage,
+  };
+}
+
+
+
+================================================
+FILE: public/hooks/usePublicDirectory.ts
+================================================
+import { useState, useEffect } from "react";
+import { api } from "@/src/services/api";
+import { SavedPrompt } from "@/src/types/models";
+
+interface DirectoryDetail {
+  directory: {
+    id: number;
+    name: string;
+    description: string;
+    slug: string;
+    created_at: string;
+  };
+  prompts: SavedPrompt[];
+}
+
+export function usePublicDirectory(username: string, directory_slug: string) {
+  const [data, setData] = useState<DirectoryDetail | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!username || !directory_slug || directory_slug === "undefined" || username === "undefined") {
+      return;
+    } 
+    setIsLoading(true);
+
+    api.public.getDirectory(username, directory_slug).then(async (res) => {
+        if (!res.ok) throw new Error("Error en la petición");
+        const jsonData = await res.json();
+        setData(jsonData);
+      })
+      .catch((err) => {
+        setError(err.message);
+      })
+      .finally(() => setIsLoading(false));
+      
+  }, [username, directory_slug]);
+
+  return { data, isLoading, error };
+}
+
+
+
+================================================
+FILE: public/hooks/usePublicProfile.ts
+================================================
+import { useState, useEffect } from "react";
+import { api } from "@/src/services/api";
+import { SavedPrompt } from "@/src/types/models";
+
+interface ProfileData {
+  user: { username: string; role: string };
+  directories: any[];
+  recent_prompts: SavedPrompt[];
+}
+
+export function usePublicProfile(username: string) {
+  const [data, setData] = useState<ProfileData | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error] = useState<string | null>(null);
+
+  useEffect(() => {
+    setIsLoading(true);
+    api.public
+      .getDirectory(username, "")
+      .then(async (res) => {
+        if (!res.ok) throw new Error("Error en la petición");
+        const jsonData = await res.json();
+        setData(jsonData);
+      })
+      .finally(() => setIsLoading(false));
+  }, [username]);
+
+  return { data, isLoading, error };
+}
+
+
+
+================================================
+FILE: public/hooks/usePublicPrompt.ts
+================================================
+import { useState, useEffect } from "react";
+import { api } from "@/src/services/api";
+
+export function usePublicPrompt(promptId: string) {
+  const [data, setData] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setIsLoading(true);
+
+    api.public
+      .getPromptDetail(promptId)
+      .then(async (res: Response) => {
+        if (!res.ok) {
+          throw new Error(`HTTP error! status: ${res.status}`);
+        }
+        const jsonData = await res.json();
+        
+        setData(jsonData);
+      })
+      .catch((err: any) => {
+        console.error("Error fetching prompt:", err);
+        setError("El prompt no existe o es privado.");
+        setData(null);
+      })
+      .finally(() => setIsLoading(false));
+  }, [promptId]);
+
+  return { data, isLoading, error };
+}
+
+
+================================================
+FILE: search/useVectorSearch.ts
+================================================
+import { useState, useCallback } from "react";
+import { fetchSeguro } from "@/src/services/api/client";
+
+interface SearchOptions {
+  scope: "global" | "studio";
+  directoryId?: string;
+}
+
+export function useVectorSearch({ scope, directoryId }: SearchOptions) {
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleExecute = useCallback(async () => {
+    if (!query.trim()) return;
+
+    setIsLoading(true);
+    try {
+      const params = new URLSearchParams({
+        q: query,
+        scope,
+        ...(directoryId && { directory_id: directoryId }),
+      });
+
+      const res = await fetchSeguro(`/search/vector?${params.toString()}`);
+      if (res.ok) {
+        const data = await res.json();
+        setResults(data.results || []);
+      }
+    } catch (err) {
+      console.error(`[VectorSearch:${scope}] Error:`, err);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [query, scope, directoryId]);
+
+  return {
+    query,
+    setQuery,
+    results,
+    isLoading,
+    handleExecute,
+    clear: () => {
+      setQuery("");
+      setResults([]);
+    },
+  };
+}
+
+
+
+================================================
+FILE: search/hooks/useSearch.ts
+================================================
+"use client";
+
+import { useProgressStore } from "@/src/store/progressStore";
+import { useSearchStore } from "@/src/store/searchStore";
+
+export function useSearch() {
+  const store = useSearchStore();
+
+  const handleSearch = async (input?: string | React.FormEvent) => {
+    console.trace("🚨 DETECTIVE: Alguien disparó la búsqueda");
+    if (input && typeof input === "object" && "preventDefault" in input) {
+      input.preventDefault();
+    } else if (typeof input === "string") {
+      store.setQuery(input);
+    }
+
+    useProgressStore.getState().start();
+    try {
+      await store.executeSearch();
+    } finally {
+      useProgressStore.getState().done();
+    }
+  };
+
+  return {
+    query: store.query,
+    setQuery: store.setQuery,
+    results: store.results,
+    isLoading: store.isLoading,
+    isLoadingMore: store.isLoadingMore,
+    hasMore: store.hasMore,
+    error: store.error,
+    activeCategories: store.activeCategories,
+    toggleCategory: store.toggleCategory,
+    handleSearch,
+    loadMore: store.loadMore,
+  };
+}
+
+
+
+================================================
+FILE: settings/components/SettingsProfileHeader.tsx
+================================================
+"use client";
+
+import { useAuthStore } from "@/src/store/authStore";
+import { UserBadge } from "@/src/system/atoms/Badge/Badge";
+import { EditableAvatar } from "@/src/system/molecules/Avatar/EditableAvatar";
+
+export function SettingsProfileHeader() {
+  const user = useAuthStore((state) => state.user);
+  console.log("[PROFILE HEADER] - Avatar", user?.avatarUrl);
+
+  if (!user) return null;
+
+  return (
+    <div className="flex items-center gap-6 pb-6 mb-4 sticky">
+      <EditableAvatar username={user.username} avatarUrl={user.avatarUrl} size="xl" />
+
+      <div className="flex flex-col">
+        <div className="flex flex-col">
+          <h1 className="text-xl md:text-xl font-black tracking-tighter text-foreground lowercase">
+            {user.username}
+          </h1>
+        </div>
+
+        <div className="flex items-center gap-3 mt-2">
+          <UserBadge role={user.role} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+
+================================================
+FILE: settings/components/SettingsSectionHeader.tsx
+================================================
+interface SettingsSectionHeaderProps {
+  title: string;
+  description?: string;
+  icon?: React.ReactNode;
+}
+
+export function SettingsSectionHeader({ title, icon }: SettingsSectionHeaderProps) {
+  return (
+    <div className="pb-4 border-b border-border/80 mb-6">
+      <div className="flex items-center">
+        {icon && <span className="mr-2">{icon}</span>}
+        <h2 className="text-xl font-mono font-medium tracking-tight">{title}</h2>
+      </div>
+      {/* <p className="text-sm font-mono text-muted-foreground mt-1">{description}</p> */}
+    </div>
+  );
+}
+
+
+
+================================================
+FILE: settings/components/SettingsSidebar.tsx
+================================================
+"use client";
+
+import Link from "next/link";
+import { useSettingsNavigation } from "../hooks/useSettingsNavigation";
+import {
+  SidebarHeading,
+  SidebarDivider,
+  getSidebarItemClasses,
+} from "@/src/system/organisms/Sidebar";
+
+export function SettingsSidebar() {
+  const links = useSettingsNavigation();
+
+  return (
+    <nav className="flex flex-col gap-1 pt-6 sticky">
+      <SidebarHeading>Ajustes Generales</SidebarHeading>
+
+      <SidebarDivider className="my-4" />
+      <div className="px-3 flex flex-col gap-1">
+        {links.map((link) => (
+          <Link key={link.href} href={link.href} className={getSidebarItemClasses(link.isActive)}>
+            <span className={link.isActive ? "text-primary" : "text-muted-foreground"}>
+              {link.icon}
+            </span>
+            <span className="font-mono font-medium text-xs tracking-widest flex-1 text-left">
+              {link.label}
+            </span>
+          </Link>
+        ))}
+      </div>
+    </nav>
+  );
+}
+
+
+
+================================================
+FILE: settings/components/SidebarNavLink.tsx
+================================================
+import Link from "next/link";
+import { NavLink } from "../hooks/useSettingsNavigation";
+import {
+  getSidebarItemClasses,
+  SidebarActiveIndicator,
+  SidebarItemIcon,
+} from "@/src/system/organisms/Sidebar";
+
+export function SidebarNavLink({ href, label, icon, isActive }: NavLink) {
+  return (
+    <Link href={href} className={getSidebarItemClasses(isActive)}>
+      {isActive && <SidebarActiveIndicator />}
+
+      <SidebarItemIcon isActive={isActive}>{icon}</SidebarItemIcon>
+
+      <span className="flex-1 text-left">{label}</span>
+    </Link>
+  );
+}
+
+
+
+================================================
+FILE: settings/hooks/useSettingsNavigation.tsx
+================================================
+import { usePathname, useParams } from "next/navigation";
+import { IconLock, IconPalette, IconUserSquareRounded } from "@tabler/icons-react";
+import { ReactNode } from "react";
+
+export interface NavLink {
+  href: string;
+  label: string;
+  icon: ReactNode;
+  isActive: boolean;
+}
+
+export function useSettingsNavigation(): NavLink[] {
+  const pathname = usePathname();
+  const params = useParams();
+
+  const lang = (params?.lang as string) || "es";
+  const username = (params?.username as string) || "";
+  const basePath = `/${lang}/${username}/settings`;
+
+  return [
+    {
+      href: `${basePath}/profile`,
+      label: "Perfil Público",
+      icon: <IconUserSquareRounded size={20} />,
+      isActive: pathname.includes(`${basePath}/profile`),
+    },
+    {
+      href: `${basePath}/security`,
+      label: "Seguridad",
+      icon: <IconLock size={20} />,
+      isActive: pathname.includes(`${basePath}/security`),
+    },
+    {
+      href: `${basePath}/appearance`,
+      label: "Apariencia",
+      icon: <IconPalette size={20} />,
+      isActive: pathname.includes(`${basePath}/appearance`),
+    },
+  ];
+}
+
+
+
+================================================
+FILE: studio/components/Sidebar/StudioSidebar.tsx
+================================================
+"use client";
+
+import { IconFolderPlus, IconCloudUpload, IconFolder } from "@tabler/icons-react";
+import { useStudioUI, Directory } from "@/src/store/useStudioUI";
+import { useFileUploader } from "@/src/features/extractor/hooks/useFileUploader";
+import { useDirectoryActions } from "@/src/features/studio/hooks/useDirectoryActions";
+import { useDroppable } from "@dnd-kit/core";
+
+import {
+  SidebarContainer,
+  SidebarDivider,
+  getSidebarItemClasses,
+} from "@/src/system/organisms/Sidebar";
+import { SidebarDirectory } from "@/src/system/molecules/Studio/SidebarDirectory";
+
+export function StudioSidebar() {
+  const { directories, activeDirectoryId, setActiveDirectory } = useStudioUI();
+  const { createDirectory } = useDirectoryActions();
+  const { handleUploadClick } = useFileUploader();
+
+  const { setNodeRef: setRootDropRef, isOver: isRootOver } = useDroppable({
+    id: "root-zone",
+    data: { type: "root" },
+  });
+
+  const handleCreateRootFolder = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const name = window.prompt("Nombre de la nueva carpeta principal:");
+    if (name?.trim()) await createDirectory(name.trim(), null);
+  };
+
+  const isRootActive = activeDirectoryId === null;
+
+  return (
+    <SidebarContainer>
+      <div className="px-3 mb-1 group relative">
+        <div
+          ref={setRootDropRef}
+          onClick={() => setActiveDirectory(null)}
+          role="button"
+          className={getSidebarItemClasses(isRootActive, isRootOver)}
+        >
+          <IconFolder size={18} stroke={1.5} />
+          <span className="tracking-widest flex-1 text-left text-xs">
+            <span className="font-mono font-medium lowercase text-foreground/70">reprompt</span>{" "}
+            root
+          </span>
+
+          <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            <button
+              onClick={handleCreateRootFolder}
+              className="p-1 hover:bg-primary/20 rounded text-primary/80 transition-colors"
+              title="Nueva carpeta en Root"
+            >
+              <IconFolderPlus size={14} stroke={2} />
+            </button>
+            <button
+              onClick={handleUploadClick}
+              className="p-1 hover:bg-primary/20 rounded text-primary/80 transition-colors"
+              title="Subir a Root"
+            >
+              <IconCloudUpload size={14} stroke={2} />
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <SidebarDivider />
+
+      <div className="px-3 flex flex-col gap-1">
+        {directories
+          .filter((d: Directory) => d.parent_id === null)
+          .map((dir: Directory) => (
+            <SidebarDirectory key={dir.id} directory={dir} />
+          ))}
+      </div>
+    </SidebarContainer>
+  );
+}
+
+
+
+================================================
+FILE: studio/hooks/useDirectoryActions.ts
+================================================
+import { useCallback } from "react";
+import { useStudioUI } from "@/src/store/useStudioUI";
+import { fetchSeguro } from "@/src/services/api/client";
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
+
+export function useDirectoryActions() {
+  const { directories, setDirectories, activeDirectoryId, setActiveDirectory } = useStudioUI();
+
+  const createDirectory = useCallback(
+    async (name: string, parentId: string | null) => {
+      try {
+        const payload: Record<string, string> = { name };
+        if (parentId) {
+          payload.parent_id = parentId;
+        }
+
+        const res = await fetchSeguro(`${API_URL}/directories/`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+          credentials: "include",
+        });
+
+        if (res.ok) {
+          const newDir = await res.json();
+          setDirectories([...directories, newDir]);
+        } else {
+          throw new Error("Fallo al crear el directorio");
+        }
+      } catch (error) {
+        console.error("[DirectoryActions] Error creando:", error);
+      }
+    },
+    [directories, setDirectories],
+  );
+
+  // En src/features/studio/hooks/useDirectoryActions.ts
+
+  const deleteDirectory = useCallback(
+    async (id: string) => {
+      try {
+        const res = await fetchSeguro(`${API_URL}/directories/${id}`, {
+          method: "DELETE",
+          credentials: "include",
+        });
+
+        if (res.ok) {
+          setDirectories(directories.filter((d) => d.id !== id));
+          if (activeDirectoryId === id) setActiveDirectory(null);
+        } else {
+          // 🟢 FRONTEND INTELIGENTE: Leemos el error del backend
+          const errorData = await res.json();
+
+          if (res.status === 409 && errorData.detail === "DIRECTORY_NOT_EMPTY") {
+            alert(
+              "⚠️ Esta carpeta contiene subcarpetas o prompts.\n\nPor seguridad, debes vaciarla o mover sus elementos antes de eliminarla.",
+            );
+            return;
+          }
+
+          throw new Error(errorData.detail || "Fallo al borrar el directorio");
+        }
+      } catch (error: any) {
+        console.error("[DirectoryActions] Error borrando:", error.message);
+      }
+    },
+    [directories, setDirectories, activeDirectoryId, setActiveDirectory],
+  );
+
+  const renameDirectory = useCallback(
+    async (id: string, newName: string) => {
+      try {
+        const res = await fetchSeguro(`${API_URL}/directories/${id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: newName }),
+        });
+
+        if (!res.ok) throw new Error("No se pudo renombrar");
+
+        setDirectories(directories.map((dir) => (dir.id === id ? { ...dir, name: newName } : dir)));
+      } catch (error) {
+        console.error("[DirectoryActions] Error renombrando:", error);
+        throw error;
+      }
+    },
+    [directories, setDirectories],
+  );
+
+  const moveDirectory = useCallback(
+    async (directoryId: string, newParentId: string | null) => {
+      const previousDirectories = [...directories];
+      setDirectories(
+        directories.map((d) => (d.id === directoryId ? { ...d, parent_id: newParentId } : d)),
+      );
+
+      try {
+        const res = await fetchSeguro(`${API_URL}/directories/${directoryId}/move`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ parent_id: newParentId }),
+          credentials: "include",
+        });
+
+        if (!res.ok) throw new Error("Fallo al mover en el servidor");
+      } catch (error) {
+        console.error("[DirectoryActions] Error moviendo, haciendo rollback:", error);
+
+        setDirectories(previousDirectories);
+      }
+    },
+    [directories, setDirectories],
+  );
+
+  return {
+    createDirectory,
+    deleteDirectory,
+    renameDirectory,
+    moveDirectory,
+  };
+}
+
+
+
+================================================
+FILE: studio/hooks/useDirectoryDnd.ts
+================================================
+import { useDraggable, useDroppable } from "@dnd-kit/core";
+import { Directory } from "@/src/store/useStudioUI";
+
+export function useDirectoryDnd(directory: Directory) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef: setDraggableRef,
+    isDragging,
+  } = useDraggable({
+    id: `dir-${directory.id}`,
+    data: { type: "directory", directory },
+  });
+
+  const { setNodeRef: setDroppableRef, isOver } = useDroppable({
+    id: directory.id,
+    data: { type: "directory", directory },
+  });
+
+  const setBothRefs = (node: HTMLElement | null) => {
+    setDraggableRef(node);
+    setDroppableRef(node);
+  };
+
+  return { attributes, listeners, setBothRefs, isDragging, isOver };
+}
+
+
+
+================================================
+FILE: studio/hooks/usePromptUpload.ts
+================================================
+// src/features/studio/hooks/usePromptUpload.ts
+
+import { useState } from "react";
+import { api } from "@/src/services/api";
+import { optimizeAndLogImage } from "@/src/utils/lib/image-optimizer";
+import toast from "react-hot-toast";
+
+export function usePromptUpload() {
+  const [isUploading, setIsUploading] = useState(false);
+
+  const uploadPrompt = async (fileOriginal: File) => {
+    setIsUploading(true);
+    console.log(
+      `🚀 [UPLOAD-START] Iniciando flujo de subida para: ${fileOriginal.name} (${(fileOriginal.size / 1024 / 1024).toFixed(2)} MB)`,
+    );
+
+    try {
+      // 🟢 PASO 1: Optimización y Transformación a WebP
+      console.log(`⏳ [UPLOAD-STEP-1] Optimizando imagen en el cliente...`);
+      const archivoOptimizado = await optimizeAndLogImage(fileOriginal);
+
+      // 🟢 PASO 2: Pedir URL pre-firmada
+      console.log(
+        `⏳ [UPLOAD-STEP-2] Solicitando URL pre-firmada al Backend para: ${archivoOptimizado.name} (${archivoOptimizado.type})`,
+      );
+      const resUrl = await api.prompts.getPresignedUrl({
+        filename: archivoOptimizado.name,
+        contentType: archivoOptimizado.type,
+      });
+
+      if (!resUrl.ok) {
+        throw new Error(`Error del servidor al obtener firma (Status: ${resUrl.status})`);
+      }
+
+      const { url, public_url } = await resUrl.json();
+      console.log(`✅ [UPLOAD-STEP-2] Firma obtenida. URL Pública esperada: ${public_url}`);
+
+      // 🟢 PASO 3: Subida directa a R2
+      console.log(`☁️ [UPLOAD-STEP-3] Transfiriendo bytes a Cloudflare R2...`);
+      const uploadRes = await fetch(url, {
+        method: "PUT",
+        body: archivoOptimizado,
+        headers: {
+          "Content-Type": archivoOptimizado.type,
+          "Cache-Control": "public, max-age=31536000, immutable",
+        },
+      });
+
+      if (!uploadRes.ok) {
+        console.error(
+          `❌ [UPLOAD-STEP-3] Cloudflare R2 rechazó el archivo. Status: ${uploadRes.status} - ${uploadRes.statusText}`,
+        );
+        throw new Error("Fallo al subir imagen al almacenamiento de Cloudflare");
+      }
+
+      console.log(`✅ [UPLOAD-STEP-3] Transferencia a R2 completada con éxito.`);
+
+      // 🟢 PASO 4: Finalización
+      console.log(
+        `🎉 [UPLOAD-FINISH] Flujo de subida perfecto. Pasando el testigo a la Cuarentena del Backend.`,
+      );
+
+      return {
+        success: true,
+        image_url: public_url,
+      };
+    } catch (error: any) {
+      console.error(`🚨 [UPLOAD-CRASH] El flujo de subida fue interrumpido:`, error);
+      toast.error(error.message || "Fallo en la subida");
+      return { success: false };
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  return { uploadPrompt, isUploading };
+}
+
+
+
+================================================
+FILE: studio/hooks/useStudioDnd.ts
+================================================
+import { useState } from "react";
+import { useSensor, useSensors, PointerSensor, DragStartEvent, DragEndEvent } from "@dnd-kit/core";
+import { Directory } from "@/src/store/useStudioUI";
+import { useDirectoryActions } from "./useDirectoryActions";
+
+export function useStudioDnd() {
+  const { moveDirectory } = useDirectoryActions();
+  const [activeDragDir, setActiveDragDir] = useState<Directory | null>(null);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 8 },
+    }),
+  );
+
+  const handleDragStart = (event: DragStartEvent) => {
+    const { active } = event;
+    if (active.data.current?.type === "directory") {
+      setActiveDragDir(active.data.current.directory);
+    }
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    setActiveDragDir(null);
+    const { active, over } = event;
+
+    if (!over) return;
+
+    const isTargetRoot = over.id === "root-zone";
+    const targetDirId = isTargetRoot ? null : String(over.id).replace("dir-", "");
+    const draggedDirId = String(active.id).replace("dir-", "");
+
+    if (draggedDirId === (targetDirId || "root")) return;
+
+    if (active.data.current?.type === "directory") {
+      moveDirectory(draggedDirId, targetDirId);
+    }
+  };
+
+  return { sensors, activeDragDir, handleDragStart, handleDragEnd };
+}
+
+
+
+================================================
+FILE: studio/hooks/useStudioPrompts.ts
+================================================
+import { useState, useEffect } from "react";
+import { useStudioUI } from "@/src/store/useStudioUI";
+import { useAuthStore } from "@/src/store/authStore";
+import { fetchSeguro } from "@/src/services/api/client";
+import toast from "react-hot-toast";
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
+
+export function useStudioPrompts() {
+  const { activeDirectoryId, searchQuery } = useStudioUI();
+  const user = useAuthStore((state) => state.user);
+
+  const [debouncedQuery, setDebouncedQuery] = useState(searchQuery);
+  const [prompts, setPrompts] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    const handler = setTimeout(() => setDebouncedQuery(searchQuery), 1000);
+    return () => clearTimeout(handler);
+  }, [searchQuery]);
+
+  useEffect(() => {
+    const fetchPrompts = async () => {
+      setIsLoading(true);
+      try {
+        const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
+
+        const endpoint = debouncedQuery
+          ? `${API_BASE}/search/studio?q=${debouncedQuery}`
+          : `${API_BASE}/prompts/studio?directory_id=${activeDirectoryId || ""}`;
+
+        const res = await fetchSeguro(endpoint, { credentials: "include" });
+
+        if (res.ok) {
+          const data = await res.json();
+          setPrompts(data.results || data.data || []);
+        } else {
+          console.error("Fallo del servidor:", res.status);
+        }
+      } catch (err) {
+        console.error("Error en Studio Grid:", err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchPrompts();
+  }, [activeDirectoryId, debouncedQuery]);
+
+  const deletePrompt = async (promptId: string) => {
+    const toastId = toast.loading("Exterminando rastro digital...");
+    try {
+      const res = await fetchSeguro(`${API_URL}/prompts/${promptId}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+
+      if (res.ok) {
+        setPrompts((prev) => prev.filter((p) => p.id !== promptId));
+        toast.success("Eliminado del Studio", { id: toastId });
+      } else {
+        const errorData = await res.json();
+        throw new Error(errorData.detail || "Fallo de autorización");
+      }
+    } catch (error: any) {
+      console.error("Fallo al borrar:", error);
+      toast.error(error.message || "Error al eliminar", { id: toastId });
+    }
+  };
+
+  return {
+    prompts,
+    isLoading,
+    user,
+    deletePrompt,
+  };
+}
+
+
+
+================================================
+FILE: studio/hooks/useStudioSync.ts
+================================================
+import { useEffect } from "react";
+import { useStudioUI } from "@/src/store/useStudioUI";
+import { fetchSeguro } from "@/src/services/api/client";
+
+export function useStudioSync() {
+  const setDirectories = useStudioUI((state) => state.setDirectories);
+
+  useEffect(() => {
+    const fetchDirs = async () => {
+      try {
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
+        const res = await fetchSeguro(`${API_URL}/directories/`, { credentials: "include" });
+        if (res.ok) {
+          const data = await res.json();
+          setDirectories(data);
+        }
+      } catch (error) {
+        console.error("Error cargando directorios:", error);
+      }
+    };
+    fetchDirs();
+  }, [setDirectories]);
+}
+
+
+
+================================================
+FILE: studio/hooks/useUpdatePromptMetadata.ts
+================================================
+import { fetchSeguro } from "@/src/services/api/client";
+import { SavedPrompt } from "@/src/types/models";
+import toast from "react-hot-toast";
+
+export function useUpdatePromptMetadata(promptId: string) {
+  const handleSaveMetadata = async (updatedData: Partial<SavedPrompt>) => {
+    const toastId = toast.loading("Actualizando metadatos en la base de datos...");
+
+    try {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
+
+      const res = await fetchSeguro(`${API_URL}/prompts/${promptId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updatedData),
+      });
+
+      if (!res.ok) throw new Error("Fallo al guardar en el servidor");
+
+      toast.success("¡Metadatos actualizados!", { id: toastId });
+    } catch (error) {
+      console.error("[useUpdatePromptMetadata] Error:", error);
+      toast.error("Error al actualizar. Revisa la conexión.", { id: toastId });
+      throw error;
+    }
+  };
+
+  return { handleSaveMetadata };
+}
+
+
+
+================================================
+FILE: theme/components/ThemeMenuItem.tsx
+================================================
+"use client";
+
+import { useTheme } from "next-themes";
+import { MenuItem } from "@/src/system/atoms/Dropdown/MenuItem";
+import { IconSun, IconMoon, IconDeviceDesktop } from "@tabler/icons-react";
+import { useEffect, useState } from "react";
+
+export function ThemeMenuItem() {
+  const { theme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => setMounted(true), []);
+
+  if (!mounted) return <MenuItem icon={<IconDeviceDesktop size={16} />} label="Tema" disabled />;
+
+  const isDark = theme === "dark";
+
+  return (
+    <MenuItem
+      icon={
+        isDark ? (
+          <IconSun size={16} className="text-yellow-500" />
+        ) : (
+          <IconMoon size={16} className="text-slate-600" />
+        )
+      }
+      label={isDark ? "Cambiar a modo claro" : "Cambiar a modo oscuro"}
+      onClick={() => setTheme(isDark ? "light" : "dark")}
+    />
+  );
+}
+
+
+
+================================================
+FILE: theme/components/ThemePreview.tsx
+================================================
+import { ThemeColors } from "../constants/themeConfigs";
+
+export function ThemePreview({ colors }: { colors: ThemeColors }) {
+  return (
+    <div
+      className={`w-full h-36 p-3 flex flex-col gap-2 border-b border-border/10 ${colors.wrapper}`}
+    >
+      <div
+        className={`w-full h-5 rounded-md flex items-center px-2 gap-1.5 border ${colors.header}`}
+      >
+        <div className={`w-2 h-2 rounded-full ${colors.dots}`} />
+        <div className={`w-2 h-2 rounded-full ${colors.dots}`} />
+        <div className={`w-8 h-2 rounded-full ml-2 ${colors.lines}`} />
+      </div>
+
+      <div className="flex gap-2 flex-1">
+        <div className={`w-1/4 h-full rounded-md flex flex-col gap-1.5 p-1.5 ${colors.sidebar}`}>
+          <div className={`w-full h-2 rounded-full ${colors.lines}`} />
+          <div className={`w-3/4 h-2 rounded-full ${colors.lines}`} />
+          <div className={`w-1/2 h-2 rounded-full mt-2 ${colors.lines}`} />
+        </div>
+
+        <div
+          className={`w-3/4 h-full rounded-md border p-2 flex flex-col gap-1.5 ${colors.content}`}
+        >
+          <div className={`w-1/3 h-2.5 rounded-full ${colors.primaryLine}`} />
+          <div className={`w-full h-1.5 rounded-full mt-1 ${colors.contentLines}`} />
+          <div className={`w-5/6 h-1.5 rounded-full ${colors.contentLines}`} />
+          <div className={`w-4/6 h-1.5 rounded-full ${colors.contentLines}`} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+
+================================================
+FILE: theme/components/ThemeSelectorCard.tsx
+================================================
+"use client";
+
+import { IconCircleCheckFilled, IconCircle } from "@tabler/icons-react";
+import { ThemePreview } from "./ThemePreview";
+import { THEME_CONFIGS, ThemeOption } from "../constants/themeConfigs";
+import { BrandText } from "@/src/system/atoms/Brand/BrandText";
+
+interface ThemeSelectorCardProps {
+  themeType: ThemeOption;
+  isActive: boolean;
+  onClick: () => void;
+}
+
+export function ThemeSelectorCard({ themeType, isActive, onClick }: ThemeSelectorCardProps) {
+  const config = THEME_CONFIGS[themeType] || THEME_CONFIGS.light;
+
+  return (
+    <button
+      onClick={onClick}
+      type="button"
+      className={`
+        flex flex-col text-left transition-all duration-200 rounded-xl overflow-hidden border-2 cursor-pointer group outline-none h-full
+        ${
+          isActive
+            ? "border-primary ring-1 ring-primary shadow-sm"
+            : "border-border/50 hover:border-border hover:shadow-sm"
+        }
+      `}
+    >
+      <ThemePreview colors={config.colors} />
+
+      <div className="p-4 flex items-start justify-between w-full bg-background flex-1">
+        <div className="flex flex-col pr-4">
+          <span className="font-mono font-bold text-md text-foreground">{config.title}</span>
+          <span className="font-mono text-sm text-muted-foreground mt-1 leading-relaxed">
+            <BrandText text={config.description} />
+          </span>
+        </div>
+
+        <div
+          className={`transition-colors shrink-0 ${isActive ? "text-primary" : "text-muted-foreground group-hover:text-foreground"}`}
+        >
+          {isActive ? <IconCircleCheckFilled size={20} /> : <IconCircle size={20} stroke={1.5} />}
+        </div>
+      </div>
+    </button>
+  );
+}
+
+
+
+================================================
+FILE: theme/constants/themeConfigs.ts
+================================================
+export type ThemeOption = "light" | "dark" | string;
+
+export interface ThemeColors {
+  wrapper: string;
+  header: string;
+  dots: string;
+  lines: string;
+  sidebar: string;
+  content: string;
+  primaryLine: string;
+  contentLines: string;
+}
+
+export const THEME_CONFIGS: Record<
+  ThemeOption,
+  { title: string; description: string; colors: ThemeColors }
+> = {
+  light: {
+    title: "Tema Claro",
+    description: "Un aspecto limpio y luminoso, ideal para trabajar de día.",
+    colors: {
+      wrapper: "bg-[#f6f8fa]",
+      header: "bg-white border-gray-200",
+      dots: "bg-gray-300",
+      lines: "bg-gray-200",
+      sidebar: "bg-white border-gray-200",
+      content: "bg-white border-gray-200",
+      primaryLine: "bg-primary/40",
+      contentLines: "bg-gray-100",
+    },
+  },
+  dark: {
+    title: "Tema Oscuro",
+    description: "El tema oscuro original de reprompt.",
+    colors: {
+      wrapper: "bg-[#0d1117]",
+      header: "bg-[#161b22] border-gray-800",
+      dots: "bg-gray-600",
+      lines: "bg-gray-700",
+      sidebar: "bg-[#161b22] border-transparent",
+      content: "bg-[#010409] border-gray-800",
+      primaryLine: "bg-primary/50",
+      contentLines: "bg-gray-800",
+    },
+  },
+};
+
+
+
+================================================
+FILE: user/components/ChangePersonalDataModal.tsx
+================================================
+"use client";
+
+import { useState, useEffect } from "react";
+import { IconInfoCircle, IconX, IconArrowRight } from "@tabler/icons-react";
+import { Button } from "@/src/system/atoms/Button/Button";
+import { UpdatePersonalDataForm } from "./UpdatePersonalDataForm";
+
+interface ChangePersonalDataModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+}
+
+export function ChangePersonalDataModal({ isOpen, onClose }: ChangePersonalDataModalProps) {
+  const [step, setStep] = useState<1 | 2>(1);
+
+  useEffect(() => {
+    if (!isOpen) setTimeout(() => setStep(1), 200);
+  }, [isOpen]);
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm animate-in fade-in duration-200">
+      <div className="bg-background border border-border/50 shadow-2xl rounded-xl w-full max-w-md overflow-hidden animate-in zoom-in-95 relative flex flex-col">
+        <button
+          onClick={onClose}
+          className="absolute top-4 right-4 p-1 text-muted-foreground hover:text-foreground transition-colors z-10"
+        >
+          <IconX size={20} />
+        </button>
+
+        {step === 1 ? (
+          <div className="p-8 flex flex-col">
+            <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mb-6 border border-primary/20">
+              <IconInfoCircle size={24} className="text-primary" />
+            </div>
+            <h3 className="text-xl font-bold mb-2">Tu Perfil Público</h3>
+            <p className="text-sm text-muted-foreground mb-6">
+              Añadir tu nombre y profesión ayuda a otros creadores a conocerte mejor.
+            </p>
+            <ul className="space-y-3 text-xs text-muted-foreground mb-8">
+              <li className="flex gap-2">✅ Estos datos serán visibles en tu perfil.</li>
+              <li className="flex gap-2">✅ Ayuda a mejorar tus recomendaciones.</li>
+              <li className="flex gap-2">✅ Puedes borrarlos cuando quieras.</li>
+            </ul>
+            <div className="flex justify-end gap-3 pt-4 border-t border-border/30">
+              <Button variant="tertiary" size="sm" onClick={onClose}>
+                Cancelar
+              </Button>
+              <Button variant="secondary" size="sm" onClick={() => setStep(2)}>
+                Continuar <IconArrowRight size={16} className="ml-2" />
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <UpdatePersonalDataForm onSuccess={onClose} />
+        )}
+      </div>
+    </div>
+  );
+}
+
+
+
+================================================
+FILE: user/components/ChangeUsernameFormStep.tsx
+================================================
+import { IconUserSquareRounded } from "@tabler/icons-react";
+import { UpdateUsernameForm } from "./UpdateUsernameForm";
+
+interface ChangeUsernameFormStepProps {
+  lang: string;
+}
+
+export function ChangeUsernameFormStep({ lang }: ChangeUsernameFormStepProps) {
+  return (
+    <div className="flex flex-col">
+      <div className="flex items-center gap-3 p-4 border-b border-border bg-muted/10">
+        <IconUserSquareRounded size={20} className="text-primary" />
+        <h3 className="text-base font-bold text-foreground">Nuevo nombre de usuario</h3>
+      </div>
+
+      <div className="p-4">
+        <UpdateUsernameForm lang={lang} />
+      </div>
+    </div>
+  );
+}
+
+
+
+================================================
+FILE: user/components/ChangeUsernameModal.tsx
+================================================
+"use client";
+
+import { useState, useEffect } from "react";
+import { Modal } from "@/src/system/molecules/Modal/Modal";
+import { ChangeUsernameWarningStep } from "./ChangeUsernameWarningStep";
+import { ChangeUsernameFormStep } from "./ChangeUsernameFormStep";
+
+interface ChangeUsernameModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  lang: string;
+}
+
+export function ChangeUsernameModal({ isOpen, onClose, lang }: ChangeUsernameModalProps) {
+  const [step, setStep] = useState<1 | 2>(1);
+
+  useEffect(() => {
+    if (!isOpen) setTimeout(() => setStep(1), 200);
+  }, [isOpen]);
+
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} maxWidth="max-w-sm">
+      {step === 1 && <ChangeUsernameWarningStep onClose={onClose} onConfirm={() => setStep(2)} />}
+
+      {step === 2 && <ChangeUsernameFormStep lang={lang} />}
+    </Modal>
+  );
+}
+
+
+
+================================================
+FILE: user/components/ChangeUsernameWarningStep.tsx
+================================================
+import { IconAlertTriangle, IconArrowRight } from "@tabler/icons-react";
+import { Button } from "@/src/system/atoms/Button/Button";
+
+interface ChangeUsernameWarningStepProps {
+  onClose: () => void;
+  onConfirm: () => void;
+}
+
+export function ChangeUsernameWarningStep({ onClose, onConfirm }: ChangeUsernameWarningStepProps) {
+  return (
+    <div className="flex flex-col">
+      <div className="px-5 pt-5 pb-1">
+        <h3 className="text-lg font-bold text-foreground">Cambiar nombre de usuario</h3>
+      </div>
+
+      <div className="mx-5 mt-3 p-3.5 bg-amber-500/10 border border-amber-500/30 rounded-lg flex gap-3 items-start">
+        <IconAlertTriangle className="text-amber-600 shrink-0 mt-0.5" size={20} />
+        <p className="text-sm text-amber-600 font-medium leading-relaxed">
+          No cambies tu username antes de leer la siguiente información.
+        </p>
+      </div>
+
+      <div className="px-5 mt-5 mb-6">
+        <ul className="flex flex-col gap-3 text-sm text-muted-foreground">
+          <li className="flex gap-2.5 items-start">
+            <span className="text-amber-500 font-black mt-0.5">•</span>
+            <span className="leading-relaxed">
+              <strong>Reprompt</strong> no realizará las redirecciones de la{" "}
+              <strong>antigua URL</strong>.
+            </span>
+          </li>
+
+          <li className="flex gap-2.5 items-start">
+            <span className="text-amber-500 font-black mt-0.5">•</span>
+            <span className="leading-relaxed">
+              Tu antigua URL devolverá un <strong>Error 404</strong> inmediato. Actualiza tus
+              enlaces.
+            </span>
+          </li>
+
+          <li className="flex gap-2.5 items-start">
+            <span className="text-amber-500 font-black mt-0.5">•</span>
+            <span className="leading-relaxed">
+              Es posible que los cambios se retrasen <strong>unos minutos</strong> en propagarse por
+              la base de datos.
+            </span>
+          </li>
+        </ul>
+      </div>
+
+      <div className="p-4 border-t border-border bg-muted/10 flex justify-end gap-3">
+        <Button variant="tertiary" size="sm" onClick={onClose}>
+          Cancelar
+        </Button>
+        <Button variant="secondary" size="sm" onClick={onConfirm}>
+          Continuar <IconArrowRight size={16} className="ml-2" />
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+
+
+================================================
+FILE: user/components/PersonalDataSettingsSection.tsx
+================================================
+"use client";
+
+import { useState } from "react";
+import { User } from "@/src/store/authStore";
+import { Button } from "@/src/system/atoms/Button/Button";
+import { IconId } from "@tabler/icons-react";
+import { ChangePersonalDataModal } from "./ChangePersonalDataModal";
+
+export function PersonalDataSettingsSection({ user }: { user: User }) {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  return (
+    <div className="flex flex-col md:flex-row gap-6 md:items-center justify-between border-b border-border/30 pb-8">
+      <div className="flex-1">
+        <h3 className="text-lg font-bold">Datos Personales</h3>
+        <p className="text-sm text-muted-foreground mt-1 leading-relaxed">
+          Nombre:{" "}
+          <span className="text-foreground font-medium">{user.fullName || "Sin definir"}</span> •
+          Profesión:{" "}
+          <span className="text-foreground font-medium">{user.profession || "Creador"}</span>
+        </p>
+      </div>
+
+      <Button
+        variant="secondary"
+        className="shrink-0 gap-2 font-mono text-xs tracking-widest uppercase"
+        onClick={() => setIsModalOpen(true)}
+      >
+        <IconId size={16} />
+        Editar Datos
+      </Button>
+
+      <ChangePersonalDataModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
+    </div>
+  );
+}
+
+
+
+================================================
+FILE: user/components/UpdatePersonalDataForm.tsx
+================================================
+"use client";
+
+import { useState } from "react";
+import { useAuthStore } from "@/src/store/authStore";
+import { Input } from "@/src/system/atoms/Input/Input";
+import { Button } from "@/src/system/atoms/Button/Button";
+import { IconUser, IconBriefcase, IconCalendarEvent } from "@tabler/icons-react";
+import { toast } from "react-hot-toast";
+
+export function UpdatePersonalDataForm({ onSuccess }: { onSuccess: () => void }) {
+  const { user, updateUser } = useAuthStore();
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setIsLoading(true);
+
+    const formData = new FormData(e.currentTarget);
+    const fullName = formData.get("fullName") as string;
+    const profession = formData.get("profession") as string;
+    const age = formData.get("age") as string;
+
+    try {
+      // TODO: Aquí conectarás con tu endpoint de API: api.user.updateProfile(...)
+      await new Promise((resolve) => setTimeout(resolve, 800)); // Simulación
+
+      // Actualizamos el store global (Zustand)
+      updateUser({ fullName, profession, age: parseInt(age) });
+
+      toast.success("Perfil actualizado");
+      onSuccess(); // Cierra el modal automáticamente al terminar
+    } catch (error) {
+      toast.error("Error al guardar los cambios");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="flex flex-col animate-in fade-in duration-300">
+      <div className="p-6 md:p-8 space-y-5">
+        <Input
+          label="Nombre Completo"
+          name="fullName"
+          defaultValue={user?.fullName || ""}
+          placeholder="Tu nombre y apellidos"
+          icon={<IconUser size={18} />}
+        />
+
+        <div className="grid grid-cols-3 gap-4">
+          <div className="col-span-1">
+            <Input
+              label="Edad"
+              name="age"
+              type="number"
+              defaultValue={user?.age || ""}
+              placeholder="00"
+              icon={<IconCalendarEvent size={18} />}
+            />
+          </div>
+          <div className="col-span-2">
+            <Input
+              label="Profesión"
+              name="profession"
+              defaultValue={user?.profession || ""}
+              placeholder="Ej: Prompt Engineer"
+              icon={<IconBriefcase size={18} />}
+            />
+          </div>
+        </div>
+      </div>
+
+      <div className="p-4 bg-muted/5 border-t border-border/30 flex justify-end">
+        <Button type="submit" isLoading={isLoading} className="w-full sm:w-auto">
+          Guardar Perfil
+        </Button>
+      </div>
+    </form>
+  );
+}
+
+
+================================================
+FILE: user/components/UpdateUsernameForm.tsx
+================================================
+"use client";
+
+import { useEffect, useState } from "react";
+import { useAuthStore } from "@/src/store/authStore";
+import { useUpdateUsername } from "@/src/features/user/hooks/useUpdateUsername";
+import { Button } from "@/src/system/atoms/Button/Button";
+import { slugifyUsername } from "@/src/utils/lib/string";
+import { IconAt } from "@tabler/icons-react";
+
+export function UpdateUsernameForm({ lang }: { lang: string }) {
+  const { user } = useAuthStore();
+  const { handleUpdate, isLoading } = useUpdateUsername(lang);
+  const [inputValue, setInputValue] = useState("");
+
+  useEffect(() => {
+    if (user?.username) {
+      setInputValue(user.username);
+    }
+  }, [user]);
+
+  const onSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await handleUpdate(inputValue);
+  };
+
+  return (
+    <section>
+      <div className="flex items-center gap-3 mb-2">
+        <h3 className="text-md font-medium font-mono text-foreground/90">username</h3>
+      </div>
+
+      <form onSubmit={onSave} className="space-y-4">
+        <div className="relative">
+          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground">
+            <IconAt size={18} />
+          </span>
+          <input
+            type="text"
+            value={inputValue}
+            onChange={(e) => setInputValue(e.target.value)}
+            placeholder="nuevo nombre de usuario"
+            className="w-full bg-secondary neo-border p-2.5 pl-10 font-mono text-md focus:outline-none focus:ring-2 focus:ring-accent/70 transition-all"
+          />
+        </div>
+
+        <div className="bg-muted/10">
+          <p className="text-xs font-mono text-foreground/50 leading-relaxed">
+            Vista previa de tu URL <br />
+            <span className="text-foreground font-medium">
+              reprompt.studio/{lang}/{slugifyUsername(inputValue) || "..."}
+            </span>
+          </p>
+        </div>
+
+        <div className="flex justify-end pt-2">
+          <Button
+            type="submit"
+            isLoading={isLoading}
+            className="min-w-37.5"
+            disabled={inputValue === user?.username || !inputValue}
+          >
+            Guardar
+          </Button>
+        </div>
+      </form>
+    </section>
+  );
+}
+
+
+
+================================================
+FILE: user/components/UserDropdown.tsx
+================================================
+"use client";
+
+import { useState, useRef } from "react";
+import { useRouter, usePathname } from "next/navigation";
+import { useAuthStore } from "@/src/store/authStore";
+import { useClickOutside } from "@/src/utils/hooks/useClickOutside";
+import { MenuItem } from "@/src/system/atoms/Dropdown/MenuItem";
+import { LogoutMenuItem } from "@/src/features/auth/components/LogoutMenuItem";
+import { ThemeMenuItem } from "@/src/features/theme/components/ThemeMenuItem";
+import { UserAvatar } from "@/src/system/atoms/Avatar/Avatar";
+import {
+  IconDeviceDesktop,
+  IconLockSquareRounded,
+  IconShieldLock,
+  IconUserSquareRounded,
+} from "@tabler/icons-react";
+import { Tooltip } from "@/src/system/atoms/Tooltip/Tooltip";
+
+export function UserDropdown() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const { user } = useAuthStore();
+  const [isOpen, setIsOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useClickOutside(menuRef, () => setIsOpen(false));
+
+  if (!user) return null;
+
+  const lang = pathname?.split("/")[1] || "es";
+
+  const navigate = (path: string) => {
+    router.push(path);
+    setIsOpen(false);
+  };
+
+  return (
+    <div className="relative" ref={menuRef}>
+      <Tooltip content="Menu" side="bottom">
+        <button
+          onClick={() => setIsOpen(!isOpen)}
+          className="flex rounded-full transition-opacity hover:opacity-85 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          aria-expanded={isOpen}
+          aria-haspopup="true"
+        >
+          <UserAvatar username={user.username} avatarUrl={user.avatarUrl} size="sm" />
+        </button>
+      </Tooltip>
+
+      {isOpen && (
+        <div
+          className="absolute right-0 mt-2 w-72 bg-background border border-border shadow-lg rounded-xl z-50 animate-in fade-in zoom-in-95 duration-100 origin-top-right flex flex-col overflow-hidden"
+          role="menu"
+        >
+          <div className="flex items-center gap-3 p-4 border-b border-border bg-muted/10">
+            <UserAvatar username={user.username} avatarUrl={user.avatarUrl} size="md" />
+            <div className="flex flex-col overflow-hidden">
+              <span className="text-sm font-bold text-foreground truncate">@{user.username}</span>
+              <span className="text-xs font-medium text-muted-foreground capitalize mt-0.5">
+                {user.role}
+              </span>
+            </div>
+          </div>
+
+          <div className="p-1.5 flex flex-col gap-0.5 border-b border-border">
+            <MenuItem
+              icon={<IconUserSquareRounded size={16} />}
+              label="Perfil"
+              onClick={() =>
+                navigate(`/${lang}/${encodeURIComponent(user.username)}/settings/profile`)
+              }
+            />
+
+            <MenuItem
+              icon={<IconLockSquareRounded size={16} />}
+              label="Seguridad y Privacidad"
+              onClick={() =>
+                navigate(`/${lang}/${encodeURIComponent(user.username)}/settings/security`)
+              }
+            />
+
+            <MenuItem
+              icon={<IconDeviceDesktop size={16} />}
+              label="Apariencia"
+              onClick={() =>
+                navigate(`/${lang}/${encodeURIComponent(user.username)}/settings/appearance`)
+              }
+            />
+
+            {user.role === "admin" && (
+              <MenuItem
+                icon={<IconShieldLock size={16} />}
+                label="Panel Admin"
+                onClick={() => navigate(`/${lang}/admin`)}
+              />
+            )}
+          </div>
+
+          <div className="p-1.5 flex flex-col gap-0.5 border-b border-border">
+            <ThemeMenuItem />
+          </div>
+
+          <div className="p-1.5 bg-muted/5">
+            <LogoutMenuItem />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+
+
+================================================
+FILE: user/components/UsernameSettingsSection.tsx
+================================================
+"use client";
+
+import { useState } from "react";
+import { User } from "@/src/store/authStore";
+import { Button } from "@/src/system/atoms/Button/Button";
+import { IconEdit } from "@tabler/icons-react";
+import { ChangeUsernameModal } from "@/src/features/user/components/ChangeUsernameModal";
+
+interface UsernameSettingsSectionProps {
+  user: User;
+  lang: string;
+}
+
+export function UsernameSettingsSection({ user, lang }: UsernameSettingsSectionProps) {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  return (
+    <div className="flex flex-col md:flex-row gap-6 md:items-center justify-between border-b border-border/30 pb-8">
+      <div className="flex-1">
+        <h3 className="text-lg font-bold">Nombre de Usuario</h3>
+        <p className="text-sm text-muted-foreground mt-1">
+          Tu nombre actual es{" "}
+          <strong className="font-black text-brand-strong">@{user.username}</strong>. Este nombre se
+          usa para tu URL pública.
+        </p>
+      </div>
+
+      <Button
+        variant="secondary"
+        className="shrink-0 gap-2 font-mono text-xs tracking-widest uppercase"
+        onClick={() => setIsModalOpen(true)}
+      >
+        <IconEdit size={16} />
+        Cambiar Nombre
+      </Button>
+
+      <ChangeUsernameModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} lang={lang} />
+    </div>
+  );
+}
+
+
+
+================================================
+FILE: user/hooks/useUpdateUsername.ts
+================================================
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { api } from "@/src/services/api";
+import { useAuthStore } from "@/src/store/authStore";
+import { slugifyUsername } from "@/src/utils/lib/string";
+import toast from "react-hot-toast";
+
+export function useUpdateUsername(lang: string) {
+  const router = useRouter();
+  const updateLocalUsername = useAuthStore((state) => state.updateLocalUsername);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleUpdate = async (newNameRaw: string) => {
+    const safeName = slugifyUsername(newNameRaw);
+
+    setIsLoading(true);
+    try {
+      await api.user.updateUsername(safeName);
+
+      updateLocalUsername(safeName);
+
+      toast.success("¡Identidad actualizada!");
+
+      router.push(`/${lang}/${safeName}/settings/profile`);
+    } catch (error: any) {
+      toast.error(error.message || "Error al actualizar el nombre");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return { handleUpdate, isLoading };
+}
+

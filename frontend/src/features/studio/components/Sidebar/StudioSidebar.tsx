@@ -10,7 +10,7 @@ import {
   SidebarContainer,
   SidebarDivider,
   getSidebarItemClasses,
-} from "@/src/system/organisms/Sidebar/SidebarCore";
+} from "@/src/system/organisms/Sidebar";
 import { SidebarDirectory } from "@/src/system/molecules/Studio/SidebarDirectory";
 
 export function StudioSidebar() {

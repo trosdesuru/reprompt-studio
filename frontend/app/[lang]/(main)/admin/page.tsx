@@ -1,22 +1,20 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect } from "react"
 import { useAdminGuard } from "@/src/features/admin/hooks/useAdminGuard";
 import { useAdminDashboard } from "@/src/features/admin/hooks/useAdminDashboard";
 
-// Organismos (Módulos Complejos)
-import { InviteManager } from "@/src/system/organisms/Admin/InviteManager";
-import { SecurityModule } from "@/src/system/organisms/Admin/SecurityModule";
-import { AuditTable } from "@/src/system/organisms/Admin/AuditTable";
-import { DatabaseModule } from "@/src/system/organisms/Admin/DatabaseModule";
-import { StorageModule } from "@/src/system/organisms/Admin/StorageModule";
-
-// Moléculas (Componentes UI puros extraídos)
-import { AdminHeader } from "@/src/system/molecules/Admin/AdminHeader";
-import { SectionTitle } from "@/src/system/molecules/Admin/SectionTitle";
-import { MetricWidget } from "@/src/system/molecules/Admin/MetricWidget";
-import { AdminLoadingScreen } from "@/src/system/molecules/Admin/AdminLoadingScreen";
-import { GarbageCollectorModule } from "@/src/system/organisms/Admin/GarbageCollectorModule";
+// 🏛️ Componentes de la Feature Admin (FSD - Ubicación corregida)
+import { InviteManager } from "@/src/features/admin/components/InviteManager";
+import { SecurityModule } from "@/src/features/admin/components/SecurityModule";
+import { AuditTable } from "@/src/features/admin/components/AuditTable";
+import { DatabaseModule } from "@/src/features/admin/components/DatabaseModule";
+import { StorageModule } from "@/src/features/admin/components/StorageModule";
+import { AdminHeader } from "@/src/features/admin/components/AdminHeader";
+import { SectionTitle } from "@/src/features/admin/components/SectionTitle";
+import { MetricWidget } from "@/src/features/admin/components/MetricWidget";
+import { AdminLoadingScreen } from "@/src/features/admin/components/AdminLoadingScreen";
+import { GarbageCollectorModule } from "@/src/features/admin/components/GarbageCollectorModule";
 
 export default function AdminDashboardPage() {
   const { user, isLoadingAuth, isAuthorized } = useAdminGuard();

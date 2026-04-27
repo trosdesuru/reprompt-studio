@@ -5,7 +5,7 @@ import { api } from "@/src/services/api";
 import toast from "react-hot-toast";
 import { IconX, IconLock, IconWorld } from "@tabler/icons-react";
 import { useAuthStore } from "@/src/store/authStore";
-import { UpgradeModal } from "../../organisms/Modal/UpgradeModal";
+import { UpgradeModal } from "@/src/system/organisms/Modal/UpgradeModal";
 
 interface Props {
   isOpen: boolean;

@@ -4,7 +4,7 @@ import { useMemo } from "react";
 import { useParams } from "next/navigation";
 import { PageLoader } from "@/src/system/atoms/Loader/PageLoader";
 import { DirectoryHeader } from "@/src/system/molecules/Studio/DirectoryHeader";
-import { PromptGrid } from "@/src/system/organisms/Studio/PromptGrid";
+import { PromptGrid } from "@/src/features/studio/components/PromptGrid";
 
 import { useStudioPrompts } from "@/src/features/studio/hooks/useStudioPrompts";
 import { useStudioUI } from "@/src/store/useStudioUI";

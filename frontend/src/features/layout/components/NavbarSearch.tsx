@@ -8,8 +8,11 @@ import { useClickOutside } from "@/src/utils/hooks/useClickOutside";
 import { Modal } from "@/src/system/molecules/Modal/Modal";
 import { UniversalSearchBar } from "@/src/system/molecules/Search/UniversalSearchBar";
 
-import { SearchTrigger, SemanticSearchHeader } from "./SearchComponents";
-import { SearchModalHeader } from "./SearchModaHeader";
+import { SearchModalHeader } from "@/src/system/molecules/Navbar/SearchModaHeader";
+import {
+  SearchTrigger,
+  SemanticSearchHeader,
+} from "@/src/system/molecules/Navbar/SearchComponents";
 
 export function NavbarSearch() {
   const [isModalOpen, setIsModalOpen] = useState(false);

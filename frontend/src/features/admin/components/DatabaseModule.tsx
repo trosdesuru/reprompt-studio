@@ -15,22 +15,15 @@ import {
   IconStar,
   IconBan,
   IconExternalLink,
-  IconActivity,
 } from "@tabler/icons-react";
-import { MetricCard } from "../../molecules/Admin/MetricCard";
-import { QuotaBar } from "../../molecules/Admin/QuotaBar";
-import { UserActivityModal } from "./UserActivityModal";
+import { MetricCard } from "./MetricWidget";
+import { QuotaBar } from "./QuotaBar";
 
 export function DatabaseModule() {
   const [stats, setStats] = useState<DatabaseStatsResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
-
-  const [activityModalUser, setActivityModalUser] = useState<{
-    id: string;
-    username: string;
-  } | null>(null);
 
   const fetchStats = async () => {
     try {
@@ -185,16 +178,6 @@ export function DatabaseModule() {
                             <IconExternalLink size={14} /> Ver Perfil Público
                           </Link>
 
-                          <button
-                            onClick={() => {
-                              setActivityModalUser({ id: user.id, username: user.username });
-                              setOpenMenuId(null);
-                            }}
-                            className="flex items-center gap-2 px-3 py-2 text-xs text-blue-500 hover:bg-blue-500/10 w-full text-left"
-                          >
-                            <IconActivity size={14} /> Ver Rastro de Actividad
-                          </button>
-
                           {user.role === "voyager" && (
                             <button
                               onClick={() => handleAction(user.id, "upgrade")}
@@ -243,14 +226,6 @@ export function DatabaseModule() {
           </div>
         </div>
       </div>
-
-      {activityModalUser && (
-        <UserActivityModal
-          userId={activityModalUser.id}
-          username={activityModalUser.username}
-          onClose={() => setActivityModalUser(null)}
-        />
-      )}
     </>
   );
 }
