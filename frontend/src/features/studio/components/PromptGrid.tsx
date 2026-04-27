@@ -16,6 +16,7 @@ interface PromptGridProps {
 export function PromptGrid({ prompts, lang, authorUsername, onDelete }: PromptGridProps) {
   const { user } = useAuthStore();
   const isOwner = user?.username === authorUsername;
+  const queueIds = prompts?.map((prompt) => String(prompt.id)) || [];
 
   if (!prompts || prompts.length === 0) {
     return (
@@ -41,6 +42,7 @@ export function PromptGrid({ prompts, lang, authorUsername, onDelete }: PromptGr
               authorUsername={authorUsername}
               isPriority={index < 8}
               onDelete={isOwner ? onDelete : undefined}
+              queueIds={queueIds}
             />
           </FadeIn>
         </div>

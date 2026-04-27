@@ -18,7 +18,6 @@ export function WorkspaceHeader() {
       >
         <button
           onClick={toggleSidebar}
-          // 🟢 Eliminadas las clases md:hidden y lg:block. Ahora se verá SIEMPRE.
           className="p-1.5 rounded-md hover:bg-secondary/20 hover:text-accent transition-colors text-muted-foreground cursor-pointer hrink-0"
           title="Alternar panel lateral"
         >

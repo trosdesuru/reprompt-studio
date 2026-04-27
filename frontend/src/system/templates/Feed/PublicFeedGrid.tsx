@@ -13,6 +13,8 @@ interface PublicFeedGridProps {
 export function PublicFeedGrid({ feed, lang }: PublicFeedGridProps) {
   const { columns, columnCount } = useResponsiveColumns(feed);
 
+  const queueIds = feed?.map((item) => String(item.raw_id || item.id)) || [];
+
   if (!feed || feed.length === 0) return null;
 
   return (
@@ -30,6 +32,7 @@ export function PublicFeedGrid({ feed, lang }: PublicFeedGridProps) {
                     lang={lang}
                     index={globalIndex}
                     isPriority={globalIndex < 10}
+                    queueIds={queueIds}
                   />
                 </FadeIn>
               </div>

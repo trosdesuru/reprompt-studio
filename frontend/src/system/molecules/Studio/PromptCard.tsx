@@ -10,6 +10,7 @@ import { PromptCardSnippet } from "../Cards/PromptCardSnippet";
 import { SavedPrompt } from "@/src/types/models";
 import { Tooltip } from "../../atoms/Tooltip/Tooltip";
 import { RichPromptTooltipContent } from "./RichPromptTooltipContent";
+import { usePromptQueue } from "@/src/store/usePromptQueue";
 
 interface PromptCardProps {
   item: SavedPrompt;
@@ -21,6 +22,7 @@ interface PromptCardProps {
   isStudio?: boolean;
   index: number;
   isPriority?: boolean;
+  queueIds?: string[];
 }
 
 export function PromptCard({
@@ -33,10 +35,12 @@ export function PromptCard({
   isStudio = false,
   index,
   isPriority = false,
+  queueIds = [],
 }: PromptCardProps) {
   const { setIsHovered, isMenuOpen, setIsMenuOpen, copied, handleCopy } = usePromptCard();
   const { attributes, listeners, setNodeRef, isDragging } = usePromptDnd(item);
   const href = `/${lang}/${authorUsername}/p/${item.id}${isStudio ? "?from=studio" : ""}`;
+  const setQueue = usePromptQueue((state) => state.setQueue);
 
   return (
     <div
@@ -87,7 +91,15 @@ export function PromptCard({
         delayDuration={350}
         variant="rich"
       >
-        <Link href={href} className="relative flex flex-col h-full z-10 flex-1">
+        <Link
+          href={href}
+          className="relative flex flex-col h-full z-10 flex-1"
+          onClick={() => {
+            if (queueIds.length > 0) {
+              setQueue(queueIds);
+            }
+          }}
+        >
           <div className="relative aspect-4/5 w-full overflow-hidden bg-muted/20 border-b border-border/30">
             {item.image_url ? (
               <LazyImage

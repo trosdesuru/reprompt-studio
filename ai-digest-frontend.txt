@@ -161,7 +161,6 @@ Directory structure:
     │   │   │   │   ├── CreateCollectionModal.tsx
     │   │   │   │   ├── PromptGrid.tsx
     │   │   │   │   ├── SidebarDirectoryItem.tsx
-    │   │   │   │   ├── StudioSidebar.tsx
     │   │   │   │   ├── Sidebar/
     │   │   │   │   │   └── StudioSidebar.tsx
     │   │   │   │   └── Workspace/
@@ -2339,7 +2338,7 @@ FILE: app/[lang]/(main)/studio/page.tsx
 ================================================
 import { IconAlbum } from "@tabler/icons-react";
 import { PageHeader } from "@/src/system/organisms/Navigation/PageHeader";
-import { StudioSidebar } from "@/src/features/studio/components/StudioSidebar";
+import { StudioSidebar } from "@/src/features/studio/components/Sidebar/StudioSidebar";
 import { StudioDndWrapper } from "@/src/system/molecules/Studio/StudioDndWrapper";
 import { StudioWorkspace } from "@/src/system/templates/Studio/StudioWorkspace";
 import { WorkspaceHeader } from "@/src/features/studio/components/Workspace/WorkspaceHeader";
@@ -2357,7 +2356,7 @@ export default function StudioPage() {
       />
 
       <StudioDndWrapper>
-        <div className="flex flex-1 overflow-hidden border border-border/30 rounded-xl bg-card/20 backdrop-blur-sm transition-all duration-500">
+        <div className="flex flex-1 overflow-hidden relative border border-border/30 rounded-xl bg-card/20 backdrop-blur-sm transition-all duration-500">
           <StudioSidebar />
 
           <main
@@ -5563,7 +5562,7 @@ export function PromptGrid({ prompts, lang, authorUsername, onDelete }: PromptGr
   }
 
   return (
-    <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 sm:gap-6 w-full pb-24 items-start">
+    <div className="grid grid-cols-2 xs:grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 sm:gap-6 w-full pb-24 items-start">
       {prompts.map((prompt, index) => (
         <div key={prompt.id} className="w-full">
           <FadeIn delay={0.05} y={15}>
@@ -5709,95 +5708,12 @@ export const SidebarDirectoryItem = ({
 
 
 ================================================
-FILE: src/features/studio/components/StudioSidebar.tsx
-================================================
-"use client";
-
-import { IconFolderPlus, IconCloudUpload, IconFolder } from "@tabler/icons-react";
-import { useStudioUI, Directory } from "@/src/store/useStudioUI";
-import { SidebarDirectory } from "@/src/system/molecules/Studio/SidebarDirectory";
-import { useFileUploader } from "@/src/features/extractor/hooks/useFileUploader";
-import { useDirectoryActions } from "@/src/features/studio/hooks/useDirectoryActions";
-import { useDroppable } from "@dnd-kit/core";
-
-export function StudioSidebar() {
-  const { directories, activeDirectoryId, setActiveDirectory } = useStudioUI();
-  const { createDirectory } = useDirectoryActions();
-  const { handleUploadClick } = useFileUploader();
-
-  const { setNodeRef: setRootDropRef, isOver: isRootOver } = useDroppable({
-    id: "root-zone",
-    data: { type: "root" },
-  });
-
-  const handleCreateRootFolder = async (e: React.MouseEvent) => {
-    e.stopPropagation();
-    const name = window.prompt("Nombre de la nueva carpeta principal:");
-    if (name?.trim()) await createDirectory(name.trim(), null);
-  };
-
-  return (
-    <aside className="w-72 border-r border-border/30 bg-muted/5 flex-col hidden md:flex h-full shrink-0">
-      <div className="pt-6 flex-1 overflow-y-auto custom-scrollbar flex flex-col gap-1">
-        <div className="px-3 mb-1 group relative">
-          <div
-            ref={setRootDropRef}
-            onClick={() => setActiveDirectory(null)}
-            className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs transition-all border cursor-pointer role="button" 
-              ${
-                activeDirectoryId === null
-                  ? "bg-primary/10 text-primary border-primary/20 font-bold"
-                  : "text-muted-foreground hover:bg-secondary/40 border-transparent font-medium"
-              }
-              ${isRootOver ? "ring-2 ring-primary border-dashed bg-primary/20" : ""}
-            `}
-          >
-            <IconFolder size={18} stroke={1.5} />
-            <span className="tracking-widest flex-1 text-left">
-              <span className="font-mono font-medium lowercase text-foreground/70">reprompt</span>{" "}
-              root
-            </span>
-
-            <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-              <button
-                onClick={handleCreateRootFolder}
-                className="p-1 hover:bg-primary/20 rounded text-primary/80 transition-colors"
-                title="Nueva carpeta en Root"
-              >
-                <IconFolderPlus size={14} stroke={2} />
-              </button>
-              <button
-                onClick={handleUploadClick}
-                className="p-1 hover:bg-primary/20 rounded text-primary/80 transition-colors"
-                title="Subir a Root"
-              >
-                <IconCloudUpload size={14} stroke={2} />
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <div className="mx-6 border-t border-border/10 my-2" />
-
-        <div className="px-3 flex flex-col gap-1">
-          {directories
-            .filter((d: Directory) => d.parent_id === null)
-            .map((dir: Directory) => (
-              <SidebarDirectory key={dir.id} directory={dir} />
-            ))}
-        </div>
-      </div>
-    </aside>
-  );
-}
-
-
-
-================================================
 FILE: src/features/studio/components/Sidebar/StudioSidebar.tsx
 ================================================
+// En src/features/studio/components/StudioSidebar.tsx
 "use client";
 
+import { useEffect } from "react"; // 🟢 Importamos useEffect para los logs limpios
 import { IconFolderPlus, IconCloudUpload, IconFolder } from "@tabler/icons-react";
 import { useStudioUI, Directory } from "@/src/store/useStudioUI";
 import { useFileUploader } from "@/src/features/extractor/hooks/useFileUploader";
@@ -5813,8 +5729,16 @@ import { SidebarDirectory } from "@/src/system/molecules/Studio/SidebarDirectory
 
 export function StudioSidebar() {
   const { directories, activeDirectoryId, setActiveDirectory } = useStudioUI();
+  const { isSidebarOpen, setSidebarOpen } = useStudioUI();
   const { createDirectory } = useDirectoryActions();
   const { handleUploadClick } = useFileUploader();
+
+  // 🟢 TELEMETRÍA: Nos avisará cada vez que el estado cambie
+  useEffect(() => {
+    console.log(
+      `👁️ [StudioSidebar] -> Renderizado completado. isSidebarOpen es ahora: ${isSidebarOpen}`,
+    );
+  }, [isSidebarOpen]);
 
   const { setNodeRef: setRootDropRef, isOver: isRootOver } = useDroppable({
     id: "root-zone",
@@ -5830,49 +5754,89 @@ export function StudioSidebar() {
   const isRootActive = activeDirectoryId === null;
 
   return (
-    <SidebarContainer>
-      <div className="px-3 mb-1 group relative">
+    <>
+      {isSidebarOpen && (
         <div
-          ref={setRootDropRef}
-          onClick={() => setActiveDirectory(null)}
-          role="button"
-          className={getSidebarItemClasses(isRootActive, isRootOver)}
-        >
-          <IconFolder size={18} stroke={1.5} />
-          <span className="tracking-widest flex-1 text-left text-xs">
-            <span className="font-mono font-medium lowercase text-foreground/70">reprompt</span>{" "}
-            root
-          </span>
+          className="fixed inset-0 z-40 bg-background/60 backdrop-blur-sm md:hidden"
+          onClick={() => {
+            console.log(
+              "🖱️ [StudioSidebar Overlay] -> Clic fuera del sidebar (Móvil), cerrando...",
+            );
+            setSidebarOpen(false);
+          }}
+          aria-hidden="true"
+        />
+      )}
 
-          <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-            <button
-              onClick={handleCreateRootFolder}
-              className="p-1 hover:bg-primary/20 rounded text-primary/80 transition-colors"
-              title="Nueva carpeta en Root"
-            >
-              <IconFolderPlus size={14} stroke={2} />
-            </button>
-            <button
-              onClick={handleUploadClick}
-              className="p-1 hover:bg-primary/20 rounded text-primary/80 transition-colors"
-              title="Subir a Root"
-            >
-              <IconCloudUpload size={14} stroke={2} />
-            </button>
-          </div>
+      <aside
+        className={`
+          transition-all duration-300 ease-in-out z-50 shrink-0 h-full
+          
+          /* 📱 COMPORTAMIENTO MÓVIL (< 768px): 
+             Fondo sólido (CRÍTICO), borde derecho, y ancho fijo base */
+          bg-background border-r border-border/30 w-65
+          absolute left-0 top-0 
+          ${isSidebarOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full shadow-none"}
+          
+          /* 💻 COMPORTAMIENTO DESKTOP (>= 768px): 
+             Fondo transparente, sin bordes (se integra en el Workspace), posición relativa */
+          md:bg-transparent md:border-none md:relative md:translate-x-0
+          ${isSidebarOpen ? "md:w-65 md:opacity-100" : "md:w-0 md:opacity-0 md:overflow-hidden"}
+        `}
+      >
+        {/* 🟢 CORRECCIÓN CRÍTICA DE TAILWIND AQUÍ ABAJO (De w-65 a w-[260px]) */}
+        <div className="w-65 h-full flex flex-col">
+          <SidebarContainer>
+            <div className="px-3 mb-1 group relative mt-2 md:mt-0">
+              <div
+                ref={setRootDropRef}
+                onClick={() => {
+                  setActiveDirectory(null);
+                  if (window.innerWidth < 768) setSidebarOpen(false);
+                }}
+                role="button"
+                className={getSidebarItemClasses(isRootActive, isRootOver)}
+              >
+                <IconFolder size={18} stroke={1.5} />
+                <span className="tracking-widest flex-1 text-left text-xs">
+                  <span className="font-mono font-medium lowercase text-foreground/70">
+                    reprompt
+                  </span>{" "}
+                  root
+                </span>
+
+                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <button
+                    onClick={handleCreateRootFolder}
+                    className="p-1 hover:bg-primary/20 rounded text-primary/80 transition-colors"
+                    title="Nueva carpeta en Root"
+                  >
+                    <IconFolderPlus size={14} stroke={2} />
+                  </button>
+                  <button
+                    onClick={handleUploadClick}
+                    className="p-1 hover:bg-primary/20 rounded text-primary/80 transition-colors"
+                    title="Subir a Root"
+                  >
+                    <IconCloudUpload size={14} stroke={2} />
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <SidebarDivider />
+
+            <div className="px-3 flex flex-col gap-1">
+              {directories
+                .filter((d: Directory) => d.parent_id === null)
+                .map((dir: Directory) => (
+                  <SidebarDirectory key={dir.id} directory={dir} />
+                ))}
+            </div>
+          </SidebarContainer>
         </div>
-      </div>
-
-      <SidebarDivider />
-
-      <div className="px-3 flex flex-col gap-1">
-        {directories
-          .filter((d: Directory) => d.parent_id === null)
-          .map((dir: Directory) => (
-            <SidebarDirectory key={dir.id} directory={dir} />
-          ))}
-      </div>
-    </SidebarContainer>
+      </aside>
+    </>
   );
 }
 
@@ -5886,11 +5850,11 @@ FILE: src/features/studio/components/Workspace/WorkspaceHeader.tsx
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useStudioUI } from "@/src/store/useStudioUI";
-import { IconChevronRight, IconScanTraces } from "@tabler/icons-react";
+import { IconChevronRight, IconScanTraces, IconLayoutSidebar } from "@tabler/icons-react";
 
 export function WorkspaceHeader() {
   const { lang } = useParams();
-  const { activeDirectoryId, setActiveDirectory, getBreadcrumbs } = useStudioUI();
+  const { activeDirectoryId, setActiveDirectory, getBreadcrumbs, toggleSidebar } = useStudioUI();
   const breadcrumbs = getBreadcrumbs();
 
   return (
@@ -5899,6 +5863,15 @@ export function WorkspaceHeader() {
         aria-label="Breadcrumb"
         className="flex items-center space-x-1 text-xs md:text-sm font-mono text-accent/40 lowcase overflow-x-auto scrollbar-none"
       >
+        <button
+          onClick={toggleSidebar}
+          // 🟢 Eliminadas las clases md:hidden y lg:block. Ahora se verá SIEMPRE.
+          className="p-1.5 rounded-md hover:bg-secondary/20 hover:text-accent transition-colors text-muted-foreground cursor-pointer hrink-0"
+          title="Alternar panel lateral"
+        >
+          <IconLayoutSidebar size={18} stroke={1.5} />
+        </button>
+
         <button
           onClick={() => setActiveDirectory(null)}
           className={`hover:text-accent transition-colors flex items-center gap-2 ${
@@ -8288,10 +8261,13 @@ interface StudioUIState {
 
   searchQuery: string;
   isSearching: boolean;
+  isSidebarOpen: boolean;
 
   refreshKey: number;
   triggerRefresh: () => void;
+  toggleSidebar: () => void;
 
+  setSidebarOpen: (val: boolean) => void;
   setDirectories: (dirs: Directory[]) => void;
   setActiveDirectory: (id: string | null) => void;
   setSearchQuery: (query: string) => void;
@@ -8306,10 +8282,13 @@ export const useStudioUI = create<StudioUIState>((set, get) => ({
   activeDirectoryId: null,
   searchQuery: "",
   isSearching: false,
+  isSidebarOpen: false,
 
   refreshKey: 0,
   triggerRefresh: () => set((state) => ({ refreshKey: state.refreshKey + 1 })),
+  toggleSidebar: () => set((state) => ({ isSidebarOpen: !state.isSidebarOpen })),
 
+  setSidebarOpen: (isOpen: boolean) => set({ isSidebarOpen: isOpen }),
   setDirectories: (directories) => set({ directories }),
   setActiveDirectory: (activeDirectoryId) => set({ activeDirectoryId }),
   setSearchQuery: (searchQuery) => set({ searchQuery }),
@@ -12806,7 +12785,7 @@ export function SidebarContainer({
 }) {
   return (
     <aside
-      className={`w-72 border-r border-border/30 bg-muted/5 flex-col hidden md:flex h-full shrink-0 ${className}`}
+      className={`w-full bg-muted/5 flex-col md:flex h-full shrink-0 ${className}`}
     >
       <div className="pt-6 flex-1 overflow-y-auto custom-scrollbar flex flex-col gap-1">
         {children}

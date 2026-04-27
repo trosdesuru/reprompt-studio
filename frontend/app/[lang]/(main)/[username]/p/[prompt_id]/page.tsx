@@ -38,5 +38,12 @@ export default function PromptDetailPage({ params, searchParams }: PromptDetailP
         { label: prompt.title || "Detalle" },
       ];
 
-  return <PromptDetailView prompt={prompt} breadcrumbItems={breadcrumbItems} />;
+  return (
+    <PromptDetailView
+      prompt={prompt}
+      breadcrumbItems={breadcrumbItems}
+      lang={lang}
+      authorUsername={username}
+    />
+  );
 }

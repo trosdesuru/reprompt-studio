@@ -6,15 +6,24 @@ import { getFeedItemUrl } from "@/src/utils/lib/routes";
 import { ImageDebugOverlay } from "../../atoms/Debug/ImageDebugOverlay";
 import { getBoundedAspectRatio } from "@/src/utils/lib/media";
 import { UserAvatar } from "../../atoms/Avatar/Avatar";
+import { usePromptQueue } from "@/src/store/usePromptQueue";
 
 interface FeedItemCardProps {
   item: FeedItem;
   lang: string;
   isPriority?: boolean;
   index?: number;
+  queueIds?: string[];
 }
 
-export function FeedItemCard({ item, lang, isPriority = false, index = 0 }: FeedItemCardProps) {
+export function FeedItemCard({
+  item,
+  lang,
+  isPriority = false,
+  index = 0,
+  queueIds = [],
+}: FeedItemCardProps) {
+  const setQueue = usePromptQueue((state) => state.setQueue);
   const href = getFeedItemUrl(item, lang);
 
   const boundedRatio = getBoundedAspectRatio(item.width, item.height, item.resolution);
@@ -33,6 +42,11 @@ export function FeedItemCard({ item, lang, isPriority = false, index = 0 }: Feed
       href={href}
       className="group relative cursor-pointer bg-muted/10 neo-border overflow-hidden block transition-all hover:neo-shadow-accent w-full"
       style={{ aspectRatio: boundedRatio }}
+      onClick={() => {
+        if (queueIds.length > 0) {
+          setQueue(queueIds);
+        }
+      }}
     >
       <ImageDebugOverlay
         id={item.raw_id || item.id}
