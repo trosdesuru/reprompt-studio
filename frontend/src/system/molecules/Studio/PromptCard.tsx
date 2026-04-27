@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { IconPhoto } from "@tabler/icons-react";
+import { IconPhoto, IconTrash } from "@tabler/icons-react";
 import { usePromptCard } from "@/src/system/molecules/Cards/hooks/usePromptCard";
 import { PromptCardActions } from "../Cards/PromptCardActions";
 import { LazyImage } from "../Media/LazyImage";
@@ -46,11 +46,23 @@ export function PromptCard({
       }}
     >
       <div className="absolute top-2 right-2 z-30 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+        {onDelete && (
+          <button
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onDelete(String(item.id));
+            }}
+            className="p-1.5 bg-background/90 backdrop-blur-sm border border-border/50 text-red-500 hover:bg-red-500/10 hover:text-red-600 rounded-md transition-colors shadow-sm"
+            aria-label="Eliminar prompt"
+          >
+            <IconTrash size={16} />
+          </button>
+        )}
         <PromptCardActions
           item={item}
           directories={directories}
           onAssign={onAssign}
-          onDelete={onDelete}
           isOpen={isMenuOpen}
           setIsOpen={setIsMenuOpen}
         />

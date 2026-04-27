@@ -1,5 +1,7 @@
 "use client";
 
+import { useMemo } from "react";
+import { useAuthStore } from "@/src/store/authStore";
 import { FeedItem } from "@/src/types/models";
 import { FeedHeader } from "@/src/system/molecules/Feed/FeedHeader";
 import { FeedSentinel } from "@/src/system/molecules/Feed/FeedSentinel";
@@ -25,19 +27,31 @@ export function FeedLayout({
   onLoadMore,
   onFilterClick,
 }: FeedLayoutProps) {
+  const { user } = useAuthStore();
+
+  const filteredFeed = useMemo(() => {
+    if (!user || !feed) return feed || [];
+
+    return feed.filter((item) => {
+      const itemAuthor = item.username;
+
+      return itemAuthor !== user.username;
+    });
+  }, [feed, user]);
+
   const sentinelRef = useInfiniteScroll({ hasMore, isLoading, onLoadMore });
 
   return (
     <div className="pt-8 w-full">
-      <FeedHeader title={title} count={feed.length} onFilterClick={onFilterClick} />
+      <FeedHeader title={title} count={filteredFeed.length} onFilterClick={onFilterClick} />
 
-      <PublicFeedGrid feed={feed} lang={lang} />
+      <PublicFeedGrid feed={filteredFeed} lang={lang} />
 
       <FeedSentinel
         ref={sentinelRef}
         isLoading={isLoading}
         hasMore={hasMore}
-        isEmpty={feed.length === 0}
+        isEmpty={filteredFeed.length === 0}
       />
     </div>
   );

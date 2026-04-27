@@ -9,7 +9,7 @@
    ============================ */
 :root {
   --brand-bg: #fefdf3;
-  --brand-surface: #fbfbfb;
+  --brand-surface: #ffffff;
 
   --brand-text: #292929;
   --brand-muted: #f5f5f5;
@@ -59,7 +59,7 @@
    ================ */
 .dark {
   --brand-bg: #181818;
-  --brand-surface: #1c1c1c;
+  --brand-surface: #0f0f0f;
 
   --brand-text: #e7e7e7;
   --brand-muted: #171717;
