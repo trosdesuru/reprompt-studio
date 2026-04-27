@@ -162,8 +162,10 @@ Directory structure:
     │   │   │   │   ├── PromptGrid.tsx
     │   │   │   │   ├── SidebarDirectoryItem.tsx
     │   │   │   │   ├── StudioSidebar.tsx
-    │   │   │   │   └── Sidebar/
-    │   │   │   │       └── StudioSidebar.tsx
+    │   │   │   │   ├── Sidebar/
+    │   │   │   │   │   └── StudioSidebar.tsx
+    │   │   │   │   └── Workspace/
+    │   │   │   │       └── WorkspaceHeader.tsx
     │   │   │   └── hooks/
     │   │   │       ├── useDirectoryActions.ts
     │   │   │       ├── useDirectoryDnd.ts
@@ -999,7 +1001,7 @@ FILE: app/globals.css
    ================ */
 .dark {
   --brand-bg: #181818;
-  --brand-surface: #0f0f0f;
+  --brand-surface: #222222;
   --brand-artist: #0f89b5;
 
   --brand-text: #e7e7e7;
@@ -2340,6 +2342,7 @@ import { PageHeader } from "@/src/system/organisms/Navigation/PageHeader";
 import { StudioSidebar } from "@/src/features/studio/components/StudioSidebar";
 import { StudioDndWrapper } from "@/src/system/molecules/Studio/StudioDndWrapper";
 import { StudioWorkspace } from "@/src/system/templates/Studio/StudioWorkspace";
+import { WorkspaceHeader } from "@/src/features/studio/components/Workspace/WorkspaceHeader";
 
 export default function StudioPage() {
   return (
@@ -2347,7 +2350,7 @@ export default function StudioPage() {
       <PageHeader
         title="Mi Studio"
         description="Gestiona y organiza tus prompts."
-        icon={<IconAlbum size={28} stroke={1.5} className="text-foreground"/>}
+        icon={<IconAlbum size={28} stroke={1.5} className="text-foreground" />}
         breadcrumbItems={[{ label: "Mi Studio" }]}
         scrollContainerId="studio-main"
         collapseOnHide={true}
@@ -2359,8 +2362,9 @@ export default function StudioPage() {
 
           <main
             id="studio-main"
-            className="flex-1 overflow-y-auto custom-scrollbar bg-background/30 p-4 md:p-6 scroll-smooth"
+            className="flex-1 flex flex-col overflow-y-auto custom-scrollbar bg-background/30 p-4 md:p-6 scroll-smooth"
           >
+            <WorkspaceHeader />
             <StudioWorkspace />
           </main>
         </div>
@@ -5875,6 +5879,78 @@ export function StudioSidebar() {
 
 
 ================================================
+FILE: src/features/studio/components/Workspace/WorkspaceHeader.tsx
+================================================
+"use client";
+
+import Link from "next/link";
+import { useParams } from "next/navigation";
+import { useStudioUI } from "@/src/store/useStudioUI";
+import { IconChevronRight, IconScanTraces } from "@tabler/icons-react";
+
+export function WorkspaceHeader() {
+  const { lang } = useParams();
+  const { activeDirectoryId, setActiveDirectory, getBreadcrumbs } = useStudioUI();
+  const breadcrumbs = getBreadcrumbs();
+
+  return (
+    <header className="flex items-center justify-between w-full mb-6 pb-4 border-b border-border/30">
+      <nav
+        aria-label="Breadcrumb"
+        className="flex items-center space-x-1 text-xs md:text-sm font-mono text-accent/40 lowcase overflow-x-auto scrollbar-none"
+      >
+        <button
+          onClick={() => setActiveDirectory(null)}
+          className={`hover:text-accent transition-colors flex items-center gap-2 ${
+            !activeDirectoryId ? "text-muted-foreground font-bold" : ""
+          }`}
+          title="Root"
+        >
+          root
+        </button>
+
+        {breadcrumbs.map((crumb, index) => {
+          const isLast = index === breadcrumbs.length - 1;
+
+          return (
+            <div key={crumb.id} className="flex items-center space-x-1 whitespace-nowrap">
+              <IconChevronRight size={14} />
+
+              {isLast ? (
+                <span
+                  className="font-bold text-xs text-accent/80 tracking-widest truncate max-w-37.5 sm:max-w-37.5"
+                  title={crumb.name}
+                >
+                  {crumb.name.toUpperCase()}
+                </span>
+              ) : (
+                <button
+                  onClick={() => setActiveDirectory(crumb.id)}
+                  className="hover:text-accent text-xs transition-colors tracking-widest truncate max-w-37.5 sm:max-w-50"
+                  title={crumb.name}
+                >
+                  {crumb.name.toUpperCase()}
+                </button>
+              )}
+            </div>
+          );
+        })}
+      </nav>
+
+      <Link
+        href={`/${lang}/reprompt`}
+        className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-xs font-bold hover:bg-primary/90 transition-all shadow-sm active:scale-95 shrink-0 ml-4"
+      >
+        <IconScanTraces size={16} />
+        <span className="hidden sm:inline tracking-widest">DATA EXTRACTOR</span>
+      </Link>
+    </header>
+  );
+}
+
+
+
+================================================
 FILE: src/features/studio/hooks/useDirectoryActions.ts
 ================================================
 import { useCallback } from "react";
@@ -6044,16 +6120,15 @@ export function usePromptDnd(prompt: SavedPrompt) {
   const {
     attributes,
     listeners,
-    setNodeRef: setDraggableRef,
+    setNodeRef,
     isDragging,
   } = useDraggable({
     id: `prompt-${prompt.id}`,
     data: { type: "prompt", prompt },
   });
 
-  return { attributes, listeners, setDraggableRef, isDragging };
+  return { attributes, listeners, setNodeRef, isDragging };
 }
-
 
 
 ================================================
@@ -6151,9 +6226,10 @@ import toast from "react-hot-toast";
 
 export function useStudioDnd() {
   const { moveDirectory } = useDirectoryActions();
+  const triggerRefresh = useStudioUI((state) => state.triggerRefresh);
+
   const [activeDragDir, setActiveDragDir] = useState<Directory | null>(null);
   const [activeDragItem, setActiveDragItem] = useState<any | null>(null);
-  const triggerRefresh = useStudioUI((state) => state.triggerRefresh);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -6164,7 +6240,6 @@ export function useStudioDnd() {
   const handleDragStart = (event: DragStartEvent) => {
     const { active } = event;
     setActiveDragItem(active.data.current);
-
     if (active.data.current?.type === "directory") {
       setActiveDragDir(active.data.current.directory);
     }
@@ -6173,8 +6248,8 @@ export function useStudioDnd() {
   const handleDragEnd = async (event: DragEndEvent) => {
     setActiveDragDir(null);
     setActiveDragItem(null);
-    const { active, over } = event;
 
+    const { active, over } = event;
     if (!over) return;
 
     const isTargetRoot = over.id === "root-zone";
@@ -6182,7 +6257,6 @@ export function useStudioDnd() {
 
     if (active.data.current?.type === "directory") {
       const draggedDirId = String(active.id).replace("dir-", "");
-
       if (draggedDirId === (targetDirId || "root")) return;
       moveDirectory(draggedDirId, targetDirId);
     }
@@ -6190,6 +6264,7 @@ export function useStudioDnd() {
     if (active.data.current?.type === "prompt") {
       const promptId = String(active.id).replace("prompt-", "");
       const currentDirId = active.data.current.prompt.directory_id;
+
       if (currentDirId === targetDirId || (!currentDirId && !targetDirId)) return;
 
       const toastId = toast.loading("Moviendo prompt...");
@@ -6205,7 +6280,6 @@ export function useStudioDnd() {
         if (!res.ok) throw new Error("No se pudo mover el prompt");
 
         toast.success("Prompt organizado", { id: toastId });
-
         triggerRefresh();
       } catch (error) {
         toast.error("Error al mover el prompt", { id: toastId });
@@ -6214,7 +6288,7 @@ export function useStudioDnd() {
     }
   };
 
-  return { sensors, activeDragItem, handleDragStart, handleDragEnd };
+  return { sensors, activeDragItem, activeDragDir, handleDragStart, handleDragEnd };
 }
 
 
@@ -6246,12 +6320,13 @@ export function useStudioPrompts() {
   useEffect(() => {
     const fetchPrompts = async () => {
       setIsLoading(true);
+
       try {
         const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
 
         const endpoint = debouncedQuery
           ? `${API_BASE}/search/studio?q=${debouncedQuery}`
-          : `${API_BASE}/prompts/studio?directory_id=${activeDirectoryId || ""}`;
+          : `${API_BASE}/prompts/studio?directory_id=${activeDirectoryId === null ? "root" : activeDirectoryId}`;
 
         const res = await fetchSeguro(endpoint, { credentials: "include" });
 
@@ -6764,9 +6839,9 @@ export function PersonalDataSettingsSection({ user }: { user: User }) {
         <h3 className="text-lg font-bold">Datos Personales</h3>
         <p className="text-sm text-muted-foreground mt-1 leading-relaxed">
           Nombre:{" "}
-          <span className="text-foreground font-medium">{user.fullName || "Sin definir"}</span> •
+          <span className="text-destructive font-bold">{user.fullName || "Sin definir"}</span> •
           Profesión:{" "}
-          <span className="text-foreground font-medium">{user.profession || "Creador"}</span>
+          <span className="text-destructive font-bold">{user.profession || "Sin definir"}</span>
         </p>
       </div>
 
@@ -6776,7 +6851,7 @@ export function PersonalDataSettingsSection({ user }: { user: User }) {
         onClick={() => setIsModalOpen(true)}
       >
         <IconId size={16} />
-        Editar Datos
+        Modificar Datos
       </Button>
 
       <ChangePersonalDataModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
@@ -7097,7 +7172,7 @@ export function UsernameSettingsSection({ user, lang }: UsernameSettingsSectionP
         onClick={() => setIsModalOpen(true)}
       >
         <IconEdit size={16} />
-        Cambiar Nombre
+        Cambiar Username
       </Button>
 
       <ChangeUsernameModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} lang={lang} />
@@ -8223,6 +8298,7 @@ interface StudioUIState {
   setIsSearching: (status: boolean) => void;
 
   getChildDirectories: (parentId: string | null) => Directory[];
+  getBreadcrumbs: () => Directory[];
 }
 
 export const useStudioUI = create<StudioUIState>((set, get) => ({
@@ -8241,6 +8317,23 @@ export const useStudioUI = create<StudioUIState>((set, get) => ({
 
   getChildDirectories: (parentId) => {
     return get().directories.filter((d: Directory) => d.parent_id === parentId);
+  },
+
+  getBreadcrumbs: () => {
+    const { directories, activeDirectoryId } = get();
+    const crumbs: Directory[] = [];
+    let currentId = activeDirectoryId;
+
+    while (currentId) {
+      const dir = directories.find((d) => d.id === currentId);
+      if (dir) {
+        crumbs.unshift(dir);
+        currentId = dir.parent_id;
+      } else {
+        currentId = null;
+      }
+    }
+    return crumbs;
   },
 }));
 
@@ -9542,7 +9635,7 @@ export function PromptMetadataPanel({ prompt, isOwner = true, onSave }: PromptMe
               onClick={() => setIsEditing(true)}
               className="flex items-center gap-2 px-3 py-1.5 text-xs font-mono uppercase tracking-widest border border-border hover:bg-muted rounded-md transition-colors"
             >
-              <IconEdit size={14} /> Editar Datos
+              <IconEdit size={14} /> Editar
             </button>
           )}
         </div>
@@ -11029,6 +11122,7 @@ FILE: src/system/molecules/Studio/PromptCard.tsx
 import Link from "next/link";
 import { IconPhoto, IconTrash } from "@tabler/icons-react";
 import { usePromptCard } from "@/src/system/molecules/Cards/hooks/usePromptCard";
+import { usePromptDnd } from "@/src/features/studio/hooks/usePromptDnd";
 import { PromptCardActions } from "../Cards/PromptCardActions";
 import { LazyImage } from "../Media/LazyImage";
 import { PromptCardSnippet } from "../Cards/PromptCardSnippet";
@@ -11060,11 +11154,23 @@ export function PromptCard({
   isPriority = false,
 }: PromptCardProps) {
   const { setIsHovered, isMenuOpen, setIsMenuOpen, copied, handleCopy } = usePromptCard();
+  const { attributes, listeners, setNodeRef, isDragging } = usePromptDnd(item);
   const href = `/${lang}/${authorUsername}/p/${item.id}${isStudio ? "?from=studio" : ""}`;
 
   return (
     <div
-      className="group relative flex flex-col h-full bg-background rounded-xl border border-border/50 shadow-xs hover:shadow-md hover:border-border transition-all duration-200 overflow-hidden"
+      ref={setNodeRef}
+      {...attributes}
+      {...listeners}
+      style={{
+        opacity: isDragging ? 0.3 : 1,
+        cursor: isDragging ? "grabbing" : "grab",
+      }}
+      className={`group relative flex flex-col h-full bg-background rounded-xl border transition-all duration-200 overflow-hidden ${
+        isDragging
+          ? "border-accent ring-2 ring-accent scale-95"
+          : "border-border/50 shadow-xs hover:shadow-md hover:border-border"
+      }`}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => {
         setIsHovered(false);
@@ -11115,16 +11221,13 @@ export function PromptCard({
                 <IconPhoto size={32} stroke={1.5} />
               </div>
             )}
-
             <div className="absolute inset-x-0 bottom-0 p-3 pt-12 bg-linear-to-t from-background/95 via-background/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200 ease-in-out flex flex-col gap-1.5 pointer-events-none group-hover:pointer-events-auto">
               <p className="text-[9px] text-muted-foreground font-mono font-semibold uppercase tracking-wider drop-shadow-sm line-clamp-1">
                 {item.model || "Base Model"}
               </p>
-
               <PromptCardSnippet promptText={item.prompt} copied={copied} onCopy={handleCopy} />
             </div>
           </div>
-
           <div className="p-2.5 sm:p-3 bg-background flex-1 flex items-center">
             <h3 className="font-semibold text-xs sm:text-sm text-foreground/90 w-full truncate">
               {item.software || "Sin título"}
@@ -11342,7 +11445,7 @@ FILE: src/system/molecules/Studio/StudioDndWrapper.tsx
 "use client";
 
 import { DndContext, closestCenter, DragOverlay } from "@dnd-kit/core";
-import { IconFolder } from "@tabler/icons-react";
+import { IconFolder, IconPhoto } from "@tabler/icons-react";
 import { useStudioDnd } from "@/src/features/studio/hooks/useStudioDnd";
 
 interface StudioDndWrapperProps {
@@ -11350,7 +11453,7 @@ interface StudioDndWrapperProps {
 }
 
 export function StudioDndWrapper({ children }: StudioDndWrapperProps) {
-  const { sensors, activeDragDir, handleDragStart, handleDragEnd } = useStudioDnd();
+  const { sensors, activeDragItem, handleDragStart, handleDragEnd } = useStudioDnd();
 
   return (
     <DndContext
@@ -11362,10 +11465,28 @@ export function StudioDndWrapper({ children }: StudioDndWrapperProps) {
       {children}
 
       <DragOverlay dropAnimation={null}>
-        {activeDragDir && (
-          <div className="flex items-center py-2 px-3 bg-card border border-primary/40 border-dashed rounded-lg shadow-2xl opacity-90 cursor-grabbing">
+        {activeDragItem?.type === "directory" && (
+          <div className="flex items-center py-2 px-3 bg-card border-2 border-primary/50 border-dashed rounded-lg shadow-2xl opacity-90 cursor-grabbing backdrop-blur-md">
             <IconFolder size={18} className="text-primary mr-2" />
-            <span className="text-sm font-bold text-foreground">{activeDragDir.name}</span>
+            <span className="text-sm font-bold text-foreground">
+              {activeDragItem.directory.name}
+            </span>
+          </div>
+        )}
+
+        {activeDragItem?.type === "prompt" && (
+          <div className="w-24 h-32 rounded-lg overflow-hidden border-2 border-accent border-dashed opacity-60 shadow-2xl cursor-grabbing pointer-events-none bg-background">
+            {activeDragItem.prompt.image_url ? (
+              <img
+                src={activeDragItem.prompt.image_url}
+                alt="Arrastrando"
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center text-muted-foreground/40">
+                <IconPhoto size={24} />
+              </div>
+            )}
           </div>
         )}
       </DragOverlay>
@@ -13013,14 +13134,11 @@ FILE: src/system/templates/Studio/StudioWorkspace.tsx
 ================================================
 "use client";
 
-import { useMemo } from "react";
 import { useParams } from "next/navigation";
 import { PageLoader } from "@/src/system/atoms/Loader/PageLoader";
-import { DirectoryHeader } from "@/src/system/molecules/Studio/DirectoryHeader";
 import { PromptGrid } from "@/src/features/studio/components/PromptGrid";
 
 import { useStudioPrompts } from "@/src/features/studio/hooks/useStudioPrompts";
-import { useStudioUI } from "@/src/store/useStudioUI";
 import { useStudioSync } from "@/src/features/studio/hooks/useStudioSync";
 
 export function StudioWorkspace() {
@@ -13030,14 +13148,6 @@ export function StudioWorkspace() {
   const lang = (params?.lang as string) || "es";
 
   const { prompts, isLoading, user, deletePrompt } = useStudioPrompts();
-  const { activeDirectoryId, directories } = useStudioUI();
-
-  const activeDir = useMemo(
-    () => directories.find((d) => String(d.id) === String(activeDirectoryId)),
-    [activeDirectoryId, directories],
-  );
-
-  const directoryName = activeDirectoryId && activeDir ? activeDir.name : "reprompt root";
   const authorUsername = user?.username || "unknown";
 
   if (isLoading) {
@@ -13050,7 +13160,6 @@ export function StudioWorkspace() {
 
   return (
     <>
-      <DirectoryHeader name={directoryName} />
       <PromptGrid
         prompts={prompts}
         lang={lang}

@@ -14,10 +14,13 @@ interface StudioUIState {
 
   searchQuery: string;
   isSearching: boolean;
+  isSidebarOpen: boolean;
 
   refreshKey: number;
   triggerRefresh: () => void;
+  toggleSidebar: () => void;
 
+  setSidebarOpen: (val: boolean) => void;
   setDirectories: (dirs: Directory[]) => void;
   setActiveDirectory: (id: string | null) => void;
   setSearchQuery: (query: string) => void;
@@ -32,10 +35,13 @@ export const useStudioUI = create<StudioUIState>((set, get) => ({
   activeDirectoryId: null,
   searchQuery: "",
   isSearching: false,
+  isSidebarOpen: false,
 
   refreshKey: 0,
   triggerRefresh: () => set((state) => ({ refreshKey: state.refreshKey + 1 })),
+  toggleSidebar: () => set((state) => ({ isSidebarOpen: !state.isSidebarOpen })),
 
+  setSidebarOpen: (isOpen: boolean) => set({ isSidebarOpen: isOpen }),
   setDirectories: (directories) => set({ directories }),
   setActiveDirectory: (activeDirectoryId) => set({ activeDirectoryId }),
   setSearchQuery: (searchQuery) => set({ searchQuery }),

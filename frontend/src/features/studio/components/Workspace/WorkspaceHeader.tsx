@@ -3,11 +3,11 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useStudioUI } from "@/src/store/useStudioUI";
-import { IconChevronRight, IconScanTraces } from "@tabler/icons-react";
+import { IconChevronRight, IconScanTraces, IconLayoutSidebar } from "@tabler/icons-react";
 
 export function WorkspaceHeader() {
   const { lang } = useParams();
-  const { activeDirectoryId, setActiveDirectory, getBreadcrumbs } = useStudioUI();
+  const { activeDirectoryId, setActiveDirectory, getBreadcrumbs, toggleSidebar } = useStudioUI();
   const breadcrumbs = getBreadcrumbs();
 
   return (
@@ -16,6 +16,15 @@ export function WorkspaceHeader() {
         aria-label="Breadcrumb"
         className="flex items-center space-x-1 text-xs md:text-sm font-mono text-accent/40 lowcase overflow-x-auto scrollbar-none"
       >
+        <button
+          onClick={toggleSidebar}
+          // 🟢 Eliminadas las clases md:hidden y lg:block. Ahora se verá SIEMPRE.
+          className="p-1.5 rounded-md hover:bg-secondary/20 hover:text-accent transition-colors text-muted-foreground cursor-pointer hrink-0"
+          title="Alternar panel lateral"
+        >
+          <IconLayoutSidebar size={18} stroke={1.5} />
+        </button>
+
         <button
           onClick={() => setActiveDirectory(null)}
           className={`hover:text-accent transition-colors flex items-center gap-2 ${

@@ -1,6 +1,6 @@
 import { IconAlbum } from "@tabler/icons-react";
 import { PageHeader } from "@/src/system/organisms/Navigation/PageHeader";
-import { StudioSidebar } from "@/src/features/studio/components/StudioSidebar";
+import { StudioSidebar } from "@/src/features/studio/components/Sidebar/StudioSidebar";
 import { StudioDndWrapper } from "@/src/system/molecules/Studio/StudioDndWrapper";
 import { StudioWorkspace } from "@/src/system/templates/Studio/StudioWorkspace";
 import { WorkspaceHeader } from "@/src/features/studio/components/Workspace/WorkspaceHeader";
@@ -18,7 +18,7 @@ export default function StudioPage() {
       />
 
       <StudioDndWrapper>
-        <div className="flex flex-1 overflow-hidden border border-border/30 rounded-xl bg-card/20 backdrop-blur-sm transition-all duration-500">
+        <div className="flex flex-1 overflow-hidden relative border border-border/30 rounded-xl bg-card/20 backdrop-blur-sm transition-all duration-500">
           <StudioSidebar />
 
           <main
