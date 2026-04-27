@@ -22,7 +22,7 @@ interface PromptCardProps {
   isStudio?: boolean;
   index: number;
   isPriority?: boolean;
-  queueIds?: string[];
+  queueItems?: { id: string; username: string }[];
 }
 
 export function PromptCard({
@@ -35,7 +35,7 @@ export function PromptCard({
   isStudio = false,
   index,
   isPriority = false,
-  queueIds = [],
+  queueItems = [],
 }: PromptCardProps) {
   const { setIsHovered, isMenuOpen, setIsMenuOpen, copied, handleCopy } = usePromptCard();
   const { attributes, listeners, setNodeRef, isDragging } = usePromptDnd(item);
@@ -95,8 +95,8 @@ export function PromptCard({
           href={href}
           className="relative flex flex-col h-full z-10 flex-1"
           onClick={() => {
-            if (queueIds.length > 0) {
-              setQueue(queueIds);
+            if (queueItems.length > 0) {
+              setQueue(queueItems);
             }
           }}
         >

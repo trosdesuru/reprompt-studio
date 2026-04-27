@@ -13,7 +13,7 @@ interface FeedItemCardProps {
   lang: string;
   isPriority?: boolean;
   index?: number;
-  queueIds?: string[];
+  queueItems?: { id: string; username: string }[];
 }
 
 export function FeedItemCard({
@@ -21,7 +21,7 @@ export function FeedItemCard({
   lang,
   isPriority = false,
   index = 0,
-  queueIds = [],
+  queueItems = [],
 }: FeedItemCardProps) {
   const setQueue = usePromptQueue((state) => state.setQueue);
   const href = getFeedItemUrl(item, lang);
@@ -43,8 +43,8 @@ export function FeedItemCard({
       className="group relative cursor-pointer bg-muted/10 neo-border overflow-hidden block transition-all hover:neo-shadow-accent w-full"
       style={{ aspectRatio: boundedRatio }}
       onClick={() => {
-        if (queueIds.length > 0) {
-          setQueue(queueIds);
+        if (queueItems.length > 0) {
+          setQueue(queueItems);
         }
       }}
     >
