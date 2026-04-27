@@ -24,11 +24,14 @@ export function useAdminDashboard() {
     }
   }, []);
 
-  const handleGenerateInvite = async (role: string) => {
+  const handleGenerateInvite = async (role: any) => {
+    const roleValue =
+      role && typeof role === "object" && role.nativeEvent ? "user" : role || "user";
+
     setIsLoadingInvite(true);
     setInviteCode(null);
     try {
-      const data = await api.generarInvitacion(role);
+      const data = await api.generarInvitacion(roleValue);
       setInviteCode(data.code);
     } catch (error: any) {
       alert(`❌ Error: ${error.message}`);

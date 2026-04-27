@@ -6491,7 +6491,6 @@ export function usePromptUpload() {
     );
 
     try {
-      // 🟢 PASO 1: Optimización y Transformación a WebP
       console.log(`⏳ [UPLOAD-STEP-1] Optimizando imagen en el cliente...`);
       const archivoOptimizado = await optimizeAndLogImage(fileOriginal);
 

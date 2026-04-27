@@ -1,17 +1,14 @@
 "use client";
 
-import { use } from "react"; // 🟢 Importamos el nuevo hook de React
+import { use } from "react";
 import Link from "next/link";
 import { RegisterForm } from "@/src/features/auth/components/RegisterForm";
 import { useRedirectIfAuthenticated } from "@/src/features/auth/hooks/useRedirectIfAuthenticated";
 
-// 🟢 Cambiamos el tipo para decirle a TypeScript que params es una Promesa
 export default function JoinPage(props: { params: Promise<{ lang: string }> }) {
-  // 🟢 Desempaquetamos la promesa con React.use()
   const params = use(props.params);
   const lang = params.lang;
 
-  // Ahora 'lang' ya es un string seguro (ej: "es" o "en")
   const { isChecking, isAuthenticated } = useRedirectIfAuthenticated(`/${lang}`);
 
   if (isChecking || isAuthenticated) {

@@ -16,7 +16,7 @@ import {
   IconBan,
   IconExternalLink,
 } from "@tabler/icons-react";
-import { MetricCard } from "./MetricWidget";
+import { MetricWidget } from "./MetricWidget";
 import { QuotaBar } from "./QuotaBar";
 
 export function DatabaseModule() {
@@ -86,12 +86,12 @@ export function DatabaseModule() {
     <>
       <div className="space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <MetricCard
+          <MetricWidget
             title="Usuarios Totales"
             value={stats.total_users.toLocaleString()}
             icon={<IconUsers size={24} className="text-blue-500" />}
           />
-          <MetricCard
+          <MetricWidget
             title="Imágenes Indexadas"
             value={stats.total_prompts.toLocaleString()}
             icon={<IconPhoto size={24} className="text-purple-500" />}

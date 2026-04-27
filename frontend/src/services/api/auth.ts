@@ -55,9 +55,13 @@ export const authApi = {
     }).then(JSON_DATA),
 
   generarInvitacion: (role: string = "voyager") =>
-    fetchSeguro(`${API_URL}/auth/invite-codes?role_requested=${role}`, { method: "POST" }).then(
-      JSON_DATA,
-    ),
+    fetchSeguro(`${API_URL}/auth/admin/invite-codes`, {
+      method: "POST",
+      body: JSON.stringify({ role_requested: role }),
+      headers: {
+        "Content-Type": "application/json",
+      },
+    }).then(JSON_DATA),
 
   obtenerLogsAuditoria: (limit: number = 50) =>
     fetchSeguro(`${API_URL}/auth/admin/logs?limit=${limit}`).then(JSON_DATA),
