@@ -3,6 +3,7 @@ import { PageHeader } from "@/src/system/organisms/Navigation/PageHeader";
 import { StudioSidebar } from "@/src/features/studio/components/StudioSidebar";
 import { StudioDndWrapper } from "@/src/system/molecules/Studio/StudioDndWrapper";
 import { StudioWorkspace } from "@/src/system/templates/Studio/StudioWorkspace";
+import { WorkspaceHeader } from "@/src/features/studio/components/Workspace/WorkspaceHeader";
 
 export default function StudioPage() {
   return (
@@ -10,7 +11,7 @@ export default function StudioPage() {
       <PageHeader
         title="Mi Studio"
         description="Gestiona y organiza tus prompts."
-        icon={<IconAlbum size={28} stroke={1.5} className="text-foreground"/>}
+        icon={<IconAlbum size={28} stroke={1.5} className="text-foreground" />}
         breadcrumbItems={[{ label: "Mi Studio" }]}
         scrollContainerId="studio-main"
         collapseOnHide={true}
@@ -22,8 +23,9 @@ export default function StudioPage() {
 
           <main
             id="studio-main"
-            className="flex-1 overflow-y-auto custom-scrollbar bg-background/30 p-4 md:p-6 scroll-smooth"
+            className="flex-1 flex flex-col overflow-y-auto custom-scrollbar bg-background/30 p-4 md:p-6 scroll-smooth"
           >
+            <WorkspaceHeader />
             <StudioWorkspace />
           </main>
         </div>

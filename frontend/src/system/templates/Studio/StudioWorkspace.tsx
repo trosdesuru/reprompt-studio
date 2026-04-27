@@ -1,13 +1,10 @@
 "use client";
 
-import { useMemo } from "react";
 import { useParams } from "next/navigation";
 import { PageLoader } from "@/src/system/atoms/Loader/PageLoader";
-import { DirectoryHeader } from "@/src/system/molecules/Studio/DirectoryHeader";
 import { PromptGrid } from "@/src/features/studio/components/PromptGrid";
 
 import { useStudioPrompts } from "@/src/features/studio/hooks/useStudioPrompts";
-import { useStudioUI } from "@/src/store/useStudioUI";
 import { useStudioSync } from "@/src/features/studio/hooks/useStudioSync";
 
 export function StudioWorkspace() {
@@ -17,14 +14,6 @@ export function StudioWorkspace() {
   const lang = (params?.lang as string) || "es";
 
   const { prompts, isLoading, user, deletePrompt } = useStudioPrompts();
-  const { activeDirectoryId, directories } = useStudioUI();
-
-  const activeDir = useMemo(
-    () => directories.find((d) => String(d.id) === String(activeDirectoryId)),
-    [activeDirectoryId, directories],
-  );
-
-  const directoryName = activeDirectoryId && activeDir ? activeDir.name : "reprompt root";
   const authorUsername = user?.username || "unknown";
 
   if (isLoading) {
@@ -37,7 +26,6 @@ export function StudioWorkspace() {
 
   return (
     <>
-      <DirectoryHeader name={directoryName} />
       <PromptGrid
         prompts={prompts}
         lang={lang}

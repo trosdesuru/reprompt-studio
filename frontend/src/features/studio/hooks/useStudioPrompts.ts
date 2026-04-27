@@ -22,12 +22,13 @@ export function useStudioPrompts() {
   useEffect(() => {
     const fetchPrompts = async () => {
       setIsLoading(true);
+
       try {
         const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
 
         const endpoint = debouncedQuery
           ? `${API_BASE}/search/studio?q=${debouncedQuery}`
-          : `${API_BASE}/prompts/studio?directory_id=${activeDirectoryId || ""}`;
+          : `${API_BASE}/prompts/studio?directory_id=${activeDirectoryId === null ? "root" : activeDirectoryId}`;
 
         const res = await fetchSeguro(endpoint, { credentials: "include" });
 

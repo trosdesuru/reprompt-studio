@@ -239,7 +239,9 @@ class PromptService:
     ) -> List[ImagePrompt]:
         statement = select(ImagePrompt).where(ImagePrompt.user_id == current_user.id)
 
-        if directory_id and directory_id != "null":
+        if directory_id == "root":
+            statement = statement.where(ImagePrompt.directory_id == None)
+        elif directory_id and directory_id != "null":
             statement = statement.where(
                 ImagePrompt.directory_id == uuid.UUID(directory_id)
             )

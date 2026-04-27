@@ -24,6 +24,7 @@ interface StudioUIState {
   setIsSearching: (status: boolean) => void;
 
   getChildDirectories: (parentId: string | null) => Directory[];
+  getBreadcrumbs: () => Directory[];
 }
 
 export const useStudioUI = create<StudioUIState>((set, get) => ({
@@ -42,5 +43,22 @@ export const useStudioUI = create<StudioUIState>((set, get) => ({
 
   getChildDirectories: (parentId) => {
     return get().directories.filter((d: Directory) => d.parent_id === parentId);
+  },
+
+  getBreadcrumbs: () => {
+    const { directories, activeDirectoryId } = get();
+    const crumbs: Directory[] = [];
+    let currentId = activeDirectoryId;
+
+    while (currentId) {
+      const dir = directories.find((d) => d.id === currentId);
+      if (dir) {
+        crumbs.unshift(dir);
+        currentId = dir.parent_id;
+      } else {
+        currentId = null;
+      }
+    }
+    return crumbs;
   },
 }));
