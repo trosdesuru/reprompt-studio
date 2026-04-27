@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react"
+import { useEffect } from "react";
 import { useAdminGuard } from "@/src/features/admin/hooks/useAdminGuard";
 import { useAdminDashboard } from "@/src/features/admin/hooks/useAdminDashboard";
 
@@ -15,6 +15,7 @@ import { SectionTitle } from "@/src/features/admin/components/SectionTitle";
 import { MetricWidget } from "@/src/features/admin/components/MetricWidget";
 import { AdminLoadingScreen } from "@/src/features/admin/components/AdminLoadingScreen";
 import { GarbageCollectorModule } from "@/src/features/admin/components/GarbageCollectorModule";
+import { IconShieldLock } from "@tabler/icons-react";
 
 export default function AdminDashboardPage() {
   const { user, isLoadingAuth, isAuthorized } = useAdminGuard();
@@ -48,7 +49,11 @@ export default function AdminDashboardPage() {
             inviteCode={inviteCode}
           />
           <SecurityModule onRevokeAll={handleRevokeAll} />
-          <MetricWidget count={logs.length} label="Eventos en Auditoría" />
+          <MetricWidget
+            title="Eventos en Auditoría"
+            value={logs.length}
+            icon={<IconShieldLock size={20} />}
+          />
 
           {/* El nuevo Botón Nuclear */}
           <GarbageCollectorModule />
