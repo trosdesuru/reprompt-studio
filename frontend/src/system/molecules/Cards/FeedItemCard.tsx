@@ -29,12 +29,14 @@ export function FeedItemCard({
   const boundedRatio = getBoundedAspectRatio(item.width, item.height, item.resolution);
 
   if (process.env.NODE_ENV === "development") {
-    console.log(`🔍 [FEED ITEM DEBUG: @${item.username}]`, {
-      id: item.id,
-      username: item.username,
-      avatarUrl: item.avatar_url,
-      fullItem: item,
-    });
+    if (process.env.NODE_ENV === "development") {
+      console.log(`🔍 [FEED ITEM DEBUG: @${item.username}]`, {
+        id: item.id,
+        username: item.username,
+        avatarUrl: item.avatar_url,
+        fullItem: item,
+      });
+    }
   }
 
   return (

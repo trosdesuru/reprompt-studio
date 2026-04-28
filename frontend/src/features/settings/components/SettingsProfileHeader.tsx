@@ -6,7 +6,9 @@ import { EditableAvatar } from "@/src/system/molecules/Avatar/EditableAvatar";
 
 export function SettingsProfileHeader() {
   const user = useAuthStore((state) => state.user);
-  console.log("[PROFILE HEADER] - Avatar", user?.avatarUrl);
+  if (process.env.NODE_ENV === "development") {
+    console.log("[PROFILE HEADER] - Avatar", user?.avatarUrl);
+  }
 
   if (!user) return null;
 

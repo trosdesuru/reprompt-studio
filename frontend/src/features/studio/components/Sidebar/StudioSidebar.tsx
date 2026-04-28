@@ -24,9 +24,11 @@ export function StudioSidebar() {
   const { user } = useAuthStore();
 
   useEffect(() => {
-    console.log(
-      `👁️ [StudioSidebar] -> Renderizado completado. isSidebarOpen es ahora: ${isSidebarOpen}`,
-    );
+    if (process.env.NODE_ENV === "development") {
+      console.log(
+        `👁️ [StudioSidebar] -> Renderizado completado. isSidebarOpen es ahora: ${isSidebarOpen}`,
+      );
+    }
   }, [isSidebarOpen]);
 
   const { setNodeRef: setRootDropRef, isOver: isRootOver } = useDroppable({

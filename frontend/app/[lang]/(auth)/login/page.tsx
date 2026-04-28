@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import { IconLoader2 } from "@tabler/icons-react";
-import { AuthForm } from "@/src/features/auth/components/AuthForm"
+import { AuthForm } from "@/src/features/auth/components/AuthForm";
 
 interface LoginPageProps {
   params: Promise<{ lang: string }> | { lang: string };
@@ -8,9 +8,11 @@ interface LoginPageProps {
 
 export default async function LoginPage({ params }: LoginPageProps) {
   const resolvedParams = await params;
-  const lang = resolvedParams?.lang || "es"; 
+  const lang = resolvedParams?.lang || "es";
 
-  console.log(`🚪 [LOGIN_PAGE] Renderizando acceso en: ${lang}`);
+  if (process.env.NODE_ENV === "development") {
+    console.log(`🚪 [LOGIN_PAGE] Renderizando acceso en: ${lang}`);
+  }
 
   return (
     <main className="min-h-screen flex items-center justify-center p-4 bg-muted/10">

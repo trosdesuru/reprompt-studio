@@ -4,7 +4,9 @@ import { fetchSeguro } from "./client";
 import { ENV } from "@/src/services/config/env";
 
 const API_URL = ENV.API_URL;
-console.log("🕵️‍♂️ [DEBUG] Valor real de API_URL inyectado por Next:", API_URL);
+if (process.env.NODE_ENV === "development") {
+  console.log("🕵️‍♂️ [DEBUG] Valor real de API_URL inyectado por Next:", API_URL);
+}
 
 const JSON_DATA = async (res: Response) => {
   if (!res.ok) {

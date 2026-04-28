@@ -37,7 +37,9 @@ export function usePromptExtractor() {
     return () => {
       activeUrls.current.forEach((url) => {
         URL.revokeObjectURL(url);
-        console.log(`🗑️ RAM liberada (Cleanup): ${url}`);
+        if (process.env.NODE_ENV === "development") {
+          console.log(`🗑️ RAM liberada (Cleanup): ${url}`);
+        }
       });
       activeUrls.current.clear();
     };

@@ -13,18 +13,24 @@ export function usePromptUpload() {
   const uploadPrompt = async (fileOriginal: File, targetDirectoryId: string | null = null) => {
     setIsUploading(true);
 
-    console.log(
-      `🚀 [UPLOAD-START] Iniciando flujo de subida para: ${fileOriginal.name} (${(fileOriginal.size / 1024 / 1024).toFixed(2)} MB)`,
-    );
+    if (process.env.NODE_ENV === "development") {
+      console.log(
+        `🚀 [UPLOAD-START] Iniciando flujo de subida para: ${fileOriginal.name} (${(fileOriginal.size / 1024 / 1024).toFixed(2)} MB)`,
+      );
+    }
 
     try {
-      console.log(`⏳ [UPLOAD-STEP-1] Optimizando imagen en el cliente...`);
+      if (process.env.NODE_ENV === "development") {
+        console.log(`⏳ [UPLOAD-STEP-1] Optimizando imagen en el cliente...`);
+      }
       const archivoOptimizado = await optimizeAndLogImage(fileOriginal);
       const finalFile = archivoOptimizado.file;
 
-      console.log(
-        `⏳ [UPLOAD-STEP-2] Solicitando URL pre-firmada al Backend para: ${finalFile.name} (${finalFile.type})`,
-      );
+      if (process.env.NODE_ENV === "development") {
+        console.log(
+          `⏳ [UPLOAD-STEP-2] Solicitando URL pre-firmada al Backend para: ${finalFile.name} (${finalFile.type})`,
+        );
+      }
 
       const resUrl = await api.prompts.getPresignedUrl({
         filename: finalFile.name,
@@ -36,8 +42,10 @@ export function usePromptUpload() {
       }
 
       const { url, public_url } = await resUrl.json();
-      console.log(`✅ [UPLOAD-STEP-2] Firma obtenida. URL Pública esperada: ${public_url}`);
-      console.log(`☁️ [UPLOAD-STEP-3] Transfiriendo bytes a Cloudflare R2...`);
+      if (process.env.NODE_ENV === "development") {
+        console.log(`✅ [UPLOAD-STEP-2] Firma obtenida. URL Pública esperada: ${public_url}`);
+        console.log(`☁️ [UPLOAD-STEP-3] Transfiriendo bytes a Cloudflare R2...`);
+      }
 
       const uploadRes = await fetch(url, {
         method: "PUT",
@@ -55,13 +63,17 @@ export function usePromptUpload() {
         throw new Error("Fallo al subir imagen al almacenamiento de Cloudflare");
       }
 
-      console.log(`✅ [UPLOAD-STEP-3] Transferencia a R2 completada con éxito.`);
+      if (process.env.NODE_ENV === "development") {
+        console.log(`✅ [UPLOAD-STEP-3] Transferencia a R2 completada con éxito.`);
+      }
 
       incrementPromptCount();
 
-      console.log(
-        `🎉 [UPLOAD-FINISH] Flujo de subida perfecto. Pasando el testigo a la Cuarentena del Backend.`,
-      );
+      if (process.env.NODE_ENV === "development") {
+        console.log(
+          `🎉 [UPLOAD-FINISH] Flujo de subida perfecto. Pasando el testigo a la Cuarentena del Backend.`,
+        );
+      }
 
       return {
         success: true,

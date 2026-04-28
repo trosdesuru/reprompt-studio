@@ -63,7 +63,9 @@ function compressToWebP(
 
 export async function optimizeAndLogImage(file: File): Promise<OptimizedImage> {
   const startSize = (file.size / 1024 / 1024).toFixed(2);
-  console.log(`📸 [IMAGEN-ORIGINAL] Nombre: ${file.name} | Tamaño: ${startSize} MB`);
+  if (process.env.NODE_ENV === "development") {
+    console.log(`📸 [IMAGEN-ORIGINAL] Nombre: ${file.name} | Tamaño: ${startSize} MB`);
+  }
 
   try {
     if (file.size < 100 * 1024 || file.type === "image/gif") {
@@ -72,7 +74,9 @@ export async function optimizeAndLogImage(file: File): Promise<OptimizedImage> {
         const url = URL.createObjectURL(file);
         img.onload = () => {
           URL.revokeObjectURL(url);
-          console.log(`✨ [OPTIMIZACIÓN-SKIPPED] Archivo ignorado por tamaño o tipo.`);
+          if (process.env.NODE_ENV === "development") {
+            console.log(`✨ [OPTIMIZACIÓN-SKIPPED] Archivo ignorado por tamaño o tipo.`);
+          }
           resolve({ file, width: img.width, height: img.height });
         };
         img.onerror = () => reject(new Error("Error leyendo dimensiones de imagen pequeña"));
@@ -85,9 +89,11 @@ export async function optimizeAndLogImage(file: File): Promise<OptimizedImage> {
     const endSize = (compressedBlob.size / 1024).toFixed(2);
     const reduction = (((file.size - compressedBlob.size) / file.size) * 100).toFixed(1);
 
-    console.log(
-      `✨ [OPTIMIZACIÓN-FRONTEND] Nuevo Tamaño: ${endSize} KB | Reducción: ${reduction}%`,
-    );
+    if (process.env.NODE_ENV === "development") {
+      console.log(
+        `✨ [OPTIMIZACIÓN-FRONTEND] Nuevo Tamaño: ${endSize} KB | Reducción: ${reduction}%`,
+      );
+    }
 
     const newFileName = file.name.replace(/\.[^/.]+$/, "") + ".webp";
     const newFile = new File([compressedBlob], newFileName, { type: "image/webp" });

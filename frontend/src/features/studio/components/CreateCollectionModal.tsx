@@ -50,13 +50,17 @@ export function CreateDirectoryModal({ isOpen, onClose, onSuccess }: Props) {
 
     const role = user?.role?.toLowerCase() || "voyager";
 
-    console.log("Rol detectado:", role);
+    if (process.env.NODE_ENV === "development") {
+      console.log("Rol detectado:", role);
+    }
 
     if (!isPrivate && role === "voyager") {
-      console.log("Bloqueando acción y abriendo Modal de Ventas...");
-      setShowUpgradeModal(true);
-    } else {
-      console.log("Cambiando estado de privacidad...");
+      if (process.env.NODE_ENV === "development") {
+        console.log("Bloqueando acción y abriendo Modal de Ventas...");
+        setShowUpgradeModal(true);
+      } else {
+        console.log("Cambiando estado de privacidad...");
+      }
       setIsPrivate(!isPrivate);
     }
   };
