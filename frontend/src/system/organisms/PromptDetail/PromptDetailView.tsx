@@ -60,7 +60,7 @@ export function PromptDetailView({
 
           <section
             id="metadata-panel"
-            className="flex flex-col gap-6 px-4 md:px-0 pb-24 lg:pb-0 lg:h-full lg:overflow-y-auto custom-scrollbar lg:pr-4"
+            className="flex flex-col gap-6 px-4 md:px-0 pb-24 lg:pb-12 lg:h-full lg:overflow-y-auto custom-scrollbar lg:pr-4"
           >
             {!isOwner && (
               <div className="shrink-0">
