@@ -63,8 +63,8 @@ export function UserAvatar({
           className="object-cover"
         />
       ) : (
-        <div className="w-full h-full bg-popover flex items-center justify-center border-2 border-accent rounded-full">
-          <span className="text-secondary font-black font-prompt uppercase tracking-widest opacity-80 group-hover:scale-110 transition-transform duration-300">
+        <div className="w-full h-full bg-popover flex items-center justify-center rounded-full">
+          <span className="text-white font-black font-prompt uppercase tracking-widest group-hover:scale-110 transition-transform duration-300">
             {username ? username.substring(0, 2) : "??"}
           </span>
         </div>

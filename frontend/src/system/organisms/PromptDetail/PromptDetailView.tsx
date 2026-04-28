@@ -12,7 +12,6 @@ import { Tooltip } from "../../atoms/Tooltip/Tooltip";
 import { PromptProfileHeader } from "@/src/features/prompts/components/PromptProfileHeader";
 import { PromptNavigation } from "@/src/features/prompts/components/PromptNavigation";
 import { PromptTitleHeader } from "@/src/features/prompts/components/PromptTitleHeader";
-import { ExpandablePromptBox } from "@/src/system/molecules/Cards/ExpandablePromptBox";
 
 interface PromptDetailViewProps {
   prompt: SavedPrompt;
@@ -75,8 +74,6 @@ export function PromptDetailView({
             <div className="shrink-0">
               <PromptTitleHeader title={prompt.title} createdAt={prompt.created_at} />
             </div>
-
-            {prompt.prompt && <ExpandablePromptBox text={prompt.prompt} />}
 
             <PromptMetadataPanel prompt={prompt} isOwner={isOwner} onSave={handleSaveMetadata} />
 
