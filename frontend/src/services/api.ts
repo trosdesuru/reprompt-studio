@@ -14,6 +14,8 @@ export const api = {
   ...downloadApi,
   ...promptApi,
   ...userApi,
+  ...searchApi,
+  ...downloadApi,
 
   admin: adminApi,
   auth: authApi,
@@ -21,4 +23,6 @@ export const api = {
   public: publicApi,
   prompts: promptApi,
   directories: directoriesApi,
+  search: searchApi,
+  downloads: downloadApi,
 };

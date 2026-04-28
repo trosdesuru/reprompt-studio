@@ -31,9 +31,12 @@ export const searchApi = {
     next_id: string | null = null,
     categories: Record<string, boolean> | null = null,
   ) => {
-    let endpoint = `${API_URL}/buscar?query=${encodeURIComponent(query)}`;
+    let endpoint = `${API_URL}/search/studio?q=${encodeURIComponent(query)}`;
+
     if (next_id) endpoint += `&next_id=${next_id}`;
+
     if (categories) endpoint += `&categories=${encodeURIComponent(JSON.stringify(categories))}`;
+
     return fetchSeguro(endpoint);
   },
   leer: (url: string, p: number = 0) =>
