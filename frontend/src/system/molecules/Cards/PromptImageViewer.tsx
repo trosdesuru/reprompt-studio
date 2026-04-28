@@ -11,28 +11,23 @@ interface PromptImageViewerProps {
   height?: number | null;
 }
 
-export function PromptImageViewer({ imageUrl, altText, width, height }: PromptImageViewerProps) {
-  const exactAspectRatio = width && height ? `${width} / ${height}` : "auto";
-
+export function PromptImageViewer({ imageUrl, altText }: PromptImageViewerProps) {
   return (
-    <FadeIn delay={0.1}>
-      <div
-        className="relative w-full bg-muted/10 neo-border overflow-hidden group"
-        style={{ aspectRatio: exactAspectRatio }}
-      >
+    <FadeIn delay={0.1} className="w-full h-full">
+      <div className="relative w-full h-full flex items-center justify-center">
         {imageUrl ? (
           <LazyImage
             src={imageUrl}
             alt={altText}
             priority={true}
-            className="w-full h-full object-fit transition-transform duration-700 ease-out group-hover:scale-[1.02]"
-            sizes="(max-width: 768px) 100vw, 50vw"
+            className="w-full h-full object-contain transition-transform duration-700 ease-out"
+            sizes="(max-width: 1200px) 100vw, 60vw"
           />
         ) : (
-          <div className="absolute inset-0 flex flex-col items-center justify-center text-muted-foreground/40 bg-muted/5">
+          <div className="flex flex-col items-center justify-center text-muted-foreground/40 w-full h-full min-h-75">
             <IconPhotoOff size={64} stroke={1} className="mb-4" />
             <span className="font-mono text-xs uppercase tracking-widest text-center px-4">
-              Metadata sin imagen adjunta
+              Metadata sin imagen
             </span>
           </div>
         )}

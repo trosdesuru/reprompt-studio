@@ -49,7 +49,7 @@ export function UserDropdown() {
 
       {isOpen && (
         <div
-          className="absolute right-0 mt-2 w-72 bg-background border border-border shadow-lg rounded-xl z-50 animate-in fade-in zoom-in-95 duration-100 origin-top-right flex flex-col overflow-hidden"
+          className="absolute right-0 mt-2 w-72 bg-background border border-border shadow-lg rounded-xl z-90! animate-in fade-in zoom-in-95 duration-100 origin-top-right flex flex-col overflow-hidden"
           role="menu"
         >
           <div className="flex items-center gap-3 p-4 border-b border-border bg-muted/10">

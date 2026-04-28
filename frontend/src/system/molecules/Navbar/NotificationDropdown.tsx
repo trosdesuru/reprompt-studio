@@ -46,7 +46,6 @@ export function NotificationDropdown() {
             <IconInbox size={24} />
           )}
 
-          {/* 🟢 BADGE: Usamos bg-destructive para el rojo del sistema */}
           {unreadCount > 0 && (
             <span className="absolute top-1 right-1 flex items-center justify-center min-w-4.5 h-4.5 p-1 bg-destructive text-white text-[10px] font-black font-mono rounded-full border-2 border-background">
               {unreadCount > 9 ? "9+" : unreadCount}

@@ -30,6 +30,8 @@ export function LazyImage({
     );
   }
 
+  const hasObjectFit = className.includes("object-");
+
   return (
     <div className="relative w-full h-full overflow-hidden bg-muted/10">
       <div
@@ -57,13 +59,12 @@ export function LazyImage({
         priority={priority}
         quality={75}
         loading={priority ? undefined : "lazy"}
-        onLoad={() => {
-          setIsLoaded(true);
-        }}
+        onLoad={() => setIsLoaded(true)}
         onError={() => setHasError(true)}
         className={`
-          absolute inset-0 w-full h-full object-cover z-10
+          absolute inset-0 w-full h-full z-10
           transition-all duration-700 ease-in-out
+          ${!hasObjectFit ? "object-cover" : ""} 
           ${isLoaded ? "opacity-100 blur-0 scale-100" : "opacity-0 blur-md scale-110"}
           ${className}
         `}
