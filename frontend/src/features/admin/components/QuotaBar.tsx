@@ -19,10 +19,10 @@ export function QuotaBar({ used, limit, label, className }: QuotaBarProps) {
   return (
     <div className={cn("space-y-2", className)}>
       <div className="flex justify-between items-end">
-        <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-muted-foreground">
+        <span className="text-[11px] font-mono font-bold uppercase tracking-widest text-muted-foreground">
           {label}
         </span>
-        <span className="text-[10px] font-mono font-bold">
+        <span className="text-xs font-mono font-bold">
           {isInfinite ? `${used} / ∞` : `${used} / ${limit}`}
         </span>
       </div>

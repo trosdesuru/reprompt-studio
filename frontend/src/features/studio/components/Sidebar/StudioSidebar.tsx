@@ -113,7 +113,7 @@ export function StudioSidebar() {
                 ))}
             </div>
 
-            <div className="px-4 py-6 mt-auto border-t border-border/50">
+            <div className="px-3 pt-6 pb-10 mt-auto border-t border-border/50">
               <QuotaBar
                 label="Prompts Almacenados"
                 used={user?.prompts_count || 0}
