@@ -15,7 +15,7 @@ class InviteCode(SQLModel, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     code: str = Field(unique=True, index=True)
     is_used: bool = Field(default=False)
-    # Opcionales
+    
     used_by_id: Optional[uuid.UUID] = Field(default=None, foreign_key="user.id")
     created_at: datetime = Field(default_factory=datetime.utcnow)
 

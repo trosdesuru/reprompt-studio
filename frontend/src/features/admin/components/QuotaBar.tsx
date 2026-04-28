@@ -1,47 +1,45 @@
-import { IconAlertTriangle } from "@tabler/icons-react";
+"use client";
+
+import { cn } from "@/lib/utils";
 
 interface QuotaBarProps {
+  used: number;
+  limit: number;
   label: string;
-  currentMb: number;
-  limitMb: number;
+  className?: string;
 }
 
-export function QuotaBar({ label, currentMb, limitMb }: QuotaBarProps) {
-  const percentage = Math.min(100, Math.max(0, (currentMb / limitMb) * 100));
+export function QuotaBar({ used, limit, label, className }: QuotaBarProps) {
+  const isInfinite = limit === null || limit === -1 || limit === Infinity;
+  const percentage = isInfinite ? 0 : Math.min((used / limit) * 100, 100);
 
-  // Lógica de alerta visual
-  let colorClass = "bg-green-500";
-  if (percentage > 70) colorClass = "bg-yellow-500";
-  if (percentage > 90) colorClass = "bg-red-500 animate-pulse";
+  const isCritical = percentage >= 90;
+  const isWarning = percentage >= 70 && percentage < 90;
 
   return (
-    <div className="bg-background border border-border p-4 rounded-xl shadow-sm">
-      <div className="flex justify-between items-end mb-2">
-        <div>
-          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-            {label}
-          </p>
-          <div className="flex items-baseline gap-1 mt-1">
-            <span className="text-2xl font-black text-foreground">{currentMb.toFixed(2)}</span>
-            <span className="text-xs font-mono text-muted-foreground mb-1">
-              / {limitMb.toLocaleString()} MB
-            </span>
-          </div>
-        </div>
-        <span className="text-xs font-mono font-bold">{percentage.toFixed(1)}%</span>
+    <div className={cn("space-y-2", className)}>
+      <div className="flex justify-between items-end">
+        <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-muted-foreground">
+          {label}
+        </span>
+        <span className="text-[10px] font-mono font-bold">
+          {isInfinite ? `${used} / ∞` : `${used} / ${limit}`}
+        </span>
       </div>
 
-      {/* La Barra de Progreso */}
-      <div className="h-2 w-full bg-muted rounded-full overflow-hidden relative">
+      <div className="h-2 w-full bg-muted rounded-full overflow-hidden border border-border/50">
         <div
-          className={`h-full rounded-full transition-all duration-1000 ease-out ${colorClass}`}
-          style={{ width: `${percentage}%` }}
+          className={cn(
+            "h-full transition-all duration-500 ease-out",
+            isCritical ? "bg-red-500" : isWarning ? "bg-orange-500" : "bg-(--accent-color)",
+          )}
+          style={{ width: `${isInfinite ? 5 : percentage}%` }}
         />
       </div>
 
-      {percentage > 90 && (
-        <p className="text-[10px] text-red-500 mt-2 flex items-center gap-1 font-bold">
-          <IconAlertTriangle size={12} /> PELIGRO DE COLAPSO DE CUOTA
+      {isCritical && !isInfinite && (
+        <p className="text-[9px] font-mono font-bold text-red-500 animate-pulse uppercase">
+          ⚠️ Espacio casi agotado. Borra prompts o mejora tu plan.
         </p>
       )}
     </div>

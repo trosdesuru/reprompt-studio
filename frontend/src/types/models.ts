@@ -1,6 +1,22 @@
 export type MediaVariant = "gallery" | "viewer" | "search";
 export type AspectRatio = "portrait" | "landscape" | "square" | "auto";
 
+export interface User {
+  id: string;
+  fullName?: string | null;
+  username: string;
+  email?: string;
+  role: "voyager" | "artist" | "admin";
+  profession?: string | null;
+  age?: number;
+  avatarUrl?: string | null;
+  storage_used: number;
+  prompts_count?: number;
+  prompts_limit?: number;
+  created_at?: string;
+
+}
+
 export interface SavedPrompt {
   id: number;
   user_id: string;

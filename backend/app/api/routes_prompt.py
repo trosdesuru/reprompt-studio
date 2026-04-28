@@ -13,7 +13,7 @@ from fastapi import (
 from sqlmodel import Session
 
 from app.core.db import get_session
-from app.api.deps import get_current_user
+from app.api.deps import get_current_user, verify_prompt_quota
 from app.models.user import User
 from app.services.storage import s3_client
 from app.core.config import settings
@@ -95,7 +95,7 @@ def generate_upload_url(
 @router.post("/save")
 def save_studio_prompt(
     data: StudioSaveRequest,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(verify_prompt_quota),
     session: Session = Depends(get_session),
 ):
     nuevo_prompt = PromptService.process_quarantined_upload(
@@ -112,7 +112,7 @@ async def upload_to_studio(
     file: UploadFile = File(...),
     directory_id: Optional[str] = Form(None),
     session: Session = Depends(get_session),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(verify_prompt_quota),
 ):
     """Dropzone Contextual: Sube, extrae dimensiones, vectoriza y asigna."""
     nuevo_prompt = await PromptService.process_and_save_studio_upload(

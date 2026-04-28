@@ -8,7 +8,7 @@ export function Footer() {
 
   return (
     <footer
-      className={`fixed bottom-0 left-0 right-0 z-40 bg-background border-t-2 border-border/50 backdrop-blur-md transition-transform duration-300 ease-in-out ${
+      className={`fixed bottom-0 left-0 right-0 z-40 bg-background/60 border-t-2 border-border/50 backdrop-blur-md transition-transform duration-300 ease-in-out ${
         scrollDirection === "down" ? "translate-y-full" : "translate-y-0"
       }`}
     >

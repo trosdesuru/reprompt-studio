@@ -3,12 +3,18 @@ import os
 import redis
 import logging
 import jwt
+
 from fastapi import Depends, HTTPException, status, Request
-from jwt.exceptions import InvalidTokenError, PyJWTError
-from sqlmodel import Session, select
-from app.core.redis_config import conn as redis_client
+from sqlmodel import Session, select, func
+
 from app.core.db import get_session
-from app.models.user import User
+from app.core.redis_config import conn as redis_client
+from app.models.user import User, UserRole
+from app.models.prompt import ImagePrompt
+from app.core.quotas import PLAN_QUOTAS
+
+from jwt.exceptions import InvalidTokenError, PyJWTError
+
 
 logger = logging.getLogger("deps")
 
@@ -151,3 +157,32 @@ def get_optional_user(request: Request, session: Session = Depends(get_session))
     except PyJWTError:
         return None
     return None
+
+
+def verify_prompt_quota(
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+) -> User:
+    """Portero de Discoteca: Bloquea la subida si el usuario llegó a su límite"""
+
+    # 1. Obtenemos los límites del rol actual (Fall-back a VOYAGER por seguridad)
+    limits = PLAN_QUOTAS.get(current_user.role, PLAN_QUOTAS[UserRole.VOYAGER])
+
+    # Los admins no tienen límites
+    if current_user.role == UserRole.ADMIN:
+        return current_user
+
+    # 2. Contamos cuántos prompts tiene el usuario actualmente de forma súper optimizada
+    count_statement = select(func.count(ImagePrompt.id)).where(
+        ImagePrompt.user_id == current_user.id
+    )
+    current_prompts = session.exec(count_statement).one()
+
+    # 3. Ejecutamos la guillotina si se pasa
+    if current_prompts >= limits["max_prompts"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"Límite de cuota alcanzado. Tu plan ({current_user.role.value.capitalize()}) permite un máximo de {limits['max_prompts']} prompts.",
+        )
+
+    return current_user

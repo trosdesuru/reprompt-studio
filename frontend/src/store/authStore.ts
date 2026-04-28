@@ -9,6 +9,11 @@ export interface User {
   fullName?: string | null;
   profession?: string | null;
   age?: number;
+
+  storage_used: number;
+  prompts_count?: number;
+  prompts_limit?: number;
+  created_at?: string;
 }
 
 interface AuthState {
@@ -18,6 +23,8 @@ interface AuthState {
   hasCheckedInitialAuth: boolean;
   updateUser: (data: Partial<User>) => void;
   updateLocalUsername: (newUsername: string) => void;
+
+  incrementPromptCount: () => void;
 
   login: (userData: User) => void;
   logout: () => Promise<void>;
@@ -55,6 +62,17 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       set({ user: { ...currentUser, username: newUsername } });
     }
   },
+  incrementPromptCount: () => {
+    const currentUser = get().user;
+    if (currentUser) {
+      set({
+        user: {
+          ...currentUser,
+          prompts_count: (currentUser.prompts_count || 0) + 1,
+        },
+      });
+    }
+  },
   updateUser: (data: any) =>
     set((state) => ({
       user: state.user ? { ...state.user, ...data } : null,
@@ -87,20 +105,17 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
     try {
       const res = await api.auth.me();
+      const userData = res?.data || res?.user || res;
 
-      const userData = res?.user || res?.data || res;
-      const username = userData?.username;
-      const role = userData?.role || "voyager";
-
-      if (username) {
-        console.log(`✅ [AUTH_STORE] checkAuth exitoso: @${username}`);
+      if (userData?.username) {
         set({
           user: {
             ...userData,
-            username,
-            role,
-            avatarUrl: userData?.avatar_url || userData?.avatarUrl,
+            prompts_count: userData.prompts_count ?? 0,
+            role: userData.role || "voyager",
+            avatarUrl: userData.avatar_url || userData.avatarUrl,
           },
+
           isAuthenticated: true,
         });
       } else {

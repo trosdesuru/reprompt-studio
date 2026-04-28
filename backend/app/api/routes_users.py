@@ -1,6 +1,6 @@
 import logging
 from fastapi import APIRouter, Depends, Response, HTTPException
-from sqlmodel import Session
+from sqlmodel import Session, select, func
 from app.core.config import settings
 from app.core.db import get_session
 from app.api.deps import get_current_user
@@ -8,6 +8,7 @@ from app.services.auth_service import AuthService
 from app.services.audit_service import AuditService
 from app.utils.storage import eliminar_de_r2
 from app.models.user import User
+from app.models.prompt import ImagePrompt
 from app.schemas.user import AvatarUpdate, UsernameUpdate, PasswordChange
 from app.api.auth_utils import COOKIE_PARAMS, redis_client
 
@@ -16,15 +17,22 @@ router = APIRouter()
 
 
 @router.get("/me")
-def get_current_user_profile(current_user: User = Depends(get_current_user)):
+def get_current_user_profile(
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    count_statement = select(func.count(ImagePrompt.id)).where(
+        ImagePrompt.user_id == current_user.id
+    )
+    prompts_count = session.exec(count_statement).one()
+
+    user_data = current_user.model_dump()
+    user_data["prompts_count"] = prompts_count
+    user_data["avatarUrl"] = current_user.avatar_url
+
     return {
         "status": "success",
-        "user": {
-            "username": current_user.username,
-            "role": current_user.role,
-            "is_active": current_user.is_active,
-            "avatar_url": current_user.avatar_url,
-        },
+        "data": user_data,
     }
 
 

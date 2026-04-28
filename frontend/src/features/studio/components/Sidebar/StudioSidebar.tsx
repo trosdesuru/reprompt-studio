@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { IconFolderPlus, IconCloudUpload, IconFolder } from "@tabler/icons-react";
 import { useStudioUI, Directory } from "@/src/store/useStudioUI";
+import { useAuthStore } from "@/src/store/authStore";
 import { useFileUploader } from "@/src/features/extractor/hooks/useFileUploader";
 import { useDirectoryActions } from "@/src/features/studio/hooks/useDirectoryActions";
 import { useDroppable } from "@dnd-kit/core";
@@ -13,12 +14,14 @@ import {
   getSidebarItemClasses,
 } from "@/src/system/organisms/Sidebar";
 import { SidebarDirectory } from "@/src/system/molecules/Studio/SidebarDirectory";
+import { QuotaBar } from "@/src/features/admin/components/QuotaBar";
 
 export function StudioSidebar() {
   const { directories, activeDirectoryId, setActiveDirectory } = useStudioUI();
   const { isSidebarOpen, setSidebarOpen } = useStudioUI();
   const { createDirectory } = useDirectoryActions();
   const { handleUploadClick } = useFileUploader();
+  const { user } = useAuthStore();
 
   useEffect(() => {
     console.log(
@@ -108,6 +111,14 @@ export function StudioSidebar() {
                 .map((dir: Directory) => (
                   <SidebarDirectory key={dir.id} directory={dir} />
                 ))}
+            </div>
+
+            <div className="px-4 py-6 mt-auto border-t border-border/50">
+              <QuotaBar
+                label="Prompts Almacenados"
+                used={user?.prompts_count || 0}
+                limit={user?.role === "artist" ? 5000 : 50}
+              />
             </div>
           </SidebarContainer>
         </div>

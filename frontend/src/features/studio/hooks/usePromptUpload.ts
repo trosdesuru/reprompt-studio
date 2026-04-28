@@ -1,16 +1,18 @@
-// src/features/studio/hooks/usePromptUpload.ts
-
 import { useState } from "react";
+
 import { api } from "@/src/services/api";
+import { useAuthStore } from "@/src/store/authStore";
 import { optimizeAndLogImage } from "@/src/utils/lib/image-optimizer";
+
 import toast from "react-hot-toast";
 
 export function usePromptUpload() {
   const [isUploading, setIsUploading] = useState(false);
+  const { incrementPromptCount } = useAuthStore();
 
   const uploadPrompt = async (fileOriginal: File, targetDirectoryId: string | null = null) => {
     setIsUploading(true);
-    
+
     console.log(
       `🚀 [UPLOAD-START] Iniciando flujo de subida para: ${fileOriginal.name} (${(fileOriginal.size / 1024 / 1024).toFixed(2)} MB)`,
     );
@@ -54,6 +56,8 @@ export function usePromptUpload() {
       }
 
       console.log(`✅ [UPLOAD-STEP-3] Transferencia a R2 completada con éxito.`);
+
+      incrementPromptCount();
 
       console.log(
         `🎉 [UPLOAD-FINISH] Flujo de subida perfecto. Pasando el testigo a la Cuarentena del Backend.`,
