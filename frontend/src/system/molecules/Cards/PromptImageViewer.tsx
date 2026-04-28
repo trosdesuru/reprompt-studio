@@ -12,13 +12,12 @@ interface PromptImageViewerProps {
 }
 
 export function PromptImageViewer({ imageUrl, altText, width, height }: PromptImageViewerProps) {
-  // Calculamos la proporción matemática exacta
   const exactAspectRatio = width && height ? `${width} / ${height}` : "auto";
 
   return (
     <FadeIn delay={0.1}>
       <div
-        className="relative w-full bg-muted/10 neo-border neo-shadow overflow-hidden group"
+        className="relative w-full bg-muted/10 neo-border overflow-hidden group"
         style={{ aspectRatio: exactAspectRatio }}
       >
         {imageUrl ? (
@@ -26,7 +25,7 @@ export function PromptImageViewer({ imageUrl, altText, width, height }: PromptIm
             src={imageUrl}
             alt={altText}
             priority={true}
-            className="w-full h-full object-fill transition-transform duration-700 ease-out group-hover:scale-[1.02]"
+            className="w-full h-full object-fit transition-transform duration-700 ease-out group-hover:scale-[1.02]"
             sizes="(max-width: 768px) 100vw, 50vw"
           />
         ) : (
