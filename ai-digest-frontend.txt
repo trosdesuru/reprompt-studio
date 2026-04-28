@@ -8,6 +8,7 @@ Directory structure:
     ├── docker-compose.yml
     ├── Dockerfile
     ├── eslint.config.mjs
+    ├── estructura.txt
     ├── jest.config.js
     ├── jest.setup.js
     ├── next.config.ts
@@ -294,7 +295,8 @@ Directory structure:
     │   │   │   │       ├── MobileMenuViews.tsx
     │   │   │   │       └── NavbarMobile.tsx
     │   │   │   ├── Navigation/
-    │   │   │   │   └── Breadcrumbs.tsx
+    │   │   │   │   ├── Breadcrumbs.tsx
+    │   │   │   │   └── Footer.tsx
     │   │   │   ├── Notification/
     │   │   │   │   ├── NotificationDropdown.tsx
     │   │   │   │   ├── NotificationItem.tsx
@@ -376,10 +378,12 @@ Directory structure:
     │       │   ├── useInfiniteScroll.ts
     │       │   ├── useKeyboardShortcut.ts
     │       │   ├── useResponsiveColumns.ts
+    │       │   ├── useScrollDirection.ts
     │       │   ├── useScrollLock.ts
     │       │   └── useTheme.ts
     │       └── lib/
     │           ├── _media.ts
+    │           ├── array.ts
     │           ├── avatar-optimizer.ts
     │           ├── cn.ts
     │           ├── image-optimizer.ts
@@ -577,6 +581,14 @@ const eslintConfig = defineConfig([
 
 export default eslintConfig;
 
+
+
+================================================
+FILE: estructura.txt
+================================================
+Need to install the following packages:
+tree-cli@0.6.7
+Ok to proceed? (y) 
 
 
 ================================================
@@ -1557,12 +1569,14 @@ FILE: app/[lang]/(main)/layout.tsx
 
 import { Navbar } from "@/src/system/organisms/Navbar/Navbar";
 import { FadeIn } from "@/src/system/atoms/Animations/FadeIn";
+import { Footer } from "@/src/system/molecules/Navigation/Footer";
 
 export default function MainLayout({ children }: { children: React.ReactNode }) {
   return (
     <>
       <Navbar />
       <FadeIn>{children}</FadeIn>
+      <Footer />
     </>
   );
 }
@@ -4627,27 +4641,32 @@ export function useHomeInteraction() {
 
   const viewerSync = useViewerSync(activeUrl);
 
-  const handleOpenVisor = useCallback((item: GalleryItem) => {
-    setActiveUrl(item.url);
-    setActiveTitle(item.title);
-    viewerSync.openViewer(item.url);
-    
-    // Disparamos la métrica en background sin esperar (Fire and Forget)
-    api.registerInteraction(item, "view").catch((err) => 
-      console.error("Fallo al registrar vista:", err)
-    );
-  }, [viewerSync]);
+  const handleOpenVisor = useCallback(
+    (item: GalleryItem) => {
+      setActiveUrl(item.url);
+      setActiveTitle(item.title);
+      viewerSync.openViewer(item.url);
 
-  const handleDownloadTotal = useCallback(async (item: GalleryItem) => {
-    try {
-      notify("Descarga", `⬇️ Preparando ${item.title}...`, "info");
-      await api.downloadAll(item.url, item.title);
-      api.registerInteraction(item, "download").catch(console.error);
-      notify("Éxito", `✅ Descarga encolada: ${item.title}`, "success");
-    } catch (err) {
-      notify("Error", "❌ Falla crítica al encolar la descarga.", "error");
-    }
-  }, [notify]);
+      api
+        .registerInteraction(item, "view")
+        .catch((err) => console.error("Fallo al registrar vista:", err));
+    },
+    [viewerSync],
+  );
+
+  const handleDownloadTotal = useCallback(
+    async (item: GalleryItem) => {
+      try {
+        notify("Descarga", `⬇️ Preparando ${item.title}...`, "info");
+        await api.solicitarZipColeccion(item.url);
+        api.registerInteraction(item, "download").catch(console.error);
+        notify("Éxito", `✅ Descarga en cola: ${item.title}`, "success");
+      } catch (err) {
+        notify("Error", "❌ Fallo en la descarga.", "error");
+      }
+    },
+    [notify],
+  );
 
   return {
     activeTitle,
@@ -4665,6 +4684,8 @@ FILE: src/features/home/hooks/usePublicFeed.ts
 import { FeedItem } from "@/src/types/models";
 import { useState, useEffect, useCallback } from "react";
 import { api } from "@/src/services/api";
+
+import { shuffleArray } from "@/src/utils/lib/array";
 
 export function usePublicFeed(query: string) {
   const [feed, setFeed] = useState<FeedItem[]>([]);
@@ -4687,10 +4708,19 @@ export function usePublicFeed(query: string) {
           cursor: currentCursor,
         });
 
-        const data = await res.json();
+        type FeedResponse = {
+          status: string;
+          feed: FeedItem[];
+          next_cursor: string | null;
+        };
+
+        const data = (await res.json()) as FeedResponse;
 
         if (data.status === "success") {
-          setFeed((prev) => (isInitial ? data.feed : [...prev, ...data.feed]));
+          const randomizedChunk = shuffleArray(data.feed);
+
+          setFeed((prev) => (isInitial ? randomizedChunk : [...prev, ...randomizedChunk]));
+
           setNextCursor(data.next_cursor);
           setHasMore(!!data.next_cursor);
         }
@@ -9724,16 +9754,32 @@ export function FeedItemCard({
 ================================================
 FILE: src/system/molecules/Cards/PromptCardActions.tsx
 ================================================
+"use client";
+
 import { SavedPrompt } from "@/src/types/models";
-import { IconDotsVertical, IconFolder, IconTrash } from "@tabler/icons-react";
+import {
+  IconDotsVertical,
+  IconFolder,
+  IconTrash,
+  IconBookmark,
+  IconWand,
+} from "@tabler/icons-react";
+import { Tooltip } from "../../atoms/Tooltip/Tooltip";
+
+// 🏛️ Directriz 12: Tipado estricto. Cero "any".
+interface Directory {
+  id: string;
+  name: string;
+}
 
 interface PromptCardActionsProps {
   item: SavedPrompt;
-  directories?: any[];
+  directories?: Directory[];
   onAssign?: (promptId: string, dirId: string) => void;
   onDelete?: (id: string) => void;
   isOpen: boolean;
   setIsOpen: (isOpen: boolean) => void;
+  isOwner: boolean; // 🟢 Inyectamos el estado de propiedad
 }
 
 export function PromptCardActions({
@@ -9743,61 +9789,99 @@ export function PromptCardActions({
   onDelete,
   isOpen,
   setIsOpen,
+  isOwner,
 }: PromptCardActionsProps) {
   return (
-    <div className="absolute top-3 right-3 z-50">
+    <div className="absolute top-2 right-2 z-50">
       <button
         onClick={(e) => {
           e.preventDefault();
           e.stopPropagation();
           setIsOpen(!isOpen);
         }}
-        className={`p-1.5 rounded-md backdrop-blur-md border shadow-sm transition-colors ${
-          isOpen ? "bg-background border-border" : "bg-black/40 border-white/20 text-white"
+        // 🕸️ Directriz 9: Área táctil ampliada (p-2) para evitar errores en móvil
+        className={`p-2 rounded-md backdrop-blur-md border shadow-sm transition-colors ${
+          isOpen
+            ? "bg-background border-border text-foreground"
+            : "bg-black/40 border-white/20 text-white hover:bg-black/60"
         }`}
+        aria-label="Opciones del prompt"
       >
         <IconDotsVertical size={18} />
       </button>
 
       {isOpen && (
-        <div className="absolute top-full right-0 w-48 bg-background border border-border rounded-xl shadow-xl z-50 animate-in fade-in zoom-in-95 hover:border-red-500/50 overflow-hidden">
-          {onAssign && directories && directories.length > 0 && (
-            <div className="px-3 py-2 border-b border-border/10">
-              <label className="text-[10px] font-bold uppercase text-muted-foreground mb-1.5 flex items-center gap-1.5">
-                <IconFolder size={12} /> Colección
-              </label>
-              <select
-                className="w-full bg-muted/50 text-xs p-1.5 rounded border border-border outline-none focus:ring-1 focus:ring-accent"
-                value={item.directory_id || ""}
-                onChange={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  onAssign(String(item.id), e.target.value);
-                }}
-              >
-                <option value="">Suelto</option>
-                {directories.map((d: any) => (
-                  <option key={d.id} value={d.id}>
-                    {d.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
+        <div className="absolute top-full right-0 mt-1 w-48 bg-background border border-border rounded-xl shadow-xl z-50 animate-in fade-in zoom-in-95 overflow-hidden">
+          {/* 👑 ACCIONES DE DUEÑO (OWNER) */}
+          {isOwner ? (
+            <>
+              {onAssign && directories && directories.length > 0 && (
+                <div className="px-3 py-3 border-b border-border/10">
+                  <label className="text-[10px] font-bold uppercase text-muted-foreground mb-1.5 flex items-center gap-1.5">
+                    <IconFolder size={12} /> Colección
+                  </label>
+                  <select
+                    className="w-full bg-muted/50 text-xs p-2 rounded border border-border outline-none focus:ring-1 focus:ring-accent cursor-pointer"
+                    value={item.directory_id || ""}
+                    onChange={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      onAssign(String(item.id), e.target.value);
+                    }}
+                  >
+                    <option value="">Suelto</option>
+                    {directories.map((d) => (
+                      <option key={d.id} value={d.id}>
+                        {d.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
 
-          {onDelete && (
-            <button
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                if (window.confirm("¿Exterminar rastro digital?")) {
-                  onDelete(String(item.id));
-                }
-              }}
-              className="flex w-full h-full items-center gap-2 px-3 py-3 text-xs font-mono font-normal text-red-400 hover:bg-red-500/10 transition-colors"
-            >
-              <IconTrash size={14} /> Eliminar
-            </button>
+              {onDelete && (
+                <button
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    // 🛡️ Directriz 6: Programación defensiva. Confirmación antes de mutar la DB.
+                    if (window.confirm("Eliminar prompt?")) {
+                      onDelete(String(item.id));
+                    }
+                  }}
+                  className="flex w-full items-center gap-2 px-3 py-3 text-xs font-mono font-bold text-red-500 hover:bg-red-500/10 transition-colors"
+                >
+                  <IconTrash size={14} /> Eliminar
+                </button>
+              )}
+            </>
+          ) : (
+            /* 👁️ ACCIONES DE VISITANTE (VISITOR) */
+            <div className="flex flex-col">
+              <Tooltip variant="default" content="Servicio en desarrollo" side="left">
+                <button
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                  }}
+                  className="flex w-full items-center gap-2 px-3 py-3 text-xs font-mono font-bold text-foreground/70 hover:bg-muted hover:text-foreground transition-colors border-b border-border/10 cursor-not-allowed opacity-70"
+                >
+                  <IconBookmark size={14} /> Guardar
+                </button>
+              </Tooltip>
+
+              <Tooltip variant="default" content="Servicio en desarrollo" side="left">
+                <button
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                  }}
+                  className="flex w-full items-center gap-2 px-3 py-3 text-xs font-mono font-bold text-foreground/70 hover:bg-muted hover:text-foreground transition-colors cursor-not-allowed opacity-70"
+                >
+                  <IconWand size={14} /> Copiar Prompt
+                </button>
+              </Tooltip>
+            </div>
           )}
         </div>
       )}
@@ -11312,6 +11396,57 @@ export function Breadcrumbs({ items, homeHref = "/" }: BreadcrumbsProps) {
 
 
 ================================================
+FILE: src/system/molecules/Navigation/Footer.tsx
+================================================
+"use client";
+
+import Link from "next/link";
+import { useScrollDirection } from "@/src/utils/hooks/useScrollDirection";
+
+export function Footer() {
+  const scrollDirection = useScrollDirection();
+
+  return (
+    <footer
+      className={`fixed bottom-0 left-0 right-0 z-40 bg-background border-t-2 border-border/50 backdrop-blur-md transition-transform duration-300 ease-in-out ${
+        scrollDirection === "down" ? "translate-y-full" : "translate-y-0"
+      }`}
+    >
+      <div className="max-w-400 mx-auto px-4 md:px-8 py-3 flex items-center justify-center gap-4">
+        <div className="flex items-center gap-4 md:gap-6 text-xs font-mono font-semibold text-muted-foreground uppercase tracking-widest">
+          <span className="opacity-50">© {new Date().getFullYear()} Reprompt</span>
+
+          <div className="hidden md:flex items-center gap-4">
+            <Link href="#" className="hover:text-foreground transition-colors">
+              Términos
+            </Link>
+
+            <Link href="#" className="hover:text-foreground transition-colors">
+              Privacidad
+            </Link>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-4">
+          <Link
+            href="#"
+            className="md:hidden text-xs font-mono font-semibold text-muted-foreground uppercase tracking-widest hover:text-foreground transition-colors"
+          >
+            Legal
+          </Link>
+
+          <span className="px-2.5 py-1 bg-accent text-white text-xs font-black uppercase tracking-widest rounded-md shadow-[2px_2px_0px_0px_rgba(0,0,0,0.2)] dark:shadow-[2px_2px_0px_0px_rgba(255,255,255,0.1)] cursor-default select-none">
+            BETA v1.0
+          </span>
+        </div>
+      </div>
+    </footer>
+  );
+}
+
+
+
+================================================
 FILE: src/system/molecules/Notification/NotificationDropdown.tsx
 ================================================
 "use client";
@@ -11591,7 +11726,7 @@ FILE: src/system/molecules/Studio/PromptCard.tsx
 "use client";
 
 import Link from "next/link";
-import { IconPhoto, IconTrash } from "@tabler/icons-react";
+import { IconPhoto } from "@tabler/icons-react";
 import { usePromptCard } from "@/src/system/molecules/Cards/hooks/usePromptCard";
 import { usePromptDnd } from "@/src/features/studio/hooks/usePromptDnd";
 import { PromptCardActions } from "../Cards/PromptCardActions";
@@ -11601,10 +11736,17 @@ import { SavedPrompt } from "@/src/types/models";
 import { Tooltip } from "../../atoms/Tooltip/Tooltip";
 import { RichPromptTooltipContent } from "./RichPromptTooltipContent";
 import { usePromptQueue } from "@/src/store/usePromptQueue";
+// 🟢 Directriz 9: Conocer el estado del usuario
+import { useAuthStore } from "@/src/store/authStore";
+
+interface Directory {
+  id: string;
+  name: string;
+}
 
 interface PromptCardProps {
   item: SavedPrompt;
-  directories?: any[];
+  directories?: Directory[];
   onAssign?: (promptId: string, dirId: string) => void;
   onDelete?: (id: string) => void;
   lang: string;
@@ -11632,6 +11774,10 @@ export function PromptCard({
   const href = `/${lang}/${authorUsername}/p/${item.id}${isStudio ? "?from=studio" : ""}`;
   const setQueue = usePromptQueue((state) => state.setQueue);
 
+  // 🟢 Calculamos si el usuario actual es el autor del prompt
+  const { user } = useAuthStore();
+  const isOwner = user?.username === authorUsername;
+
   return (
     <div
       ref={setNodeRef}
@@ -11652,27 +11798,21 @@ export function PromptCard({
         setIsMenuOpen(false);
       }}
     >
-      <div className="absolute top-2 right-2 z-30 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-        {onDelete && (
-          <button
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              onDelete(String(item.id));
-            }}
-            className="p-1.5 bg-background/90 backdrop-blur-sm border border-border/50 text-red-500 hover:bg-red-500/10 hover:text-red-600 rounded-md transition-colors shadow-sm"
-            aria-label="Eliminar prompt"
-          >
-            <IconTrash size={16} />
-          </button>
-        )}
-        <PromptCardActions
-          item={item}
-          directories={directories}
-          onAssign={onAssign}
-          isOpen={isMenuOpen}
-          setIsOpen={setIsMenuOpen}
-        />
+      {/* 🟢 Menú centralizado: Se acabó la colisión de botones */}
+      <div
+        className={`absolute top-0 right-0 bottom-0 left-0 pointer-events-none z-30 transition-opacity duration-200 ${isMenuOpen ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}
+      >
+        <div className="pointer-events-auto">
+          <PromptCardActions
+            item={item}
+            directories={directories}
+            onAssign={onAssign}
+            onDelete={onDelete}
+            isOpen={isMenuOpen}
+            setIsOpen={setIsMenuOpen}
+            isOwner={isOwner}
+          />
+        </div>
       </div>
 
       <Tooltip
@@ -11704,7 +11844,7 @@ export function PromptCard({
                 <IconPhoto size={32} stroke={1.5} />
               </div>
             )}
-            <div className="absolute inset-x-0 bottom-0 p-3 pt-12 bg-linear-to-t from-background/95 via-background/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200 ease-in-out flex flex-col gap-1.5 pointer-events-none group-hover:pointer-events-auto">
+            <div className="absolute inset-x-0 bottom-0 p-3 pt-12 bg-linear-to-t from-background/95 via-background/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200 ease-in-out flex flex-col gap-1.5 pointer-events-none group-hover:pointer-events-auto z-20">
               <p className="text-[9px] text-muted-foreground font-mono font-semibold uppercase tracking-wider drop-shadow-sm line-clamp-1">
                 {item.model || "Base Model"}
               </p>
@@ -13186,7 +13326,7 @@ export function PromptDetailView({
 
           <section
             id="metadata-panel"
-            className="flex flex-col gap-6 px-4 md:px-0 pb-24 lg:pb-0 lg:h-full lg:overflow-y-auto custom-scrollbar lg:pr-4"
+            className="flex flex-col gap-6 px-4 md:px-0 pb-24 lg:pb-12 lg:h-full lg:overflow-y-auto custom-scrollbar lg:pr-4"
           >
             {!isOwner && (
               <div className="shrink-0">
@@ -14191,6 +14331,85 @@ export function useResponsiveColumns<T>(items: T[]) {
 
 
 ================================================
+FILE: src/utils/hooks/useScrollDirection.ts
+================================================
+"use client";
+
+import { useState, useEffect } from "react";
+
+export function useScrollDirection() {
+  const [scrollDirection, setScrollDirection] = useState<"up" | "down">("up");
+
+  useEffect(() => {
+    let lastScrollY = 0;
+    let ticking = false;
+
+    // 1. Escuchamos el evento genérico
+    const onScroll = (event: Event) => {
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          // 2. Identificamos QUIÉN está haciendo scroll (¿La ventana o el div interno?)
+          const target = event.target as HTMLElement | Document;
+
+          let currentScrollY = 0;
+          let clientHeight = 0;
+          let scrollHeight = 0;
+
+          // Si el scroll viene de la ventana general (ej. Home Feed)
+          if (
+            target === document ||
+            target === document.documentElement ||
+            target === document.body
+          ) {
+            currentScrollY = window.scrollY;
+            clientHeight = window.innerHeight;
+            scrollHeight = document.documentElement.scrollHeight;
+          } else {
+            // Si el scroll viene de un div interno bloqueado (ej. #metadata-panel)
+            const el = target as HTMLElement;
+            currentScrollY = el.scrollTop;
+            clientHeight = el.clientHeight;
+            scrollHeight = el.scrollHeight;
+          }
+
+          // 3. Evitamos micro-saltos o rebotes nativos de iOS (Bounce effect)
+          if (Math.abs(currentScrollY - lastScrollY) < 10) {
+            ticking = false;
+            return;
+          }
+
+          // 4. Calculamos si tocamos el fondo absoluto (con margen de 20px de seguridad)
+          const isAtBottom = clientHeight + currentScrollY >= scrollHeight - 20;
+
+          // 5. Máquina de Estados
+          if (isAtBottom) {
+            setScrollDirection("up"); // Si tocamos fondo, obligamos a que el footer aparezca
+          } else if (currentScrollY > lastScrollY) {
+            setScrollDirection("down"); // Bajando = Ocultar
+          } else {
+            setScrollDirection("up"); // Subiendo = Mostrar
+          }
+
+          lastScrollY = currentScrollY > 0 ? currentScrollY : 0;
+          ticking = false;
+        });
+        ticking = true;
+      }
+    };
+
+    // 🟢 LA MAGIA: El tercer parámetro `true` (useCapture) intercepta el scroll ANTES de que llegue a su objetivo.
+    // Esto captura el scroll de la Home y el del #metadata-panel al mismo tiempo.
+    window.addEventListener("scroll", onScroll, true);
+
+    return () => window.removeEventListener("scroll", onScroll, true);
+  }, []);
+
+  return scrollDirection;
+}
+
+
+
+================================================
 FILE: src/utils/hooks/useScrollLock.ts
 ================================================
 import { useEffect } from "react";
@@ -14291,6 +14510,25 @@ export function getTailwindAspectClass(
 
   return "aspect-[4/5]"; // Fallback
 }
+
+
+
+================================================
+FILE: src/utils/lib/array.ts
+================================================
+/**
+ * Implementa el algoritmo de Fisher-Yates para mezclar un array de forma aleatoria, pura y eficiente.
+ * @param array El array original (no será mutado).
+ * @returns Un nuevo array con los elementos mezclados.
+ */
+export const shuffleArray = <T>(array: T[]): T[] => {
+  const shuffled = [...array];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+};
 
 
 

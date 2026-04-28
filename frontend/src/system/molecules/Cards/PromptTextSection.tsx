@@ -13,6 +13,7 @@ interface PromptTextSectionProps {
   fieldId: string;
   isNegative?: boolean;
   copiedSection: string | null;
+  maxLength?: number;
   onCopy: (text: string, section: string) => void;
   onChange: (value: string) => void;
 }
@@ -25,6 +26,7 @@ export function PromptTextSection({
   fieldId,
   isNegative,
   copiedSection,
+  maxLength = 20000,
   onCopy,
   onChange,
 }: PromptTextSectionProps) {
@@ -69,16 +71,31 @@ export function PromptTextSection({
       </div>
 
       {isEditing ? (
-        <textarea
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          className={`w-full bg-background rounded-md p-3 font-mono text-sm focus:outline-none focus:ring-1 ${
-            isNegative
-              ? "min-h-15 border border-destructive/30 focus:ring-destructive"
-              : "min-h-25 border border-border focus:ring-(--accent-color)"
-          }`}
-          placeholder={`Añade el ${title.toLowerCase()} aquí...`}
-        />
+        <div className="relative">
+          <textarea
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            maxLength={maxLength}
+            className={`w-full bg-background rounded-md p-3 pb-8 font-mono text-sm focus:outline-none focus:ring-1 resize-y ${
+              isNegative
+                ? "min-h-15 border border-destructive/30 focus:ring-destructive"
+                : "min-h-25 border border-border focus:ring-(--accent-color)"
+            }`}
+            placeholder={`Añade el ${title.toLowerCase()} aquí...`}
+          />
+
+          <div
+            className={`absolute bottom-2 right-2 text-[10px] font-mono font-bold px-1.5 py-0.5 rounded border transition-colors ${
+              value.length > maxLength * 0.9
+                ? "text-red-500 border-red-500 bg-red-500/10"
+                : isNegative
+                  ? "text-destructive/70 border-destructive/20 bg-destructive/5"
+                  : "text-muted-foreground border-border bg-background"
+            }`}
+          >
+            {value.length.toLocaleString()} / {maxLength.toLocaleString()}
+          </div>
+        </div>
       ) : (
         <ExpandableText
           text={value}

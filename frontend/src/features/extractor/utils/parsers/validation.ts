@@ -4,8 +4,12 @@ export const ExtractedPromptSchema = z.object({
   prompt: z
     .string()
     .min(1, "El prompt es obligatorio")
+    .max(20000, "El prompt excede el límite de 20,000 caracteres")
     .transform((t) => t.trim()),
-  negativePrompt: z.string().default(""),
+  negativePrompt: z
+    .string()
+    .max(20000, "El prompt negativo excede el límite de 20,000 caracteres")
+    .default(""),
   steps: z.string().optional(),
   sampler: z.string().optional(),
   cfgScale: z.string().optional(),

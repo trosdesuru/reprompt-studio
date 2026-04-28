@@ -2,6 +2,8 @@ import { FeedItem } from "@/src/types/models";
 import { useState, useEffect, useCallback } from "react";
 import { api } from "@/src/services/api";
 
+import { shuffleArray } from "@/src/utils/lib/array";
+
 export function usePublicFeed(query: string) {
   const [feed, setFeed] = useState<FeedItem[]>([]);
   const [isFeedLoading, setIsFeedLoading] = useState(false);
@@ -23,10 +25,19 @@ export function usePublicFeed(query: string) {
           cursor: currentCursor,
         });
 
-        const data = await res.json();
+        type FeedResponse = {
+          status: string;
+          feed: FeedItem[];
+          next_cursor: string | null;
+        };
+
+        const data = (await res.json()) as FeedResponse;
 
         if (data.status === "success") {
-          setFeed((prev) => (isInitial ? data.feed : [...prev, ...data.feed]));
+          const randomizedChunk = shuffleArray(data.feed);
+
+          setFeed((prev) => (isInitial ? randomizedChunk : [...prev, ...randomizedChunk]));
+
           setNextCursor(data.next_cursor);
           setHasMore(!!data.next_cursor);
         }
