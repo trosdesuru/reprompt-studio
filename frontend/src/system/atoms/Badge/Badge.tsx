@@ -17,12 +17,11 @@ export function UserBadge({ role = "voyager" }: UserBadgeProps) {
     },
     artist: {
       label: "Artist",
-      classes:
-        "bg-artist border-secondary shadow-[0_0_10px_rgba(var(--primary-rgb),0.1)]",
+      classes: "bg-artist border-secondary shadow-[0_0_10px_rgba(var(--primary-rgb),0.1)]",
     },
     admin: {
       label: "Admin",
-      classes: "text-amber-400 font-medium border-amber-500",
+      classes: "text-amber-500! bg-amber-500/30! font-medium border border-amber-500",
     },
   };
 
@@ -32,7 +31,7 @@ export function UserBadge({ role = "voyager" }: UserBadgeProps) {
   return (
     <span
       className={`
-        px-2.5 py-1 text-xs font-mono text-white font-bold lowercase tracking-widest 
+        px-2.5 py-1 text-xs font-mono text-white font-bold w-fit lowercase tracking-widest 
         rounded-md transition-all duration-300
         ${config.classes}
       `}

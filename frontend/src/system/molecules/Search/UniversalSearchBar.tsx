@@ -54,7 +54,7 @@ export function UniversalSearchBar({
           e.preventDefault();
           onSubmit();
         }}
-        className="flex-1 h-full flex items-center relative pl-3"
+        className="flex-1 h-full flex items-center relative pl-3 neo-border rounded-xl"
       >
         <div className="flex items-center justify-center w-5 h-5">
           {isLoading ? (

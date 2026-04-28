@@ -46,14 +46,14 @@ export function NavbarSearch() {
       <SearchTrigger onOpen={() => setIsModalOpen(true)} />
 
       <Modal isOpen={isModalOpen} onClose={handleCloseAndClear} maxWidth="max-w-2xl">
-        <div ref={modalContentRef} className="flex flex-col w-full bg-background">
+        <div ref={modalContentRef} className="flex flex-col w-full bg-surface tracking-tight">
           <div className="p-5 flex flex-col gap-4">
             <SearchModalHeader />
 
             <UniversalSearchBar
               query={query}
               isLoading={isLoading}
-              placeholder="Redefine tu búsqueda"
+              placeholder="Busca conceptos, estilos ...."
               onQueryChange={setQuery}
               onSubmit={onExecuteSearch}
               onClear={() => setQuery("")}

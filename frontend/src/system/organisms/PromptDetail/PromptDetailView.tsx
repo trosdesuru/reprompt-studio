@@ -8,8 +8,9 @@ import { SavedPrompt } from "@/src/types/models";
 import { useUpdatePromptMetadata } from "@/src/features/studio/hooks/useUpdatePromptMetadata";
 import { Button } from "@/src/system/atoms/Button/Button";
 
-import { PromptAuthorHeader } from "@/src/features/prompts/components/PromptAuthorHeader";
+import { PromptProfileHeader } from "@/src/features/prompts/components/PromptProfileHeader";
 import { PromptNavigation } from "@/src/features/prompts/components/PromptNavigation";
+import { Tooltip } from "../../atoms/Tooltip/Tooltip";
 
 interface PromptDetailViewProps {
   prompt: SavedPrompt;
@@ -52,11 +53,7 @@ export function PromptDetailView({
               isLandscape ? "w-full aspect-video" : "h-full min-h-0"
             }`}
           >
-            <PromptNavigation
-              currentId={String(prompt.id)}
-              username={authorUsername} 
-              lang={lang}
-            />
+            <PromptNavigation currentId={String(prompt.id)} lang={lang} />
 
             <div className="w-full h-full relative">
               <PromptImageViewer
@@ -71,7 +68,7 @@ export function PromptDetailView({
           <section className="flex flex-col h-full min-h-0">
             {!isOwner && (
               <div className="shrink-0 mb-6">
-                <PromptAuthorHeader
+                <PromptProfileHeader
                   author={{ username: authorUsername, avatar_url: authorAvatar }}
                   lang={lang}
                 />
@@ -92,9 +89,11 @@ export function PromptDetailView({
 
               {!isOwner && (
                 <div className="pt-6 mt-6 border-t border-border/30">
-                  <Button className="w-full font-bold bg-accent text-white hover:bg-accent/90">
-                    GUARDAR EN MI COLECCIÓN
-                  </Button>
+                  <Tooltip variant="default" content="Servicio en desarrrollo">
+                    <Button variant="disabled" className="w-full">
+                      GUARDAR EN MI COLECCIÓN
+                    </Button>
+                  </Tooltip>
                 </div>
               )}
             </div>

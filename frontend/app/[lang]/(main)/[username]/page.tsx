@@ -3,11 +3,12 @@
 import { use } from "react";
 import Link from "next/link";
 import { PageLoader } from "@/src/system/atoms/Loader/PageLoader";
-import { IconPhotoOff, IconFolder } from "@tabler/icons-react";
+import { IconPhotoOff } from "@tabler/icons-react";
 
 import { PromptCard } from "@/src/system/molecules/Studio/PromptCard";
 import { usePublicProfile } from "@/src/features/public/hooks/usePublicProfile";
 import { Breadcrumbs } from "@/src/system/molecules/Navigation/Breadcrumbs";
+import { ProfileHeader } from "@/src/system/organisms/Profile/ProfileHeader";
 
 export default function PublicProfilePage({
   params,
@@ -15,7 +16,6 @@ export default function PublicProfilePage({
   params: Promise<{ lang: string; username: string; index: number }>;
 }) {
   const { lang, username } = use(params);
-
   const { data, isLoading, error } = usePublicProfile(username);
 
   if (isLoading) {
@@ -43,39 +43,17 @@ export default function PublicProfilePage({
   return (
     <main className="max-h-screen bg-background p-4 md:p-8">
       <div className="max-w-7xl mx-auto space-y-8">
-        <header className="flex flex-col gap-2">
-          <h1 className="text-4xl font-prompt font-bold lowercase tracking-tighter">@{data.user.username}</h1>
-          <p className="text-muted-foreground font-mono text-sm uppercase tracking-widest">
-            {data.user.role}
-          </p>
-        </header>
+        <ProfileHeader
+          username={data.user.username}
+          avatarUrl={data.user.avatar_url}
+          role={data.user.role}
+          bio={data.user.bio}
+          promptCount={data.recent_prompts.length}
+        />
+
         <div className="border-b border-border pb-4">
           <Breadcrumbs items={breadcrumbItems} />
         </div>
-
-        {data.directories.length > 0 && (
-          <section className="space-y-4">
-            <h2 className="text-sm font-mono font-bold uppercase tracking-widest flex items-center gap-2">
-              <IconFolder size={18} className="text-(--accent-color)" /> Colecciones
-            </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-              {data.directories.map((col) => (
-                <Link
-                  key={col.id}
-                  href={`/${lang}/${username}/${col.slug}`}
-                  className="group p-4 bg-muted/10 neo-border hover:bg-muted/30 transition-colors"
-                >
-                  <h3 className="font-bold text-lg group-hover:text-(--accent-color) transition-colors">
-                    {col.name}
-                  </h3>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {col.description || "Sin descripción"}
-                  </p>
-                </Link>
-              ))}
-            </div>
-          </section>
-        )}
 
         <section className="space-y-4">
           <h2 className="text-sm text-accent font-mono font-bold uppercase tracking-widest">

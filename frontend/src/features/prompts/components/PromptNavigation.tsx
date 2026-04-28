@@ -10,7 +10,7 @@ export function PromptNavigation({ currentId, lang }: { currentId: string; lang:
   const next = getNextItem(currentId);
   const prev = getPrevItem(currentId);
   const arrowClasses =
-    "absolute top-1/2 -translate-y-1/2 z-40 p-3 bg-background/20 backdrop-blur-md border border-white/10 text-white hover:bg-background/40 transition-all rounded-full shadow-2xl opacity-0 group-hover:opacity-100 hover:scale-110";
+    "absolute top-1/2 -translate-y-1/2 z-50 p-3 bg-background/50 backdrop-blur-lg border border-white/50 text-white hover:bg-background/10 transition-all rounded-full shadow-4xl opacity-100";
 
   return (
     <>

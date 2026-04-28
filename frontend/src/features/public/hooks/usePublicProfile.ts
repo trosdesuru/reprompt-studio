@@ -3,7 +3,7 @@ import { api } from "@/src/services/api";
 import { SavedPrompt } from "@/src/types/models";
 
 interface ProfileData {
-  user: { username: string; role: string };
+  user: { username: string; role: string; avatar_url: string; bio?: string };
   directories: any[];
   recent_prompts: SavedPrompt[];
 }
