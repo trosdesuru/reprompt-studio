@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { IconPhoto, IconTrash } from "@tabler/icons-react";
+import { IconPhoto } from "@tabler/icons-react";
 import { usePromptCard } from "@/src/system/molecules/Cards/hooks/usePromptCard";
 import { usePromptDnd } from "@/src/features/studio/hooks/usePromptDnd";
 import { PromptCardActions } from "../Cards/PromptCardActions";
@@ -11,10 +11,17 @@ import { SavedPrompt } from "@/src/types/models";
 import { Tooltip } from "../../atoms/Tooltip/Tooltip";
 import { RichPromptTooltipContent } from "./RichPromptTooltipContent";
 import { usePromptQueue } from "@/src/store/usePromptQueue";
+// 🟢 Directriz 9: Conocer el estado del usuario
+import { useAuthStore } from "@/src/store/authStore";
+
+interface Directory {
+  id: string;
+  name: string;
+}
 
 interface PromptCardProps {
   item: SavedPrompt;
-  directories?: any[];
+  directories?: Directory[];
   onAssign?: (promptId: string, dirId: string) => void;
   onDelete?: (id: string) => void;
   lang: string;
@@ -42,6 +49,10 @@ export function PromptCard({
   const href = `/${lang}/${authorUsername}/p/${item.id}${isStudio ? "?from=studio" : ""}`;
   const setQueue = usePromptQueue((state) => state.setQueue);
 
+  // 🟢 Calculamos si el usuario actual es el autor del prompt
+  const { user } = useAuthStore();
+  const isOwner = user?.username === authorUsername;
+
   return (
     <div
       ref={setNodeRef}
@@ -62,27 +73,21 @@ export function PromptCard({
         setIsMenuOpen(false);
       }}
     >
-      <div className="absolute top-2 right-2 z-30 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-        {onDelete && (
-          <button
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              onDelete(String(item.id));
-            }}
-            className="p-1.5 bg-background/90 backdrop-blur-sm border border-border/50 text-red-500 hover:bg-red-500/10 hover:text-red-600 rounded-md transition-colors shadow-sm"
-            aria-label="Eliminar prompt"
-          >
-            <IconTrash size={16} />
-          </button>
-        )}
-        <PromptCardActions
-          item={item}
-          directories={directories}
-          onAssign={onAssign}
-          isOpen={isMenuOpen}
-          setIsOpen={setIsMenuOpen}
-        />
+      {/* 🟢 Menú centralizado: Se acabó la colisión de botones */}
+      <div
+        className={`absolute top-0 right-0 bottom-0 left-0 pointer-events-none z-30 transition-opacity duration-200 ${isMenuOpen ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}
+      >
+        <div className="pointer-events-auto">
+          <PromptCardActions
+            item={item}
+            directories={directories}
+            onAssign={onAssign}
+            onDelete={onDelete}
+            isOpen={isMenuOpen}
+            setIsOpen={setIsMenuOpen}
+            isOwner={isOwner}
+          />
+        </div>
       </div>
 
       <Tooltip
@@ -114,7 +119,7 @@ export function PromptCard({
                 <IconPhoto size={32} stroke={1.5} />
               </div>
             )}
-            <div className="absolute inset-x-0 bottom-0 p-3 pt-12 bg-linear-to-t from-background/95 via-background/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200 ease-in-out flex flex-col gap-1.5 pointer-events-none group-hover:pointer-events-auto">
+            <div className="absolute inset-x-0 bottom-0 p-3 pt-12 bg-linear-to-t from-background/95 via-background/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200 ease-in-out flex flex-col gap-1.5 pointer-events-none group-hover:pointer-events-auto z-20">
               <p className="text-[9px] text-muted-foreground font-mono font-semibold uppercase tracking-wider drop-shadow-sm line-clamp-1">
                 {item.model || "Base Model"}
               </p>

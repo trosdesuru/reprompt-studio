@@ -139,6 +139,12 @@ Directory structure:
     │   │   │   └── components/
     │   │   │       ├── NavbarActions.tsx
     │   │   │       └── NavbarSearch.tsx
+    │   │   ├── prompts/
+    │   │   │   └── components/
+    │   │   │       ├── ExpandableText.tsx
+    │   │   │       ├── PromptNavigation.tsx
+    │   │   │       ├── PromptProfileHeader.tsx
+    │   │   │       └── PromptTitleHeader.tsx
     │   │   ├── public/
     │   │   │   └── hooks/
     │   │   │       ├── usePublicDirectory.ts
@@ -215,6 +221,7 @@ Directory structure:
     │   │   ├── progressStore.ts
     │   │   ├── searchStore.ts
     │   │   ├── useGlobalModal.ts
+    │   │   ├── usePromptQueue.ts
     │   │   └── useStudioUI.ts
     │   ├── system/
     │   │   ├── atoms/
@@ -228,6 +235,8 @@ Directory structure:
     │   │   │   │   └── BrandText.tsx
     │   │   │   ├── Button/
     │   │   │   │   └── Button.tsx
+    │   │   │   ├── Cover/
+    │   │   │   │   └── UserCover.tsx
     │   │   │   ├── Debug/
     │   │   │   │   └── ImageDebugOverlay.tsx
     │   │   │   ├── Dropdown/
@@ -252,11 +261,16 @@ Directory structure:
     │   │   │   ├── Avatar/
     │   │   │   │   └── EditableAvatar.tsx
     │   │   │   ├── Cards/
+    │   │   │   │   ├── ExpandablePromptBox.tsx
+    │   │   │   │   ├── ExpandableTags.tsx
     │   │   │   │   ├── FeedItemCard.tsx
     │   │   │   │   ├── PromptCardActions.tsx
     │   │   │   │   ├── PromptCardSnippet.tsx
     │   │   │   │   ├── PromptImageViewer.tsx
     │   │   │   │   ├── PromptMetadataPanel.tsx
+    │   │   │   │   ├── PromptTagsList.tsx
+    │   │   │   │   ├── PromptTechSpecs.tsx
+    │   │   │   │   ├── PromptTextSection.tsx
     │   │   │   │   └── hooks/
     │   │   │   │       └── usePromptCard.ts
     │   │   │   ├── Feed/
@@ -319,6 +333,8 @@ Directory structure:
     │   │   │   ├── Navigation/
     │   │   │   │   ├── NavbarSearch.tsx
     │   │   │   │   └── PageHeader.tsx
+    │   │   │   ├── Profile/
+    │   │   │   │   └── ProfileHeader.tsx
     │   │   │   ├── PromptDetail/
     │   │   │   │   └── PromptDetailView.tsx
     │   │   │   ├── Search/
@@ -945,7 +961,7 @@ FILE: app/globals.css
    1. VARIABLES DE TEMA
    ============================ */
 :root {
-  --brand-bg: #fefdf3;
+  --brand-bg: #fefef7;
   --brand-surface: #ffffff;
   --brand-bg-badge-vyg: #ffffff;
   --brand-artist: #0f89b5;
@@ -1657,11 +1673,12 @@ FILE: app/[lang]/(main)/[username]/page.tsx
 import { use } from "react";
 import Link from "next/link";
 import { PageLoader } from "@/src/system/atoms/Loader/PageLoader";
-import { IconPhotoOff, IconFolder } from "@tabler/icons-react";
+import { IconPhotoOff } from "@tabler/icons-react";
 
 import { PromptCard } from "@/src/system/molecules/Studio/PromptCard";
 import { usePublicProfile } from "@/src/features/public/hooks/usePublicProfile";
 import { Breadcrumbs } from "@/src/system/molecules/Navigation/Breadcrumbs";
+import { ProfileHeader } from "@/src/system/organisms/Profile/ProfileHeader";
 
 export default function PublicProfilePage({
   params,
@@ -1669,7 +1686,6 @@ export default function PublicProfilePage({
   params: Promise<{ lang: string; username: string; index: number }>;
 }) {
   const { lang, username } = use(params);
-
   const { data, isLoading, error } = usePublicProfile(username);
 
   if (isLoading) {
@@ -1697,39 +1713,17 @@ export default function PublicProfilePage({
   return (
     <main className="max-h-screen bg-background p-4 md:p-8">
       <div className="max-w-7xl mx-auto space-y-8">
-        <header className="flex flex-col gap-2">
-          <h1 className="text-4xl font-prompt font-bold lowercase tracking-tighter">@{data.user.username}</h1>
-          <p className="text-muted-foreground font-mono text-sm uppercase tracking-widest">
-            {data.user.role}
-          </p>
-        </header>
+        <ProfileHeader
+          username={data.user.username}
+          avatarUrl={data.user.avatar_url}
+          role={data.user.role}
+          bio={data.user.bio}
+          promptCount={data.recent_prompts.length}
+        />
+
         <div className="border-b border-border pb-4">
           <Breadcrumbs items={breadcrumbItems} />
         </div>
-
-        {data.directories.length > 0 && (
-          <section className="space-y-4">
-            <h2 className="text-sm font-mono font-bold uppercase tracking-widest flex items-center gap-2">
-              <IconFolder size={18} className="text-(--accent-color)" /> Colecciones
-            </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-              {data.directories.map((col) => (
-                <Link
-                  key={col.id}
-                  href={`/${lang}/${username}/${col.slug}`}
-                  className="group p-4 bg-muted/10 neo-border hover:bg-muted/30 transition-colors"
-                >
-                  <h3 className="font-bold text-lg group-hover:text-(--accent-color) transition-colors">
-                    {col.name}
-                  </h3>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {col.description || "Sin descripción"}
-                  </p>
-                </Link>
-              ))}
-            </div>
-          </section>
-        )}
 
         <section className="space-y-4">
           <h2 className="text-sm text-accent font-mono font-bold uppercase tracking-widest">
@@ -1927,7 +1921,14 @@ export default function PromptDetailPage({ params, searchParams }: PromptDetailP
         { label: prompt.title || "Detalle" },
       ];
 
-  return <PromptDetailView prompt={prompt} breadcrumbItems={breadcrumbItems} />;
+  return (
+    <PromptDetailView
+      prompt={prompt}
+      breadcrumbItems={breadcrumbItems}
+      lang={lang}
+      authorUsername={username}
+    />
+  );
 }
 
 
@@ -4957,14 +4958,14 @@ export function NavbarSearch() {
       <SearchTrigger onOpen={() => setIsModalOpen(true)} />
 
       <Modal isOpen={isModalOpen} onClose={handleCloseAndClear} maxWidth="max-w-2xl">
-        <div ref={modalContentRef} className="flex flex-col w-full bg-background">
+        <div ref={modalContentRef} className="flex flex-col w-full bg-surface tracking-tight">
           <div className="p-5 flex flex-col gap-4">
             <SearchModalHeader />
 
             <UniversalSearchBar
               query={query}
               isLoading={isLoading}
-              placeholder="Redefine tu búsqueda"
+              placeholder="Busca conceptos, estilos ...."
               onQueryChange={setQuery}
               onSubmit={onExecuteSearch}
               onClear={() => setQuery("")}
@@ -4976,6 +4977,202 @@ export function NavbarSearch() {
         </div>
       </Modal>
     </>
+  );
+}
+
+
+
+================================================
+FILE: src/features/prompts/components/ExpandableText.tsx
+================================================
+"use client";
+
+import { useState } from "react";
+import { Button } from "@/src/system/atoms/Button/Button";
+import { cn } from "@/lib/utils";
+
+interface ExpandableTextProps {
+  text: string;
+  className?: string;
+  gradientFrom?: string;
+}
+
+export function ExpandableText({
+  text,
+  className,
+  gradientFrom = "from-(--bg-secondary)",
+}: ExpandableTextProps) {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const isLongText = text.length > 150;
+
+  if (!text) return <span className="italic opacity-50">No hay contenido registrado.</span>;
+
+  return (
+    <div className="relative flex flex-col gap-2 w-full">
+      <div className="relative overflow-hidden transition-all duration-300">
+        <p
+          className={cn(
+            "font-mono text-sm leading-relaxed whitespace-pre-wrap transition-all",
+            !isExpanded && isLongText ? "line-clamp-3 opacity-80" : "line-clamp-none opacity-100",
+            className,
+          )}
+        >
+          {text}
+        </p>
+
+        {!isExpanded && isLongText && (
+          <div
+            className={cn(
+              "absolute bottom-0 left-0 right-0 h-8 bg-linear-to-t to-transparent pointer-events-none",
+              gradientFrom,
+            )}
+          />
+        )}
+      </div>
+
+      {isLongText && (
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={() => setIsExpanded(!isExpanded)}
+        >
+          {isExpanded ? "- Ver menos" : "+ Ver más"}
+        </Button>
+      )}
+    </div>
+  );
+}
+
+
+
+================================================
+FILE: src/features/prompts/components/PromptNavigation.tsx
+================================================
+"use client";
+
+import { usePromptQueue } from "@/src/store/usePromptQueue";
+import { IconChevronLeft, IconChevronRight } from "@tabler/icons-react";
+import Link from "next/link";
+
+export function PromptNavigation({ currentId, lang }: { currentId: string; lang: string }) {
+  const { getNextItem, getPrevItem } = usePromptQueue();
+
+  const next = getNextItem(currentId);
+  const prev = getPrevItem(currentId);
+  const arrowClasses =
+    "mx-2 absolute top-1/2 -translate-y-1/2 z-50! p-3 hover:bg-primary backdrop-blur-lg border border-white/50 text-white bg-accent/20 transition-all rounded-full shadow-4xl";
+
+  return (
+    <>
+      {prev && (
+        <Link
+          href={`/${lang}/${prev.username}/p/${prev.id}`}
+          className={`${arrowClasses} left-4 md:left-6`}
+        >
+          <IconChevronLeft size={28} />
+        </Link>
+      )}
+
+      {next && (
+        <Link
+          href={`/${lang}/${next.username}/p/${next.id}`}
+          className={`${arrowClasses} right-4 md:right-6`}
+        >
+          <IconChevronRight size={28} />
+        </Link>
+      )}
+    </>
+  );
+}
+
+
+
+================================================
+FILE: src/features/prompts/components/PromptProfileHeader.tsx
+================================================
+"use client";
+
+import { UserAvatar } from "@/src/system/atoms/Avatar/Avatar";
+import { usePublicProfile } from "../../public/hooks/usePublicProfile";
+import { Button } from "@/src/system/atoms/Button/Button";
+import Link from "next/link";
+import { Tooltip } from "@/src/system/atoms/Tooltip/Tooltip";
+import { UserBadge } from "@/src/system/atoms/Badge/Badge";
+import { UserCover } from "@/src/system/atoms/Cover/UserCover";
+
+interface Author {
+  username: string;
+  avatar_url?: string;
+  role?: string;
+}
+
+export function PromptProfileHeader({ author, lang }: { author: Author; lang: string }) {
+  const { data } = usePublicProfile(author.username);
+
+  const userRole = data?.user?.role || author.role || "creator";
+
+  return (
+    <div className="relative overflow-hidden p-4 rounded-xl neo-border">
+      <div className="absolute inset-0 z-0">
+        <UserCover role={userRole} />
+      </div>
+
+      <div className="relative z-10 flex items-center justify-between w-full">
+        <Tooltip variant="default" content={`Ver perfil de @${author.username}`}>
+          <Link href={`/${lang}/${author.username}`} className="flex items-center gap-3 group">
+            <UserAvatar
+              username={author.username}
+              avatarUrl={author.avatar_url}
+              size="lg"
+              className="ring-2 ring-background/20 shadow-md transition-transform group-hover:scale-105"
+            />
+
+            <div className="flex flex-col drop-shadow-md">
+              <span className="text-md font-bold text-white group-hover:text-white/80 transition-colors">
+                @{author.username}
+              </span>
+
+              <UserBadge role={userRole} />
+            </div>
+          </Link>
+        </Tooltip>
+
+        <Tooltip variant="default" content="Servicio en desarrollo">
+          <Button
+            variant="disabled"
+            size="sm"
+            className="text-xs font-bold tracking-tighter bg-background/20 text-white border-white/20 backdrop-blur-md"
+          >
+            SEGUIR
+          </Button>
+        </Tooltip>
+      </div>
+    </div>
+  );
+}
+
+
+
+================================================
+FILE: src/features/prompts/components/PromptTitleHeader.tsx
+================================================
+"use client";
+
+interface PromptTitleHeaderProps {
+  title?: string;
+  createdAt: string | Date;
+}
+
+export function PromptTitleHeader({ title, createdAt }: PromptTitleHeaderProps) {
+  return (
+    <header className="shrink-0 mb-6">
+      <h1 className="text-2xl lg:text-3xl font-black uppercase tracking-tighter mb-2 leading-tight">
+        {title || "Prompt Sin Título"}
+      </h1>
+      <p className="text-xs font-mono text-muted-foreground/80 tracking-widest uppercase">
+        Creado el {new Date(createdAt).toLocaleDateString()}
+      </p>
+    </header>
   );
 }
 
@@ -5035,7 +5232,7 @@ import { api } from "@/src/services/api";
 import { SavedPrompt } from "@/src/types/models";
 
 interface ProfileData {
-  user: { username: string; role: string };
+  user: { username: string; role: string; avatar_url: string; bio?: string };
   directories: any[];
   recent_prompts: SavedPrompt[];
 }
@@ -5550,6 +5747,12 @@ export function PromptGrid({ prompts, lang, authorUsername, onDelete }: PromptGr
   const { user } = useAuthStore();
   const isOwner = user?.username === authorUsername;
 
+  const queueItems =
+    prompts?.map((prompt) => ({
+      id: String(prompt.id),
+      username: authorUsername,
+    })) || [];
+
   if (!prompts || prompts.length === 0) {
     return (
       <div className="flex-1 min-h-[50vh] flex flex-col items-center justify-center text-muted-foreground/40 bg-muted/5">
@@ -5574,6 +5777,7 @@ export function PromptGrid({ prompts, lang, authorUsername, onDelete }: PromptGr
               authorUsername={authorUsername}
               isPriority={index < 8}
               onDelete={isOwner ? onDelete : undefined}
+              queueItems={queueItems}
             />
           </FadeIn>
         </div>
@@ -5710,10 +5914,9 @@ export const SidebarDirectoryItem = ({
 ================================================
 FILE: src/features/studio/components/Sidebar/StudioSidebar.tsx
 ================================================
-// En src/features/studio/components/StudioSidebar.tsx
 "use client";
 
-import { useEffect } from "react"; // 🟢 Importamos useEffect para los logs limpios
+import { useEffect } from "react";
 import { IconFolderPlus, IconCloudUpload, IconFolder } from "@tabler/icons-react";
 import { useStudioUI, Directory } from "@/src/store/useStudioUI";
 import { useFileUploader } from "@/src/features/extractor/hooks/useFileUploader";
@@ -5733,7 +5936,6 @@ export function StudioSidebar() {
   const { createDirectory } = useDirectoryActions();
   const { handleUploadClick } = useFileUploader();
 
-  // 🟢 TELEMETRÍA: Nos avisará cada vez que el estado cambie
   useEffect(() => {
     console.log(
       `👁️ [StudioSidebar] -> Renderizado completado. isSidebarOpen es ahora: ${isSidebarOpen}`,
@@ -5757,11 +5959,8 @@ export function StudioSidebar() {
     <>
       {isSidebarOpen && (
         <div
-          className="fixed inset-0 z-40 bg-background/60 backdrop-blur-sm md:hidden"
+          className="fixed inset-0 z-40 bg-surface/80 backdrop-blur-sm md:hidden"
           onClick={() => {
-            console.log(
-              "🖱️ [StudioSidebar Overlay] -> Clic fuera del sidebar (Móvil), cerrando...",
-            );
             setSidebarOpen(false);
           }}
           aria-hidden="true"
@@ -5771,20 +5970,13 @@ export function StudioSidebar() {
       <aside
         className={`
           transition-all duration-300 ease-in-out z-50 shrink-0 h-full
-          
-          /* 📱 COMPORTAMIENTO MÓVIL (< 768px): 
-             Fondo sólido (CRÍTICO), borde derecho, y ancho fijo base */
           bg-background border-r border-border/30 w-65
-          absolute left-0 top-0 
+          absolute left-0 top-0
           ${isSidebarOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full shadow-none"}
-          
-          /* 💻 COMPORTAMIENTO DESKTOP (>= 768px): 
-             Fondo transparente, sin bordes (se integra en el Workspace), posición relativa */
-          md:bg-transparent md:border-none md:relative md:translate-x-0
+          md:bg-surface/80 md:border-none md:relative md:translate-x-0
           ${isSidebarOpen ? "md:w-65 md:opacity-100" : "md:w-0 md:opacity-0 md:overflow-hidden"}
         `}
       >
-        {/* 🟢 CORRECCIÓN CRÍTICA DE TAILWIND AQUÍ ABAJO (De w-65 a w-[260px]) */}
         <div className="w-65 h-full flex flex-col">
           <SidebarContainer>
             <div className="px-3 mb-1 group relative mt-2 md:mt-0">
@@ -5865,7 +6057,6 @@ export function WorkspaceHeader() {
       >
         <button
           onClick={toggleSidebar}
-          // 🟢 Eliminadas las clases md:hidden y lg:block. Ahora se verá SIEMPRE.
           className="p-1.5 rounded-md hover:bg-secondary/20 hover:text-accent transition-colors text-muted-foreground cursor-pointer hrink-0"
           title="Alternar panel lateral"
         >
@@ -5915,7 +6106,7 @@ export function WorkspaceHeader() {
         className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-xs font-bold hover:bg-primary/90 transition-all shadow-sm active:scale-95 shrink-0 ml-4"
       >
         <IconScanTraces size={16} />
-        <span className="hidden sm:inline tracking-widest">DATA EXTRACTOR</span>
+        <span className="hidden sm:inline tracking-widest">Extractor</span>
       </Link>
     </header>
   );
@@ -7047,7 +7238,7 @@ export function UserDropdown() {
 
       {isOpen && (
         <div
-          className="absolute right-0 mt-2 w-72 bg-background border border-border shadow-lg rounded-xl z-50 animate-in fade-in zoom-in-95 duration-100 origin-top-right flex flex-col overflow-hidden"
+          className="absolute right-0 mt-2 w-72 bg-background border border-border shadow-lg rounded-xl z-90! animate-in fade-in zoom-in-95 duration-100 origin-top-right flex flex-col overflow-hidden"
           role="menu"
         >
           <div className="flex items-center gap-3 p-4 border-b border-border bg-muted/10">
@@ -8243,6 +8434,44 @@ export const useGlobalModal = create<GlobalModalState>((set) => ({
 
 
 ================================================
+FILE: src/store/usePromptQueue.ts
+================================================
+import { create } from "zustand";
+
+interface PromptNavigationItem {
+  id: string;
+  username: string;
+}
+
+interface PromptQueueState {
+  queue: PromptNavigationItem[];
+  setQueue: (items: PromptNavigationItem[]) => void;
+  getNextItem: (currentId: string) => PromptNavigationItem | null;
+  getPrevItem: (currentId: string) => PromptNavigationItem | null;
+}
+
+export const usePromptQueue = create<PromptQueueState>((set, get) => ({
+  queue: [],
+  setQueue: (items) => set({ queue: items }),
+
+  getNextItem: (currentId) => {
+    const { queue } = get();
+    const index = queue.findIndex((item) => item.id === String(currentId));
+    if (index === -1 || index >= queue.length - 1) return null;
+    return queue[index + 1];
+  },
+
+  getPrevItem: (currentId) => {
+    const { queue } = get();
+    const index = queue.findIndex((item) => item.id === String(currentId));
+    if (index <= 0) return null;
+    return queue[index - 1];
+  },
+}));
+
+
+
+================================================
 FILE: src/store/useStudioUI.ts
 ================================================
 import { create } from "zustand";
@@ -8421,8 +8650,8 @@ export function UserAvatar({
           className="object-cover"
         />
       ) : (
-        <div className="w-full h-full bg-popover flex items-center justify-center border-2 border-accent rounded-full">
-          <span className="text-secondary font-black font-prompt uppercase tracking-widest opacity-80 group-hover:scale-110 transition-transform duration-300">
+        <div className="w-full h-full bg-popover flex items-center justify-center rounded-full">
+          <span className="text-white font-black font-prompt uppercase tracking-widest group-hover:scale-110 transition-transform duration-300">
             {username ? username.substring(0, 2) : "??"}
           </span>
         </div>
@@ -8455,12 +8684,11 @@ export function UserBadge({ role = "voyager" }: UserBadgeProps) {
     },
     artist: {
       label: "Artist",
-      classes:
-        "bg-artist border-secondary shadow-[0_0_10px_rgba(var(--primary-rgb),0.1)]",
+      classes: "bg-artist border-secondary shadow-[0_0_10px_rgba(var(--primary-rgb),0.1)]",
     },
     admin: {
       label: "Admin",
-      classes: "text-amber-400 font-medium border-amber-500",
+      classes: "text-amber-500! bg-amber-500/30! font-medium border border-amber-500",
     },
   };
 
@@ -8470,7 +8698,7 @@ export function UserBadge({ role = "voyager" }: UserBadgeProps) {
   return (
     <span
       className={`
-        px-2.5 py-1 text-xs font-mono text-white font-bold lowercase tracking-widest 
+        px-2.5 py-1 text-xs font-mono text-white font-bold w-fit lowercase tracking-widest 
         rounded-md transition-all duration-300
         ${config.classes}
       `}
@@ -8526,7 +8754,7 @@ FILE: src/system/atoms/Button/Button.tsx
 import { ButtonHTMLAttributes, forwardRef } from "react";
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: "primary" | "secondary" | "tertiary" | "danger" | "ghost" | "outline";
+  variant?: "primary" | "secondary" | "tertiary" | "danger" | "ghost" | "outline" | "disabled";
   size?: "sm" | "md" | "lg";
   isLoading?: boolean;
 }
@@ -8554,6 +8782,9 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
 
       outline:
         "bg-transparent border border-border text-foreground shadow-sm hover:border-foreground/30 font-medium tracking-tight",
+
+      disabled:
+        "bg-foreground/30 text-muted-foreground font-medium tracking-tight",
     };
 
     const sizes = {
@@ -8605,6 +8836,61 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
 );
 
 Button.displayName = "Button";
+
+
+
+================================================
+FILE: src/system/atoms/Cover/UserCover.tsx
+================================================
+"use client";
+
+import { cn } from "@/lib/utils";
+
+interface UserCoverProps {
+  role?: string;
+  coverUrl?: string | null;
+  className?: string;
+}
+
+export function UserCover({ role = "voyager", coverUrl, className }: UserCoverProps) {
+  const getRoleBackground = (userRole: string) => {
+    switch (userRole.toLowerCase()) {
+      case "artist":
+        return "bg-artist/60";
+      case "voyager":
+        return "bg-foreground/60";
+      case "admin":
+        return "bg-destructive/90";
+      default:
+        return "bg-surface/40";
+    }
+  };
+
+  return (
+    <div className={cn("relative w-full h-full overflow-hidden bg-muted", className)}>
+      {coverUrl ? (
+        <img src={coverUrl} alt="User Cover" className="w-full h-full object-cover" />
+      ) : (
+        <div className={cn("relative w-full h-full", getRoleBackground(role))}>
+          <div
+            // 🟢 El único cambio: Bajamos a opacity-20 para que sea una textura muy sutil
+            className="absolute inset-0 opacity-20 mix-blend-multiply dark:mix-blend-overlay pointer-events-none"
+            style={{
+              backgroundImage:
+                "linear-gradient(var(--border) 1px, transparent 1px), linear-gradient(90deg, var(--border) 1px, transparent 1px)",
+              backgroundSize: "24px 24px",
+              // 🟢 LA MAGIA: Máscara que degrada la cuadrícula desde arriba (opaca) hacia abajo (transparente)
+              WebkitMaskImage: "linear-gradient(to bottom, black 10%, transparent 90%)",
+              maskImage: "linear-gradient(to bottom, black 10%, transparent 90%)",
+            }}
+          />
+        </div>
+      )}
+
+      <div className="absolute inset-0 bg-black/15 pointer-events-none" />
+    </div>
+  );
+}
 
 
 
@@ -9229,6 +9515,107 @@ export function EditableAvatar({
 
 
 ================================================
+FILE: src/system/molecules/Cards/ExpandablePromptBox.tsx
+================================================
+"use client";
+
+import { useState } from "react";
+import { Button } from "@/src/system/atoms/Button/Button";
+
+export function ExpandablePromptBox({ text }: { text: string }) {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const isLongText = text.length > 150; 
+
+  if (!text) return null;
+
+  return (
+    <div className="flex flex-col gap-2">
+      <h3 className="text-xs font-mono font-bold text-muted-foreground uppercase tracking-widest">
+        Prompt
+      </h3>
+      <div className="relative rounded-xl border border-border/40 bg-muted/10 p-4 transition-all duration-500 overflow-hidden">
+        <p
+          className={`font-mono text-sm leading-relaxed text-foreground/80 transition-all duration-500 ease-in-out ${
+            isExpanded ? "line-clamp-none opacity-100" : "line-clamp-3 opacity-80"
+          }`}
+        >
+          {text}
+        </p>
+
+        {!isExpanded && isLongText && (
+          <div className="absolute bottom-0 left-0 right-0 h-10 bg-linear-to-t from-background/90 via-background/40 to-transparent pointer-events-none" />
+        )}
+      </div>
+
+      {isLongText && (
+        <Button
+          variant="ghost"
+          size="sm"
+          className="self-start text-xs font-bold text-accent hover:text-accent/80 p-0 h-auto"
+          onClick={() => setIsExpanded(!isExpanded)}
+        >
+          {isExpanded ? "- Ver menos" : "+ Leer prompt completo"}
+        </Button>
+      )}
+    </div>
+  );
+}
+
+
+================================================
+FILE: src/system/molecules/Cards/ExpandableTags.tsx
+================================================
+"use client";
+
+import { useState } from "react";
+import { IconChevronDown, IconChevronUp } from "@tabler/icons-react";
+import { Tooltip } from "@/src/system/atoms/Tooltip/Tooltip";
+
+export function ExpandableTags({ tags }: { tags: string[] }) {
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  if (!tags || tags.length === 0) return null;
+
+  return (
+    <div className="flex flex-col gap-3">
+      <h3 className="text-xs font-mono font-bold text-muted-foreground uppercase tracking-widest">
+        Etiquetas
+      </h3>
+
+      <div className="flex items-start gap-2">
+        <div
+          className={`flex flex-wrap gap-2 transition-all duration-500 ease-in-out overflow-hidden ${
+            isExpanded ? "max-h-125" : "max-h-15"
+          }`}
+        >
+          {tags.map((tag, idx) => (
+            <span
+              key={idx}
+              className="px-3 py-1 bg-accent/10 text-accent border border-accent/20 rounded-md text-xs font-mono font-semibold"
+            >
+              {tag}
+            </span>
+          ))}
+        </div>
+
+        {tags.length > 5 && (
+          <Tooltip content={isExpanded ? "Ocultar" : "Mostrar más"} side="top">
+            <button
+              onClick={() => setIsExpanded(!isExpanded)}
+              className="mt-1 p-1 rounded-full bg-background hover:bg-accent hover:text-white text-muted-foreground transition-colors shrink-0 cursor-pointer"
+            >
+              {isExpanded ? <IconChevronUp size={16} /> : <IconChevronDown size={16} />}
+            </button>
+          </Tooltip>
+        )}
+      </div>
+    </div>
+  );
+}
+
+
+
+================================================
 FILE: src/system/molecules/Cards/FeedItemCard.tsx
 ================================================
 import Link from "next/link";
@@ -9239,15 +9626,24 @@ import { getFeedItemUrl } from "@/src/utils/lib/routes";
 import { ImageDebugOverlay } from "../../atoms/Debug/ImageDebugOverlay";
 import { getBoundedAspectRatio } from "@/src/utils/lib/media";
 import { UserAvatar } from "../../atoms/Avatar/Avatar";
+import { usePromptQueue } from "@/src/store/usePromptQueue";
 
 interface FeedItemCardProps {
   item: FeedItem;
   lang: string;
   isPriority?: boolean;
   index?: number;
+  queueItems?: { id: string; username: string }[];
 }
 
-export function FeedItemCard({ item, lang, isPriority = false, index = 0 }: FeedItemCardProps) {
+export function FeedItemCard({
+  item,
+  lang,
+  isPriority = false,
+  index = 0,
+  queueItems = [],
+}: FeedItemCardProps) {
+  const setQueue = usePromptQueue((state) => state.setQueue);
   const href = getFeedItemUrl(item, lang);
 
   const boundedRatio = getBoundedAspectRatio(item.width, item.height, item.resolution);
@@ -9266,6 +9662,11 @@ export function FeedItemCard({ item, lang, isPriority = false, index = 0 }: Feed
       href={href}
       className="group relative cursor-pointer bg-muted/10 neo-border overflow-hidden block transition-all hover:neo-shadow-accent w-full"
       style={{ aspectRatio: boundedRatio }}
+      onClick={() => {
+        if (queueItems.length > 0) {
+          setQueue(queueItems);
+        }
+      }}
     >
       <ImageDebugOverlay
         id={item.raw_id || item.id}
@@ -9461,29 +9862,23 @@ interface PromptImageViewerProps {
   height?: number | null;
 }
 
-export function PromptImageViewer({ imageUrl, altText, width, height }: PromptImageViewerProps) {
-  // Calculamos la proporción matemática exacta
-  const exactAspectRatio = width && height ? `${width} / ${height}` : "auto";
-
+export function PromptImageViewer({ imageUrl, altText }: PromptImageViewerProps) {
   return (
-    <FadeIn delay={0.1}>
-      <div
-        className="relative w-full bg-muted/10 neo-border neo-shadow overflow-hidden group"
-        style={{ aspectRatio: exactAspectRatio }}
-      >
+    <FadeIn delay={0.1} className="w-full h-full">
+      <div className="relative w-full h-full flex items-center justify-center">
         {imageUrl ? (
           <LazyImage
             src={imageUrl}
             alt={altText}
             priority={true}
-            className="w-full h-full object-fill transition-transform duration-700 ease-out group-hover:scale-[1.02]"
-            sizes="(max-width: 768px) 100vw, 50vw"
+            className="w-full h-full object-contain transition-transform duration-700 ease-out"
+            sizes="(max-width: 1200px) 100vw, 60vw"
           />
         ) : (
-          <div className="absolute inset-0 flex flex-col items-center justify-center text-muted-foreground/40 bg-muted/5">
+          <div className="flex flex-col items-center justify-center text-muted-foreground/40 w-full h-full min-h-75">
             <IconPhotoOff size={64} stroke={1} className="mb-4" />
             <span className="font-mono text-xs uppercase tracking-widest text-center px-4">
-              Metadata sin imagen adjunta
+              Metadata sin imagen
             </span>
           </div>
         )}
@@ -9500,18 +9895,14 @@ FILE: src/system/molecules/Cards/PromptMetadataPanel.tsx
 "use client";
 
 import { useState } from "react";
-import {
-  IconCopy,
-  IconCheck,
-  IconScanTraces,
-  IconWand,
-  IconEdit,
-  IconDeviceFloppy,
-  IconX,
-} from "@tabler/icons-react";
+import { IconEdit, IconDeviceFloppy, IconX, IconWand } from "@tabler/icons-react";
 import { SavedPrompt } from "@/src/types/models";
 import { FadeIn } from "@/src/system/atoms/Animations/FadeIn";
-import { cn } from "@/lib/utils";
+
+import { PromptTagsList } from "./PromptTagsList";
+import { PromptTextSection } from "./PromptTextSection";
+import { PromptTechSpecs } from "./PromptTechSpecs";
+import { Tooltip } from "../../atoms/Tooltip/Tooltip";
 
 interface PromptMetadataPanelProps {
   prompt: SavedPrompt;
@@ -9538,7 +9929,6 @@ export function PromptMetadataPanel({ prompt, isOwner = true, onSave }: PromptMe
   });
 
   const handleCopy = (text: string, section: string) => {
-    if (!text) return;
     navigator.clipboard.writeText(text);
     setCopiedSection(section);
     setTimeout(() => setCopiedSection(null), 2000);
@@ -9551,33 +9941,166 @@ export function PromptMetadataPanel({ prompt, isOwner = true, onSave }: PromptMe
   const handleSave = async () => {
     if (!onSave) return;
     setIsSaving(true);
-    try {
-      await onSave(formData);
-      setIsEditing(false);
-    } catch (error) {
-      console.error("Error saving metadata", error);
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const handleCancel = () => {
-    setFormData({
-      prompt: prompt.prompt || "",
-      negative_prompt: (prompt as any).negative_prompt || "",
-      model: prompt.model || "",
-      sampler: prompt.sampler || "",
-      software: prompt.software || "",
-      width: prompt.width || undefined,
-      height: prompt.height || undefined,
-      steps: (prompt as any).steps || "",
-      cfg_scale: (prompt as any).cfg_scale || "",
-      seed: (prompt as any).seed || "",
-    });
+    await onSave(formData);
     setIsEditing(false);
+    setIsSaving(false);
   };
 
-  const techSpecs = [
+  return (
+    <FadeIn delay={0.2}>
+      {isOwner && (
+        <div className="flex justify-end mb-4 gap-2">
+          {isEditing ? (
+            <>
+              <Tooltip content="Copiar Prompt">
+                <button
+                  onClick={() => setIsEditing(false)}
+                  disabled={isSaving}
+                  className="flex items-center gap-2 px-3 py-1.5 text-xs font-mono uppercase text-muted-foreground hover:bg-muted rounded-md transition-colors"
+                >
+                  <IconX size={14} /> Cancelar
+                </button>
+              </Tooltip>
+
+              <Tooltip content="Copiar Negative Prompt">
+                <button
+                  onClick={handleSave}
+                  disabled={isSaving}
+                  className="flex items-center gap-2 px-3 py-1.5 text-xs font-mono uppercase bg-(--accent-color) text-white rounded-md hover:opacity-90"
+                >
+                  <IconDeviceFloppy size={14} /> {isSaving ? "Guardando..." : "Guardar"}
+                </button>
+              </Tooltip>
+            </>
+          ) : (
+            <button
+              onClick={() => setIsEditing(true)}
+              className="flex items-center gap-2 px-3 py-1.5 text-xs font-mono uppercase border border-border hover:bg-muted rounded-md"
+            >
+              <IconEdit size={14} /> Editar
+            </button>
+          )}
+        </div>
+      )}
+
+      <PromptTagsList tags={prompt.auto_tags} />
+
+      <div className="space-y-6">
+        <PromptTextSection
+          title="Prompt Principal"
+          icon={<IconWand size={18} />}
+          fieldId="prompt"
+          value={formData.prompt as string}
+          isEditing={isEditing}
+          copiedSection={copiedSection}
+          onCopy={handleCopy}
+          onChange={(v) => handleChange("prompt", v)}
+        />
+
+        <PromptTextSection
+          title="Negative Prompt"
+          fieldId="negative"
+          isNegative
+          value={formData.negative_prompt as string}
+          isEditing={isEditing}
+          copiedSection={copiedSection}
+          onCopy={handleCopy}
+          onChange={(v) => handleChange("negative_prompt", v)}
+        />
+
+        <PromptTechSpecs formData={formData} isEditing={isEditing} onChange={handleChange} />
+      </div>
+    </FadeIn>
+  );
+}
+
+
+
+================================================
+FILE: src/system/molecules/Cards/PromptTagsList.tsx
+================================================
+"use client";
+
+import { useState } from "react";
+import { IconTag, IconChevronDown, IconChevronUp } from "@tabler/icons-react";
+import { Tooltip } from "@/src/system/atoms/Tooltip/Tooltip";
+
+interface TagItem {
+  name: string;
+  confidence: number;
+}
+
+export function PromptTagsList({ tags }: { tags?: (string | TagItem)[] }) {
+  const [expanded, setExpanded] = useState(false);
+
+  if (!tags || tags.length === 0) return null;
+
+  const MAX_TAGS = 8;
+  const hasManyTags = tags.length > MAX_TAGS;
+  const tagsToShow = expanded ? tags : tags.slice(0, MAX_TAGS);
+
+  return (
+    <div className="space-y-3 pt-2 mb-6">
+      <h3 className="font-mono text-xs font-black uppercase tracking-widest flex items-center gap-2 text-muted-foreground">
+        <IconTag size={18} /> TAGS
+      </h3>
+      <div className="flex flex-wrap items-center gap-1.5">
+        {tagsToShow.map((tagItem, idx) => {
+          const isObject = typeof tagItem === "object" && tagItem !== null;
+          const tagName = isObject ? (tagItem as TagItem).name : tagItem;
+          const confidence = isObject ? (tagItem as TagItem).confidence : 100;
+
+          if (!tagName) return null;
+
+          return (
+            <div
+              key={`${tagName}-${idx}`}
+              title={`Coincidencia: ${confidence}%`}
+              className="relative overflow-hidden inline-flex items-center px-2.5 py-1 text-primary text-[10px] font-bold uppercase tracking-wider rounded-md border border-primary/30 group cursor-default"
+            >
+              <div
+                className="absolute left-0 top-0 h-full bg-primary/20 group-hover:bg-primary/30 transition-colors z-0"
+                style={{ width: `${confidence}%` }}
+              />
+              <span className="relative z-10 pointer-events-none">{tagName as string}</span>
+            </div>
+          );
+        })}
+
+        {hasManyTags && (
+          <Tooltip content={expanded ? "Ver menos" : "Ver más"}>
+            <button
+              onClick={() => setExpanded(!expanded)}
+              className="ml-1 p-1 rounded-full bg-muted/50 hover:bg-muted text-muted-foreground transition-colors"
+            >
+              {expanded ? <IconChevronUp size={14} /> : <IconChevronDown size={14} />}
+            </button>
+          </Tooltip>
+        )}
+      </div>
+    </div>
+  );
+}
+
+
+
+================================================
+FILE: src/system/molecules/Cards/PromptTechSpecs.tsx
+================================================
+"use client";
+
+import { IconScanTraces } from "@tabler/icons-react";
+import { SavedPrompt } from "@/src/types/models";
+import { cn } from "@/lib/utils";
+
+interface PromptTechSpecsProps {
+  formData: Partial<SavedPrompt>;
+  isEditing: boolean;
+  onChange: (field: keyof SavedPrompt, value: string) => void;
+}
+
+export function PromptTechSpecs({ formData, isEditing, onChange }: PromptTechSpecsProps) {
+  const specs = [
     { key: "model", label: "Modelo", type: "text" },
     { key: "software", label: "Software", type: "text" },
     { key: "sampler", label: "Sampler", type: "text" },
@@ -9588,177 +10111,146 @@ export function PromptMetadataPanel({ prompt, isOwner = true, onSave }: PromptMe
     { key: "height", label: "Height (px)", type: "number" },
   ];
 
+  if (!isEditing && specs.every((spec) => !formData[spec.key as keyof SavedPrompt])) {
+    return null;
+  }
+
   return (
-    <FadeIn delay={0.2}>
-      {isOwner && (
-        <div className="flex justify-end mb-4 gap-2">
-          {isEditing ? (
-            <>
-              <button
-                onClick={handleCancel}
-                disabled={isSaving}
-                className="flex items-center gap-2 px-3 py-1.5 text-xs font-mono uppercase tracking-widest text-muted-foreground hover:bg-muted rounded-md transition-colors disabled:opacity-50"
-              >
-                <IconX size={14} /> Cancelar
-              </button>
-              <button
-                onClick={handleSave}
-                disabled={isSaving}
-                className="flex items-center gap-2 px-3 py-1.5 text-xs font-mono uppercase tracking-widest bg-(--accent-color) text-white rounded-md hover:opacity-90 transition-opacity disabled:opacity-50"
-              >
-                <IconDeviceFloppy size={14} /> {isSaving ? "Guardando..." : "Guardar"}
-              </button>
-            </>
-          ) : (
-            <button
-              onClick={() => setIsEditing(true)}
-              className="flex items-center gap-2 px-3 py-1.5 text-xs font-mono uppercase tracking-widest border border-border hover:bg-muted rounded-md transition-colors"
-            >
-              <IconEdit size={14} /> Editar
-            </button>
-          )}
-        </div>
-      )}
+    <div className="space-y-4">
+      <h3 className="font-mono text-xs font-black uppercase tracking-widest flex items-center gap-2 text-muted-foreground">
+        <IconScanTraces size={18} /> Datos de Generación
+      </h3>
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+        {specs.map((spec) => {
+          const value = formData[spec.key as keyof SavedPrompt];
+          if (!isEditing && !value) return null;
 
-      {prompt.auto_tags && prompt.auto_tags.length > 0 && (
-        <div className="space-y-3 pt-2">
-          <h3 className="font-mono text-xs font-black uppercase tracking-widest flex items-center gap-2 text-muted-foreground">
-            🏷️ Etiquetas Detectadas (IA)
-          </h3>
-          <div className="flex flex-wrap gap-1.5">
-            {prompt.auto_tags.map((tagItem, idx) => {
-              const isObject = typeof tagItem === "object" && tagItem !== null;
-              const tagName = isObject ? tagItem.name : tagItem;
-              const confidence = isObject ? tagItem.confidence : 100;
-
-              if (!tagName) return null;
-
-              return (
-                <div
-                  key={`${tagName}-${idx}`}
-                  title={`Coincidencia: ${confidence}%`}
-                  className="relative overflow-hidden inline-flex items-center px-2.5 py-1 text-primary text-[10px] font-bold uppercase tracking-wider rounded-md border border-primary/30 group cursor-default"
-                >
-                  <div
-                    className="absolute left-0 top-0 h-full bg-primary/20 group-hover:bg-primary/30 transition-colors z-0"
-                    style={{ width: `${confidence}%` }}
-                  />
-
-                  <span className="relative z-10 pointer-events-none">{tagName}</span>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-      <div className="space-y-6">
-        <div className="group relative bg-(--bg-secondary) neo-border p-4 transition-all hover:neo-shadow">
-          <div className="flex justify-between items-center mb-3 border-b border-border/50 pb-2">
-            <h3 className="font-mono text-xs font-black uppercase tracking-widest flex items-center gap-2 text-(--accent-color)">
-              <IconWand size={16} /> Prompt Principal
-            </h3>
-            {!isEditing && formData.prompt && (
-              <button
-                onClick={() => handleCopy(formData.prompt as string, "prompt")}
-                className="text-muted-foreground hover:text-foreground transition-colors"
-              >
-                {copiedSection === "prompt" ? (
-                  <IconCheck size={18} className="text-green-500" />
-                ) : (
-                  <IconCopy size={18} />
-                )}
-              </button>
-            )}
-          </div>
-
-          {isEditing ? (
-            <textarea
-              value={formData.prompt}
-              onChange={(e) => handleChange("prompt", e.target.value)}
-              className="w-full min-h-25 bg-background border border-border rounded-md p-3 font-mono text-sm focus:outline-none focus:ring-1 focus:ring-(--accent-color)"
-              placeholder="Añade el prompt aquí..."
-            />
-          ) : (
-            <p className="font-mono text-sm leading-relaxed whitespace-pre-wrap text-foreground/90">
-              {formData.prompt || (
-                <span className="italic opacity-50">No hay prompt registrado.</span>
+          return (
+            <div
+              key={spec.key}
+              className={cn(
+                "bg-muted/10 neo-border p-3 flex flex-col gap-1",
+                isEditing && "bg-background",
               )}
-            </p>
-          )}
-        </div>
-
-        {(isEditing || formData.negative_prompt) && (
-          <div className="group relative bg-destructive/5 border border-destructive/20 rounded-xl p-4 transition-all">
-            <div className="flex justify-between items-center mb-3 border-b border-destructive/10 pb-2">
-              <h3 className="font-mono text-xs font-black uppercase tracking-widest flex items-center gap-2 text-destructive">
-                Negative Prompt
-              </h3>
-              {!isEditing && formData.negative_prompt && (
-                <button
-                  onClick={() => handleCopy(formData.negative_prompt as string, "negative")}
-                  className="text-destructive/60 hover:text-destructive transition-colors"
-                >
-                  {copiedSection === "negative" ? <IconCheck size={18} /> : <IconCopy size={18} />}
-                </button>
+            >
+              <label className="text-[10px] font-mono text-muted-foreground uppercase tracking-widest">
+                {spec.label}
+              </label>
+              {isEditing ? (
+                <input
+                  type={spec.type}
+                  value={(value as string | number) || ""}
+                  onChange={(e) => onChange(spec.key as keyof SavedPrompt, e.target.value)}
+                  className="w-full bg-transparent border-b border-border/50 text-sm font-bold focus:outline-none focus:border-(--accent-color) py-1"
+                  placeholder={`Ej: ${spec.key === "seed" ? "123456" : "..."}`}
+                />
+              ) : (
+                <span className="text-sm font-bold truncate" title={String(value)}>
+                  {value as string | number}
+                </span>
               )}
             </div>
-
-            {isEditing ? (
-              <textarea
-                value={formData.negative_prompt as string}
-                onChange={(e) => handleChange("negative_prompt", e.target.value)}
-                className="w-full min-h-15 bg-background border border-destructive/30 rounded-md p-3 font-mono text-sm focus:outline-none focus:ring-1 focus:ring-destructive"
-                placeholder="Añade los prompts negativos..."
-              />
-            ) : (
-              <p className="font-mono text-sm leading-relaxed whitespace-pre-wrap text-destructive/80">
-                {formData.negative_prompt}
-              </p>
-            )}
-          </div>
-        )}
-
-        <div className="space-y-4">
-          <h3 className="font-mono text-xs font-black uppercase tracking-widest flex items-center gap-2 text-muted-foreground">
-            <IconScanTraces size={16} /> Datos de Generación
-          </h3>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-            {techSpecs.map((spec) => {
-              const value = formData[spec.key as keyof SavedPrompt];
-
-              if (!isEditing && !value) return null;
-
-              return (
-                <div
-                  key={spec.key}
-                  className={cn(
-                    "bg-muted/10 neo-border p-3 flex flex-col gap-1",
-                    isEditing && "bg-background",
-                  )}
-                >
-                  <label className="text-[10px] font-mono text-muted-foreground uppercase tracking-widest">
-                    {spec.label}
-                  </label>
-                  {isEditing ? (
-                    <input
-                      type={spec.type}
-                      value={(value as string | number) || ""}
-                      onChange={(e) => handleChange(spec.key as keyof SavedPrompt, e.target.value)}
-                      className="w-full bg-transparent border-b border-border/50 text-sm font-bold focus:outline-none focus:border-(--accent-color) py-1"
-                      placeholder={`Ej: ${spec.key === "seed" ? "123456" : "..."}`}
-                    />
-                  ) : (
-                    <span className="text-sm font-bold truncate" title={String(value)}>
-                      {value as string | number}
-                    </span>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </div>
+          );
+        })}
       </div>
-    </FadeIn>
+    </div>
+  );
+}
+
+
+
+================================================
+FILE: src/system/molecules/Cards/PromptTextSection.tsx
+================================================
+"use client";
+
+import { IconCopy, IconCheck } from "@tabler/icons-react";
+import { ExpandableText } from "@/src/features/prompts/components/ExpandableText";
+import { ReactNode } from "react";
+import { Tooltip } from "../../atoms/Tooltip/Tooltip";
+
+interface PromptTextSectionProps {
+  title: string;
+  icon?: ReactNode;
+  value: string;
+  isEditing: boolean;
+  fieldId: string;
+  isNegative?: boolean;
+  copiedSection: string | null;
+  onCopy: (text: string, section: string) => void;
+  onChange: (value: string) => void;
+}
+
+export function PromptTextSection({
+  title,
+  icon,
+  value,
+  isEditing,
+  fieldId,
+  isNegative,
+  copiedSection,
+  onCopy,
+  onChange,
+}: PromptTextSectionProps) {
+  if (!isEditing && !value) return null;
+
+  return (
+    <div
+      className={`group relative rounded-xl p-4 transition-all ${
+        isNegative
+          ? "bg-destructive/5 border border-destructive/20"
+          : "bg-(--bg-secondary) neo-border hover:neo-shadow"
+      }`}
+    >
+      <div
+        className={`flex justify-between items-center mb-3 border-b pb-2 ${
+          isNegative
+            ? "border-destructive/10 text-destructive"
+            : "border-border/50 text-(--accent-color)"
+        }`}
+      >
+        <h3 className="font-mono text-xs font-bold uppercase tracking-widest flex items-center gap-2">
+          {icon} {title}
+        </h3>
+        {!isEditing && value && (
+          <Tooltip content={isNegative ? "Copiar Negative Prompt" : "Copiar Prompt"}>
+            <button
+              onClick={() => onCopy(value, fieldId)}
+              className={
+                isNegative
+                  ? "text-destructive/60 hover:text-destructive"
+                  : "text-muted-foreground hover:text-foreground transition-colors"
+              }
+            >
+              {copiedSection === fieldId ? (
+                <IconCheck size={18} className={isNegative ? "" : "text-green-500"} />
+              ) : (
+                <IconCopy size={18} />
+              )}
+            </button>
+          </Tooltip>
+        )}
+      </div>
+
+      {isEditing ? (
+        <textarea
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className={`w-full bg-background rounded-md p-3 font-mono text-sm focus:outline-none focus:ring-1 ${
+            isNegative
+              ? "min-h-15 border border-destructive/30 focus:ring-destructive"
+              : "min-h-25 border border-border focus:ring-(--accent-color)"
+          }`}
+          placeholder={`Añade el ${title.toLowerCase()} aquí...`}
+        />
+      ) : (
+        <ExpandableText
+          text={value}
+          className={isNegative ? "text-destructive/80" : "text-foreground/90"}
+          gradientFrom={isNegative ? "from-background" : "from-(--bg-secondary)"}
+        />
+      )}
+    </div>
   );
 }
 
@@ -9983,6 +10475,8 @@ export function LazyImage({
     );
   }
 
+  const hasObjectFit = className.includes("object-");
+
   return (
     <div className="relative w-full h-full overflow-hidden bg-muted/10">
       <div
@@ -10010,13 +10504,12 @@ export function LazyImage({
         priority={priority}
         quality={75}
         loading={priority ? undefined : "lazy"}
-        onLoad={() => {
-          setIsLoaded(true);
-        }}
+        onLoad={() => setIsLoaded(true)}
         onError={() => setHasError(true)}
         className={`
-          absolute inset-0 w-full h-full object-cover z-10
+          absolute inset-0 w-full h-full z-10
           transition-all duration-700 ease-in-out
+          ${!hasObjectFit ? "object-cover" : ""} 
           ${isLoaded ? "opacity-100 blur-0 scale-100" : "opacity-0 blur-md scale-110"}
           ${className}
         `}
@@ -10230,7 +10723,6 @@ export function NotificationDropdown() {
             <IconInbox size={24} />
           )}
 
-          {/* 🟢 BADGE: Usamos bg-destructive para el rojo del sistema */}
           {unreadCount > 0 && (
             <span className="absolute top-1 right-1 flex items-center justify-center min-w-4.5 h-4.5 p-1 bg-destructive text-white text-[10px] font-black font-mono rounded-full border-2 border-background">
               {unreadCount > 9 ? "9+" : unreadCount}
@@ -10481,7 +10973,7 @@ FILE: src/system/molecules/Navbar/SearchModaHeader.tsx
 export const SearchModalHeader = () => (
   <div className="flex items-center gap-3 px-2 py-2">
     <div className="flex flex-col">
-      <h2 className="text-xl font-black tracking-tight text-foreground">Buscador Global</h2>
+      <h2 className="text-xl font-black tracking-tight text-foreground">Buscar</h2>
       <p className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground/60 mt-0.5">
         Presiona Enter para buscar
       </p>
@@ -11035,7 +11527,7 @@ export function UniversalSearchBar({
           e.preventDefault();
           onSubmit();
         }}
-        className="flex-1 h-full flex items-center relative pl-3"
+        className="flex-1 h-full flex items-center relative pl-3 neo-border rounded-xl"
       >
         <div className="flex items-center justify-center w-5 h-5">
           {isLoading ? (
@@ -11108,6 +11600,7 @@ import { PromptCardSnippet } from "../Cards/PromptCardSnippet";
 import { SavedPrompt } from "@/src/types/models";
 import { Tooltip } from "../../atoms/Tooltip/Tooltip";
 import { RichPromptTooltipContent } from "./RichPromptTooltipContent";
+import { usePromptQueue } from "@/src/store/usePromptQueue";
 
 interface PromptCardProps {
   item: SavedPrompt;
@@ -11119,6 +11612,7 @@ interface PromptCardProps {
   isStudio?: boolean;
   index: number;
   isPriority?: boolean;
+  queueItems?: { id: string; username: string }[];
 }
 
 export function PromptCard({
@@ -11131,10 +11625,12 @@ export function PromptCard({
   isStudio = false,
   index,
   isPriority = false,
+  queueItems = [],
 }: PromptCardProps) {
   const { setIsHovered, isMenuOpen, setIsMenuOpen, copied, handleCopy } = usePromptCard();
   const { attributes, listeners, setNodeRef, isDragging } = usePromptDnd(item);
   const href = `/${lang}/${authorUsername}/p/${item.id}${isStudio ? "?from=studio" : ""}`;
+  const setQueue = usePromptQueue((state) => state.setQueue);
 
   return (
     <div
@@ -11185,7 +11681,15 @@ export function PromptCard({
         delayDuration={350}
         variant="rich"
       >
-        <Link href={href} className="relative flex flex-col h-full z-10 flex-1">
+        <Link
+          href={href}
+          className="relative flex flex-col h-full z-10 flex-1"
+          onClick={() => {
+            if (queueItems.length > 0) {
+              setQueue(queueItems);
+            }
+          }}
+        >
           <div className="relative aspect-4/5 w-full overflow-hidden bg-muted/20 border-b border-border/30">
             {item.image_url ? (
               <LazyImage
@@ -12558,48 +13062,119 @@ export function PageHeader({
 
 
 ================================================
+FILE: src/system/organisms/Profile/ProfileHeader.tsx
+================================================
+"use client";
+
+import { UserAvatar } from "@/src/system/atoms/Avatar/Avatar";
+import { UserBadge } from "@/src/system/atoms/Badge/Badge";
+import { UserCover } from "@/src/system/atoms/Cover/UserCover";
+
+interface ProfileHeaderProps {
+  username: string;
+  avatarUrl?: string;
+  coverUrl?: string;
+  role?: string;
+  bio?: string;
+  promptCount: number;
+}
+
+export function ProfileHeader({
+  username,
+  avatarUrl,
+  coverUrl,
+  role = "creator",
+  promptCount,
+}: ProfileHeaderProps) {
+  return (
+    <header className="relative flex items-center justify-between gap-4 p-6 rounded-2xl overflow-hidden neo-border">
+      <div className="absolute inset-0 z-0">
+        <UserCover role={role} coverUrl={coverUrl} />
+      </div>
+
+      <div className="relative z-10 flex flex-row items-center gap-4 md:gap-6 w-full">
+        <UserAvatar
+          username={username}
+          avatarUrl={avatarUrl}
+          size="xl"
+        />
+
+        <div className="flex flex-col justify-center gap-2">
+          <div className="flex flex-col items-start drop-shadow-md">
+            <h1 className="text-xl sm:text-3xl md:text-4xl font-prompt font-bold lowercase tracking-tighter text-white leading-none">
+              @{username}
+            </h1>
+            <UserBadge role={role} />
+          </div>
+
+          <div className="hidden sm:flex items-center gap-1.5 mt-1 drop-shadow-sm">
+            <span className="text-sm text-white font-bold">{promptCount}</span>
+            <span className="text-white/80 text-xs uppercase tracking-widest font-mono">
+              Prompts
+            </span>
+          </div>
+        </div>
+      </div>
+    </header>
+  );
+}
+
+
+
+================================================
 FILE: src/system/organisms/PromptDetail/PromptDetailView.tsx
 ================================================
 "use client";
 
+import { useAuthStore } from "@/src/store/authStore";
 import { PromptImageViewer } from "@/src/system/molecules/Cards/PromptImageViewer";
 import { PromptMetadataPanel } from "@/src/system/molecules/Cards/PromptMetadataPanel";
 import { Breadcrumbs } from "@/src/system/molecules/Navigation/Breadcrumbs";
 import { SavedPrompt } from "@/src/types/models";
 import { useUpdatePromptMetadata } from "@/src/features/studio/hooks/useUpdatePromptMetadata";
+import { Button } from "@/src/system/atoms/Button/Button";
+import { Tooltip } from "../../atoms/Tooltip/Tooltip";
+
+import { PromptProfileHeader } from "@/src/features/prompts/components/PromptProfileHeader";
+import { PromptNavigation } from "@/src/features/prompts/components/PromptNavigation";
+import { PromptTitleHeader } from "@/src/features/prompts/components/PromptTitleHeader";
 
 interface PromptDetailViewProps {
   prompt: SavedPrompt;
   breadcrumbItems: { label: string; href?: string }[];
+  lang: string;
+  authorUsername: string;
+  authorAvatar?: string;
 }
 
-export function PromptDetailView({ prompt, breadcrumbItems }: PromptDetailViewProps) {
-  const isLandscape = prompt.width && prompt.height ? prompt.width / prompt.height > 1.2 : false;
-
-  // 🟢 LOG DE AUDITORÍA: El Prompt en su totalidad
-  if (process.env.NODE_ENV === "development") {
-    console.log("=========================================");
-    console.log(`🔎 [DETAIL-VIEW: ${prompt.id}] RADIOGRAFÍA DEL OBJETO:`);
-    console.log(JSON.parse(JSON.stringify(prompt))); // Copia profunda para evitar proxies de React
-    console.log("=========================================");
-  }
+export function PromptDetailView({
+  prompt,
+  breadcrumbItems,
+  lang,
+  authorUsername,
+  authorAvatar,
+}: PromptDetailViewProps) {
+  const { user } = useAuthStore();
+  const isOwner = user?.username === authorUsername;
 
   const { handleSaveMetadata } = useUpdatePromptMetadata(String(prompt.id));
 
   return (
-    <main className="h-[calc(100dvh-64px)] bg-background p-4 md:p-8 overflow-hidden flex flex-col">
-      <div className="max-w-7xl w-full mx-auto flex flex-col h-full">
-        <div className="shrink-0 mb-6">
+    <main className="bg-background p-0 md:p-6 lg:p-8 flex flex-col min-h-screen lg:min-h-0 lg:h-[calc(100dvh-64px)] lg:overflow-hidden">
+      <div className="max-w-400 w-full mx-auto flex flex-col h-full min-h-0">
+        <div className="shrink-0 mb-4 lg:mb-6 px-4 md:px-0 pt-4 md:pt-0">
           <Breadcrumbs items={breadcrumbItems} />
         </div>
 
-        <div
-          className={`flex-1 min-h-0 grid gap-6 lg:gap-12 ${isLandscape ? "grid-cols-1 overflow-y-auto pb-10 custom-scrollbar" : "grid-cols-1 lg:grid-cols-2"}`}
-        >
-          <section
-            className={`rounded-2xl overflow-hidden border border-border bg-muted/10 flex items-center justify-center ${isLandscape ? "relative w-full aspect-video" : "h-full min-h-0"}`}
-          >
-            <div className="w-full h-full relative">
+        <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_380px] xl:grid-cols-[minmax(0,1fr)_420px] gap-6 lg:gap-10">
+          <section className="group relative bg-muted/5 flex items-center justify-center w-full min-h-[60vh] overflow-hidden">
+            <div className="absolute inset-0 z-20 pointer-events-none">
+              <div className="w-full h-full relative pointer-events-auto">
+                <PromptNavigation currentId={String(prompt.id)} lang={lang} />
+              </div>
+            </div>
+
+            <div className="absolute inset-0 p-2 lg:p-6 flex items-center justify-center z-10">
               <PromptImageViewer
                 imageUrl={prompt.image_url || null}
                 altText={prompt.title || "Imagen generada"}
@@ -12609,19 +13184,37 @@ export function PromptDetailView({ prompt, breadcrumbItems }: PromptDetailViewPr
             </div>
           </section>
 
-          <section className="flex flex-col h-full min-h-0">
-            <header className="shrink-0 mb-6">
-              <h1 className="text-2xl lg:text-3xl font-black uppercase tracking-tighter mb-2">
-                {prompt.title || "Prompt Sin Título"}
-              </h1>
-              <p className="text-sm font-mono text-muted-foreground">
-                Creado el {new Date(prompt.created_at).toLocaleDateString()}
-              </p>
-            </header>
+          <section
+            id="metadata-panel"
+            className="flex flex-col gap-6 px-4 md:px-0 pb-24 lg:pb-0 lg:h-full lg:overflow-y-auto custom-scrollbar lg:pr-4"
+          >
+            {!isOwner && (
+              <div className="shrink-0">
+                <PromptProfileHeader
+                  author={{ username: authorUsername, avatar_url: authorAvatar }}
+                  lang={lang}
+                />
+              </div>
+            )}
 
-            <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 pb-12">
-              <PromptMetadataPanel prompt={prompt} isOwner={true} onSave={handleSaveMetadata} />
+            <div className="shrink-0">
+              <PromptTitleHeader title={prompt.title} createdAt={prompt.created_at} />
             </div>
+
+            <PromptMetadataPanel prompt={prompt} isOwner={isOwner} onSave={handleSaveMetadata} />
+
+            {!isOwner && (
+              <div className="pt-6 lg:mt-auto border-t border-border/30 shrink-0">
+                <Tooltip variant="default" content="Servicio en desarrollo">
+                  <Button
+                    variant="disabled"
+                    className="w-full font-bold tracking-widest text-xs h-12"
+                  >
+                    GUARDAR EN MI COLECCIÓN
+                  </Button>
+                </Tooltip>
+              </div>
+            )}
           </section>
         </div>
       </div>
@@ -13078,6 +13671,12 @@ interface PublicFeedGridProps {
 export function PublicFeedGrid({ feed, lang }: PublicFeedGridProps) {
   const { columns, columnCount } = useResponsiveColumns(feed);
 
+  const queueItems =
+    feed?.map((item) => ({
+      id: String(item.raw_id || item.id),
+      username: item.username,
+    })) || [];
+
   if (!feed || feed.length === 0) return null;
 
   return (
@@ -13095,6 +13694,7 @@ export function PublicFeedGrid({ feed, lang }: PublicFeedGridProps) {
                     lang={lang}
                     index={globalIndex}
                     isPriority={globalIndex < 10}
+                    queueItems={queueItems}
                   />
                 </FadeIn>
               </div>
