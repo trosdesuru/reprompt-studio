@@ -1,5 +1,5 @@
 #### Ejecutar comnado de generación de archivo para versionado
-docker compose exec backend alembic revision --autogenerate -m "added:sentry config"
+docker compose exec backend alembic revision --autogenerate -m "added:limit upload prompt"
 
 ### Aplica los cambios a tu base de datos local
 docker compose exec backend alembic upgrade head

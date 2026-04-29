@@ -65,7 +65,7 @@ class StudioSaveRequest(BaseModel):
 
 @router.post("/generate-upload-url")
 def generate_upload_url(
-    request: PresignedUrlRequest, current_user: User = Depends(get_current_user)
+    request: PresignedUrlRequest, current_user: User = Depends(verify_prompt_quota)
 ):
     try:
         unique_id = str(uuid.uuid4())[:8]

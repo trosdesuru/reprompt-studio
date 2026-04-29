@@ -46,8 +46,8 @@ export default async function RootLayout({
   return (
     <html
       lang={lang}
-      className={cn(prompt.variable, "font-mono", jetbrainsMono.variable)}
       suppressHydrationWarning
+      className={cn(prompt.variable, "font-mono", jetbrainsMono.variable)}
     >
       <body className="antialiased selection:bg-(--accent-color) selection:text-white">
         <ThemeProvider

@@ -15,7 +15,6 @@ from app.core.quotas import PLAN_QUOTAS
 
 from jwt.exceptions import InvalidTokenError, PyJWTError
 
-
 logger = logging.getLogger("deps")
 
 SECRET_KEY = os.getenv("SECRET_KEY", "super_clave_secreta_de_respaldo")
@@ -163,26 +162,25 @@ def verify_prompt_quota(
     current_user: User = Depends(get_current_user),
     session: Session = Depends(get_session),
 ) -> User:
-    """Portero de Discoteca: Bloquea la subida si el usuario llegó a su límite"""
 
-    # 1. Obtenemos los límites del rol actual (Fall-back a VOYAGER por seguridad)
     limits = PLAN_QUOTAS.get(current_user.role, PLAN_QUOTAS[UserRole.VOYAGER])
 
-    # Los admins no tienen límites
     if current_user.role == UserRole.ADMIN:
         return current_user
 
-    # 2. Contamos cuántos prompts tiene el usuario actualmente de forma súper optimizada
+    session.exec(
+        select(User).where(User.id == current_user.id).with_for_update()
+    ).first()
+
     count_statement = select(func.count(ImagePrompt.id)).where(
         ImagePrompt.user_id == current_user.id
     )
     current_prompts = session.exec(count_statement).one()
 
-    # 3. Ejecutamos la guillotina si se pasa
     if current_prompts >= limits["max_prompts"]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail=f"Límite de cuota alcanzado. Tu plan ({current_user.role.value.capitalize()}) permite un máximo de {limits['max_prompts']} prompts.",
+            detail=f"Límite de cuota alcanzado. Tu plan ({current_user.role.capitalize()}) permite un máximo de {limits['max_prompts']} imágenes.",
         )
 
     return current_user
