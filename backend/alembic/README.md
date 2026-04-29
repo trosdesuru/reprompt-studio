@@ -1,5 +1,5 @@
 #### Ejecutar comnado de generación de archivo para versionado
-docker compose exec backend alembic revision --autogenerate -m "user update + count prompts"
+docker compose exec backend alembic revision --autogenerate -m "added:delete account"
 
 ### Aplica los cambios a tu base de datos local
 docker compose exec backend alembic upgrade head

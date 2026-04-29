@@ -8,6 +8,7 @@ import { Button } from "@/src/system/atoms/Button/Button";
 import { Input } from "@/src/system/atoms/Input/Input";
 import { IconShieldLock, IconAlertTriangle } from "@tabler/icons-react";
 import { SettingsSectionHeader } from "@/src/features/settings/components/SettingsSectionHeader";
+import { DangerZoneSettingsSection } from "@/src/features/user/components/DangerZoneSettingsSection";
 
 export default function SecuritySettingsPage() {
   const user = useAuthStore((state) => state.user);
@@ -108,12 +109,18 @@ export default function SecuritySettingsPage() {
             <p className="text-xs text-muted-foreground font-mono">
               La sesión actual se mantendrá activa tras guardar.
             </p>
-            <Button variant="secondary" type="submit" isLoading={isLoading} className="w-full sm:w-auto min-w-37.5 font-mono text-xs">
+            <Button
+              variant="secondary"
+              type="submit"
+              isLoading={isLoading}
+              className="w-full sm:w-auto min-w-37.5 font-mono text-xs"
+            >
               {isLoading ? "Guardando..." : "Actualizar Clave"}
             </Button>
           </div>
         </form>
       </div>
+      <DangerZoneSettingsSection />
     </div>
   );
 }

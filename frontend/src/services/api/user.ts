@@ -34,4 +34,11 @@ export const userApi = {
       body: JSON.stringify({ is_private: isPrivate }),
     }).then(handleJsonResponse);
   },
+
+  deleteAccount: async (username_confirm: string) => {
+    return fetchSeguro(`${API_URL}/auth/me`, {
+      method: "DELETE",
+      body: JSON.stringify({ username_confirm }),
+    });
+  },
 };
