@@ -30,25 +30,24 @@ export function PromptDetailView({
 }: PromptDetailViewProps) {
   const { user } = useAuthStore();
   const isOwner = user?.username === authorUsername;
-
   const { handleSaveMetadata } = useUpdatePromptMetadata(String(prompt.id));
 
   return (
-    <main className="bg-background p-0 md:p-6 lg:p-8 flex flex-col min-h-screen lg:min-h-0 lg:h-[calc(100dvh-64px)] lg:overflow-hidden">
-      <div className="max-w-400 w-full mx-auto flex flex-col h-full min-h-0">
-        <div className="shrink-0 mb-4 lg:mb-6 px-4 md:px-0 pt-4 md:pt-0">
+    <main className="backdrop-blur-md flex flex-col h-[calc(100dvh-64px)] overflow-hidden relative">
+      <div className="max-w-400 w-full mx-auto flex flex-col h-full min-h-0 px-0 md:px-6 lg:px-8">
+        <div className="shrink-0 pt-4 pb-4 px-4 md:px-0 border-b border-border/10 z-30 backdrop-blur-md">
           <Breadcrumbs items={breadcrumbItems} />
         </div>
 
-        <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_380px] xl:grid-cols-[minmax(0,1fr)_420px] gap-6 lg:gap-10">
-          <section className="group relative bg-muted/5 flex items-center justify-center w-full min-h-[60vh] overflow-hidden">
-            <div className="absolute inset-0 z-20 pointer-events-none">
-              <div className="w-full h-full relative pointer-events-auto">
+        <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_380px] xl:grid-cols-[minmax(0,1fr)_420px] gap-6 lg:gap-10 mt-6">
+          <section className="relative w-full h-full flex items-center justify-center pb-20">
+            <div className="absolute inset-0 z-20 pointer-events-none flex items-center pb-20">
+              <div className="w-full relative pointer-events-auto">
                 <PromptNavigation currentId={String(prompt.id)} lang={lang} />
               </div>
             </div>
 
-            <div className="absolute inset-0 p-2 lg:p-6 flex items-center justify-center z-10">
+            <div className="relative z-10 w-full h-full flex items-center justify-center">
               <PromptImageViewer
                 imageUrl={prompt.image_url || null}
                 altText={prompt.title || "Imagen generada"}
@@ -60,7 +59,7 @@ export function PromptDetailView({
 
           <section
             id="metadata-panel"
-            className="flex flex-col gap-6 px-4 md:px-0 pb-24 lg:pb-12 lg:h-full lg:overflow-y-auto custom-scrollbar lg:pr-4"
+            className="flex flex-col gap-6 px-4 md:px-0 pb-28 h-full overflow-y-auto custom-scrollbar"
           >
             {!isOwner && (
               <div className="shrink-0">
@@ -78,7 +77,7 @@ export function PromptDetailView({
             <PromptMetadataPanel prompt={prompt} isOwner={isOwner} onSave={handleSaveMetadata} />
 
             {!isOwner && (
-              <div className="pt-6 lg:mt-auto border-t border-border/30 shrink-0">
+              <div className="pt-6 mt-auto border-t border-border/30 shrink-0">
                 <Tooltip variant="default" content="Servicio en desarrollo">
                   <Button
                     variant="disabled"

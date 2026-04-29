@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { IconEdit, IconDeviceFloppy, IconX, IconWand } from "@tabler/icons-react";
+import { IconEdit, IconDeviceFloppy, IconX, IconPrompt, IconCircleMinus } from "@tabler/icons-react";
 import { SavedPrompt } from "@/src/types/models";
 import { FadeIn } from "@/src/system/atoms/Animations/FadeIn";
 
@@ -93,8 +93,8 @@ export function PromptMetadataPanel({ prompt, isOwner = true, onSave }: PromptMe
 
       <div className="space-y-6">
         <PromptTextSection
-          title="Prompt Principal"
-          icon={<IconWand size={18} />}
+          title="Prompt"
+          icon={<IconPrompt size={18} />}
           fieldId="prompt"
           value={formData.prompt as string}
           isEditing={isEditing}
@@ -105,6 +105,7 @@ export function PromptMetadataPanel({ prompt, isOwner = true, onSave }: PromptMe
 
         <PromptTextSection
           title="Negative Prompt"
+          icon={<IconCircleMinus size={18} />}
           fieldId="negative"
           isNegative
           value={formData.negative_prompt as string}

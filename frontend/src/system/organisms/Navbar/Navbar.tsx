@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
+import { usePathname } from "next/navigation";
 import { NavbarSearch } from "@/src/features/layout/components/NavbarSearch";
 import { NavbarActions } from "@/src/features/layout/components/NavbarActions";
 import { NavbarMobile } from "../../molecules/Navbar/Mobile/NavbarMobile";
@@ -9,12 +10,18 @@ import { useScrollDirection } from "@/src/utils/hooks/useScrollDirection";
 
 export function Navbar() {
   const scrollDirection = useScrollDirection();
+  const pathname = usePathname();
+  const isDetailView = pathname?.includes("/p/");
+
+  const transformClass = isDetailView
+    ? "translate-y-0"
+    : scrollDirection === "down"
+      ? "-translate-y-full"
+      : "translate-y-0";
 
   return (
     <nav
-      className={`sticky top-0 z-50 w-full bg-background/40 backdrop-blur-md border-b border-border shadow-sm transition-transform duration-600 ease-in-out ${
-        scrollDirection === "down" ? "-translate-y-full" : "translate-y-0"
-      }`}
+      className={`sticky top-0 z-50 w-full bg-background/40 backdrop-blur-md border-b border-border shadow-sm transition-transform duration-600 ease-in-out ${transformClass}`}
     >
       <div className="max-w-90rem mx-auto px-4 md:px-8 h-16 flex items-center justify-between gap-4 lg:gap-8">
         <Link href="/" className="shrink-0 flex items-center" aria-label="Ir al inicio">

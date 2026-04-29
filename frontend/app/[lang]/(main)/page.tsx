@@ -1,7 +1,6 @@
 "use client";
 
 import { use } from "react";
-import dynamic from "next/dynamic";
 
 import { useSearch } from "@/src/features/search/hooks/useSearch";
 import { usePublicFeed } from "@/src/features/home/hooks/usePublicFeed";
@@ -11,14 +10,6 @@ import { Hero } from "@/src/system/organisms/Layout/Hero";
 import { FeedState } from "@/src/system/molecules/Feedback/FeedState";
 import { SearchResults } from "@/src/system/organisms/Search/SearchResults/SearchResults";
 import { FeedLayout } from "@/src/system/templates/Feed/FeedLayout";
-
-const ImageViewerModal = dynamic(
-  () =>
-    import("@/src/system/organisms/Viewer/ImageViewerModal/ImageViewerModal").then(
-      (mod) => mod.ImageViewerModal,
-    ),
-  { ssr: false },
-);
 
 export default function Home({ params }: { params: Promise<{ lang: string }> }) {
   const { lang } = use(params);
@@ -60,18 +51,6 @@ export default function Home({ params }: { params: Promise<{ lang: string }> }) 
               onLoadMore={search.loadMore}
             />
           </div>
-        )}
-
-        {interactions.viewerSync.isViewerOpen && (
-          <ImageViewerModal
-            title={interactions.activeTitle}
-            pages={interactions.viewerSync.viewerPages}
-            isLoading={interactions.viewerSync.isViewerLoading}
-            isLoadingMore={interactions.viewerSync.isLoadingMore}
-            hasMorePages={interactions.viewerSync.hasMorePages}
-            onLoadMore={interactions.viewerSync.loadNextPage}
-            onClose={interactions.viewerSync.closeViewer}
-          />
         )}
       </div>
     </main>

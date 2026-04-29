@@ -1,16 +1,24 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useScrollDirection } from "@/src/utils/hooks/useScrollDirection";
 
 export function Footer() {
   const scrollDirection = useScrollDirection();
+  const pathname = usePathname();
+
+  const isDetailView = pathname?.includes("/p/");
+
+  const transformClass = isDetailView
+    ? "translate-y-0"
+    : scrollDirection === "down"
+      ? "translate-y-full"
+      : "translate-y-0";
 
   return (
     <footer
-      className={`fixed bottom-0 left-0 right-0 z-40 bg-background/60 border-t-2 border-border/50 backdrop-blur-md transition-transform duration-300 ease-in-out ${
-        scrollDirection === "down" ? "translate-y-full" : "translate-y-0"
-      }`}
+      className={`fixed bottom-0 left-0 right-0 z-40 bg-background/60 border-t-2 border-border/50 backdrop-blur-md transition-transform duration-300 ease-in-out ${transformClass}`}
     >
       <div className="max-w-400 mx-auto px-4 md:px-8 py-3 flex items-center justify-center gap-4">
         <div className="flex items-center gap-4 md:gap-6 text-xs font-mono font-semibold text-muted-foreground uppercase tracking-widest">

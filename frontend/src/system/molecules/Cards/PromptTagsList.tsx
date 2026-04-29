@@ -32,17 +32,26 @@ export function PromptTagsList({ tags }: { tags?: (string | TagItem)[] }) {
           if (!tagName) return null;
 
           return (
-            <div
-              key={`${tagName}-${idx}`}
-              title={`Coincidencia: ${confidence}%`}
-              className="relative overflow-hidden inline-flex items-center px-2.5 py-1 text-primary text-[10px] font-bold uppercase tracking-wider rounded-md border border-primary/30 group cursor-default"
+            <Tooltip
+              content={
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-destructive text-xs font-bold capitalize">{tagName}</span>
+                  <span className="text-xs text-muted">Coincidencia: {confidence}%</span>
+                </div>
+              }
             >
               <div
-                className="absolute left-0 top-0 h-full bg-primary/20 group-hover:bg-primary/30 transition-colors z-0"
-                style={{ width: `${confidence}%` }}
-              />
-              <span className="relative z-10 pointer-events-none">{tagName as string}</span>
-            </div>
+                key={`${tagName}-${idx}`}
+                title={`Coincidencia: ${confidence}%`}
+                className="relative overflow-hidden inline-flex items-center px-2.5 py-1 text-primary text-[10px] font-bold uppercase tracking-wider rounded-md border border-primary/30 group cursor-default"
+              >
+                <div
+                  className="absolute left-0 top-0 h-full bg-primary/20 group-hover:bg-primary/30 transition-colors z-0"
+                  style={{ width: `${confidence}%` }}
+                />
+                <span className="relative z-10 pointer-events-none">{tagName as string}</span>
+              </div>
+            </Tooltip>
           );
         })}
 

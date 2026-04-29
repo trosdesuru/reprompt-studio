@@ -1,15 +1,12 @@
-import { useState, useCallback } from "react";
+import { useCallback } from "react";
 import { api } from "@/src/services/api";
 import { useNotificationStore } from "@/src/store/notificationStore";
 import { GalleryItem } from "@/src/types/models";
 
 export function useHomeInteraction() {
   const { notify } = useNotificationStore();
-  const [activeTitle, setActiveTitle] = useState("");
 
   const handleOpenVisor = useCallback((item: GalleryItem) => {
-    setActiveTitle(item.title);
-
     api
       .registerInteraction(item, "view")
       .catch((err) => console.error("Fallo al registrar vista:", err));
@@ -30,7 +27,6 @@ export function useHomeInteraction() {
   );
 
   return {
-    activeTitle,
     handleOpenVisor,
     handleDownloadTotal,
   };
