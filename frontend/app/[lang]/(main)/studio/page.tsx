@@ -13,7 +13,6 @@ export default function StudioPage() {
         description="Gestiona y organiza tus prompts."
         icon={<IconAlbum size={28} stroke={1.5} className="text-foreground" />}
         breadcrumbItems={[{ label: "Mi Studio" }]}
-        scrollContainerId="studio-main"
         collapseOnHide={true}
       />
 
