@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import * as Sentry from "@sentry/nextjs"; // 🟢 Importación del Oráculo
 import { api } from "@/src/services/api";
 
 export default function GlobalError({
@@ -12,26 +13,48 @@ export default function GlobalError({
 }) {
   const [isSending, setIsSending] = useState(false);
   const [isSent, setIsSent] = useState(false);
+  const [eventId, setEventId] = useState<string | null>(null); // 🟢 Guardamos el ID del error
 
   useEffect(() => {
+    // 1. Reporte silencioso e inmediato a Sentry (Telemetría de Día Cero)
+    const id = Sentry.captureException(error, {
+      extra: { digest: error.digest },
+    });
+    setEventId(id);
+
     console.error("💥 [ERROR BOUNDARY] Anomalía detectada:", error);
   }, [error]);
 
   const handleReport = async () => {
     setIsSending(true);
-    try {
-      await api.admin.reportBug({
-        message: error.message,
-        stack: error.stack,
-        digest: error.digest,
-        url: window.location.href,
-        timestamp: new Date().toISOString(),
+
+    // 2. Si tenemos el ID de Sentry, lanzamos su Modal de Feedback profesional
+    if (eventId) {
+      Sentry.showReportDialog({
+        eventId,
+        title: "Informe de Anomalía Crítica",
+        user: {
+          name: "Usuario de Reprompt", // Podrías sacar esto de tu authStore
+        },
+        onEventSent: () => setIsSent(true),
       });
-      setIsSent(true);
-    } catch (err) {
-      console.error("Error al enviar el reporte", err);
-    } finally {
       setIsSending(false);
+    } else {
+      // 3. Fallback: Si Sentry no cargó, usamos tu API manual (Resiliencia)
+      try {
+        await api.admin.reportBug({
+          message: error.message,
+          stack: error.stack,
+          digest: error.digest,
+          url: window.location.href,
+          timestamp: new Date().toISOString(),
+        });
+        setIsSent(true);
+      } catch (err) {
+        console.error("Error al enviar el reporte manual", err);
+      } finally {
+        setIsSending(false);
+      }
     }
   };
 
@@ -42,10 +65,12 @@ export default function GlobalError({
           ¡Fallo en el Sistema! 🛠️
         </h2>
         <p className="text-muted-foreground font-mono text-sm leading-relaxed">
-          Nuestros escudos han detectado una anomalía crítica en esta ruta. 
-          Haz clic en el botón de abajo para enviar los registros directamente al administrador (<strong>@trosdesuru</strong>).
+          Nuestros escudos han detectado una anomalía crítica en esta ruta. Haz clic en el botón de
+          abajo para enviar los registros directamente al administrador (
+          <strong>@trosdesuru</strong>).
         </p>
 
+        {/* 🟢 Solo en desarrollo para no asustar al usuario en producción */}
         {process.env.NODE_ENV === "development" && (
           <div className="bg-black/80 p-4 rounded-md text-left overflow-auto text-xs text-red-400 font-mono mt-4 max-h-40 custom-scrollbar neo-border">
             {error.message}

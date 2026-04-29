@@ -1,10 +1,14 @@
 frontend:
-  build: ./frontend
-  volumes:
-    - ./frontend:/app
-    - /app/node_modules
-    - /app/.next
-  ports:
-    - "3000:3000"
-  environment:
-    - NEXT_PUBLIC_API_URL=http://localhost:3000
+    build: ./frontend
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+      - /app/.next
+    environment:
+      - NEXT_PUBLIC_SENTRY_DSN=https://2b38b71f741cb421ed60073c9c3a7f80@o4511303407632384.ingest.de.sentry.io/4511303429980240
+      - NEXT_PUBLIC_API_URL=http://localhost:8000/api
+      - NODE_OPTIONS=--max-old-space-size=512
+    depends_on:
+      - backend

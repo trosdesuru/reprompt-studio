@@ -23,6 +23,20 @@ from app.api.routes_download import router as download_router
 from app.api.routes_search import router as search_router
 from app.api.routes_directories import router as directories_router
 
+import sentry_sdk
+from sentry_sdk.integrations.fastapi import FastApiIntegration
+from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
+
+sentry_sdk.init(
+    dsn=os.getenv("SENTRY_DSN"),
+    integrations=[
+        FastApiIntegration(),
+        SqlalchemyIntegration(),
+    ],
+    traces_sample_rate=1.0,
+    profiles_sample_rate=1.0,
+)
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
@@ -107,6 +121,13 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# SENTRY
+@app.get("/api/debug-sentry")
+def trigger_error():
+    logger.info("☢️ Disparando error de prueba para Sentry")
+    division_by_zero = 1 / 0
+    return {"message": "Esto no debería llegarse a leer"}
 
 
 # 🩺 HEALTH CHECK

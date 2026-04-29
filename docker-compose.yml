@@ -7,6 +7,7 @@ services:
       - ./backend:/app
       - ./storage:/storage
     environment:
+      - SENTRY_DSN=https://76fc0033b8bdfc06d1d99b4aba86a9d6@o4511303407632384.ingest.de.sentry.io/4511303412023376
       - REDIS_URL=redis://redis:6379/0
       - PYTHONPATH=/app
       - STORAGE_PATH=/storage
@@ -20,6 +21,7 @@ services:
       - ./backend:/app
       - ./storage:/storage
     environment:
+      - SENTRY_DSN=https://76fc0033b8bdfc06d1d99b4aba86a9d6@o4511303407632384.ingest.de.sentry.io/4511303412023376
       - REDIS_URL=redis://redis:6379/0
       - PYTHONPATH=/app
       - STORAGE_PATH=/storage
@@ -36,6 +38,7 @@ services:
       - /app/node_modules
       - /app/.next
     environment:
+      - NEXT_PUBLIC_SENTRY_DSN=https://2b38b71f741cb421ed60073c9c3a7f80@o4511303407632384.ingest.de.sentry.io/4511303429980240
       - NEXT_PUBLIC_API_URL=http://localhost:8000/api
       - NODE_OPTIONS=--max-old-space-size=512
     depends_on:
@@ -51,4 +54,3 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
-

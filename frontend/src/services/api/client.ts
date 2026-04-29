@@ -1,3 +1,4 @@
+import * as Sentry from "@sentry/nextjs";
 import { ENV } from "@/src/services/config/env";
 
 let isRefreshing = false;
@@ -31,9 +32,13 @@ export async function fetchSeguro(
   try {
     response = await fetch(endpoint, config);
   } catch (error) {
+    Sentry.captureException(error, {
+      extra: { endpoint, requestId },
+    });
+
     throw new Error("No hay conexión con el servidor.");
   }
-  
+
   const serverRequestId = response.headers.get("X-Request-ID") || requestId;
 
   if (!response.ok && response.status !== 401) {
