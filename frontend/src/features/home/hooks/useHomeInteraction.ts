@@ -1,28 +1,19 @@
 import { useState, useCallback } from "react";
 import { api } from "@/src/services/api";
 import { useNotificationStore } from "@/src/store/notificationStore";
-import { useViewerSync } from "@/src/features/image-viewer/hooks/useViewerSync";
 import { GalleryItem } from "@/src/types/models";
 
 export function useHomeInteraction() {
   const { notify } = useNotificationStore();
-  const [activeUrl, setActiveUrl] = useState("");
   const [activeTitle, setActiveTitle] = useState("");
 
-  const viewerSync = useViewerSync(activeUrl);
+  const handleOpenVisor = useCallback((item: GalleryItem) => {
+    setActiveTitle(item.title);
 
-  const handleOpenVisor = useCallback(
-    (item: GalleryItem) => {
-      setActiveUrl(item.url);
-      setActiveTitle(item.title);
-      viewerSync.openViewer(item.url);
-
-      api
-        .registerInteraction(item, "view")
-        .catch((err) => console.error("Fallo al registrar vista:", err));
-    },
-    [viewerSync],
-  );
+    api
+      .registerInteraction(item, "view")
+      .catch((err) => console.error("Fallo al registrar vista:", err));
+  }, []);
 
   const handleDownloadTotal = useCallback(
     async (item: GalleryItem) => {
@@ -40,7 +31,6 @@ export function useHomeInteraction() {
 
   return {
     activeTitle,
-    viewerSync,
     handleOpenVisor,
     handleDownloadTotal,
   };
