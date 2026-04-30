@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 export const ExtractedPromptSchema = z.object({
+  title: z.string(),
   prompt: z
     .string()
     .min(1, "El prompt es obligatorio")

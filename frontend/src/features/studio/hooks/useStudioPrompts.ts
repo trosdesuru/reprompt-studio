@@ -104,13 +104,15 @@ export function useStudioPrompts() {
         useStudioUI.getState().setDeletingIds([promptId]);
         toast.success("Eliminado del Studio", { id: toastId });
 
-        setTimeout(() => {
+        setTimeout(async () => {
           addDeletedPromptIds([String(promptId)]);
           useStudioUI.getState().setDeletingIds([]);
+
+          const authState = useAuthStore.getState();
+          if (typeof authState.checkAuth === "function") {
+            await authState.checkAuth(true);
+          }
         }, 400);
-      } else {
-        const errorData = await res.json();
-        throw new Error(errorData.detail || "Fallo de autorización");
       }
     } catch (error: any) {
       console.error("Fallo al borrar:", error);
@@ -131,11 +133,16 @@ export function useStudioPrompts() {
         useStudioUI.getState().setDeletingIds(promptIds);
         toast.success(`${promptIds.length} eliminados del Studio`, { id: toastId });
 
-        setTimeout(() => {
+        setTimeout(async () => {
           const stringIds = promptIds.map(String);
           addDeletedPromptIds(stringIds);
           useStudioUI.getState().setDeletingIds([]);
           clearSelection();
+
+          const authState = useAuthStore.getState();
+          if (typeof authState.checkAuth === "function") {
+            await authState.checkAuth(true);
+          }
         }, 400);
       } else {
         const errorData = await res.json();

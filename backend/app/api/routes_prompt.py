@@ -40,9 +40,23 @@ class PresignedUrlRequest(BaseModel):
     content_type: str
 
 
+class PromptPatchRequest(BaseModel):
+    directory_id: Optional[str] = None
+    title: Optional[str] = Field(None, max_length=150)
+    prompt: Optional[str] = Field(None, max_length=20000)
+    negative_prompt: Optional[str] = Field(None, max_length=20000)
+    software: Optional[str] = Field(None, max_length=50)
+    model: Optional[str] = Field(None, max_length=150)
+    sampler: Optional[str] = Field(None, max_length=100)
+    steps: Optional[str] = Field(None, max_length=20)
+    cfg_scale: Optional[str] = Field(None, max_length=20)
+    seed: Optional[str] = Field(None, max_length=50)
+    resolution: Optional[str] = Field(None, max_length=50)
+
+
 class StudioSaveRequest(BaseModel):
-    image_url: str = Field(..., description="URL temporal en R2")
     title: str = Field(..., max_length=150)
+    image_url: str = Field(..., description="URL temporal en R2")
     directory_id: Optional[str] = None
     prompt: Optional[str] = Field(None, max_length=20000)
     negative_prompt: Optional[str] = Field(None, max_length=20000)
@@ -163,14 +177,12 @@ def actualizar_prompt(
     current_user: User = Depends(get_current_user),
     session: Session = Depends(get_session),
 ):
-
-    prompt_actualizado = PromptService.update_prompt_directory(
+    prompt_actualizado = PromptService.update_prompt(
         session=session,
         current_user=current_user,
         prompt_id=prompt_id,
-        new_directory_id=data.directory_id,
+        data=data,
     )
-
     return {"status": "success", "data": prompt_actualizado}
 
 

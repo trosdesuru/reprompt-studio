@@ -408,3 +408,54 @@ class PromptService:
         prompt.embedding = []
 
         return prompt
+
+    @staticmethod
+    def update_prompt(
+        session: Session,
+        current_user: User,
+        prompt_id: uuid.UUID,
+        data: Any,  # Pasamos el PromptPatchRequest
+    ) -> "ImagePrompt":
+
+        prompt = session.exec(
+            select(ImagePrompt)
+            .where(ImagePrompt.id == prompt_id)
+            .where(ImagePrompt.user_id == current_user.id)
+        ).first()
+
+        if not prompt:
+            raise HTTPException(
+                status_code=404, detail="Prompt no encontrado o no tienes permisos."
+            )
+
+        # Convertimos el modelo de Pydantic a diccionario ignorando los valores "unset" (no enviados)
+        update_data = data.model_dump(exclude_unset=True)
+
+        # Manejo especial para mover de carpeta (directory_id)
+        if "directory_id" in update_data:
+            dir_id = update_data["directory_id"]
+            if dir_id == "null" or dir_id is None:
+                prompt.directory_id = None
+            else:
+                try:
+                    prompt.directory_id = uuid.UUID(dir_id)
+                except ValueError:
+                    raise HTTPException(
+                        status_code=400, detail="ID de directorio inválido."
+                    )
+            # Lo sacamos del dict para que el setattr dinámico no falle
+            del update_data["directory_id"]
+
+        # 🟢 Magia: Iteramos y guardamos cualquier otro campo (title, prompt, model...)
+        for key, value in update_data.items():
+            setattr(prompt, key, value)
+
+        # Si cambian el prompt, reseteamos el embedding para que el buscador lo vuelva a vectorizar
+        if "prompt" in update_data:
+            prompt.embedding = None
+
+        session.add(prompt)
+        session.commit()
+        session.refresh(prompt)
+
+        return prompt
