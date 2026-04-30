@@ -14,25 +14,20 @@ export function useScrollDirection() {
         window.requestAnimationFrame(() => {
           const target = event.target as HTMLElement | Document;
 
-          let currentScrollY = 0;
-          let clientHeight = 0;
-          let scrollHeight = 0;
-
           if (
-            target === document ||
-            target === document.documentElement ||
-            target === document.body
+            target !== document &&
+            target !== document.documentElement &&
+            target !== document.body
           ) {
-            currentScrollY = window.scrollY;
-            clientHeight = window.innerHeight;
-            scrollHeight = document.documentElement.scrollHeight;
-          } else {
-            const el = target as HTMLElement;
-            currentScrollY = el.scrollTop;
-            clientHeight = el.clientHeight;
-            scrollHeight = el.scrollHeight;
+            ticking = false;
+            return;
           }
 
+          const currentScrollY = window.scrollY;
+          const clientHeight = window.innerHeight;
+          const scrollHeight = document.documentElement.scrollHeight;
+
+          // Margen de 10px para evitar que temblores del dedo oculten el navbar
           if (Math.abs(currentScrollY - lastScrollY) < 10) {
             ticking = false;
             return;
@@ -55,9 +50,9 @@ export function useScrollDirection() {
       }
     };
 
-    window.addEventListener("scroll", onScroll, true);
+    window.addEventListener("scroll", onScroll, false);
 
-    return () => window.removeEventListener("scroll", onScroll, true);
+    return () => window.removeEventListener("scroll", onScroll, false);
   }, []);
 
   return scrollDirection;

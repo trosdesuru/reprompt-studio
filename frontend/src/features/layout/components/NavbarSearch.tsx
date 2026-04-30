@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState, useRef } from "react";
-import { useSearch } from "@/src/features/search/hooks/useSearch";
+import { useState, useRef } from "react";
+import { useVectorSearch } from "@/src/features/search/useVectorSearch";
+import { useSearchStore } from "@/src/store/searchStore";
 import { useKeyboardShortcut } from "@/src/utils/hooks/useKeyboardShortcut";
 import { useClickOutside } from "@/src/utils/hooks/useClickOutside";
 
@@ -16,8 +17,9 @@ import {
 
 export function NavbarSearch() {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const { query, setQuery, handleSearch, isLoading } = useSearch();
+  const globalSearchStore = useSearchStore();
 
+  const vector = useVectorSearch({ scope: "global" });
   const modalContentRef = useRef<HTMLDivElement>(null);
 
   useClickOutside(modalContentRef, () => {
@@ -29,16 +31,18 @@ export function NavbarSearch() {
   });
 
   const handleCloseAndClear = () => {
-    setQuery("");
+    vector.clear();
+    globalSearchStore.clearSearch();
     setIsModalOpen(false);
   };
 
-  const onExecuteSearch = () => {
-    if (!query.trim()) return;
+  const onExecuteSearch = async () => {
+    if (!vector.query.trim()) return;
 
-    const syntheticEvent = { preventDefault: () => {} } as React.FormEvent;
-    handleSearch(syntheticEvent);
-    handleCloseAndClear();
+    await vector.handleExecute();
+
+    globalSearchStore.setResults(vector.results);
+    globalSearchStore.setQuery(vector.query);
   };
 
   return (
@@ -51,12 +55,12 @@ export function NavbarSearch() {
             <SearchModalHeader />
 
             <UniversalSearchBar
-              query={query}
-              isLoading={isLoading}
-              placeholder="Busca conceptos, estilos ...."
-              onQueryChange={setQuery}
+              query={vector.query}
+              isLoading={vector.isLoading}
+              placeholder="Búsqueda semántica de conceptos, estilos..."
+              onQueryChange={vector.setQuery}
               onSubmit={onExecuteSearch}
-              onClear={() => setQuery("")}
+              onClear={vector.clear}
               enableKeyboardShortcut={true}
             />
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useCallback } from "react";
+import { useCallback } from "react";
 import { useProgressStore } from "@/src/store/progressStore";
 import { useSearchStore } from "@/src/store/searchStore";
 import { api } from "@/src/services/api";
@@ -48,24 +48,14 @@ export function useSearch() {
     [store],
   );
 
-  useEffect(() => {
-    const timerId = setTimeout(() => {
-      if (store.query.trim().length > 0) {
-        executeSearch(false);
-      } else {
-        store.clearSearch();
-      }
-    }, 300);
-
-    return () => clearTimeout(timerId);
-  }, [store.query]);
-
   const handleSearch = async (input?: string | React.FormEvent) => {
     if (input && typeof input === "object" && "preventDefault" in input) {
       input.preventDefault();
     } else if (typeof input === "string") {
       store.setQuery(input);
     }
+
+    executeSearch(false);
   };
 
   const loadMore = () => {

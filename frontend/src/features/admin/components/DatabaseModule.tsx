@@ -98,8 +98,8 @@ export function DatabaseModule() {
           />
           <QuotaBar
             label="Cuota Disco Neon DB (Free Tier)"
-            currentMb={stats.total_mb}
-            limitMb={stats.limit_mb}
+            used={stats.total_mb}
+            limit={stats.limit_mb}
           />
         </div>
 

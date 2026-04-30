@@ -1,35 +1,22 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useTheme as useNextTheme } from "next-themes";
+import { useEffect, useState } from "react";
 
 export function useTheme() {
-  const [isDark, setIsDark] = useState<boolean>(true);
+  const { theme, setTheme, systemTheme } = useNextTheme();
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    const savedTheme = localStorage.getItem("theme");
-    const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-
-    if (savedTheme === "dark" || (!savedTheme && prefersDark)) {
-      setIsDark(true);
-      document.documentElement.classList.add("dark");
-    } else {
-      setIsDark(false);
-      document.documentElement.classList.remove("dark");
-    }
+    setMounted(true);
   }, []);
 
-  const toggleTheme = () => {
-    const newValue = !isDark;
-    setIsDark(newValue);
+  const currentTheme = theme === "system" ? systemTheme : theme;
+  const isDark = mounted ? currentTheme === "dark" : true;
 
-    if (newValue) {
-      document.documentElement.classList.add("dark");
-      localStorage.setItem("theme", "dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-      localStorage.setItem("theme", "light");
-    }
+  const toggleTheme = () => {
+    setTheme(isDark ? "light" : "dark");
   };
 
-  return { isDark, toggleTheme };
+  return { isDark, toggleTheme, theme, setTheme, mounted };
 }

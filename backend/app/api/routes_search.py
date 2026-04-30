@@ -13,7 +13,7 @@ from app.services.embedding_service import EmbeddingService
 router = APIRouter()
 
 
-@router.get("/studio")
+@router.get("/vector")
 def buscar_en_studio(
     q: str = Query(..., description="Texto a buscar semánticamente"),
     limit: int = 20,

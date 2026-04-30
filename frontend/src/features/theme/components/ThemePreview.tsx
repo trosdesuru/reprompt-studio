@@ -1,6 +1,6 @@
-import { ThemeColors } from "../constants/themeConfigs";
+import { ThemeColors, THEME_CONFIGS } from "../constants/themeConfigs";
 
-export function ThemePreview({ colors }: { colors: ThemeColors }) {
+function BasePreview({ colors }: { colors: ThemeColors }) {
   return (
     <div
       className={`w-full h-36 p-3 flex flex-col gap-2 border-b border-border/10 ${colors.wrapper}`}
@@ -31,4 +31,25 @@ export function ThemePreview({ colors }: { colors: ThemeColors }) {
       </div>
     </div>
   );
+}
+
+export function ThemePreview({ colors, isSystem }: { colors: ThemeColors; isSystem?: boolean }) {
+  if (isSystem) {
+    return (
+      <div className="relative w-full h-36 flex overflow-hidden">
+        <div className="w-1/2 h-full overflow-hidden relative">
+          <div className="absolute top-0 left-0 w-[200%] h-full">
+            <BasePreview colors={THEME_CONFIGS.light.colors} />
+          </div>
+        </div>
+        <div className="w-1/2 h-full overflow-hidden relative border-l border-border/20">
+          <div className="absolute top-0 right-0 w-[200%] h-full">
+            <BasePreview colors={THEME_CONFIGS.dark.colors} />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return <BasePreview colors={colors} />;
 }

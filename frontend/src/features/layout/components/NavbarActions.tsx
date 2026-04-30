@@ -61,7 +61,7 @@ export function NavbarActions() {
           <Tooltip content="Cambiar Tema" side="bottom">
             <button
               onClick={toggleTheme}
-              className="p-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer transition-colors"
+              className="p-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer transition-colors w-10 h-10 flex items-center justify-center"
               title="Cambiar tema"
             >
               {isDark ? <IconSun size={24} /> : <IconMoon size={24} />}

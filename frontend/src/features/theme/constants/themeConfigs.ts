@@ -43,4 +43,19 @@ export const THEME_CONFIGS: Record<
       contentLines: "bg-gray-800",
     },
   },
+
+  system: {
+    title: "Sistema",
+    description: "Se adapta automáticamente a los ajustes de tu dispositivo.",
+    colors: {
+      wrapper: "",
+      header: "",
+      dots: "",
+      lines: "",
+      sidebar: "",
+      content: "",
+      primaryLine: "",
+      contentLines: "",
+    },
+  },
 };

@@ -27,7 +27,7 @@ export function ThemeSelectorCard({ themeType, isActive, onClick }: ThemeSelecto
         }
       `}
     >
-      <ThemePreview colors={config.colors} />
+      <ThemePreview colors={config.colors} isSystem={themeType === "system"} />
 
       <div className="p-4 flex items-start justify-between w-full bg-background flex-1">
         <div className="flex flex-col pr-4">

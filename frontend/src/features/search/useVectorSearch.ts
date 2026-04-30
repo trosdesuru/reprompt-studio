@@ -6,6 +6,8 @@ interface SearchOptions {
   directoryId?: string;
 }
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
 export function useVectorSearch({ scope, directoryId }: SearchOptions) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<any[]>([]);
@@ -22,7 +24,7 @@ export function useVectorSearch({ scope, directoryId }: SearchOptions) {
         ...(directoryId && { directory_id: directoryId }),
       });
 
-      const res = await fetchSeguro(`/search/vector?${params.toString()}`);
+      const res = await fetchSeguro(`${API_URL}/search/vector?${params.toString()}`);
       if (res.ok) {
         const data = await res.json();
         setResults(data.results || []);
