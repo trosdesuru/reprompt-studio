@@ -1,5 +1,10 @@
 import JSZip from "jszip";
-import { string } from "zod";
+
+export interface ZipExtractionResult {
+  validFiles: File[];
+  rejectedFiles: { name: string; reason: string }[];
+  limitReached: boolean;
+}
 
 export async function extractFilesFromZip(
   zipFile: File,

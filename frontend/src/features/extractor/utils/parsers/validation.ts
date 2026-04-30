@@ -1,12 +1,12 @@
 import { z } from "zod";
 
 export const ExtractedPromptSchema = z.object({
-  title: z.string(),
+  title: z.string().default("Sin título"),
   prompt: z
     .string()
     .min(1, "El prompt es obligatorio")
     .max(20000, "El prompt excede el límite de 20,000 caracteres")
-    .transform((t) => t.trim()),
+    .transform((t) => t.replace(/[\r\n]+/g, " ").trim()),
   negativePrompt: z
     .string()
     .max(20000, "El prompt negativo excede el límite de 20,000 caracteres")

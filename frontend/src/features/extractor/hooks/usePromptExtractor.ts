@@ -94,6 +94,14 @@ export function usePromptExtractor() {
             try {
               // Extracción de texto (Esta es la parte pesada de CPU)
               const rawText = await getRawTextFromFile(file);
+
+              if (rawText) {
+                console.group(`🔍 Metadata Debug: ${file.name}`);
+                console.log("Raw Text:", rawText);
+                console.log("Software Detectado:", parsePromptData(rawText).software);
+                console.groupEnd();
+              }
+
               let parsedData = rawText
                 ? parsePromptData(rawText)
                 : {

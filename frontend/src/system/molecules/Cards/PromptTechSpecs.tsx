@@ -3,6 +3,7 @@
 import { IconScanTraces } from "@tabler/icons-react";
 import { SavedPrompt } from "@/src/types/models";
 import { cn } from "@/lib/utils";
+import { Tooltip } from "../../atoms/Tooltip/Tooltip";
 
 interface PromptTechSpecsProps {
   formData: Partial<SavedPrompt>;
@@ -37,30 +38,43 @@ export function PromptTechSpecs({ formData, isEditing, onChange }: PromptTechSpe
           if (!isEditing && !value) return null;
 
           return (
-            <div
+            <Tooltip
               key={spec.key}
-              className={cn(
-                "bg-muted/10 neo-border p-3 flex flex-col gap-1",
-                isEditing && "bg-background",
-              )}
+              content={
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-destructive text-xs font-bold capitalize">
+                    {spec.label}
+                  </span>
+                  <span className="text-xs text-muted-foreground">{value?.toString()}</span>
+                </div>
+              }
             >
-              <label className="text-[10px] font-mono text-muted-foreground uppercase tracking-widest">
-                {spec.label}
-              </label>
-              {isEditing ? (
-                <input
-                  type={spec.type}
-                  value={(value as string | number) || ""}
-                  onChange={(e) => onChange(spec.key as keyof SavedPrompt, e.target.value)}
-                  className="w-full bg-transparent border-b border-border/50 text-sm font-bold focus:outline-none focus:border-(--accent-color) py-1"
-                  placeholder={`Ej: ${spec.key === "seed" ? "123456" : "..."}`}
-                />
-              ) : (
-                <span className="text-sm font-bold truncate" title={String(value)}>
-                  {value as string | number}
-                </span>
-              )}
-            </div>
+              <div
+                key={spec.key}
+                className={cn(
+                  "bg-muted/10 neo-border p-3 flex flex-col gap-1",
+                  isEditing && "bg-background",
+                )}
+              >
+                <label className="text-[10px] font-mono text-muted-foreground uppercase tracking-widest">
+                  {spec.label}
+                </label>
+
+                {isEditing ? (
+                  <input
+                    type={spec.type}
+                    value={(value as string | number) || ""}
+                    onChange={(e) => onChange(spec.key as keyof SavedPrompt, e.target.value)}
+                    className="w-full bg-transparent border-b border-border/50 text-sm font-bold focus:outline-none focus:border-(--accent-color) py-1"
+                    placeholder={`Ej: ${spec.key === "seed" ? "123456" : "..."}`}
+                  />
+                ) : (
+                  <span className="text-sm font-bold truncate" title={String(value)}>
+                    {value as string | number}
+                  </span>
+                )}
+              </div>
+            </Tooltip>
           );
         })}
       </div>

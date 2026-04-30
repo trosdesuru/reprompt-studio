@@ -1,5 +1,5 @@
 import { ExtractedPromptData, ExtractedPromptSchema } from "./parsers/validation";
-import { cleanNullBytes } from "./parsers/stringUtils";
+import { cleanNullBytes } from "./parsers/stringUtils"; // 🟢 Usado ahora
 import { parseA1111 } from "./parsers/a1111Parser";
 import { parseComfy } from "./parsers/comfyParser";
 import { parseMidjourney } from "./parsers/midjourneyParser";
@@ -7,17 +7,28 @@ import { parseMidjourney } from "./parsers/midjourneyParser";
 export type { ExtractedPromptData };
 
 export function parsePromptData(rawText: string): ExtractedPromptData {
+  // 🟢 Usamos la utilidad para limpiar nulos (Fix TS 6133) y normalizar
   const cleanText = cleanNullBytes(rawText);
   let parsed: Partial<ExtractedPromptData>;
 
-  if (cleanText.trim().startsWith("{")) {
+  // Fingerprinting: Buscamos firmas de software en todo el bloque
+  const isJson = cleanText.includes('{"') || cleanText.startsWith("{");
+  const isComfyUI =
+    cleanText.toLowerCase().includes("comfyui") || cleanText.includes('"class_type"');
+  const isMidjourney = /--ar|--v|--style|--niji|Job ID:/i.test(cleanText);
+
+  if (isJson || isComfyUI) {
     try {
-      const jsonObj = JSON.parse(cleanText);
+      // Extraemos el JSON puro si hay basura alrededor (común en Comfy)
+      const jsonMatch = cleanText.match(/\{[\s\S]*\}/);
+      const jsonStr = jsonMatch ? jsonMatch[0] : cleanText;
+      const jsonObj = JSON.parse(jsonStr);
       parsed = parseComfy(jsonObj, cleanText);
     } catch {
+      // Fallback a A1111 si el JSON está roto pero hay texto legible
       parsed = parseA1111(cleanText);
     }
-  } else if (/--ar|--v|--style|--niji|Job ID:/i.test(cleanText)) {
+  } else if (isMidjourney) {
     parsed = parseMidjourney(cleanText, rawText);
     parsed.software = "Midjourney";
   } else {
@@ -31,7 +42,6 @@ export function parsePromptData(rawText: string): ExtractedPromptData {
 
   if (!validation.success) {
     console.error("❌ Fallo en contrato de extracción:", validation.error.format());
-
     return {
       title: "Extracción",
       prompt: cleanText,
@@ -46,13 +56,9 @@ export function parsePromptData(rawText: string): ExtractedPromptData {
   return validation.data;
 }
 
-// 🟢 AÑADE ESTO AL FINAL DEL ARCHIVO promptParser.ts
-
+// generateSmartTitle se queda igual, está perfecto.
 export function generateSmartTitle(filename: string, prompt?: string, software?: string): string {
-  // 1. Limpiamos el nombre del archivo
   const cleanName = filename.replace(/\.[^/.]+$/, "").replace(/[_-]/g, " ");
-
-  // 2. Lista negra: Nombres genéricos de móviles y SO
   const genericNames = [
     "image",
     "img",
@@ -68,23 +74,19 @@ export function generateSmartTitle(filename: string, prompt?: string, software?:
   ];
   const isGeneric = genericNames.some((gn) => cleanName.toLowerCase().includes(gn));
 
-  // 3. Nivel 1: Si el nombre del archivo es descriptivo, lo usamos
   if (!isGeneric && cleanName.trim().length > 3 && !/\d{10,}/.test(cleanName)) {
     return cleanName.charAt(0).toUpperCase() + cleanName.slice(1);
   }
 
-  // 4. Nivel 2: Intentamos extraer del Prompt (primeras 5-6 palabras)
   if (prompt && prompt.trim().length > 0) {
-    const cleanPrompt = prompt.replace(/<[^>]*>?/gm, ""); // Quitar LORAs <lora:...>
+    const cleanPrompt = prompt.replace(/<[^>]*>?/gm, "");
     const words = cleanPrompt.trim().split(/\s+/);
     if (words.length >= 4) {
       return words.slice(0, 5).join(" ") + (words.length > 5 ? "..." : "");
     }
   }
 
-  // 5. Nivel 3: Fallback Absoluto (Software + Hora)
   const softName = software && software !== "Desconocido" ? software : "Extracción";
   const timeId = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-
   return `${softName} - ${timeId}`;
 }

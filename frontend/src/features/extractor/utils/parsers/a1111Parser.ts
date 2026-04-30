@@ -1,38 +1,40 @@
 import { ExtractedPromptData } from "./types";
 import { cleanA1111Prefixes } from "./stringUtils";
 
-export function parseA1111(rawText: string): ExtractedPromptData {
-  const result: ExtractedPromptData = {
-    prompt: "",
-    rawText,
-    software: "A1111",
-  };
-
+export function parseA1111(rawText: string): Partial<ExtractedPromptData> {
   const cleanText = cleanA1111Prefixes(rawText);
+  const result: any = { software: "A1111", rawText: cleanText };
 
-  const negativePromptRegex = /Negative prompt:\s*([\s\S]*?)(?=\nSteps:|$)/i;
-  const negativeMatch = cleanText.match(negativePromptRegex);
+  const lines = cleanText.split("\n");
+  const metadataLineIndex = lines.findIndex((l) => l.trim().startsWith("Steps:"));
 
-  if (negativeMatch) {
-    result.negativePrompt = negativeMatch[1].trim();
-    result.prompt = cleanText.split(/Negative prompt:/i)[0].trim();
+  if (metadataLineIndex !== -1) {
+    const metadataLine = lines[metadataLineIndex];
+    const promptParts = lines.slice(0, metadataLineIndex).join("\n");
+
+    if (promptParts.toLocaleLowerCase().includes("negative prompt:")) {
+      const [pos, neg] = promptParts.split(/negative prompt:/i);
+      result.prompt = pos.trim();
+      result.negativePrompt = neg.trim();
+    } else {
+      result.prompt = promptParts.trim();
+    }
+
+    const params = metadataLine.split(",").reduce((acc: any, curr) => {
+      const [key, ...val] = curr.split(":");
+      if (key && val) acc[key.trim().toLowerCase()] = val.join(":").trim();
+      return acc;
+    }, {});
+
+    result.steps = params["steps"];
+    result.sampler = params["sampler"];
+    result.cfgScale = params["cfg scale"];
+    result.seed = params["seed"];
+    result.resolution = params["size"];
+    result.model = params["model"];
   } else {
-    result.prompt = cleanText.split(/\nSteps:/i)[0].trim();
+    result.prompt = cleanText.trim();
   }
-
-  const matchers = {
-    steps: /Steps:\s*([^,]+)/i,
-    sampler: /Sampler:\s*([^,]+)/i,
-    cfgScale: /CFG scale:\s*([^,]+)/i,
-    seed: /Seed:\s*([^,]+)/i,
-    resolution: /Size:\s*([^,]+)/i,
-    model: /Model:\s*([^,]+)/i,
-  };
-
-  Object.entries(matchers).forEach(([key, regex]) => {
-    const match = cleanText.match(regex);
-    if (match) (result as any)[key] = match[1].trim();
-  });
 
   return result;
 }
