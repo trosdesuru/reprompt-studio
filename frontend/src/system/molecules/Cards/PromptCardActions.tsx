@@ -8,9 +8,11 @@ import {
   IconBookmark,
   IconWand,
   IconDownload,
+  IconSquareCheck, // 🟢 Importado
 } from "@tabler/icons-react";
 import { Tooltip } from "../../atoms/Tooltip/Tooltip";
-import { useDownloadImage } from "@/src/features/prompts/hooks/useDownloadImage"; // 🟢 Importamos la inteligencia
+import { useDownloadImage } from "@/src/features/prompts/hooks/useDownloadImage";
+import { useStudioUI } from "@/src/store/useStudioUI"; // 🟢 Importamos el store
 
 // 🏛️ Directriz 12: Tipado estricto. Cero "any".
 interface Directory {
@@ -37,8 +39,9 @@ export function PromptCardActions({
   setIsOpen,
   isOwner,
 }: PromptCardActionsProps) {
-  // 🟢 Instanciamos nuestro Hook global
   const { downloadImage, isDownloading } = useDownloadImage();
+  // 🟢 Instanciamos la función del estado global
+  const togglePromptSelection = useStudioUI((state) => state.togglePromptSelection);
 
   return (
     <div className="absolute top-2 right-2 z-50">
@@ -63,13 +66,29 @@ export function PromptCardActions({
         <div className="absolute top-full right-0 mt-1 w-48 bg-background border border-border rounded-xl shadow-xl z-50 animate-in fade-in zoom-in-95 overflow-hidden">
           {/* 🌍 ACCIONES UNIVERSALES (Para todos: Dueños y Visitantes) */}
           <div className="flex flex-col">
+            {/* 🟢 NUEVO BOTÓN: Seleccionar (Solo Dueño) */}
+            {isOwner && (
+              <button
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  togglePromptSelection(String(item.id));
+                  setIsOpen(false);
+                }}
+                className="flex w-full items-center gap-2 px-3 py-3 text-xs font-mono font-bold text-foreground hover:bg-muted transition-colors border-b border-border/10"
+              >
+                <IconSquareCheck size={14} className="text-(--accent-color)" />
+                Seleccionar
+              </button>
+            )}
+
             {item.image_url && (
               <button
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
                   downloadImage(item.image_url || null, item.title || "prompt");
-                  setIsOpen(false); // Cerramos el menú tras hacer clic
+                  setIsOpen(false);
                 }}
                 disabled={isDownloading}
                 className="flex w-full items-center gap-2 px-3 py-3 text-xs font-mono font-bold text-foreground/70 hover:bg-muted hover:text-foreground transition-colors border-b border-border/10"
@@ -118,7 +137,7 @@ export function PromptCardActions({
                   <select
                     className="w-full bg-muted/50 text-xs p-2 rounded border border-border outline-none focus:ring-1 focus:ring-accent cursor-pointer"
                     value={item.directory_id || ""}
-                    onClick={(e) => e.stopPropagation()} // Evitamos que el clic cierre la tarjeta
+                    onClick={(e) => e.stopPropagation()}
                     onChange={(e) => {
                       e.preventDefault();
                       e.stopPropagation();

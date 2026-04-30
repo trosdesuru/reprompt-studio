@@ -28,6 +28,13 @@ interface StudioUIState {
 
   getChildDirectories: (parentId: string | null) => Directory[];
   getBreadcrumbs: () => Directory[];
+
+  selectedPromptIds: string[];
+  isSelectionMode: boolean;
+  toggleSelectionMode: () => void;
+  togglePromptSelection: (id: string) => void;
+  clearSelection: () => void;
+  selectAll: (ids: string[]) => void;
 }
 
 export const useStudioUI = create<StudioUIState>((set, get) => ({
@@ -67,4 +74,35 @@ export const useStudioUI = create<StudioUIState>((set, get) => ({
     }
     return crumbs;
   },
+
+  selectedPromptIds: [],
+  isSelectionMode: false,
+
+  toggleSelectionMode: () =>
+    set((state) => {
+      const newMode = !state.isSelectionMode;
+      return {
+        isSelectionMode: newMode,
+        selectedPromptIds: newMode ? state.selectedPromptIds : [],
+      };
+    }),
+
+  togglePromptSelection: (id: string) =>
+    set((state) => {
+      const isSelected = state.selectedPromptIds.includes(id);
+      const newSelection = isSelected
+        ? state.selectedPromptIds.filter((promptId) => promptId !== id)
+        : [...state.selectedPromptIds, id];
+
+      const shouldKeepMode = newSelection.length > 0;
+
+      return {
+        selectedPromptIds: newSelection,
+        isSelectionMode: shouldKeepMode,
+      };
+    }),
+
+  clearSelection: () => set({ selectedPromptIds: [], isSelectionMode: false }),
+
+  selectAll: (ids: string[]) => set({ selectedPromptIds: ids, isSelectionMode: true }),
 }));

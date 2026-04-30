@@ -7,7 +7,8 @@ import toast from "react-hot-toast";
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
 
 export function useStudioPrompts() {
-  const { activeDirectoryId, searchQuery, refreshKey } = useStudioUI();
+  // 🟢 FIX CRÍTICO: Aquí nos aseguramos de extraer 'clearSelection' del store
+  const { activeDirectoryId, searchQuery, refreshKey, clearSelection } = useStudioUI();
   const user = useAuthStore((state) => state.user);
 
   const [debouncedQuery, setDebouncedQuery] = useState(searchQuery);
@@ -25,7 +26,6 @@ export function useStudioPrompts() {
 
       try {
         const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
-
         const endpoint = debouncedQuery
           ? `${API_BASE}/search/studio?q=${debouncedQuery}`
           : `${API_BASE}/prompts/studio?directory_id=${activeDirectoryId === null ? "root" : activeDirectoryId}`;
@@ -69,10 +69,60 @@ export function useStudioPrompts() {
     }
   };
 
+  // 🟢 BORRADO MASIVO
+  const deleteBulkPrompts = async (promptIds: string[]) => {
+    const toastId = toast.loading(`Eliminando ${promptIds.length} prompts...`);
+    try {
+      const res = await fetchSeguro(`${API_URL}/prompts/bulk`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt_ids: promptIds }),
+      });
+
+      if (res.ok) {
+        setPrompts((prev) => prev.filter((p) => !promptIds.includes(p.id)));
+        clearSelection(); // 🟢 Ahora TS sabe qué es esto
+        toast.success(`${promptIds.length} eliminados del Studio`, { id: toastId });
+      } else {
+        const errorData = await res.json();
+        throw new Error(errorData.detail || "Fallo en borrado masivo");
+      }
+    } catch (error: any) {
+      console.error("Fallo al borrar masivamente:", error);
+      toast.error(error.message || "Error al eliminar múltiples prompts", { id: toastId });
+    }
+  };
+
+  // 🟢 MOVIMIENTO MASIVO
+  const moveBulkPrompts = async (promptIds: string[], targetDirectoryId: string | null) => {
+    const toastId = toast.loading(`Moviendo ${promptIds.length} prompts...`);
+    try {
+      const res = await fetchSeguro(`${API_URL}/prompts/bulk/move`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt_ids: promptIds, directory_id: targetDirectoryId }),
+      });
+
+      if (res.ok) {
+        useStudioUI.getState().triggerRefresh();
+        clearSelection();
+        toast.success(`Movidos con éxito`, { id: toastId });
+      } else {
+        const errorData = await res.json();
+        throw new Error(errorData.detail || "Fallo al mover masivamente");
+      }
+    } catch (error: any) {
+      console.error("Fallo al mover:", error);
+      toast.error(error.message || "Error al mover", { id: toastId });
+    }
+  };
+
   return {
     prompts,
     isLoading,
     user,
     deletePrompt,
+    deleteBulkPrompts,
+    moveBulkPrompts,
   };
 }
