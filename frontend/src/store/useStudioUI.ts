@@ -26,10 +26,22 @@ interface StudioUIState {
   setSearchQuery: (query: string) => void;
   setIsSearching: (status: boolean) => void;
 
+  loadedPromptIds: string[];
+  setLoadedPromptIds: (ids: string[]) => void;
+
   getChildDirectories: (parentId: string | null) => Directory[];
   getBreadcrumbs: () => Directory[];
 
+  sortBy: "newest" | "oldest" | "software";
+  setSortBy: (sort: "newest" | "oldest" | "software") => void;
+
   selectedPromptIds: string[];
+  deletingIds: string[];
+  setDeletingIds: (ids: string[]) => void;
+  deletedPromptIds: string[];
+  addDeletedPromptIds: (ids: string[]) => void;
+  clearDeletedPromptIds: () => void;
+
   isSelectionMode: boolean;
   toggleSelectionMode: () => void;
   togglePromptSelection: (id: string) => void;
@@ -44,6 +56,15 @@ export const useStudioUI = create<StudioUIState>((set, get) => ({
   isSearching: false,
   isSidebarOpen: false,
 
+  deletingIds: [],
+  setDeletingIds: (ids) => set({ deletingIds: ids }),
+  deletedPromptIds: [],
+  addDeletedPromptIds: (ids) =>
+    set((state) => ({
+      deletedPromptIds: [...state.deletedPromptIds, ...ids],
+    })),
+  clearDeletedPromptIds: () => set({ deletedPromptIds: [] }),
+
   refreshKey: 0,
   triggerRefresh: () => set((state) => ({ refreshKey: state.refreshKey + 1 })),
   toggleSidebar: () => set((state) => ({ isSidebarOpen: !state.isSidebarOpen })),
@@ -53,6 +74,12 @@ export const useStudioUI = create<StudioUIState>((set, get) => ({
   setActiveDirectory: (activeDirectoryId) => set({ activeDirectoryId }),
   setSearchQuery: (searchQuery) => set({ searchQuery }),
   setIsSearching: (isSearching) => set({ isSearching }),
+
+  sortBy: "newest",
+  setSortBy: (sort) => set({ sortBy: sort }),
+
+  loadedPromptIds: [],
+  setLoadedPromptIds: (ids) => set({ loadedPromptIds: ids }),
 
   getChildDirectories: (parentId) => {
     return get().directories.filter((d: Directory) => d.parent_id === parentId);

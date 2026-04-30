@@ -95,6 +95,7 @@ function PromptCardComponent({
 
   const isSelectionMode = useStudioUI((state) => state.isSelectionMode);
   const isSelected = useStudioUI((state) => state.selectedPromptIds.includes(String(item.id)));
+  const isDeleting = useStudioUI((state) => state.deletingIds.includes(String(item.id)));
   const togglePromptSelection = useStudioUI((state) => state.togglePromptSelection);
 
   const handleCardClick = (e: React.MouseEvent) => {
@@ -115,12 +116,14 @@ function PromptCardComponent({
         opacity: isDragging ? 0.3 : 1,
         cursor: isSelectionMode ? "pointer" : isDragging ? "grabbing" : "grab",
       }}
-      className={`group relative flex flex-col h-full rounded-xl transition-all duration-200 overflow-hidden ${
-        isDragging
-          ? "border-accent ring-2 ring-accent scale-95"
-          : isSelected
-            ? "border-destructive ring-2 ring-destructive bg-destructive/10 scale-[0.98] shadow-lg"
-            : "border-border/50 shadow-xs hover:shadow-md hover:border-border bg-background"
+      className={`group relative flex flex-col h-full rounded-xl transition-all duration-300 overflow-hidden ${
+        isDeleting
+          ? "opacity-0 scale-90 border-destructive ring-2 ring-destructive bg-destructive/30 grayscale blur-sm z-50 pointer-events-none"
+          : isDragging
+            ? "border-accent ring-2 ring-accent scale-95"
+            : isSelected
+              ? "border-destructive ring-2 ring-destructive bg-destructive/10 scale-[0.98] shadow-lg"
+              : "border-border/50 shadow-xs hover:shadow-md hover:border-border bg-background"
       }`}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => {

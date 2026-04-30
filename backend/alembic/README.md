@@ -1,5 +1,5 @@
 #### Ejecutar comnado de generación de archivo para versionado
-docker compose exec backend alembic revision --autogenerate -m "added:new routes user"
+docker compose exec backend alembic revision --autogenerate -m "added:sort and filter studio grid"
 
 ### Aplica los cambios a tu base de datos local
 docker compose exec backend alembic upgrade head

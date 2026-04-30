@@ -7,7 +7,11 @@ from io import BytesIO
 from PIL import Image
 from typing import List, Optional, Any
 from fastapi import HTTPException, status
-from sqlmodel import Session, select
+from sqlmodel import (
+    Session,
+    select,
+    col,
+)
 
 from worker import process_image_ai
 
@@ -21,7 +25,6 @@ from app.core.config import settings
 
 from app.services.storage import s3_client, move_to_permanent, delete_file
 from app.services.security import validate_magic_bytes
-
 
 logger = logging.getLogger("prompt_service")
 
@@ -233,12 +236,20 @@ class PromptService:
 
         return nuevo_prompt
 
+    # 🟢 MODIFICADO: Ahora acepta page, limit y sort y los aplica al statement de SQLModel
     @staticmethod
     def get_studio_prompts(
-        session: Session, current_user: User, directory_id: Optional[str]
+        session: Session,
+        current_user: User,
+        directory_id: Optional[str],
+        page: int = 1,
+        limit: int = 20,
+        sort: str = "newest",
     ) -> List[ImagePrompt]:
+
         statement = select(ImagePrompt).where(ImagePrompt.user_id == current_user.id)
 
+        # Filtro por carpeta
         if directory_id == "root":
             statement = statement.where(ImagePrompt.directory_id == None)
         elif directory_id and directory_id != "null":
@@ -246,7 +257,22 @@ class PromptService:
                 ImagePrompt.directory_id == uuid.UUID(directory_id)
             )
 
-        statement = statement.order_by(ImagePrompt.created_at.desc())
+        # 🟢 Lógica de ordenación (Sorting)
+        if sort == "oldest":
+            statement = statement.order_by(col(ImagePrompt.created_at).asc())
+        elif sort == "software":
+            # Ordenamos por software (A-Z) y luego por fecha para desempatar
+            statement = statement.order_by(
+                col(ImagePrompt.software).asc(), col(ImagePrompt.created_at).desc()
+            )
+        else:
+            # Por defecto "newest"
+            statement = statement.order_by(col(ImagePrompt.created_at).desc())
+
+        # 🟢 Lógica de paginación (Offset y Limit)
+        offset = (page - 1) * limit
+        statement = statement.offset(offset).limit(limit)
+
         resultados = session.exec(statement).all()
 
         for prompt in resultados:
@@ -303,6 +329,48 @@ class PromptService:
 
         session.commit()
         return len(prompts_a_borrar), [p.id for p in prompts_a_borrar]
+
+    # 🟢 NUEVO: Función para Mover en Lote (Bulk Move)
+    @staticmethod
+    def move_batch_prompts(
+        session: Session,
+        current_user: User,
+        prompt_ids: List[uuid.UUID],
+        new_directory_id: Optional[str],
+    ) -> int:
+        if not prompt_ids:
+            return 0
+
+        # Buscamos los prompts que pertenezcan al usuario
+        prompts_a_mover = session.exec(
+            select(ImagePrompt).where(
+                ImagePrompt.id.in_(prompt_ids), ImagePrompt.user_id == current_user.id
+            )
+        ).all()
+
+        if not prompts_a_mover:
+            raise HTTPException(
+                status_code=404, detail="No se encontraron las imágenes."
+            )
+
+        # Parseamos el ID de destino
+        parsed_dir_id = None
+        if new_directory_id and new_directory_id != "null":
+            try:
+                parsed_dir_id = uuid.UUID(new_directory_id)
+            except ValueError:
+                raise HTTPException(
+                    status_code=400, detail="ID de directorio de destino inválido."
+                )
+
+        # Actualizamos en masa
+        for prompt in prompts_a_mover:
+            prompt.directory_id = parsed_dir_id
+            session.add(prompt)
+
+        session.commit()
+
+        return len(prompts_a_mover)
 
     @staticmethod
     def update_prompt_directory(

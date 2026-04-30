@@ -22,6 +22,11 @@ from app.services.prompt_service import PromptService
 router = APIRouter()
 
 
+class BulkMoveRequest(BaseModel):
+    prompt_ids: List[uuid.UUID]
+    directory_id: Optional[str] = None
+
+
 class BatchDeleteRequest(BaseModel):
     prompt_ids: List[uuid.UUID]
 
@@ -114,14 +119,13 @@ async def upload_to_studio(
     session: Session = Depends(get_session),
     current_user: User = Depends(verify_prompt_quota),
 ):
-    """Dropzone Contextual: Sube, extrae dimensiones, vectoriza y asigna."""
     nuevo_prompt = await PromptService.process_and_save_studio_upload(
         session, current_user, file, directory_id
     )
     return {"status": "success", "data": nuevo_prompt}
 
 
-@router.post("/batch-delete")
+@router.post("/bulk/delete")
 def eliminar_prompts_lote(
     data: BatchDeleteRequest,
     current_user: User = Depends(get_current_user),
@@ -140,11 +144,15 @@ def eliminar_prompts_lote(
 @router.get("/studio")
 def obtener_prompts_studio(
     directory_id: Optional[str] = None,
+    page: int = 1,
+    limit: int = 20,
+    sort: str = "newest",
     current_user: User = Depends(get_current_user),
     session: Session = Depends(get_session),
 ):
-    """Obtiene las imágenes para el PromptGrid."""
-    resultados = PromptService.get_studio_prompts(session, current_user, directory_id)
+    resultados = PromptService.get_studio_prompts(
+        session, current_user, directory_id, page=page, limit=limit, sort=sort
+    )
     return {"status": "success", "data": resultados}
 
 
@@ -164,6 +172,21 @@ def actualizar_prompt(
     )
 
     return {"status": "success", "data": prompt_actualizado}
+
+
+@router.put("/bulk/move")
+def mover_prompts_lote(
+    data: BulkMoveRequest,
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    count = PromptService.move_batch_prompts(
+        session, current_user, data.prompt_ids, data.directory_id
+    )
+    return {
+        "status": "success",
+        "message": f"{count} prompts movidos correctamente",
+    }
 
 
 @router.delete("/{prompt_id}")

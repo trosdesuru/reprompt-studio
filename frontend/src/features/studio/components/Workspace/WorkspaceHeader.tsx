@@ -11,6 +11,8 @@ import {
   IconX,
   IconTrash,
   IconFolder,
+  IconArrowsSort,
+  IconSquareCheck,
 } from "@tabler/icons-react";
 
 export function WorkspaceHeader() {
@@ -23,6 +25,8 @@ export function WorkspaceHeader() {
     selectedPromptIds,
     clearSelection,
     directories,
+    sortBy,
+    setSortBy,
   } = useStudioUI();
 
   const { deleteBulkPrompts, moveBulkPrompts } = useStudioPrompts();
@@ -31,10 +35,7 @@ export function WorkspaceHeader() {
   const hasSelection = selectedPromptIds.length > 0;
 
   return (
-    // 🟢 Contenedor estricto con overflow-hidden y posición relativa.
-    // Esto es el secreto para que no haya "saltos" en la página al cambiar de modo.
     <header className="relative flex items-center w-full mb-6 pb-4 border-b border-border/30 min-h-13 overflow-hidden">
-      {/* 🧭 ESTADO 1: NAVEGACIÓN NORMAL (Breadcrumbs) */}
       <div
         className={`absolute inset-0 flex items-center justify-between w-full transition-all duration-300 ease-in-out ${
           hasSelection
@@ -42,66 +43,91 @@ export function WorkspaceHeader() {
             : "opacity-100 translate-y-0"
         }`}
       >
-        <nav
-          aria-label="Breadcrumb"
-          className="flex items-center space-x-1 text-xs md:text-sm font-mono text-accent/40 lowercase overflow-x-auto scrollbar-none"
-        >
-          <button
-            onClick={toggleSidebar}
-            className="p-1.5 rounded-md hover:bg-secondary/20 hover:text-accent transition-colors text-muted-foreground cursor-pointer shrink-0"
-            title="Alternar panel lateral"
+        <div className="flex items-center flex-1 overflow-hidden pr-4">
+          <nav
+            aria-label="Breadcrumb"
+            className="flex items-center space-x-1 text-xs md:text-sm font-mono text-accent/40 lowercase overflow-x-auto scrollbar-none"
           >
-            <IconLayoutSidebar size={18} stroke={1.5} />
-          </button>
+            <button
+              onClick={toggleSidebar}
+              className="p-1.5 rounded-md hover:bg-secondary/20 hover:text-accent transition-colors text-muted-foreground cursor-pointer shrink-0"
+              title="Alternar panel lateral"
+            >
+              <IconLayoutSidebar size={18} stroke={1.5} />
+            </button>
+
+            <button
+              onClick={() => setActiveDirectory(null)}
+              className={`hover:text-accent transition-colors flex items-center gap-2 ${
+                !activeDirectoryId ? "text-muted-foreground font-bold" : ""
+              }`}
+              title="Root"
+            >
+              root
+            </button>
+
+            {breadcrumbs.map((crumb, index) => {
+              const isLast = index === breadcrumbs.length - 1;
+
+              return (
+                <div key={crumb.id} className="flex items-center space-x-1 whitespace-nowrap">
+                  <IconChevronRight size={14} />
+
+                  {isLast ? (
+                    <span
+                      className="font-bold text-xs text-accent/80 tracking-widest truncate max-w-37.5 sm:max-w-37.5"
+                      title={crumb.name}
+                    >
+                      {crumb.name.toUpperCase()}
+                    </span>
+                  ) : (
+                    <button
+                      onClick={() => setActiveDirectory(crumb.id)}
+                      className="hover:text-accent text-xs transition-colors tracking-widest truncate max-w-37.5 sm:max-w-50"
+                      title={crumb.name}
+                    >
+                      {crumb.name.toUpperCase()}
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+          </nav>
+        </div>
+
+        <div className="flex items-center gap-3 shrink-0">
+          <Link
+            href={`/${lang}/reprompt`}
+            className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-xs font-bold hover:bg-primary/90 transition-all shadow-sm active:scale-95"
+          >
+            <IconScanTraces size={16} />
+            <span className="hidden sm:inline tracking-widest">Extractor</span>
+          </Link>
+
+          <div className="hidden sm:flex items-center bg-muted/50 rounded-lg p-1 border border-border/50">
+            <IconArrowsSort size={14} className="text-muted-foreground ml-2" />
+            <select
+              className="bg-transparent text-xs font-mono p-1.5 outline-none cursor-pointer text-foreground/80"
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as any)}
+            >
+              <option value="newest">Más recientes</option>
+              <option value="oldest">Más antiguos</option>
+              <option value="software">Por Software</option>
+            </select>
+          </div>
 
           <button
-            onClick={() => setActiveDirectory(null)}
-            className={`hover:text-accent transition-colors flex items-center gap-2 ${
-              !activeDirectoryId ? "text-muted-foreground font-bold" : ""
-            }`}
-            title="Root"
+            onClick={() => useStudioUI.getState().selectAll(useStudioUI.getState().loadedPromptIds)}
+            className="hidden sm:flex items-center gap-2 px-3 py-2 bg-muted/50 hover:bg-muted text-muted-foreground hover:text-foreground rounded-lg text-xs font-bold transition-all border border-border/50"
+            title="Seleccionar todo lo cargado"
           >
-            root
+            <IconSquareCheck size={16} />
+            <span>Seleccionar Todo</span>
           </button>
-
-          {breadcrumbs.map((crumb, index) => {
-            const isLast = index === breadcrumbs.length - 1;
-
-            return (
-              <div key={crumb.id} className="flex items-center space-x-1 whitespace-nowrap">
-                <IconChevronRight size={14} />
-
-                {isLast ? (
-                  <span
-                    className="font-bold text-xs text-accent/80 tracking-widest truncate max-w-37.5 sm:max-w-37.5"
-                    title={crumb.name}
-                  >
-                    {crumb.name.toUpperCase()}
-                  </span>
-                ) : (
-                  <button
-                    onClick={() => setActiveDirectory(crumb.id)}
-                    className="hover:text-accent text-xs transition-colors tracking-widest truncate max-w-37.5 sm:max-w-50"
-                    title={crumb.name}
-                  >
-                    {crumb.name.toUpperCase()}
-                  </button>
-                )}
-              </div>
-            );
-          })}
-        </nav>
-
-        <Link
-          href={`/${lang}/reprompt`}
-          className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-xs font-bold hover:bg-primary/90 transition-all shadow-sm active:scale-95 shrink-0 ml-4 z-10"
-        >
-          <IconScanTraces size={16} />
-          <span className="hidden sm:inline tracking-widest">Extractor</span>
-        </Link>
+        </div>
       </div>
 
-      {/* 🎛️ ESTADO 2: SELECCIÓN MASIVA */}
       <div
         className={`absolute inset-0 flex items-center justify-between w-full transition-all duration-300 ease-in-out ${
           hasSelection ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4 pointer-events-none"
@@ -121,7 +147,6 @@ export function WorkspaceHeader() {
         </div>
 
         <div className="flex items-center gap-4 bg-background">
-          {/* Opciones para mover (Mismo UI exacto que PromptCardActions) */}
           <div className="flex items-center gap-2">
             <label className="text-[10px] font-bold uppercase text-muted-foreground items-center gap-1.5 hidden sm:flex">
               <IconFolder size={12} /> Colección
@@ -132,7 +157,7 @@ export function WorkspaceHeader() {
                 if (e.target.value !== "noop") {
                   const targetDir = e.target.value === "root" ? null : e.target.value;
                   moveBulkPrompts(selectedPromptIds, targetDir);
-                  e.target.value = "noop"; // Reset visual
+                  e.target.value = "noop";
                 }
               }}
             >
@@ -148,7 +173,6 @@ export function WorkspaceHeader() {
 
           <div className="w-px h-5 bg-border/50 hidden sm:block"></div>
 
-          {/* Botón Borrar (Mismo estilo que PromptCardActions) */}
           <button
             onClick={() => {
               if (

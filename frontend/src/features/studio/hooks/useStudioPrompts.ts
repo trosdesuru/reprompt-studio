@@ -5,49 +5,53 @@ import { fetchSeguro } from "@/src/services/api/client";
 import toast from "react-hot-toast";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
-const ITEMS_PER_PAGE = 20; // 🟢 Estándar óptimo para Grids
+const ITEMS_PER_PAGE = 20;
 
 export function useStudioPrompts() {
-  const { activeDirectoryId, searchQuery, refreshKey, clearSelection } = useStudioUI();
+  const {
+    activeDirectoryId,
+    searchQuery,
+    refreshKey,
+    clearSelection,
+    sortBy,
+    deletedPromptIds,
+    addDeletedPromptIds,
+    clearDeletedPromptIds,
+  } = useStudioUI();
+
   const user = useAuthStore((state) => state.user);
 
   const [debouncedQuery, setDebouncedQuery] = useState(searchQuery);
   const [prompts, setPrompts] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-
-  // 🟢 NUEVOS ESTADOS DE PAGINACIÓN
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
 
-  // Debounce del buscador
   useEffect(() => {
     const handler = setTimeout(() => setDebouncedQuery(searchQuery), 1000);
     return () => clearTimeout(handler);
   }, [searchQuery]);
 
-  // 🟢 FIX: Resetear la página y los prompts cuando cambiamos de carpeta o buscamos
   useEffect(() => {
     setPrompts([]);
     setPage(1);
     setHasMore(true);
-  }, [activeDirectoryId, debouncedQuery, refreshKey]);
+    clearDeletedPromptIds();
+  }, [activeDirectoryId, debouncedQuery, refreshKey, sortBy]);
 
-  // 🟢 Efecto principal: Se dispara cuando cambia la página
   useEffect(() => {
     const fetchPrompts = async () => {
-      // Si no hay más y no es la primera página, abortamos
       if (!hasMore && page > 1) return;
 
       setIsLoading(true);
 
       try {
         const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
-        // 🟢 Añadimos parámetros de paginación a la URL
         const basePath = debouncedQuery
           ? `${API_BASE}/search/studio?q=${debouncedQuery}`
           : `${API_BASE}/prompts/studio?directory_id=${activeDirectoryId === null ? "root" : activeDirectoryId}`;
 
-        const endpoint = `${basePath}${basePath.includes("?") ? "&" : "?"}page=${page}&limit=${ITEMS_PER_PAGE}`;
+        const endpoint = `${basePath}${basePath.includes("?") ? "&" : "?"}page=${page}&limit=${ITEMS_PER_PAGE}&sort=${sortBy}`;
 
         const res = await fetchSeguro(endpoint, { credentials: "include" });
 
@@ -56,12 +60,18 @@ export function useStudioPrompts() {
           const newPrompts = data.results || data.data || [];
 
           if (page === 1) {
-            setPrompts(newPrompts); // Si es página 1, reemplazamos
+            setPrompts(newPrompts);
+            useStudioUI.getState().setLoadedPromptIds(newPrompts.map((p: any) => String(p.id)));
           } else {
-            setPrompts((prev) => [...prev, ...newPrompts]); // Si es > 1, añadimos al final
+            setPrompts((prev) => [...prev, ...newPrompts]);
+            useStudioUI
+              .getState()
+              .setLoadedPromptIds([
+                ...useStudioUI.getState().loadedPromptIds,
+                ...newPrompts.map((p: any) => String(p.id)),
+              ]);
           }
 
-          // Si el servidor nos devuelve menos elementos que el límite, hemos llegado al final
           setHasMore(newPrompts.length === ITEMS_PER_PAGE);
         } else {
           console.error("Fallo del servidor:", res.status);
@@ -76,13 +86,10 @@ export function useStudioPrompts() {
     };
 
     fetchPrompts();
-  }, [activeDirectoryId, debouncedQuery, refreshKey, page]);
+  }, [activeDirectoryId, debouncedQuery, refreshKey, page, sortBy]);
 
-  // 🟢 NUEVA FUNCIÓN: Gatillo para el scroll
   const loadMore = () => {
-    if (!isLoading && hasMore) {
-      setPage((prev) => prev + 1);
-    }
+    if (!isLoading && hasMore) setPage((prev) => prev + 1);
   };
 
   const deletePrompt = async (promptId: string) => {
@@ -94,8 +101,13 @@ export function useStudioPrompts() {
       });
 
       if (res.ok) {
-        setPrompts((prev) => prev.filter((p) => p.id !== promptId));
+        useStudioUI.getState().setDeletingIds([promptId]);
         toast.success("Eliminado del Studio", { id: toastId });
+
+        setTimeout(() => {
+          addDeletedPromptIds([String(promptId)]);
+          useStudioUI.getState().setDeletingIds([]);
+        }, 400);
       } else {
         const errorData = await res.json();
         throw new Error(errorData.detail || "Fallo de autorización");
@@ -109,19 +121,28 @@ export function useStudioPrompts() {
   const deleteBulkPrompts = async (promptIds: string[]) => {
     const toastId = toast.loading(`Eliminando ${promptIds.length} prompts...`);
     try {
-      const res = await fetchSeguro(`${API_URL}/prompts/bulk`, {
-        method: "DELETE",
+      const res = await fetchSeguro(`${API_URL}/prompts/bulk/delete`, {
+        method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ prompt_ids: promptIds }),
       });
 
       if (res.ok) {
-        setPrompts((prev) => prev.filter((p) => !promptIds.includes(p.id)));
-        clearSelection();
+        useStudioUI.getState().setDeletingIds(promptIds);
         toast.success(`${promptIds.length} eliminados del Studio`, { id: toastId });
+
+        setTimeout(() => {
+          const stringIds = promptIds.map(String);
+          addDeletedPromptIds(stringIds);
+          useStudioUI.getState().setDeletingIds([]);
+          clearSelection();
+        }, 400);
       } else {
         const errorData = await res.json();
-        throw new Error(errorData.detail || "Fallo en borrado masivo");
+        const errorMsg = Array.isArray(errorData.detail)
+          ? errorData.detail[0].msg
+          : errorData.detail;
+        throw new Error(errorMsg || "Fallo en borrado masivo");
       }
     } catch (error: any) {
       console.error("Fallo al borrar masivamente:", error);
@@ -152,11 +173,13 @@ export function useStudioPrompts() {
     }
   };
 
+  const visiblePrompts = prompts.filter((p) => !deletedPromptIds.includes(String(p.id)));
+
   return {
-    prompts,
+    prompts: visiblePrompts,
     isLoading,
-    hasMore, // 🟢 Exportamos
-    loadMore, // 🟢 Exportamos
+    hasMore,
+    loadMore,
     user,
     deletePrompt,
     deleteBulkPrompts,
