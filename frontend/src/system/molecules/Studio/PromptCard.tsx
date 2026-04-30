@@ -1,7 +1,8 @@
 "use client";
 
+import React, { memo } from "react";
 import Link from "next/link";
-import { IconPhoto, IconCheck } from "@tabler/icons-react"; // 🟢 Añadimos IconCheck
+import { IconPhoto, IconCheck } from "@tabler/icons-react";
 import { usePromptCard } from "@/src/system/molecules/Cards/hooks/usePromptCard";
 import { usePromptDnd } from "@/src/features/studio/hooks/usePromptDnd";
 import { PromptCardActions } from "../Cards/PromptCardActions";
@@ -12,7 +13,7 @@ import { Tooltip } from "../../atoms/Tooltip/Tooltip";
 import { RichPromptTooltipContent } from "./RichPromptTooltipContent";
 import { usePromptQueue } from "@/src/store/usePromptQueue";
 import { useAuthStore } from "@/src/store/authStore";
-import { useStudioUI } from "@/src/store/useStudioUI"; // 🟢 Importamos el Store
+import { useStudioUI } from "@/src/store/useStudioUI";
 
 interface Directory {
   id: string;
@@ -32,7 +33,47 @@ interface PromptCardProps {
   queueItems?: { id: string; username: string }[];
 }
 
-export function PromptCard({
+function CardContent({ item, index, isPriority, copied, handleCopy, isSelected }: any) {
+  return (
+    <>
+      <div
+        className={`relative aspect-4/5 w-full overflow-hidden bg-muted/20 border-b border-border/30 transition-all duration-300 ${isSelected ? "p-1 rounded-t-lg" : ""}`}
+      >
+        {item.image_url ? (
+          <LazyImage
+            src={item.image_url}
+            alt={item.title || "Prompt image"}
+            index={index}
+            className={`w-full h-full object-cover transition-transform duration-300 ease-out ${isSelected ? "rounded-t-md" : "group-hover:scale-[1.02]"}`}
+            priority={isPriority}
+          />
+        ) : (
+          <div className="w-full h-full flex flex-col items-center justify-center text-muted-foreground/20">
+            <IconPhoto size={32} stroke={1.5} />
+          </div>
+        )}
+        <div className="absolute inset-x-0 bottom-0 p-3 pt-12 bg-linear-to-t from-background/95 via-background/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200 ease-in-out flex flex-col gap-1.5 pointer-events-none group-hover:pointer-events-auto z-20">
+          <p className="text-[9px] text-muted-foreground font-mono font-semibold uppercase tracking-wider drop-shadow-sm line-clamp-1">
+            {item.model || "Base Model"}
+          </p>
+          <PromptCardSnippet promptText={item.prompt} copied={copied} onCopy={handleCopy} />
+        </div>
+      </div>
+      <div
+        className={`p-2.5 sm:p-3 flex-1 flex items-center transition-colors duration-300 ${isSelected ? "bg-destructive/5" : "bg-background"}`}
+      >
+        <h3
+          className={`font-semibold text-xs sm:text-sm w-full truncate ${isSelected ? "text-destructive" : "text-foreground/90"}`}
+        >
+          {item.software || "Sin título"}
+        </h3>
+      </div>
+    </>
+  );
+}
+
+// 🟢 Usamos function en lugar de const para evitar bugs del compilador SWC
+function PromptCardComponent({
   item,
   directories,
   onAssign,
@@ -109,10 +150,16 @@ export function PromptCard({
         </div>
       </div>
 
-      {isSelectionMode ? (
-        <div
+      <Tooltip
+        content={isSelectionMode ? null : <RichPromptTooltipContent prompt={item} />}
+        side="left"
+        delayDuration={350}
+        variant="rich"
+      >
+        <Link
+          href={href}
           onClick={handleCardClick}
-          className="relative flex flex-col h-full z-10 flex-1 cursor-pointer"
+          className="relative flex flex-col h-full z-10 flex-1"
         >
           <CardContent
             item={item}
@@ -122,69 +169,17 @@ export function PromptCard({
             handleCopy={handleCopy}
             isSelected={isSelected}
           />
-        </div>
-      ) : (
-        <Tooltip
-          content={<RichPromptTooltipContent prompt={item} />}
-          side="left"
-          delayDuration={350}
-          variant="rich"
-        >
-          <Link
-            href={href}
-            onClick={handleCardClick}
-            className="relative flex flex-col h-full z-10 flex-1"
-          >
-            <CardContent
-              item={item}
-              index={index}
-              isPriority={isPriority}
-              copied={copied}
-              handleCopy={handleCopy}
-              isSelected={isSelected}
-            />
-          </Link>
-        </Tooltip>
-      )}
+        </Link>
+      </Tooltip>
     </div>
   );
 }
 
-function CardContent({ item, index, isPriority, copied, handleCopy, isSelected }: any) {
-  return (
-    <>
-      <div
-        className={`relative aspect-4/5 w-full overflow-hidden bg-muted/20 border-b border-border/30 transition-all duration-300 ${isSelected ? "p-1 rounded-t-lg" : ""}`}
-      >
-        {item.image_url ? (
-          <LazyImage
-            src={item.image_url}
-            alt={item.title || "Prompt image"}
-            index={index}
-            className={`w-full h-full object-cover transition-transform duration-300 ease-out ${isSelected ? "rounded-t-md" : "group-hover:scale-[1.02]"}`}
-            priority={isPriority}
-          />
-        ) : (
-          <div className="w-full h-full flex flex-col items-center justify-center text-muted-foreground/20">
-            <IconPhoto size={32} stroke={1.5} />
-          </div>
-        )}
-        <div className="absolute inset-x-0 bottom-0 p-3 pt-12 bg-linear-to-t from-background/95 via-background/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200 ease-in-out flex flex-col gap-1.5 pointer-events-none group-hover:pointer-events-auto z-20">
-          <p className="text-[9px] text-muted-foreground font-mono font-semibold uppercase tracking-wider drop-shadow-sm line-clamp-1">
-            {item.model || "Base Model"}
-          </p>
-          <PromptCardSnippet promptText={item.prompt} copied={copied} onCopy={handleCopy} />
-        </div>
-      </div>
-      <div
-        className={`p-2.5 sm:p-3 flex-1 flex items-center transition-colors duration-300 ${isSelected ? "bg-destructive/5" : "bg-background"}`}
-      >
-        <h3
-          className={`font-semibold text-xs sm:text-sm w-full truncate ${isSelected ? "text-destructive" : "text-foreground/90"}`}
-        >
-          {item.software || "Sin título"}
-        </h3>
-      </div>
-    </>
-  );
-}
+// 🟢 Exportación blindada con displayName para que React DevTools y Next.js no colapsen
+const PromptCard = memo(PromptCardComponent, (prevProps, nextProps) => {
+  return prevProps.item.id === nextProps.item.id && prevProps.isStudio === nextProps.isStudio;
+});
+
+PromptCard.displayName = "PromptCard";
+
+export { PromptCard };

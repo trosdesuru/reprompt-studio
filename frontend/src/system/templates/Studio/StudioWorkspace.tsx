@@ -12,11 +12,10 @@ export function StudioWorkspace() {
 
   const params = useParams();
   const lang = (params?.lang as string) || "es";
-
-  const { prompts, isLoading, user, deletePrompt } = useStudioPrompts();
+  const { prompts, isLoading, user, hasMore, loadMore, deletePrompt } = useStudioPrompts();
   const authorUsername = user?.username || "unknown";
 
-  if (isLoading) {
+  if (isLoading && prompts.length === 0) {
     return (
       <div className="h-full flex flex-col flex-1 items-center justify-center">
         <PageLoader text="Sincronizando Studio..." />
@@ -31,6 +30,9 @@ export function StudioWorkspace() {
         lang={lang}
         authorUsername={authorUsername}
         onDelete={deletePrompt}
+        isLoading={isLoading}
+        hasMore={hasMore}
+        onLoadMore={loadMore}
       />
     </>
   );

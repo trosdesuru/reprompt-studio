@@ -58,14 +58,17 @@ export function Tooltip({
   return (
     <TooltipProvider delayDuration={delayDuration}>
       <TooltipRoot>
+        {/* 🟢 Mantenemos el Trigger para no romper el DOM de React */}
         <TooltipTrigger asChild>{children}</TooltipTrigger>
-        <TooltipContent side={side} className={cn(styles[variant].container, className)}>
-          {content}
-          <TooltipPrimitive.Arrow className={styles[variant].arrow} />
-        </TooltipContent>
+
+        {/* 🟢 El escudo protector: Solo montamos la burbuja si hay contenido real */}
+        {content && (
+          <TooltipContent side={side} className={cn(styles[variant].container, className)}>
+            {content}
+            <TooltipPrimitive.Arrow className={styles[variant].arrow} />
+          </TooltipContent>
+        )}
       </TooltipRoot>
     </TooltipProvider>
   );
 }
-
-export { TooltipRoot, TooltipTrigger, TooltipContent, TooltipProvider };
