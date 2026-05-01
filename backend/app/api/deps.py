@@ -3,9 +3,11 @@ import os
 import redis
 import logging
 import jwt
+import datetime
 
 from fastapi import Depends, HTTPException, status, Request
 from sqlmodel import Session, select, func
+from sqlalchemy import func
 
 from app.core.db import get_session
 from app.core.redis_config import conn as redis_client
@@ -168,19 +170,48 @@ def verify_prompt_quota(
     if current_user.role == UserRole.ADMIN:
         return current_user
 
-    session.exec(
+    # Bloqueamos la fila del usuario para evitar condiciones de carrera (concurrencia)
+    user_db = session.exec(
         select(User).where(User.id == current_user.id).with_for_update()
     ).first()
 
+    if not user_db:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+
+    # 1. Gestión del Reset Mensual
+    now = datetime.datetime.now(datetime.timezone.utc)
+    # Comprobamos si ha pasado un mes (simplificado: si el mes o el año son diferentes)
+    if (now.month != user_db.last_reset_date.month) or (
+        now.year != user_db.last_reset_date.year
+    ):
+        user_db.monthly_uploads = 0
+        user_db.last_reset_date = now
+        session.add(user_db)
+        session.commit()
+        session.refresh(user_db)
+
+    # 2. Validación de Almacenamiento Total (Storage)
+    storage_mb = user_db.storage_used / (1024 * 1024)
+    if storage_mb >= limits["max_storage_mb"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"Límite de almacenamiento alcanzado ({limits['max_storage_mb']}MB). Haz upgrade a un plan superior.",
+        )
+
+    # 3. Lógica del "Bono de Bienvenida" vs "Recarga Mensual"
     count_statement = select(func.count(ImagePrompt.id)).where(
         ImagePrompt.user_id == current_user.id
     )
-    current_prompts = session.exec(count_statement).one()
+    total_lifetime_prompts = session.exec(count_statement).one()
 
-    if current_prompts >= limits["max_prompts"]:
+    # Si aún no ha agotado el bono inicial
+    if total_lifetime_prompts < limits["max_prompts_lifetime_bonus"]:
+        pass  # Permitido por el bono de bienvenida
+    # Si ya agotó el bono, evaluamos el límite mensual
+    elif user_db.monthly_uploads >= limits["monthly_refill"]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail=f"Límite de cuota alcanzado. Tu plan ({current_user.role.capitalize()}) permite un máximo de {limits['max_prompts']} imágenes.",
+            detail=f"Has agotado tu cuota. Tu plan ({current_user.role.capitalize()}) permite {limits['monthly_refill']} subidas este mes. Llevas {user_db.monthly_uploads}.",
         )
 
-    return current_user
+    return user_db

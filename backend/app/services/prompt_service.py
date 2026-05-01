@@ -216,10 +216,15 @@ class PromptService:
             width=width,
             height=height,
             extra_data=data.extra_data,
+            file_size_bytes=size_bytes,
             embedding=None,
         )
 
+        current_user.monthly_uploads += 1
+        current_user.storage_used += size_bytes
+
         session.add(nuevo_prompt)
+        session.add(current_user)
         session.commit()
         session.refresh(nuevo_prompt)
 
@@ -301,7 +306,13 @@ class PromptService:
             except Exception as e:
                 logger.error(f"⚠️ Error al borrar archivo en R2: {e}")
 
+        espacio_a_liberar = prompt.file_size_bytes or 0
+        current_user.storage_used = max(
+            0, current_user.storage_used - espacio_a_liberar
+        )
+
         session.delete(prompt)
+        session.add(current_user)
         session.commit()
 
     @staticmethod
@@ -322,15 +333,23 @@ class PromptService:
                 status_code=404, detail="No se encontraron las imágenes."
             )
 
+        espacio_total_liberado = 0
+
         for prompt in prompts_a_borrar:
             if prompt.image_url:
                 eliminar_de_r2(prompt.image_url)
+
+            espacio_total_liberado += prompt.file_size_bytes or 0
             session.delete(prompt)
+
+        current_user.storage_used = max(
+            0, current_user.storage_used - espacio_total_liberado
+        )
+        session.add(current_user)
 
         session.commit()
         return len(prompts_a_borrar), [p.id for p in prompts_a_borrar]
 
-    # 🟢 NUEVO: Función para Mover en Lote (Bulk Move)
     @staticmethod
     def move_batch_prompts(
         session: Session,

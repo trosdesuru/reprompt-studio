@@ -15,7 +15,7 @@ class InviteCode(SQLModel, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     code: str = Field(unique=True, index=True)
     is_used: bool = Field(default=False)
-    
+
     used_by_id: Optional[uuid.UUID] = Field(default=None, foreign_key="user.id")
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
@@ -42,6 +42,10 @@ class User(SQLModel, table=True):
     role: str = Field(default="voyager")
     avatar_url: Optional[str] = Field(default=None)
     storage_used: int = Field(default=0)
+    monthly_uploads: int = Field(default=0)
+    last_reset_date: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc)
+    )
 
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     is_active: bool = Field(default=True)

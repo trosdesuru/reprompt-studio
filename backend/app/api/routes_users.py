@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, Response, HTTPException
 from app.core.config import settings
 from app.core.db import get_session
 from app.api.deps import get_current_user
+from app.services.storage import move_to_permanent
 from app.services.auth_service import AuthService
 from app.services.audit_service import AuditService
 from app.utils.storage import eliminar_de_r2
@@ -75,13 +76,45 @@ def update_my_avatar(
     current_user: User = Depends(get_current_user),
     session: Session = Depends(get_session),
 ):
+    if not data.avatar_url:
+        raise HTTPException(status_code=400, detail="Se requiere una URL de avatar.")
 
-    if data.avatar_url and not data.avatar_url.startswith(
-        settings.R2_PUBLIC_URL.rstrip("/")
-    ):
+    base_url = settings.R2_PUBLIC_URL.rstrip("/")
+
+    if not data.avatar_url.startswith(base_url):
         raise HTTPException(status_code=400, detail="URL de avatar no permitida.")
 
-    if current_user.avatar_url and current_user.avatar_url != data.avatar_url:
+    # 🟢 1. Detectar si la imagen viene de la carpeta 'temp'
+    temp_key = data.avatar_url.replace(f"{base_url}/", "")
+
+    # 🚨 Validación de seguridad para que un usuario no pueda mover archivos de otro
+    expected_temp_prefix = f"temp/{current_user.id}/"
+
+    final_avatar_url = data.avatar_url
+
+    if temp_key.startswith(expected_temp_prefix):
+        # 🟢 2. Definir la ruta final permanente (users/{user_id}/avatar.png, etc.)
+        # Extraemos la extensión del archivo temporal (ej: .png o .jpg)
+        import os
+
+        _, ext = os.path.splitext(temp_key)
+        if not ext:
+            ext = ".jpg"  # Fallback por si acaso
+
+        permanent_key = f"users/{current_user.id}/avatar{ext}"
+
+        # 🟢 3. Mover físicamente el archivo en Cloudflare R2
+        if not move_to_permanent(temp_key, permanent_key):
+            logger.error(f"❌ Error al promocionar avatar en R2: {temp_key}")
+            raise HTTPException(
+                status_code=500, detail="Error interno al consolidar el avatar."
+            )
+
+        # 🟢 4. Actualizar la URL que guardaremos en base de datos
+        final_avatar_url = f"{base_url}/{permanent_key}"
+
+    # 🟢 5. Borrar el avatar antiguo SOLO si es diferente al nuevo final
+    if current_user.avatar_url and current_user.avatar_url != final_avatar_url:
         try:
             eliminar_de_r2(current_user.avatar_url)
         except Exception as e:
@@ -89,13 +122,17 @@ def update_my_avatar(
                 f"⚠️ No se pudo borrar el avatar antiguo de {current_user.username}: {e}"
             )
 
-    current_user.avatar_url = data.avatar_url
+    # 🟢 6. Guardar en Base de Datos (Neon)
+    current_user.avatar_url = final_avatar_url
     session.add(current_user)
     session.commit()
     session.refresh(current_user)
 
     AuditService.log_action(
-        session, current_user.username, "AVATAR_UPDATE", "Avatar actualizado"
+        session,
+        current_user.username,
+        "AVATAR_UPDATE",
+        "Avatar actualizado y consolidado",
     )
 
     return {
@@ -103,16 +140,6 @@ def update_my_avatar(
         "message": "Avatar actualizado correctamente",
         "avatar_url": current_user.avatar_url,
     }
-
-
-@router.put("/change-password")
-def change_password(
-    data: PasswordChange,
-    current_user: User = Depends(get_current_user),
-    session: Session = Depends(get_session),
-):
-    AuthService.change_password(data, current_user, session)
-    return {"status": "success", "message": "Contraseña actualizada"}
 
 
 @router.delete("/me")

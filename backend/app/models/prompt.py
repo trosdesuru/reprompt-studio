@@ -36,10 +36,13 @@ class ImagePrompt(SQLModel, table=True):
     steps: Optional[str] = Field(default=None)
     cfg_scale: Optional[str] = Field(default=None)
     seed: Optional[str] = Field(default=None)
+
     resolution: Optional[str] = Field(default=None)
     width: Optional[int] = Field(default=None)
     height: Optional[int] = Field(default=None)
+
     image_url: Optional[str] = Field(default=None, sa_column=Column(Text))
+    file_size_bytes: int = Field(default=0)
 
     auto_tags: List[dict | str] = Field(default=[], sa_column=Column(JSON))
     extra_data: Dict[str, Any] = Field(default_factory=dict, sa_column=Column(JSON))
