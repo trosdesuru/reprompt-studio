@@ -1,5 +1,5 @@
 #### Ejecutar comnado de generación de archivo para versionado
-docker compose exec backend alembic revision --autogenerate -m "enhanced: prompt detail"
+docker compose exec backend alembic revision --autogenerate -m "enhanced: tests"
 
 ### Aplica los cambios a tu base de datos local
 docker compose exec backend alembic upgrade head

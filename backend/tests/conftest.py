@@ -34,7 +34,8 @@ def client_fixture(session: Session):
     """Secuestra la app de FastAPI y reemplaza la DB real de Neon por la fantasma de RAM."""
 
     def get_session_override():
-        return session
+        with Session(engine) as req_session:
+            yield req_session
 
     app.dependency_overrides[get_session] = get_session_override
 
@@ -81,7 +82,6 @@ def reset_redis_state():
     Se ejecuta automáticamente (autouse=True) antes de CADA test.
     Garantiza que ningún test herede los bloqueos de fuerza bruta de los tests anteriores.
     """
-    # Buscamos las llaves de seguridad que tu app genera
     brute_force_keys = redis_client.keys("brute_force_user:*")
     rate_limit_keys = redis_client.keys("rate_limit:*")
 

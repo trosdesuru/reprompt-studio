@@ -148,7 +148,7 @@ def test_db_connection_pool_exhaustion(
     session.commit()
 
     payload = {"prompt_ids": [str(p.id) for p in fake_prompts]}
-    response = client.post("/api/prompts/batch-delete", json=payload)
+    response = client.post("/api/prompts/bulk/delete", json=payload)
 
     assert response.status_code == 200
 
