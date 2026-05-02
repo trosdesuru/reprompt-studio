@@ -162,6 +162,6 @@ zipp==3.19.1
 # --- FASE 1: WD14 Auto-Tagger ---
 # onnxruntime # OPCIONAL:Probablemente FastEmbed ya lo ha instalado
 # huggingface-hub>=0.20.0
-numpy>=1.24.0
+# numpy>=1.24.0
 pandas>=2.0.0
 sentry-sdk[fastapi]
