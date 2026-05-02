@@ -1,10 +1,10 @@
 {
   "compilerOptions": {
-    "strict": true,                         // Activa todas las comprobaciones estrictas
-    "noImplicitAny": true,                 // Prohíbe variables sin tipo definido
-    "strictNullChecks": true,              // Evita errores de "null" no controlados
-    "noUnusedLocals": true,                // Detecta variables que no usas
-    "noUnusedParameters": true,             // Detecta parámetros de funciones que no usas
+    "strict": true,
+    "noImplicitAny": true,
+    "strictNullChecks": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
     "target": "ES2017",
     "lib": ["dom", "dom.iterable", "esnext"],
     "allowJs": true,

@@ -1,5 +1,5 @@
 #### Ejecutar comnado de generación de archivo para versionado
-docker compose exec backend alembic revision --autogenerate -m "enhanced: upload avatar"
+docker compose exec backend alembic revision --autogenerate -m "fixed: requirements huggingface"
 
 ### Aplica los cambios a tu base de datos local
 docker compose exec backend alembic upgrade head

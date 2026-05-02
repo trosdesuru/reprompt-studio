@@ -19,18 +19,17 @@ interface Props {
 export function ExtractorInfoModal({ isOpen, onClose }: Props) {
   return (
     <Modal isOpen={isOpen} onClose={onClose} maxWidth="max-w-2xl">
-      <div className="p-8 space-y-8">
+      <div className="p-8 space-y-6">
         {/* Cabecera */}
-        <div className="flex flex-col items-center text-center space-y-6">
+        <div className="flex flex-col items-center text-center space-y-4">
           <NeoIconBadge variant="info">
             <IconInfoCircle size={32} />
           </NeoIconBadge>
-          <h2 className="text-2xl font-black font-mono uppercase tracking-widest">
+          <h2 className="text-xl font-black font-mono uppercase tracking-widest">
             ¿Cómo funciona la Extracción?
           </h2>
           <p className="text-muted-foreground font-mono text-sm leading-relaxed max-w-md">
-            Reprompt no "lee" la imagen visualmente, sino que busca los datos ocultos (Metadata)
-            grabados por el software de IA.
+            Reprompt extrae los datos ocultos de tus imágenes IA.
           </p>
         </div>
 
@@ -38,7 +37,7 @@ export function ExtractorInfoModal({ isOpen, onClose }: Props) {
           {/* Columna: SÍ */}
           <div className="space-y-4">
             <div className="flex items-center gap-2 text-green-600 font-bold font-mono text-xs uppercase tracking-tighter">
-              <IconCheck size={18} stroke={3} /> Lo que funciona
+              <IconCheck size={18} stroke={3} /> Archivos soportados
             </div>
             <ul className="space-y-3">
               <InfoItem
@@ -57,7 +56,7 @@ export function ExtractorInfoModal({ isOpen, onClose }: Props) {
           {/* Columna: NO */}
           <div className="space-y-4">
             <div className="flex items-center gap-2 text-destructive font-bold font-mono text-xs uppercase tracking-tighter">
-              <IconX size={18} stroke={3} /> Lo que NO funciona
+              <IconX size={18} stroke={3} /> Archivos sin metadata original
             </div>
             <ul className="space-y-3">
               <InfoItem
@@ -78,8 +77,8 @@ export function ExtractorInfoModal({ isOpen, onClose }: Props) {
 
         <div className="bg-accent/10 border border-accent/40 p-4 rounded-lg">
           <p className="text-xs font-mono text-accent/40 leading-tight text-center uppercase">
-            Tip: Si una imagen no tiene metadata, siempre podrás escribir los datos manualmente en
-            el Studio.
+            Si el archivo original no tiene metadata, siempre puedes introducir tu prompt a mano
+            directamente en el Studio.
           </p>
         </div>
       </div>
