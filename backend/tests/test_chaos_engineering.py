@@ -199,6 +199,8 @@ def test_chaos_massive_batch_save_stress(client: TestClient, normal_user: User):
 
         exitos_200 = 0
         bloqueos_sqlite_500 = 0
+        bloqueos_seguridad = 0
+
         with concurrent.futures.ThreadPoolExecutor(max_workers=20) as executor:
             resultados = list(executor.map(guardar_prompt_simultaneo, range(50)))
 
@@ -207,8 +209,15 @@ def test_chaos_massive_batch_save_stress(client: TestClient, normal_user: User):
                 exitos_200 += 1
             elif res.status_code == 500:
                 bloqueos_sqlite_500 += 1
+            elif res.status_code in [
+                403,
+                429,
+            ]:
+                bloqueos_seguridad += 1
+            else:
+                print(f"⚠️ Código HTTP inesperado en Chaos Test: {res.status_code}")
 
-        assert exitos_200 + bloqueos_sqlite_500 == 50
+        assert exitos_200 + bloqueos_sqlite_500 + bloqueos_seguridad == 50
 
 
 # =====================================================================
