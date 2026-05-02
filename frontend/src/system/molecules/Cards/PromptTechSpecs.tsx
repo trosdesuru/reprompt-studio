@@ -16,6 +16,7 @@ export function PromptTechSpecs({ formData, isEditing, onChange }: PromptTechSpe
     { key: "model", label: "Modelo", type: "text" },
     { key: "software", label: "Software", type: "text" },
     { key: "sampler", label: "Sampler", type: "text" },
+    { key: "lora", label: "Lora", type: "text" },
     { key: "steps", label: "Steps", type: "number" },
     { key: "cfg_scale", label: "CFG Scale", type: "text" },
     { key: "seed", label: "Seed", type: "text" },
@@ -45,7 +46,7 @@ export function PromptTechSpecs({ formData, isEditing, onChange }: PromptTechSpe
                   <span className="text-destructive text-xs font-bold capitalize">
                     {spec.label}
                   </span>
-                  <span className="text-xs text-muted-foreground">{value?.toString()}</span>
+                  <span className="text-xs text-muted">{value?.toString()}</span>
                 </div>
               }
             >

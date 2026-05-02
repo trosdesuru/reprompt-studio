@@ -115,11 +115,16 @@ class PromptService:
         # 🛡️ 4. VALIDACIÓN DE BYTES MÁGICOS (SEGURIDAD DE ARCHIVOS)
         # =================================================================
         try:
-            # 🟢 Aumentamos el rango a 8KB para pillar todos los metadatos JPEG/WebP
+            chunk_size = (
+                "bytes=0-32768"
+                if temp_key.lower().endswith(".webp")
+                else "bytes=0-8192"
+            )
+
             response = s3_client.get_object(
                 Bucket=settings.R2_BUCKET_NAME,
                 Key=temp_key,
-                Range="bytes=0-8192",
+                Range=chunk_size,
             )
             file_bytes = response["Body"].read()
         except Exception as e:
@@ -130,7 +135,7 @@ class PromptService:
             )
 
         if not validate_magic_bytes(file_bytes):
-            delete_file(temp_key)  # 🔥 Destruir archivo corrupto o malicioso
+            delete_file(temp_key)
             logger.warning(
                 f"🚨 [SECURITY] Magic bytes inválidos detectados. Archivo destruido: {temp_key}"
             )
@@ -140,44 +145,37 @@ class PromptService:
             )
 
         # =================================================================
-        # 📐 5. EXTRACCIÓN DE DIMENSIONES (PIL)
+        # 📐 5. EXTRACCIÓN DE DIMENSIONES (CORTOCIRCUITO + PIL)
         # =================================================================
         width = getattr(data, "width", None)
         height = getattr(data, "height", None)
 
-        try:
-            with Image.open(BytesIO(file_bytes)) as img:
-                width, height = img.size
-                logger.info(
-                    f"📏 [QUARANTINE-SIZE] Imagen detectada en Backend: {width}x{height}"
-                )
-        except Exception as e:
-            logger.warning(
-                f"⚠️ [QUARANTINE-WARN] PIL no pudo leer dimensiones de los 8KB: {e}"
+        if width and height:
+            logger.info(
+                f"📏 [QUARANTINE-SIZE] Dimensiones recibidas del Frontend: {width}x{height}"
             )
-            pass
-
-        if not width or not height:
+        else:
             try:
                 with Image.open(BytesIO(file_bytes)) as img:
                     width, height = img.size
                     logger.info(
-                        f"📏 [RESCATE] PIL extrajo dimensiones: {width}x{height}"
+                        f"📏 [QUARANTINE-SIZE] Dimensiones extraídas con PIL: {width}x{height}"
                     )
             except Exception as e:
-                logger.warning(f"⚠️ [QUARANTINE-WARN] PIL falló también: {e}")
-                pass
+                logger.warning(
+                    f"⚠️ [QUARANTINE-WARN] PIL no pudo leer dimensiones con {chunk_size}: {e}"
+                )
 
-        if (
-            not width
-            and getattr(data, "resolution", None)
-            and "x" in data.resolution.lower()
-        ):
-            try:
-                w, h = data.resolution.lower().split("x")
-                width, height = int(w.strip()), int(h.strip())
-            except Exception:
-                pass
+                resolution_str = getattr(data, "resolution", None)
+                if resolution_str and "x" in resolution_str.lower():
+                    try:
+                        w, h = resolution_str.lower().split("x")
+                        width, height = int(w.strip()), int(h.strip())
+                        logger.info(
+                            f"📏 [RESCATE] Dimensiones extraídas del string resolution: {width}x{height}"
+                        )
+                    except Exception:
+                        pass
 
         # =================================================================
         # 📦 6. CONSOLIDACIÓN A ALMACENAMIENTO PERMANENTE Y DB

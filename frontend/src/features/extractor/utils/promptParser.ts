@@ -1,5 +1,5 @@
 import { ExtractedPromptData, ExtractedPromptSchema } from "./parsers/validation";
-import { cleanNullBytes } from "./parsers/stringUtils"; // 🟢 Usado ahora
+import { cleanNullBytes } from "./parsers/stringUtils";
 import { parseA1111 } from "./parsers/a1111Parser";
 import { parseComfy } from "./parsers/comfyParser";
 import { parseMidjourney } from "./parsers/midjourneyParser";
@@ -7,55 +7,89 @@ import { parseMidjourney } from "./parsers/midjourneyParser";
 export type { ExtractedPromptData };
 
 export function parsePromptData(rawText: string): ExtractedPromptData {
-  // 🟢 Usamos la utilidad para limpiar nulos (Fix TS 6133) y normalizar
+  // 🟢 Usamos la utilidad para limpiar nulos y normalizar el texto entrante
   const cleanText = cleanNullBytes(rawText);
-  let parsed: Partial<ExtractedPromptData>;
+  let parsed: Partial<ExtractedPromptData> = {};
 
-  // Fingerprinting: Buscamos firmas de software en todo el bloque
-  const isJson = cleanText.includes('{"') || cleanText.startsWith("{");
-  const isComfyUI =
-    cleanText.toLowerCase().includes("comfyui") || cleanText.includes('"class_type"');
-  const isMidjourney = /--ar|--v|--style|--niji|Job ID:/i.test(cleanText);
+  // Asumimos A1111 como el estándar genérico si no hay evidencias sólidas de lo contrario
+  let detectedSoftware: ExtractedPromptData["software"] = "A1111";
 
-  if (isJson || isComfyUI) {
+  // =================================================================
+  // 🕵️‍♂️ 1. FINGERPRINTING INTELIGENTE (Ordenado de mayor a menor especificidad)
+  // =================================================================
+
+  // ComfyUI SIEMPRE tiene el nodo "class_type" y "inputs" en su estructura de grafos
+  const isComfyUI = cleanText.includes('"class_type"') && cleanText.includes('"inputs"');
+
+  // Midjourney tiene parámetros únicos o incluye la firma de su bot
+  const isMidjourney =
+    /--ar|--v|--style|--niji|Job ID:/i.test(cleanText) || cleanText.includes("Midjourney Bot");
+
+  // NovelAI suele usar un bloque JSON que contiene la key "uc" (undesired content)
+  const isNovelAI = cleanText.includes('"uc":') && cleanText.startsWith("{");
+
+  // =================================================================
+  // 🧠 2. ENRUTAMIENTO Y EXTRACCIÓN SEGURA
+  // =================================================================
+  if (isComfyUI) {
+    detectedSoftware = "ComfyUI";
     try {
-      // Extraemos el JSON puro si hay basura alrededor (común en Comfy)
-      const jsonMatch = cleanText.match(/\{[\s\S]*\}/);
-      const jsonStr = jsonMatch ? jsonMatch[0] : cleanText;
-      const jsonObj = JSON.parse(jsonStr);
-      parsed = parseComfy(jsonObj, cleanText);
-    } catch {
-      // Fallback a A1111 si el JSON está roto pero hay texto legible
+      // 🟢 FIX CRÍTICO: Extracción matemática del JSON sin Regex (Evita el Catastrophic Backtracking)
+      const firstBrace = cleanText.indexOf("{");
+      const lastBrace = cleanText.lastIndexOf("}");
+
+      if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+        const jsonStr = cleanText.substring(firstBrace, lastBrace + 1);
+        const jsonObj = JSON.parse(jsonStr);
+        parsed = parseComfy(jsonObj, cleanText);
+      } else {
+        throw new Error("Estructura JSON no delimitada correctamente");
+      }
+    } catch (e) {
+      console.warn("⚠️ [PARSER] Fallo al decodificar JSON de ComfyUI. Fallback a A1111.", e);
       parsed = parseA1111(cleanText);
     }
   } else if (isMidjourney) {
+    detectedSoftware = "Midjourney";
     parsed = parseMidjourney(cleanText, rawText);
-    parsed.software = "Midjourney";
+  } else if (isNovelAI) {
+    detectedSoftware = "NovelAI";
+    // Si algún día creas parseNovelAI(), lo pondrías aquí.
+    // Por ahora, A1111 hace un buen trabajo extrayendo los prompts básicos del texto.
+    parsed = parseA1111(cleanText);
   } else {
+    // Si no tiene firma reconocible, tiramos de la vieja confiable (A1111 / Texto plano)
     parsed = parseA1111(cleanText);
   }
 
+  // =================================================================
+  // 🛡️ 3. VALIDACIÓN DEL CONTRATO DE DATOS
+  // =================================================================
   const validation = ExtractedPromptSchema.safeParse({
     ...parsed,
+    software:
+      parsed.software && parsed.software !== "Desconocido" ? parsed.software : detectedSoftware,
     rawText: rawText,
   });
 
   if (!validation.success) {
     console.error("❌ Fallo en contrato de extracción:", validation.error.format());
+
+    // 🟢 PROTECCIÓN DE MEMORIA: Si la extracción falla catastróficamente,
+    // truncamos los strings para no inyectar Megabytes de basura binaria en la UI de React.
     return {
-      title: "Extracción",
-      prompt: cleanText,
+      title: "Extracción Fallida",
+      prompt: cleanText.substring(0, 800) + (cleanText.length > 800 ? "..." : ""),
       negativePrompt: "",
       resolution: undefined,
-      rawText: rawText,
+      rawText: rawText.substring(0, 1000),
       software: "Desconocido",
-      extractionConfidence: 0.1,
+      extractionConfidence: 0.0,
     };
   }
 
   return validation.data;
 }
-
 // generateSmartTitle se queda igual, está perfecto.
 export function generateSmartTitle(filename: string, prompt?: string, software?: string): string {
   const cleanName = filename.replace(/\.[^/.]+$/, "").replace(/[_-]/g, " ");

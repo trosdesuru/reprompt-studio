@@ -28,6 +28,7 @@ export interface SavedPrompt {
   width?: number;
   height?: number;
   sampler?: string;
+  lora?: string;
   steps?: number;
   cfg_scale?: number;
   seed?: string;
@@ -37,6 +38,7 @@ export interface SavedPrompt {
   trigger_words?: string[];
   directory_id?: number | null;
   created_at: string;
+  extra_data?: string;
 }
 
 export interface MediaCardData {

@@ -1,5 +1,5 @@
 #### Ejecutar comnado de generación de archivo para versionado
-docker compose exec backend alembic revision --autogenerate -m "added:limit storage prrotected"
+docker compose exec backend alembic revision --autogenerate -m "enhanced: prompt detail"
 
 ### Aplica los cambios a tu base de datos local
 docker compose exec backend alembic upgrade head

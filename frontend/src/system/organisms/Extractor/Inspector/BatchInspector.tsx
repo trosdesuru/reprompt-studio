@@ -115,7 +115,7 @@ export function BatchInspector({
             "Content-Type": fileToUpload.type,
             "Cache-Control": "public, max-age=31536000, immutable",
           },
-          body: fileToUpload, // 👈 Subimos la variable dinámica (pura u optimizada)
+          body: fileToUpload,
         };
 
         const uploadRes = await fetch(uploadUrl, fetchOptions);
@@ -413,6 +413,19 @@ export function BatchInspector({
                             <span className="px-2 py-0.5 bg-muted text-muted-foreground border border-border/50 rounded text-[10px] font-mono">
                               🧪 {item.data.sampler}
                             </span>
+                          )}
+                          {item.data.loras && item.data.loras.length > 0 && (
+                            <>
+                              {item.data.loras.map((lora, idx) => (
+                                <span
+                                  key={`lora-${idx}`}
+                                  className="px-2 py-0.5 bg-purple-500/10 text-purple-600 border border-purple-500/20 rounded text-[10px] font-mono truncate max-w-40"
+                                  title={`${lora.name} (Fuerza: ${lora.strength})`}
+                                >
+                                  🔌 {lora.name} ({lora.strength})
+                                </span>
+                              ))}
+                            </>
                           )}
                         </div>
                       )}

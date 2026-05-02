@@ -1,8 +1,11 @@
 import exifr from "exifr";
+import { cleanNullBytes } from "../parsers/stringUtils"; // Asegúrate de que la ruta sea la correcta
 
 export async function extractJpegMetadata(file: File): Promise<string | null> {
   try {
-    // 1. Intento Estándar con exifr
+    // =================================================================
+    // 1. INTENTO ESTÁNDAR (La ruta feliz con EXIFR)
+    // =================================================================
     const metadata = await exifr.parse(file, {
       userComment: true,
       xmp: true,
@@ -23,11 +26,10 @@ export async function extractJpegMetadata(file: File): Promise<string | null> {
 
         let decoded = "";
         try {
-          // 🟢 FIX: Verificamos el tipo antes de decodificar para evitar el TypeError
           if (typeof tag === "string") {
             decoded = tag;
           } else if (tag instanceof ArrayBuffer || ArrayBuffer.isView(tag)) {
-            decoded = new TextDecoder("utf-8").decode(tag);
+            decoded = new TextDecoder("utf-8", { fatal: false }).decode(tag);
           } else {
             decoded = String(tag);
           }
@@ -35,11 +37,7 @@ export async function extractJpegMetadata(file: File): Promise<string | null> {
           decoded = String(tag);
         }
 
-        // Limpiamos nulos y prefijos (A1111 mete UNICODE\0...)
-        const clean = decoded
-          .replace(/\0/g, "")
-          .replace(/^(UNICODE|ASCII|UTF8)\x00*/i, "")
-          .trim();
+        const clean = cleanNullBytes(decoded).replace(/^(UNICODE|ASCII|UTF8)\x00*/i, "");
 
         if (clean.length > 20 && !clean.includes("[object Object]")) {
           return clean;
@@ -47,23 +45,56 @@ export async function extractJpegMetadata(file: File): Promise<string | null> {
       }
     }
 
-    // 🚀 2. FALLBACK: ESCANEO BINARIO (Red de seguridad para archivos "mudos")
-    const slice = file.slice(0, 65536);
-    const buffer = await slice.arrayBuffer();
-    const text = new TextDecoder("utf-8").decode(new Uint8Array(buffer));
+    // =================================================================
+    // 🚀 2. FALLBACK GREEDY: ESCANEO BINARIO TOTAL
+    // =================================================================
+    // Leemos el archivo entero. Las imágenes de IA pesan <20MB, la RAM del navegador lo soporta de sobra.
+    const buffer = await file.arrayBuffer();
 
-    if (text.includes("parameters") || text.includes("Steps:")) {
-      const start = text.indexOf("parameters");
-      if (start !== -1) {
-        const potentialPrompt = text.substring(start + 10, start + 5000);
-        // Eliminamos caracteres de control no imprimibles
-        return potentialPrompt.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F-\x9F]/g, "").trim();
+    // 🟢 EL FIX CRÍTICO: { fatal: false } evita que bytes de imagen corruptos rompan el decodificador
+    const decoder = new TextDecoder("utf-8", { fatal: false });
+    const fullText = decoder.decode(buffer);
+
+    // --- ESTRATEGIA A: Caza de JSON (ComfyUI) ---
+    // Buscamos la firma inconfundible de Comfy
+    const comfyMarker = fullText.indexOf('"class_type"');
+    if (comfyMarker !== -1) {
+      // Somos "Greedy": Buscamos la apertura de JSON antes de la firma y el cierre al final del archivo
+      const jsonStart = fullText.lastIndexOf("{", comfyMarker);
+      const jsonEnd = fullText.lastIndexOf("}");
+
+      if (jsonStart !== -1 && jsonEnd !== -1 && jsonEnd > jsonStart) {
+        // Extraemos solo el trozo limpio y lo mandamos al parser
+        const chunk = fullText.substring(jsonStart, jsonEnd + 1);
+        return cleanNullBytes(chunk);
       }
     }
 
+    // --- ESTRATEGIA B: Caza de A1111 ---
+    // Buscamos la firma de los parámetros técnicos
+    const stepsIndex = fullText.indexOf("Steps:");
+    if (stepsIndex !== -1) {
+      // A1111 suele guardar el prompt bajo la cabecera "parameters\x00" en el binario
+      let start = fullText.lastIndexOf("parameters", stepsIndex);
+
+      if (start === -1) {
+        // Si no existe la palabra parameters, cogemos hasta 4000 caracteres por detrás (suficiente para prompts enormes)
+        start = Math.max(0, stepsIndex - 4000);
+      } else {
+        start += 10; // Saltamos la propia palabra "parameters"
+      }
+
+      // El final del prompt suele estar poco después de los Steps (donde acaba la config)
+      const end = Math.min(fullText.length, stepsIndex + 1500);
+
+      const chunk = fullText.substring(start, end);
+      return cleanNullBytes(chunk);
+    }
+
+    // Si llegamos aquí, la imagen es verdaderamente sorda y muda.
     return null;
   } catch (error) {
     console.error("❌ Error crítico en jpegExtractor:", error);
-    return null;
+    return null; // Fallo silencioso elegante para que UI muestre estado "Desconocido"
   }
 }

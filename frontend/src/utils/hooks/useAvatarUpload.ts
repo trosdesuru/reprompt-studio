@@ -53,7 +53,11 @@ export function useAvatarUpload(username: string, onAvatarUpdate?: (newUrl: stri
       // 4. Actualizar Estado Global y Local
       setLocalAvatar(file_url);
 
-      if (user?.username === username && checkAuth) {
+      const updateUser = useAuthStore.getState().updateUser;
+      updateUser({ avatarUrl: file_url });
+
+      // Opcional: El checkAuth para sincronizar todo lo demás
+      if (user?.username.toLowerCase() === username.toLowerCase()) {
         await checkAuth(true);
       }
 

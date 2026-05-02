@@ -74,9 +74,18 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
   },
   updateUser: (data: any) =>
-    set((state) => ({
-      user: state.user ? { ...state.user, ...data } : null,
-    })),
+    set((state) => {
+      if (!state.user) return { user: null };
+
+      const normalizedData = { ...data };
+      if (data.avatar_url) {
+        normalizedData.avatarUrl = data.avatar_url;
+      }
+
+      return {
+        user: { ...state.user, ...normalizedData },
+      };
+    }),
 
   login: (userData) => {
     if (process.env.NODE_ENV === "development") {

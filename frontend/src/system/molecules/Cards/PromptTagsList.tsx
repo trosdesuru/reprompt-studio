@@ -37,7 +37,7 @@ export function PromptTagsList({ tags }: { tags?: (string | TagItem)[] }) {
               content={
                 <div className="flex flex-col gap-0.5">
                   <span className="text-destructive text-xs font-bold capitalize">{tagName}</span>
-                  <span className="text-xs text-muted-foreground">Confianza: {confidence}%</span>
+                  <span className="text-xs text-muted">Confianza: {confidence}%</span>
                 </div>
               }
             >

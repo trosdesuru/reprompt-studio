@@ -16,7 +16,7 @@ interface Author {
 
 export function PromptProfileHeader({ author, lang }: { author: Author; lang: string }) {
   const { data } = usePublicProfile(author.username);
-
+  const displayAvatar = data?.user?.avatar_url || author.avatar_url;
   const userRole = data?.user?.role || author.role || "creator";
 
   return (
@@ -30,7 +30,7 @@ export function PromptProfileHeader({ author, lang }: { author: Author; lang: st
           <Link href={`/${lang}/${author.username}`} className="flex items-center gap-3 group">
             <UserAvatar
               username={author.username}
-              avatarUrl={author.avatar_url}
+              avatarUrl={displayAvatar}
               size="lg"
               className="ring-2 ring-background/20 shadow-md transition-transform group-hover:scale-105"
             />
