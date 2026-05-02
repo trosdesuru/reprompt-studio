@@ -1,3 +1,4 @@
+import { memo } from "react";
 import Image from "next/image";
 import { IconCamera, IconLoader2 } from "@tabler/icons-react";
 
@@ -11,7 +12,7 @@ export interface UserAvatarProps {
   onClick?: () => void;
 }
 
-export function UserAvatar({
+export const UserAvatar = memo(function UserAvatar({
   username,
   avatarUrl,
   size = "md",
@@ -28,7 +29,7 @@ export function UserAvatar({
     xl: "w-24 h-24 text-3xl",
     "2xl": "w-20 h-20 md:w-28 md:h-28",
   };
-  console.log("avatar", avatarUrl)
+  console.log("avatar", avatarUrl);
 
   return (
     <div
@@ -72,4 +73,4 @@ export function UserAvatar({
       )}
     </div>
   );
-}
+});
