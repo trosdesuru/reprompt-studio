@@ -84,61 +84,19 @@ def update_my_avatar(
     if not data.avatar_url.startswith(base_url):
         raise HTTPException(status_code=400, detail="URL de avatar no permitida.")
 
-    # 🟢 1. Detectar si la imagen viene de la carpeta 'temp'
-    temp_key = data.avatar_url.replace(f"{base_url}/", "")
-
-    # 🚨 Validación de seguridad para que un usuario no pueda mover archivos de otro
-    expected_temp_prefix = f"temp/{current_user.id}/"
-
-    final_avatar_url = data.avatar_url
-
-    if temp_key.startswith(expected_temp_prefix):
-        # 🟢 2. Definir la ruta final permanente (users/{user_id}/avatar.png, etc.)
-        # Extraemos la extensión del archivo temporal (ej: .png o .jpg)
-        import os
-
-        _, ext = os.path.splitext(temp_key)
-        if not ext:
-            ext = ".jpg"  # Fallback por si acaso
-
-        permanent_key = f"users/{current_user.id}/avatar{ext}"
-
-        # 🟢 3. Mover físicamente el archivo en Cloudflare R2
-        if not move_to_permanent(temp_key, permanent_key):
-            logger.error(f"❌ Error al promocionar avatar en R2: {temp_key}")
-            raise HTTPException(
-                status_code=500, detail="Error interno al consolidar el avatar."
-            )
-
-        # 🟢 4. Actualizar la URL que guardaremos en base de datos
-        final_avatar_url = f"{base_url}/{permanent_key}"
-
-    # 🟢 5. Borrar el avatar antiguo SOLO si es diferente al nuevo final
-    if current_user.avatar_url and current_user.avatar_url != final_avatar_url:
-        try:
-            eliminar_de_r2(current_user.avatar_url)
-        except Exception as e:
-            logger.warning(
-                f"⚠️ No se pudo borrar el avatar antiguo de {current_user.username}: {e}"
-            )
-
-    # 🟢 6. Guardar en Base de Datos (Neon)
-    current_user.avatar_url = final_avatar_url
-    session.add(current_user)
-    session.commit()
-    session.refresh(current_user)
+    updated_user = AuthService.update_avatar(current_user, data.avatar_url, session)
 
     AuditService.log_action(
         session,
-        current_user.username,
+        updated_user.username,
         "AVATAR_UPDATE",
-        "Avatar actualizado y consolidado",
+        "Avatar actualizado, auditado y consolidado",
     )
 
     return {
         "status": "success",
         "message": "Avatar actualizado correctamente",
-        "avatar_url": current_user.avatar_url,
+        "avatar_url": updated_user.avatar_url,
     }
 
 

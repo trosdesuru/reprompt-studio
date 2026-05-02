@@ -1,10 +1,12 @@
 const fs = require("fs");
 const path = require("path");
 
-console.log("--- 🕵️ INVESTIGACIÓN DE DEPENDENCIAS ---");
-console.log(`Directorio actual: ${process.cwd()}`);
-console.log(`Versión de Node: ${process.version}`);
-console.log(`Plataforma: ${process.platform}`);
+if (process.env.NODE_ENV === "development") {
+  console.log("--- 🕵️ INVESTIGACIÓN DE DEPENDENCIAS ---");
+  console.log(`Directorio actual: ${process.cwd()}`);
+  console.log(`Versión de Node: ${process.version}`);
+  console.log(`Plataforma: ${process.platform}`);
+}
 
 const pathsToCheck = [
   "node_modules/next/package.json",
@@ -21,11 +23,12 @@ pathsToCheck.forEach((p) => {
 
     const parent = path.dirname(fullPath);
     if (fs.existsSync(parent)) {
-      console.log(
-        `   📂 Contenido de ${path.dirname(p)}:`,
-        fs.readdirSync(parent),
-      );
+      if (process.env.NODE_ENV === "development") {
+        console.log(`   📂 Contenido de ${path.dirname(p)}:`, fs.readdirSync(parent));
+      }
     }
   }
 });
-console.log("---------------------------------------");
+if (process.env.NODE_ENV === "development") {
+  console.log("---------------------------------------");
+}

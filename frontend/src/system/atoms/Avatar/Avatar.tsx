@@ -28,6 +28,7 @@ export function UserAvatar({
     xl: "w-24 h-24 text-3xl",
     "2xl": "w-20 h-20 md:w-28 md:h-28",
   };
+  console.log("avatar", avatarUrl)
 
   return (
     <div

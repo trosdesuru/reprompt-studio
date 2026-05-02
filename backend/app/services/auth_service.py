@@ -2,7 +2,8 @@ import os
 import re
 import logging
 import requests
-from app.core.config import settings
+import uuid
+
 from sqlalchemy import or_, func
 from google.oauth2 import id_token
 from google.auth.transport import requests as google_requests
@@ -12,8 +13,12 @@ GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
 import jwt
 from fastapi import HTTPException
 from sqlmodel import Session, select
+
 from app.utils.username import normalize_username
 from app.models.user import User, InviteCode
+from app.core.config import settings
+from app.services.storage import s3_client, move_to_permanent, delete_file
+from app.services.security import validate_magic_bytes
 from app.core.security import (
     get_password_hash,
     verify_password,
@@ -534,3 +539,70 @@ class AuthService:
                 "suggested_username": suggested_username,
                 "provider_id": provider_id,
             }
+
+    @staticmethod
+    def update_avatar(current_user: User, temp_url: str, session: Session):
+        logger = logging.getLogger("auth_service")
+
+        # 1. Parsear la ruta temporal
+        base_url = settings.R2_PUBLIC_URL.rstrip("/") + "/"
+        temp_key = temp_url.replace(base_url, "")
+
+        if not temp_key.startswith(f"temp/{current_user.id}/"):
+            logger.warning(
+                f"🚨 Intento de suplantación de ruta por {current_user.username}"
+            )
+            raise HTTPException(status_code=403, detail="Ruta temporal inválida.")
+
+        # 2. Validación de Seguridad (Magic Bytes)
+        try:
+            response = s3_client.get_object(
+                Bucket=settings.R2_BUCKET_NAME,
+                Key=temp_key,
+                Range="bytes=0-2048",  # Solo leemos el "encabezado" del archivo
+            )
+            file_bytes = response["Body"].read()
+        except Exception as e:
+            logger.error(f"❌ Error leyendo avatar temporal: {e}")
+            raise HTTPException(
+                status_code=404, detail="Archivo temporal no encontrado."
+            )
+
+        if not validate_magic_bytes(file_bytes):
+            delete_file(temp_key)  # Destruimos el archivo sospechoso
+            raise HTTPException(
+                status_code=400,
+                detail="El archivo está corrupto o no es una imagen válida.",
+            )
+
+        # 3. Generación del Nombre Único (Cache-Busting Nativo)
+        unique_id = uuid.uuid4().hex[:8]
+        new_key = f"users/{current_user.id}/avatar_{unique_id}.webp"
+
+        # 4. Mover a Permanente
+        if not move_to_permanent(temp_key, new_key):
+            raise HTTPException(
+                status_code=500, detail="Error interno consolidando la imagen."
+            )
+
+        # 5. 🗑️ GARBAGE COLLECTION: Borrar el avatar anterior
+        if current_user.avatar_url:
+            old_key = current_user.avatar_url.replace(base_url, "")
+            # Solo lo borramos si pertenece a su carpeta (evita borrar fotos por defecto genéricas)
+            if old_key.startswith(f"users/{current_user.id}/"):
+                delete_file(old_key)
+                logger.info(
+                    f"🧹 [GARBAGE COLLECTOR] Avatar antiguo eliminado: {old_key}"
+                )
+
+        # 6. Actualizar la Base de Datos
+        final_url = f"{base_url}{new_key}"
+        current_user.avatar_url = final_url
+        session.add(current_user)
+        session.commit()
+        session.refresh(current_user)
+
+        logger.info(
+            f"✅ [AUTH] Avatar actualizado con éxito para @{current_user.username}"
+        )
+        return current_user

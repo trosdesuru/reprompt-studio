@@ -8,11 +8,15 @@ export async function POST(request: Request) {
     const GOOGLE_SCRIPT_URL = process.env.GOOGLE_SCRIPT_WEBHOOK_URL;
 
     if (!GOOGLE_SCRIPT_URL) {
-      console.error("❌ Falta GOOGLE_SCRIPT_WEBHOOK_URL");
+      if (process.env.NODE_ENV === "development") {
+        console.error("❌ Falta GOOGLE_SCRIPT_WEBHOOK_URL");
+      }
       return NextResponse.json({ error: "Falta URL" }, { status: 500 });
     }
 
-    console.log("🚀 [AUDITORÍA - PASO 2] Enviando a Google...");
+    if (process.env.NODE_ENV === "development") {
+      console.log("🚀 [AUDITORÍA - PASO 2] Enviando a Google...");
+    }
     const googleRes = await fetch(GOOGLE_SCRIPT_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -21,7 +25,9 @@ export async function POST(request: Request) {
 
     // Leemos la respuesta como texto crudo por si Google nos devuelve un HTML de error
     const googleText = await googleRes.text();
-    console.log("📨 [AUDITORÍA - PASO 3] Respuesta CRUDA de Google:", googleText);
+    if (process.env.NODE_ENV === "development") {
+      console.log("📨 [AUDITORÍA - PASO 3] Respuesta CRUDA de Google:", googleText);
+    }
 
     if (!googleRes.ok) {
       throw new Error(`Google rechazó con status: ${googleRes.status}`);
@@ -29,7 +35,9 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ success: true, googleResponse: googleText });
   } catch (error) {
-    console.error("🔥 [AUDITORÍA - ERROR FATAL]:", error);
+    if (process.env.NODE_ENV === "development") {
+      console.error("🔥 [AUDITORÍA - ERROR FATAL]:", error);
+    }
     return NextResponse.json({ error: "Fallo" }, { status: 500 });
   }
 }

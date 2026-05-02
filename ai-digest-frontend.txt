@@ -9,6 +9,8 @@ Directory structure:
     ├── Dockerfile
     ├── eslint.config.mjs
     ├── estructura.txt
+    ├── instrumentation-client.ts
+    ├── instrumentation.ts
     ├── jest.config.js
     ├── jest.setup.js
     ├── next.config.ts
@@ -16,51 +18,63 @@ Directory structure:
     ├── playwright.config.ts
     ├── postcss.config.mjs
     ├── proxy.ts
+    ├── sentry.client.config.ts
+    ├── sentry.edge.config.ts
+    ├── sentry.server.config.ts
     ├── tsconfig.json
     ├── .prettierignore
     ├── .prettierrc
     ├── app/
+    │   ├── global-error.tsx
     │   ├── globals.css
-    │   └── [lang]/
-    │       ├── error.tsx
-    │       ├── layout.tsx
-    │       ├── (auth)/
-    │       │   ├── discord/
-    │       │   │   └── callback/
-    │       │   │       └── page.tsx
-    │       │   ├── google/
-    │       │   │   └── callback/
-    │       │   │       └── page.tsx
-    │       │   ├── join/
-    │       │   │   └── page.tsx
-    │       │   └── login/
-    │       │       └── page.tsx
-    │       └── (main)/
-    │           ├── layout.tsx
-    │           ├── page.tsx
-    │           ├── [username]/
-    │           │   ├── loading.tsx
-    │           │   ├── page.tsx
-    │           │   ├── [collection_slug]/
-    │           │   │   └── page.tsx
-    │           │   ├── p/
-    │           │   │   └── [prompt_id]/
-    │           │   │       ├── loading.tsx
-    │           │   │       └── page.tsx
-    │           │   └── settings/
-    │           │       ├── layout.tsx
-    │           │       ├── appearance/
-    │           │       │   └── page.tsx
-    │           │       ├── profile/
-    │           │       │   └── page.tsx
-    │           │       └── security/
-    │           │           └── page.tsx
-    │           ├── admin/
-    │           │   └── page.tsx
-    │           ├── reprompt/
-    │           │   └── page.tsx
-    │           └── studio/
-    │               └── page.tsx
+    │   ├── layout.tsx
+    │   ├── [lang]/
+    │   │   ├── error.tsx
+    │   │   ├── layout.tsx
+    │   │   ├── (auth)/
+    │   │   │   ├── discord/
+    │   │   │   │   └── callback/
+    │   │   │   │       └── page.tsx
+    │   │   │   ├── google/
+    │   │   │   │   └── callback/
+    │   │   │   │       └── page.tsx
+    │   │   │   ├── join/
+    │   │   │   │   └── page.tsx
+    │   │   │   └── login/
+    │   │   │       └── page.tsx
+    │   │   └── (main)/
+    │   │       ├── layout.tsx
+    │   │       ├── page.tsx
+    │   │       ├── [username]/
+    │   │       │   ├── loading.tsx
+    │   │       │   ├── page.tsx
+    │   │       │   ├── [collection_slug]/
+    │   │       │   │   └── page.tsx
+    │   │       │   ├── p/
+    │   │       │   │   └── [prompt_id]/
+    │   │       │   │       ├── loading.tsx
+    │   │       │   │       └── page.tsx
+    │   │       │   └── settings/
+    │   │       │       ├── layout.tsx
+    │   │       │       ├── appearance/
+    │   │       │       │   └── page.tsx
+    │   │       │       ├── profile/
+    │   │       │       │   └── page.tsx
+    │   │       │       └── security/
+    │   │       │           └── page.tsx
+    │   │       ├── admin/
+    │   │       │   └── page.tsx
+    │   │       ├── reprompt/
+    │   │       │   └── page.tsx
+    │   │       └── studio/
+    │   │           └── page.tsx
+    │   ├── api/
+    │   │   ├── feedback/
+    │   │   │   └── route.ts
+    │   │   └── sentry-example-api/
+    │   │       └── route.ts
+    │   └── sentry-example-page/
+    │       └── page.tsx
     ├── lib/
     │   └── utils.ts
     ├── src/
@@ -129,6 +143,11 @@ Directory structure:
     │   │   │           ├── stringUtils.ts
     │   │   │           ├── types.ts
     │   │   │           └── validation.ts
+    │   │   ├── feedback/
+    │   │   │   ├── components/
+    │   │   │   │   └── FeedbackBetaModal.tsx
+    │   │   │   └── hooks/
+    │   │   │       └── useFeedbackTrigger.ts
     │   │   ├── home/
     │   │   │   └── hooks/
     │   │   │       ├── useHomeInteraction.ts
@@ -138,11 +157,13 @@ Directory structure:
     │   │   │       ├── NavbarActions.tsx
     │   │   │       └── NavbarSearch.tsx
     │   │   ├── prompts/
-    │   │   │   └── components/
-    │   │   │       ├── ExpandableText.tsx
-    │   │   │       ├── PromptNavigation.tsx
-    │   │   │       ├── PromptProfileHeader.tsx
-    │   │   │       └── PromptTitleHeader.tsx
+    │   │   │   ├── components/
+    │   │   │   │   ├── ExpandableText.tsx
+    │   │   │   │   ├── PromptNavigation.tsx
+    │   │   │   │   ├── PromptProfileHeader.tsx
+    │   │   │   │   └── PromptTitleHeader.tsx
+    │   │   │   └── hooks/
+    │   │   │       └── useDownloadImage.ts
     │   │   ├── public/
     │   │   │   └── hooks/
     │   │   │       ├── usePublicDirectory.ts
@@ -230,7 +251,8 @@ Directory structure:
     │   │   │   ├── Avatar/
     │   │   │   │   └── Avatar.tsx
     │   │   │   ├── Badge/
-    │   │   │   │   └── Badge.tsx
+    │   │   │   │   ├── Badge.tsx
+    │   │   │   │   └── NeoIconBadge.tsx
     │   │   │   ├── Brand/
     │   │   │   │   └── BrandText.tsx
     │   │   │   ├── Button/
@@ -313,6 +335,7 @@ Directory structure:
     │   │   │       └── AuthTabs.tsx
     │   │   ├── organisms/
     │   │   │   ├── Extractor/
+    │   │   │   │   ├── ExtractorInfoModal.tsx
     │   │   │   │   ├── Dropzone/
     │   │   │   │   │   ├── DropzoneContent.tsx
     │   │   │   │   │   ├── DropzoneError.tsx
@@ -332,7 +355,6 @@ Directory structure:
     │   │   │   ├── Navbar/
     │   │   │   │   └── Navbar.tsx
     │   │   │   ├── Navigation/
-    │   │   │   │   ├── NavbarSearch.tsx
     │   │   │   │   └── PageHeader.tsx
     │   │   │   ├── Profile/
     │   │   │   │   └── ProfileHeader.tsx
@@ -496,10 +518,12 @@ FILE: diagnose.js
 const fs = require("fs");
 const path = require("path");
 
-console.log("--- 🕵️ INVESTIGACIÓN DE DEPENDENCIAS ---");
-console.log(`Directorio actual: ${process.cwd()}`);
-console.log(`Versión de Node: ${process.version}`);
-console.log(`Plataforma: ${process.platform}`);
+if (process.env.NODE_ENV === "development") {
+  console.log("--- 🕵️ INVESTIGACIÓN DE DEPENDENCIAS ---");
+  console.log(`Directorio actual: ${process.cwd()}`);
+  console.log(`Versión de Node: ${process.version}`);
+  console.log(`Plataforma: ${process.platform}`);
+}
 
 const pathsToCheck = [
   "node_modules/next/package.json",
@@ -516,14 +540,15 @@ pathsToCheck.forEach((p) => {
 
     const parent = path.dirname(fullPath);
     if (fs.existsSync(parent)) {
-      console.log(
-        `   📂 Contenido de ${path.dirname(p)}:`,
-        fs.readdirSync(parent),
-      );
+      if (process.env.NODE_ENV === "development") {
+        console.log(`   📂 Contenido de ${path.dirname(p)}:`, fs.readdirSync(parent));
+      }
     }
   }
 });
-console.log("---------------------------------------");
+if (process.env.NODE_ENV === "development") {
+  console.log("---------------------------------------");
+}
 
 
 
@@ -531,16 +556,19 @@ console.log("---------------------------------------");
 FILE: docker-compose.yml
 ================================================
 frontend:
-  build: ./frontend
-  volumes:
-    - ./frontend:/app
-    - /app/node_modules
-    - /app/.next
-  ports:
-    - "3000:3000"
-  environment:
-    - NEXT_PUBLIC_API_URL=http://localhost:3000
-
+    build: ./frontend
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+      - /app/.next
+    environment:
+      - NEXT_PUBLIC_SENTRY_DSN=https://2b38b71f741cb421ed60073c9c3a7f80@o4511303407632384.ingest.de.sentry.io/4511303429980240
+      - NEXT_PUBLIC_API_URL=http://localhost:8000/api
+      - NODE_OPTIONS=--max-old-space-size=512
+    depends_on:
+      - backend
 
 
 ================================================
@@ -591,6 +619,62 @@ Ok to proceed? (y)
 
 
 ================================================
+FILE: instrumentation-client.ts
+================================================
+// This file configures the initialization of Sentry on the client.
+// The added config here will be used whenever a users loads a page in their browser.
+// https://docs.sentry.io/platforms/javascript/guides/nextjs/
+
+import * as Sentry from "@sentry/nextjs";
+
+Sentry.init({
+  dsn: "https://2b38b71f741cb421ed60073c9c3a7f80@o4511303407632384.ingest.de.sentry.io/4511303429980240",
+
+  // Add optional integrations for additional features
+  integrations: [Sentry.replayIntegration()],
+
+  // Define how likely traces are sampled. Adjust this value in production, or use tracesSampler for greater control.
+  tracesSampleRate: 1,
+  // Enable logs to be sent to Sentry
+  enableLogs: true,
+
+  // Define how likely Replay events are sampled.
+  // This sets the sample rate to be 10%. You may want this to be 100% while
+  // in development and sample at a lower rate in production
+  replaysSessionSampleRate: 0.1,
+
+  // Define how likely Replay events are sampled when an error occurs.
+  replaysOnErrorSampleRate: 1.0,
+
+  // Enable sending user PII (Personally Identifiable Information)
+  // https://docs.sentry.io/platforms/javascript/guides/nextjs/configuration/options/#sendDefaultPii
+  sendDefaultPii: true,
+});
+
+export const onRouterTransitionStart = Sentry.captureRouterTransitionStart;
+
+
+
+================================================
+FILE: instrumentation.ts
+================================================
+import * as Sentry from "@sentry/nextjs";
+
+export async function register() {
+  if (process.env.NEXT_RUNTIME === "nodejs") {
+    await import("./sentry.server.config");
+  }
+
+  if (process.env.NEXT_RUNTIME === "edge") {
+    await import("./sentry.edge.config");
+  }
+}
+
+export const onRequestError = Sentry.captureRequestError;
+
+
+
+================================================
 FILE: jest.config.js
 ================================================
 const nextJest = require("next/jest");
@@ -622,6 +706,7 @@ import '@testing-library/jest-dom'
 ================================================
 FILE: next.config.ts
 ================================================
+import { withSentryConfig } from "@sentry/nextjs";
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
@@ -656,7 +741,14 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+export default withSentryConfig(nextConfig, {
+  org: "reprompt-studio",
+  project: "javascript-nextjs",
+  silent: !process.env.CI,
+  tunnelRoute: "/monitoring",
+  widenClientFileUpload: true,
+  disableLogger: true,
+});
 
 
 
@@ -685,6 +777,7 @@ FILE: package.json
     "@phosphor-icons/react": "^2.1.10",
     "@radix-ui/react-tooltip": "^1.2.8",
     "@react-oauth/google": "^0.13.4",
+    "@sentry/nextjs": "^10.50.0",
     "@tabler/icons-react": "^3.41.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -900,6 +993,51 @@ export const config = {
 
 
 ================================================
+FILE: sentry.client.config.ts
+================================================
+import * as Sentry from "@sentry/nextjs";
+
+Sentry.init({
+  dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
+  tracesSampleRate: 1.0,
+  replaysSessionSampleRate: 0.1,
+  replaysOnErrorSampleRate: 1.0,
+  integrations: [Sentry.replayIntegration()],
+});
+
+
+
+================================================
+FILE: sentry.edge.config.ts
+================================================
+import * as Sentry from "@sentry/nextjs";
+
+Sentry.init({
+  dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
+  tracesSampleRate: 1.0,
+
+  enableLogs: true,
+  sendDefaultPii: true,
+});
+
+
+
+================================================
+FILE: sentry.server.config.ts
+================================================
+import * as Sentry from "@sentry/nextjs";
+
+Sentry.init({
+  dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
+  tracesSampleRate: 1.0,
+
+  enableLogs: true,
+  sendDefaultPii: true,
+});
+
+
+
+================================================
 FILE: tsconfig.json
 ================================================
 {
@@ -968,6 +1106,39 @@ FILE: .prettierrc
   "jsxSingleQuote": false,
   "bracketSpacing": true
 }
+
+
+================================================
+FILE: app/global-error.tsx
+================================================
+"use client";
+
+import * as Sentry from "@sentry/nextjs";
+import NextError from "next/error";
+import { useEffect } from "react";
+
+export default function GlobalError({
+  error,
+}: {
+  error: Error & { digest?: string };
+}) {
+  useEffect(() => {
+    Sentry.captureException(error);
+  }, [error]);
+
+  return (
+    <html lang="en">
+      <body>
+        {/* `NextError` is the default Next.js error page component. Its type
+        definition requires a `statusCode` prop. However, since the App Router
+        does not expose status codes for errors, we simply pass 0 to render a
+        generic error message. */}
+        <NextError statusCode={0} />
+      </body>
+    </html>
+  );
+}
+
 
 
 ================================================
@@ -1222,11 +1393,33 @@ body {
 
 
 ================================================
+FILE: app/layout.tsx
+================================================
+// This file was generated by the Sentry wizard because we couldn't find a root layout file.
+// You can delete this file at any time.
+
+export const metadata = {
+  title: "Sentry NextJS Example",
+  description: "Generated by Sentry",
+};
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <html lang="es" suppressHydrationWarning>
+      <body suppressHydrationWarning>{children}</body>
+    </html>
+  );
+}
+
+
+
+================================================
 FILE: app/[lang]/error.tsx
 ================================================
 "use client";
 
 import { useEffect, useState } from "react";
+import * as Sentry from "@sentry/nextjs"; // 🟢 Importación del Oráculo
 import { api } from "@/src/services/api";
 
 export default function GlobalError({
@@ -1238,26 +1431,48 @@ export default function GlobalError({
 }) {
   const [isSending, setIsSending] = useState(false);
   const [isSent, setIsSent] = useState(false);
+  const [eventId, setEventId] = useState<string | null>(null); // 🟢 Guardamos el ID del error
 
   useEffect(() => {
+    // 1. Reporte silencioso e inmediato a Sentry (Telemetría de Día Cero)
+    const id = Sentry.captureException(error, {
+      extra: { digest: error.digest },
+    });
+    setEventId(id);
+
     console.error("💥 [ERROR BOUNDARY] Anomalía detectada:", error);
   }, [error]);
 
   const handleReport = async () => {
     setIsSending(true);
-    try {
-      await api.admin.reportBug({
-        message: error.message,
-        stack: error.stack,
-        digest: error.digest,
-        url: window.location.href,
-        timestamp: new Date().toISOString(),
+
+    // 2. Si tenemos el ID de Sentry, lanzamos su Modal de Feedback profesional
+    if (eventId) {
+      Sentry.showReportDialog({
+        eventId,
+        title: "Informe de Anomalía Crítica",
+        user: {
+          name: "Usuario de Reprompt", // Podrías sacar esto de tu authStore
+        },
+        onEventSent: () => setIsSent(true),
       });
-      setIsSent(true);
-    } catch (err) {
-      console.error("Error al enviar el reporte", err);
-    } finally {
       setIsSending(false);
+    } else {
+      // 3. Fallback: Si Sentry no cargó, usamos tu API manual (Resiliencia)
+      try {
+        await api.admin.reportBug({
+          message: error.message,
+          stack: error.stack,
+          digest: error.digest,
+          url: window.location.href,
+          timestamp: new Date().toISOString(),
+        });
+        setIsSent(true);
+      } catch (err) {
+        console.error("Error al enviar el reporte manual", err);
+      } finally {
+        setIsSending(false);
+      }
     }
   };
 
@@ -1268,10 +1483,12 @@ export default function GlobalError({
           ¡Fallo en el Sistema! 🛠️
         </h2>
         <p className="text-muted-foreground font-mono text-sm leading-relaxed">
-          Nuestros escudos han detectado una anomalía crítica en esta ruta. 
-          Haz clic en el botón de abajo para enviar los registros directamente al administrador (<strong>@trosdesuru</strong>).
+          Nuestros escudos han detectado una anomalía crítica en esta ruta. Haz clic en el botón de
+          abajo para enviar los registros directamente al administrador (
+          <strong>@trosdesuru</strong>).
         </p>
 
+        {/* 🟢 Solo en desarrollo para no asustar al usuario en producción */}
         {process.env.NODE_ENV === "development" && (
           <div className="bg-black/80 p-4 rounded-md text-left overflow-auto text-xs text-red-400 font-mono mt-4 max-h-40 custom-scrollbar neo-border">
             {error.message}
@@ -1304,6 +1521,7 @@ export default function GlobalError({
     </main>
   );
 }
+
 
 
 ================================================
@@ -1357,10 +1575,13 @@ export default async function RootLayout({
   return (
     <html
       lang={lang}
-      className={cn(prompt.variable, "font-mono", jetbrainsMono.variable)}
       suppressHydrationWarning
+      className={cn(prompt.variable, "font-mono", jetbrainsMono.variable)}
     >
-      <body className="antialiased selection:bg-(--accent-color) selection:text-white">
+      <body
+        className="antialiased selection:bg-(--accent-color) selection:text-white"
+        suppressHydrationWarning
+      >
         <ThemeProvider
           attribute="class"
           defaultTheme="system"
@@ -1620,13 +1841,21 @@ FILE: app/[lang]/(main)/layout.tsx
 import { Navbar } from "@/src/system/organisms/Navbar/Navbar";
 import { FadeIn } from "@/src/system/atoms/Animations/FadeIn";
 import { Footer } from "@/src/system/molecules/Navigation/Footer";
+import { useFeedbackTrigger } from "@/src/features/feedback/hooks/useFeedbackTrigger";
+import { FeedbackBetaModal } from "@/src/features/feedback/components/FeedbackBetaModal";
 
 export default function MainLayout({ children }: { children: React.ReactNode }) {
+  const { showFeedbackModal, snoozeFeedback, completeFeedback } = useFeedbackTrigger();
   return (
     <>
       <Navbar />
       <FadeIn>{children}</FadeIn>
       <Footer />
+      <FeedbackBetaModal
+        isOpen={showFeedbackModal}
+        onClose={snoozeFeedback}
+        onComplete={completeFeedback}
+      />
     </>
   );
 }
@@ -2008,36 +2237,31 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
 FILE: app/[lang]/(main)/[username]/settings/appearance/page.tsx
 ================================================
 "use client";
-
-import { SettingsSectionHeader } from "@/src/features/settings/components/SettingsSectionHeader";
-import { ThemeSelectorCard } from "@/src/features/theme/components/ThemeSelectorCard";
 import { useTheme } from "@/src/utils/hooks/useTheme";
-import { IconDeviceDesktop } from "@tabler/icons-react";
+import { ThemeSelectorCard } from "@/src/features/theme/components/ThemeSelectorCard";
 
-export default function AppearanceSettingsPage() {
-  const { isDark, toggleTheme } = useTheme();
+export default function AppearanceSettingsView() {
+  const { theme, setTheme, mounted } = useTheme();
+
+  if (!mounted) return null;
 
   return (
-    <div className="max-w-3xl animate-fade-in space-y-8">
-      <SettingsSectionHeader
-        title="Opciones de Tema"
-        description="Personaliza cómo se ve Reprompt en este dispositivo."
-        icon={<IconDeviceDesktop className="text-foreground" size={24} />}
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <ThemeSelectorCard
+        themeType="light"
+        isActive={theme === "light"}
+        onClick={() => setTheme("light")}
       />
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <ThemeSelectorCard
-          themeType="light"
-          isActive={!isDark}
-          onClick={() => isDark && toggleTheme()}
-        />
-
-        <ThemeSelectorCard
-          themeType="dark"
-          isActive={isDark}
-          onClick={() => !isDark && toggleTheme()}
-        />
-      </div>
+      <ThemeSelectorCard
+        themeType="dark"
+        isActive={theme === "dark"}
+        onClick={() => setTheme("dark")}
+      />
+      <ThemeSelectorCard
+        themeType="system"
+        isActive={theme === "system"}
+        onClick={() => setTheme("system")}
+      />
     </div>
   );
 }
@@ -2316,16 +2540,18 @@ FILE: app/[lang]/(main)/reprompt/page.tsx
 ================================================
 "use client";
 
-import { use } from "react";
+import { use, useState } from "react";
 import { usePromptExtractor } from "@/src/features/extractor/hooks/usePromptExtractor";
-import { ExtractorDropzone } from "@/src/system/organisms/Extractor/Dropzone";
+import { ExtractorDropzone } from "@/src/system/organisms/Extractor/Dropzone"; // 🟢 Importación limpia
 import { BatchInspector } from "@/src/system/organisms/Extractor/Inspector/BatchInspector";
-import { UpgradeModal } from "@/src/system/organisms/Modal/UpgradeModal"; // Importado correctamente
+import { UpgradeModal } from "@/src/system/organisms/Modal/UpgradeModal";
+import { ExtractorInfoModal } from "@/src/system/organisms/Extractor/ExtractorInfoModal";
 import { IconScanTraces } from "@tabler/icons-react";
 import { PageHeader } from "@/src/system/organisms/Navigation/PageHeader";
 
 export default function RepromptPage({ params }: { params: Promise<{ lang: string }> }) {
   const { lang } = use(params);
+  const [isInfoModalOpen, setIsInfoModalOpen] = useState(false);
 
   const {
     processFiles,
@@ -2343,27 +2569,29 @@ export default function RepromptPage({ params }: { params: Promise<{ lang: strin
   } = usePromptExtractor();
 
   return (
-    <main className="max-h-screen bg-background p-4 md:p-8">
+    <main className="min-h-screen bg-background p-4 md:p-8">
       <UpgradeModal isOpen={upgradeModal} onClose={closeUpgradeModal} />
+      <ExtractorInfoModal isOpen={isInfoModalOpen} onClose={() => setIsInfoModalOpen(false)} />
 
       <div className="max-w-7xl mx-auto space-y-8">
         <PageHeader
           title="Extractor"
           subtitle="reprompt"
-          description="Arrastra múltiples imágenes o archivos ZIP para extraer metadatos en lote."
-          icon={<IconScanTraces size={28} stroke={1.5} className="text-foreground" />}
+          description="Extrae metadatos de tus imágenes generadas por IA."
+          icon={<IconScanTraces size={28} stroke={1.5} />}
           breadcrumbItems={[
             { label: "Mi Studio", href: `/${lang}/studio` },
-            { label: "Extractor Reprompt" },
+            { label: "Extractor" },
           ]}
         />
 
-        <section className="w-full max-w-7xl mx-auto">
+        <section className="w-full">
           {batch.length === 0 ? (
             <ExtractorDropzone
-              onFileDrop={processFiles}
+              onFileDrop={processFiles} // 🟢 Pasamos la función del hook
               isExtracting={isExtracting}
               error={error}
+              onOpenInfo={() => setIsInfoModalOpen(true)}
             />
           ) : (
             <BatchInspector
@@ -2418,6 +2646,321 @@ export default function StudioPage() {
           </main>
         </div>
       </StudioDndWrapper>
+    </div>
+  );
+}
+
+
+
+================================================
+FILE: app/api/feedback/route.ts
+================================================
+import { NextResponse } from "next/server";
+
+export async function POST(request: Request) {
+  try {
+    const body = await request.json();
+    console.log("📥 [AUDITORÍA - PASO 1] Next.js recibe del Modal:", body);
+
+    const GOOGLE_SCRIPT_URL = process.env.GOOGLE_SCRIPT_WEBHOOK_URL;
+
+    if (!GOOGLE_SCRIPT_URL) {
+      if (process.env.NODE_ENV === "development") {
+        console.error("❌ Falta GOOGLE_SCRIPT_WEBHOOK_URL");
+      }
+      return NextResponse.json({ error: "Falta URL" }, { status: 500 });
+    }
+
+    if (process.env.NODE_ENV === "development") {
+      console.log("🚀 [AUDITORÍA - PASO 2] Enviando a Google...");
+    }
+    const googleRes = await fetch(GOOGLE_SCRIPT_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+
+    // Leemos la respuesta como texto crudo por si Google nos devuelve un HTML de error
+    const googleText = await googleRes.text();
+    if (process.env.NODE_ENV === "development") {
+      console.log("📨 [AUDITORÍA - PASO 3] Respuesta CRUDA de Google:", googleText);
+    }
+
+    if (!googleRes.ok) {
+      throw new Error(`Google rechazó con status: ${googleRes.status}`);
+    }
+
+    return NextResponse.json({ success: true, googleResponse: googleText });
+  } catch (error) {
+    if (process.env.NODE_ENV === "development") {
+      console.error("🔥 [AUDITORÍA - ERROR FATAL]:", error);
+    }
+    return NextResponse.json({ error: "Fallo" }, { status: 500 });
+  }
+}
+
+
+
+================================================
+FILE: app/api/sentry-example-api/route.ts
+================================================
+import * as Sentry from "@sentry/nextjs";
+export const dynamic = "force-dynamic";
+
+class SentryExampleAPIError extends Error {
+  constructor(message: string | undefined) {
+    super(message);
+    this.name = "SentryExampleAPIError";
+  }
+}
+
+// A faulty API route to test Sentry's error monitoring
+export function GET() {
+  Sentry.logger.info("Sentry example API called");
+  throw new SentryExampleAPIError(
+    "This error is raised on the backend called by the example page.",
+  );
+}
+
+
+
+================================================
+FILE: app/sentry-example-page/page.tsx
+================================================
+"use client";
+
+import * as Sentry from "@sentry/nextjs";
+import Head from "next/head";
+import { useEffect, useState } from "react";
+
+class SentryExampleFrontendError extends Error {
+  constructor(message: string | undefined) {
+    super(message);
+    this.name = "SentryExampleFrontendError";
+  }
+}
+
+export default function Page() {
+  const [hasSentError, setHasSentError] = useState(false);
+  const [isConnected, setIsConnected] = useState(true);
+
+  useEffect(() => {
+    Sentry.logger.info("Sentry example page loaded");
+    async function checkConnectivity() {
+      const result = await Sentry.diagnoseSdkConnectivity();
+      setIsConnected(result !== "sentry-unreachable");
+    }
+    checkConnectivity();
+  }, []);
+
+  return (
+    <div>
+      <Head>
+        <title>sentry-example-page</title>
+        <meta name="description" content="Test Sentry for your Next.js app!" />
+      </Head>
+
+      <main>
+        <div className="flex-spacer" />
+        <svg
+          height="40"
+          width="40"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+          role="img"
+          aria-label="Sentry logo"
+        >
+          <path
+            d="M21.85 2.995a3.698 3.698 0 0 1 1.353 1.354l16.303 28.278a3.703 3.703 0 0 1-1.354 5.053 3.694 3.694 0 0 1-1.848.496h-3.828a31.149 31.149 0 0 0 0-3.09h3.815a.61.61 0 0 0 .537-.917L20.523 5.893a.61.61 0 0 0-1.057 0l-3.739 6.494a28.948 28.948 0 0 1 9.63 10.453 28.988 28.988 0 0 1 3.499 13.78v1.542h-9.852v-1.544a19.106 19.106 0 0 0-2.182-8.85 19.08 19.08 0 0 0-6.032-6.829l-1.85 3.208a15.377 15.377 0 0 1 6.382 12.484v1.542H3.696A3.694 3.694 0 0 1 0 34.473c0-.648.17-1.286.494-1.849l2.33-4.074a8.562 8.562 0 0 1 2.689 1.536L3.158 34.17a.611.611 0 0 0 .538.917h8.448a12.481 12.481 0 0 0-6.037-9.09l-1.344-.772 4.908-8.545 1.344.77a22.16 22.16 0 0 1 7.705 7.444 22.193 22.193 0 0 1 3.316 10.193h3.699a25.892 25.892 0 0 0-3.811-12.033 25.856 25.856 0 0 0-9.046-8.796l-1.344-.772 5.269-9.136a3.698 3.698 0 0 1 3.2-1.849c.648 0 1.285.17 1.847.495Z"
+            fill="currentcolor"
+          />
+        </svg>
+        <h1>sentry-example-page</h1>
+
+        <p className="description">
+          Click the button below, and view the sample error on the Sentry{" "}
+          <a
+            target="_blank"
+            rel="noopener"
+            href="https://reprompt-studio.sentry.io/issues/?project=4511303429980240"
+          >
+            Issues Page
+          </a>
+          . For more details about setting up Sentry,{" "}
+          <a
+            target="_blank"
+            rel="noopener"
+            href="https://docs.sentry.io/platforms/javascript/guides/nextjs/"
+          >
+            read our docs
+          </a>
+          .
+        </p>
+
+        <button
+          type="button"
+          onClick={async () => {
+            Sentry.logger.info("User clicked the button, throwing a sample error");
+            await Sentry.startSpan(
+              {
+                name: "Example Frontend/Backend Span",
+                op: "test",
+              },
+              async () => {
+                const res = await fetch("/api/sentry-example-api");
+                if (!res.ok) {
+                  setHasSentError(true);
+                }
+              },
+            );
+            throw new SentryExampleFrontendError(
+              "This error is raised on the frontend of the example page.",
+            );
+          }}
+          disabled={!isConnected}
+        >
+          <span>Throw Sample Error</span>
+        </button>
+
+        {hasSentError ? (
+          <p className="success">Error sent to Sentry.</p>
+        ) : !isConnected ? (
+          <div className="connectivity-error">
+            <p>
+              It looks like network requests to Sentry are being blocked, which
+              will prevent errors from being captured. Try disabling your
+              ad-blocker to complete the test.
+            </p>
+          </div>
+        ) : (
+          <div className="success_placeholder" />
+        )}
+
+        <div className="flex-spacer" />
+      </main>
+
+      <style>{`
+        main {
+          display: flex;
+          min-height: 100vh;
+          flex-direction: column;
+          justify-content: center;
+          align-items: center;
+          gap: 16px;
+          padding: 16px;
+          font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+        }
+
+        h1 {
+          padding: 0px 4px;
+          border-radius: 4px;
+          background-color: rgba(24, 20, 35, 0.03);
+          font-family: monospace;
+          font-size: 20px;
+          line-height: 1.2;
+        }
+
+        p {
+          margin: 0;
+          font-size: 20px;
+        }
+
+        a {
+          color: #6341F0;
+          text-decoration: underline;
+          cursor: pointer;
+
+          @media (prefers-color-scheme: dark) {
+            color: #B3A1FF;
+          }
+        }
+
+        button {
+          border-radius: 8px;
+          color: white;
+          cursor: pointer;
+          background-color: #553DB8;
+          border: none;
+          padding: 0;
+          margin-top: 4px;
+
+          & > span {
+            display: inline-block;
+            padding: 12px 16px;
+            border-radius: inherit;
+            font-size: 20px;
+            font-weight: bold;
+            line-height: 1;
+            background-color: #7553FF;
+            border: 1px solid #553DB8;
+            transform: translateY(-4px);
+          }
+
+          &:hover > span {
+            transform: translateY(-8px);
+          }
+
+          &:active > span {
+            transform: translateY(0);
+          }
+
+          &:disabled {
+	            cursor: not-allowed;
+	            opacity: 0.6;
+
+	            & > span {
+	              transform: translateY(0);
+	              border: none
+	            }
+	          }
+        }
+
+        .description {
+          text-align: center;
+          color: #6E6C75;
+          max-width: 500px;
+          line-height: 1.5;
+          font-size: 20px;
+
+          @media (prefers-color-scheme: dark) {
+            color: #A49FB5;
+          }
+        }
+
+        .flex-spacer {
+          flex: 1;
+        }
+
+        .success {
+          padding: 12px 16px;
+          border-radius: 8px;
+          font-size: 20px;
+          line-height: 1;
+          background-color: #00F261;
+          border: 1px solid #00BF4D;
+          color: #181423;
+        }
+
+        .success_placeholder {
+          height: 46px;
+        }
+
+        .connectivity-error {
+          padding: 12px 16px;
+          background-color: #E50045;
+          border-radius: 8px;
+          width: 500px;
+          color: #FFFFFF;
+          border: 1px solid #A80033;
+          text-align: center;
+          margin: 0;
+        }
+
+        .connectivity-error a {
+          color: #FFFFFF;
+          text-decoration: underline;
+        }
+      `}</style>
     </div>
   );
 }
@@ -2811,8 +3354,8 @@ export function DatabaseModule() {
           />
           <QuotaBar
             label="Cuota Disco Neon DB (Free Tier)"
-            currentMb={stats.total_mb}
-            limitMb={stats.limit_mb}
+            used={stats.total_mb}
+            limit={stats.limit_mb}
           />
         </div>
 
@@ -4095,6 +4638,14 @@ export function usePromptExtractor() {
             try {
               // Extracción de texto (Esta es la parte pesada de CPU)
               const rawText = await getRawTextFromFile(file);
+
+              if (rawText) {
+                console.group(`🔍 Metadata Debug: ${file.name}`);
+                console.log("Raw Text:", rawText);
+                console.log("Software Detectado:", parsePromptData(rawText).software);
+                console.groupEnd();
+              }
+
               let parsedData = rawText
                 ? parsePromptData(rawText)
                 : {
@@ -4207,42 +4758,122 @@ import { parseMidjourney } from "./parsers/midjourneyParser";
 export type { ExtractedPromptData };
 
 export function parsePromptData(rawText: string): ExtractedPromptData {
+  // 🟢 Usamos la utilidad para limpiar nulos y normalizar el texto entrante
   const cleanText = cleanNullBytes(rawText);
-  let parsed: Partial<ExtractedPromptData>;
+  let parsed: Partial<ExtractedPromptData> = {};
 
-  if (cleanText.trim().startsWith("{")) {
+  // Asumimos A1111 como el estándar genérico si no hay evidencias sólidas de lo contrario
+  let detectedSoftware: ExtractedPromptData["software"] = "A1111";
+
+  // =================================================================
+  // 🕵️‍♂️ 1. FINGERPRINTING INTELIGENTE (Ordenado de mayor a menor especificidad)
+  // =================================================================
+
+  // ComfyUI SIEMPRE tiene el nodo "class_type" y "inputs" en su estructura de grafos
+  const isComfyUI = cleanText.includes('"class_type"') && cleanText.includes('"inputs"');
+
+  // Midjourney tiene parámetros únicos o incluye la firma de su bot
+  const isMidjourney =
+    /--ar|--v|--style|--niji|Job ID:/i.test(cleanText) || cleanText.includes("Midjourney Bot");
+
+  // NovelAI suele usar un bloque JSON que contiene la key "uc" (undesired content)
+  const isNovelAI = cleanText.includes('"uc":') && cleanText.startsWith("{");
+
+  // =================================================================
+  // 🧠 2. ENRUTAMIENTO Y EXTRACCIÓN SEGURA
+  // =================================================================
+  if (isComfyUI) {
+    detectedSoftware = "ComfyUI";
     try {
-      const jsonObj = JSON.parse(cleanText);
-      parsed = parseComfy(jsonObj, cleanText);
-    } catch {
+      // 🟢 FIX CRÍTICO: Extracción matemática del JSON sin Regex (Evita el Catastrophic Backtracking)
+      const firstBrace = cleanText.indexOf("{");
+      const lastBrace = cleanText.lastIndexOf("}");
+
+      if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+        const jsonStr = cleanText.substring(firstBrace, lastBrace + 1);
+        const jsonObj = JSON.parse(jsonStr);
+        parsed = parseComfy(jsonObj, cleanText);
+      } else {
+        throw new Error("Estructura JSON no delimitada correctamente");
+      }
+    } catch (e) {
+      console.warn("⚠️ [PARSER] Fallo al decodificar JSON de ComfyUI. Fallback a A1111.", e);
       parsed = parseA1111(cleanText);
     }
-  } else if (/--ar|--v|--style|--niji|Job ID:/i.test(cleanText)) {
+  } else if (isMidjourney) {
+    detectedSoftware = "Midjourney";
     parsed = parseMidjourney(cleanText, rawText);
-    parsed.software = "Midjourney";
+  } else if (isNovelAI) {
+    detectedSoftware = "NovelAI";
+    // Si algún día creas parseNovelAI(), lo pondrías aquí.
+    // Por ahora, A1111 hace un buen trabajo extrayendo los prompts básicos del texto.
+    parsed = parseA1111(cleanText);
   } else {
+    // Si no tiene firma reconocible, tiramos de la vieja confiable (A1111 / Texto plano)
     parsed = parseA1111(cleanText);
   }
 
+  // =================================================================
+  // 🛡️ 3. VALIDACIÓN DEL CONTRATO DE DATOS
+  // =================================================================
   const validation = ExtractedPromptSchema.safeParse({
     ...parsed,
+    software:
+      parsed.software && parsed.software !== "Desconocido" ? parsed.software : detectedSoftware,
     rawText: rawText,
   });
 
   if (!validation.success) {
     console.error("❌ Fallo en contrato de extracción:", validation.error.format());
 
+    // 🟢 PROTECCIÓN DE MEMORIA: Si la extracción falla catastróficamente,
+    // truncamos los strings para no inyectar Megabytes de basura binaria en la UI de React.
     return {
-      prompt: cleanText,
+      title: "Extracción Fallida",
+      prompt: cleanText.substring(0, 800) + (cleanText.length > 800 ? "..." : ""),
       negativePrompt: "",
       resolution: undefined,
-      rawText: rawText,
+      rawText: rawText.substring(0, 1000),
       software: "Desconocido",
-      extractionConfidence: 0.1,
+      extractionConfidence: 0.0,
     };
   }
 
   return validation.data;
+}
+// generateSmartTitle se queda igual, está perfecto.
+export function generateSmartTitle(filename: string, prompt?: string, software?: string): string {
+  const cleanName = filename.replace(/\.[^/.]+$/, "").replace(/[_-]/g, " ");
+  const genericNames = [
+    "image",
+    "img",
+    "descarga",
+    "download",
+    "untitled",
+    "sin titulo",
+    "whatsapp",
+    "unknown",
+    "foto",
+    "captura",
+    "screenshot",
+  ];
+  const isGeneric = genericNames.some((gn) => cleanName.toLowerCase().includes(gn));
+
+  if (!isGeneric && cleanName.trim().length > 3 && !/\d{10,}/.test(cleanName)) {
+    return cleanName.charAt(0).toUpperCase() + cleanName.slice(1);
+  }
+
+  if (prompt && prompt.trim().length > 0) {
+    const cleanPrompt = prompt.replace(/<[^>]*>?/gm, "");
+    const words = cleanPrompt.trim().split(/\s+/);
+    if (words.length >= 4) {
+      return words.slice(0, 5).join(" ") + (words.length > 5 ? "..." : "");
+    }
+  }
+
+  const softName = software && software !== "Desconocido" ? software : "Extracción";
+  const timeId = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  return `${softName} - ${timeId}`;
 }
 
 
@@ -4278,49 +4909,103 @@ export async function getRawTextFromFile(file: File): Promise<string | null> {
 FILE: src/features/extractor/utils/fileExtractors/jpegExtractor.ts
 ================================================
 import exifr from "exifr";
+import { cleanNullBytes } from "../parsers/stringUtils"; // Asegúrate de que la ruta sea la correcta
 
 export async function extractJpegMetadata(file: File): Promise<string | null> {
   try {
-    // Escaneamos solo lo necesario para no sobrecargar
+    // =================================================================
+    // 1. INTENTO ESTÁNDAR (La ruta feliz con EXIFR)
+    // =================================================================
     const metadata = await exifr.parse(file, {
       userComment: true,
       xmp: true,
+      tiff: true,
       iptc: true,
-      // Nota: exifr busca en ImageDescription por defecto si no se filtra
     });
 
-    if (!metadata) return null;
+    if (metadata) {
+      const tagsToTry = [
+        metadata.userComment,
+        metadata.ImageDescription,
+        metadata.description,
+        metadata.caption,
+      ];
 
-    // 1. Prioridad: UserComment (Comfy/Civitai/A1111)
-    if (metadata.userComment) {
-      const raw =
-        typeof metadata.userComment === "string"
-          ? metadata.userComment
-          : new TextDecoder("utf-8").decode(metadata.userComment);
+      for (const tag of tagsToTry) {
+        if (!tag) continue;
 
-      return raw.replace(/^(UNICODE|ASCII)\x00+/, "").trim();
-    }
+        let decoded = "";
+        try {
+          if (typeof tag === "string") {
+            decoded = tag;
+          } else if (tag instanceof ArrayBuffer || ArrayBuffer.isView(tag)) {
+            decoded = new TextDecoder("utf-8", { fatal: false }).decode(tag);
+          } else {
+            decoded = String(tag);
+          }
+        } catch (e) {
+          decoded = String(tag);
+        }
 
-    // 2. Prioridad: ImageDescription (Midjourney/A1111 alternativo)
-    // exifr suele mapear 'Description' a 'ImageDescription'
-    if (metadata.ImageDescription) {
-      return metadata.ImageDescription.trim();
-    }
+        const clean = cleanNullBytes(decoded).replace(/^(UNICODE|ASCII|UTF8)\x00*/i, "");
 
-    if (metadata.description) {
-      if (typeof metadata.description === "string") {
-        return metadata.description.trim();
+        if (clean.length > 20 && !clean.includes("[object Object]")) {
+          return clean;
+        }
       }
-      if (Array.isArray(metadata.description)) {
-        return metadata.description.join(" ").trim();
-      }
-      return String(metadata.description).trim();
     }
 
+    // =================================================================
+    // 🚀 2. FALLBACK GREEDY: ESCANEO BINARIO TOTAL
+    // =================================================================
+    // Leemos el archivo entero. Las imágenes de IA pesan <20MB, la RAM del navegador lo soporta de sobra.
+    const buffer = await file.arrayBuffer();
+
+    // 🟢 EL FIX CRÍTICO: { fatal: false } evita que bytes de imagen corruptos rompan el decodificador
+    const decoder = new TextDecoder("utf-8", { fatal: false });
+    const fullText = decoder.decode(buffer);
+
+    // --- ESTRATEGIA A: Caza de JSON (ComfyUI) ---
+    // Buscamos la firma inconfundible de Comfy
+    const comfyMarker = fullText.indexOf('"class_type"');
+    if (comfyMarker !== -1) {
+      // Somos "Greedy": Buscamos la apertura de JSON antes de la firma y el cierre al final del archivo
+      const jsonStart = fullText.lastIndexOf("{", comfyMarker);
+      const jsonEnd = fullText.lastIndexOf("}");
+
+      if (jsonStart !== -1 && jsonEnd !== -1 && jsonEnd > jsonStart) {
+        // Extraemos solo el trozo limpio y lo mandamos al parser
+        const chunk = fullText.substring(jsonStart, jsonEnd + 1);
+        return cleanNullBytes(chunk);
+      }
+    }
+
+    // --- ESTRATEGIA B: Caza de A1111 ---
+    // Buscamos la firma de los parámetros técnicos
+    const stepsIndex = fullText.indexOf("Steps:");
+    if (stepsIndex !== -1) {
+      // A1111 suele guardar el prompt bajo la cabecera "parameters\x00" en el binario
+      let start = fullText.lastIndexOf("parameters", stepsIndex);
+
+      if (start === -1) {
+        // Si no existe la palabra parameters, cogemos hasta 4000 caracteres por detrás (suficiente para prompts enormes)
+        start = Math.max(0, stepsIndex - 4000);
+      } else {
+        start += 10; // Saltamos la propia palabra "parameters"
+      }
+
+      // El final del prompt suele estar poco después de los Steps (donde acaba la config)
+      const end = Math.min(fullText.length, stepsIndex + 1500);
+
+      const chunk = fullText.substring(start, end);
+      return cleanNullBytes(chunk);
+    }
+
+    // Si llegamos aquí, la imagen es verdaderamente sorda y muda.
     return null;
   } catch (error) {
-    console.error("❌ Error en jpegExtractor:", error);
-    return null;
+    console.error("❌ Error crítico en jpegExtractor:", error);
+    return null; // Fallo silencioso elegante para que UI muestre estado "Desconocido"
   }
 }
 
@@ -4359,7 +5044,12 @@ export async function extractRawText(file: File): Promise<string | null> {
 FILE: src/features/extractor/utils/fileExtractors/zipExtractor.ts
 ================================================
 import JSZip from "jszip";
-import { string } from "zod";
+
+export interface ZipExtractionResult {
+  validFiles: File[];
+  rejectedFiles: { name: string; reason: string }[];
+  limitReached: boolean;
+}
 
 export async function extractFilesFromZip(
   zipFile: File,
@@ -4438,38 +5128,40 @@ FILE: src/features/extractor/utils/parsers/a1111Parser.ts
 import { ExtractedPromptData } from "./types";
 import { cleanA1111Prefixes } from "./stringUtils";
 
-export function parseA1111(rawText: string): ExtractedPromptData {
-  const result: ExtractedPromptData = {
-    prompt: "",
-    rawText,
-    software: "A1111",
-  };
-
+export function parseA1111(rawText: string): Partial<ExtractedPromptData> {
   const cleanText = cleanA1111Prefixes(rawText);
+  const result: any = { software: "A1111", rawText: cleanText };
 
-  const negativePromptRegex = /Negative prompt:\s*([\s\S]*?)(?=\nSteps:|$)/i;
-  const negativeMatch = cleanText.match(negativePromptRegex);
+  const lines = cleanText.split("\n");
+  const metadataLineIndex = lines.findIndex((l) => l.trim().startsWith("Steps:"));
 
-  if (negativeMatch) {
-    result.negativePrompt = negativeMatch[1].trim();
-    result.prompt = cleanText.split(/Negative prompt:/i)[0].trim();
+  if (metadataLineIndex !== -1) {
+    const metadataLine = lines[metadataLineIndex];
+    const promptParts = lines.slice(0, metadataLineIndex).join("\n");
+
+    if (promptParts.toLocaleLowerCase().includes("negative prompt:")) {
+      const [pos, neg] = promptParts.split(/negative prompt:/i);
+      result.prompt = pos.trim();
+      result.negativePrompt = neg.trim();
+    } else {
+      result.prompt = promptParts.trim();
+    }
+
+    const params = metadataLine.split(",").reduce((acc: any, curr) => {
+      const [key, ...val] = curr.split(":");
+      if (key && val) acc[key.trim().toLowerCase()] = val.join(":").trim();
+      return acc;
+    }, {});
+
+    result.steps = params["steps"];
+    result.sampler = params["sampler"];
+    result.cfgScale = params["cfg scale"];
+    result.seed = params["seed"];
+    result.resolution = params["size"];
+    result.model = params["model"];
   } else {
-    result.prompt = cleanText.split(/\nSteps:/i)[0].trim();
+    result.prompt = cleanText.trim();
   }
-
-  const matchers = {
-    steps: /Steps:\s*([^,]+)/i,
-    sampler: /Sampler:\s*([^,]+)/i,
-    cfgScale: /CFG scale:\s*([^,]+)/i,
-    seed: /Seed:\s*([^,]+)/i,
-    resolution: /Size:\s*([^,]+)/i,
-    model: /Model:\s*([^,]+)/i,
-  };
-
-  Object.entries(matchers).forEach(([key, regex]) => {
-    const match = cleanText.match(regex);
-    if (match) (result as any)[key] = match[1].trim();
-  });
 
   return result;
 }
@@ -4479,72 +5171,133 @@ export function parseA1111(rawText: string): ExtractedPromptData {
 ================================================
 FILE: src/features/extractor/utils/parsers/comfyParser.ts
 ================================================
-import { ExtractedPromptData } from "./types";
-import { extractFileName } from "./stringUtils";
+import { ExtractedPromptData } from "./validation";
+import { cleanNullBytes } from "./stringUtils";
 
-export function parseComfy(jsonObj: any, rawText: string): ExtractedPromptData {
-  const result: ExtractedPromptData = { prompt: "", rawText, software: "ComfyUI" };
+export function parseComfy(jsonObj: any, rawText: string): Partial<ExtractedPromptData> {
+  const result: Partial<ExtractedPromptData> = {
+    software: "ComfyUI",
+    rawText,
+    loras: [],
+    extractionConfidence: 0.9,
+  };
 
-  if (jsonObj.extraMetadata) {
-    const meta =
-      typeof jsonObj.extraMetadata === "string"
-        ? JSON.parse(jsonObj.extraMetadata)
-        : jsonObj.extraMetadata;
+  try {
+    // =================================================================
+    // 1. FAST PATH: Metadatos embebidos (Civitai)
+    // =================================================================
+    let meta = jsonObj.extraMetadata || jsonObj.metadata || {};
 
-    result.prompt = meta.prompt || result.prompt;
-    result.negativePrompt = meta.negativePrompt || "";
-    result.steps = meta.steps?.toString();
-    result.sampler = meta.sampler;
-    result.cfgScale = meta.cfgScale?.toString();
-    result.seed = meta.seed?.toString();
+    // 🟢 FIX: Si Civitai nos manda el metadata como un string escapado, lo parseamos
+    if (typeof meta === "string") {
+      try {
+        meta = JSON.parse(meta);
+      } catch (e) {
+        meta = {};
+      }
+    }
 
-    if (meta.images?.[0]) result.resolution = `${meta.images[0].width}x${meta.images[0].height}`;
-
-    if (meta.resources) {
-      result.model = meta.resources
-        .find((r: any) => r.type === "Checkpoint")
-        ?.modelVersionId?.toString();
+    if (meta.prompt) result.prompt = cleanNullBytes(meta.prompt);
+    if (meta.negativePrompt) result.negativePrompt = cleanNullBytes(meta.negativePrompt);
+    if (meta.resources && Array.isArray(meta.resources)) {
       result.loras = meta.resources
-        .filter((r: any) => r.type === "LORA")
-        .map((l: any) => ({ name: l.modelVersionId?.toString(), strength: l.strength }));
+        .filter((r: any) => r.type?.toUpperCase() === "LORA")
+        .map((r: any) => ({
+          // Civitai suele devolver IDs. Si tienes el nombre real, úsalo.
+          name: r.name || `ModelID:${r.modelVersionId}`,
+          strength: r.strength || 1,
+        }));
     }
 
-    if (meta.triggerWords) {
-      result.triggerWords = Array.isArray(meta.triggerWords)
-        ? meta.triggerWords
-            .flatMap((w: string) => w.split(","))
-            .map((w: string) => w.trim())
-            .filter(Boolean)
-        : [];
+    // =================================================================
+    // 2. CONVERSIÓN Y CLASIFICACIÓN DE NODOS
+    // Ignoramos los IDs (1, 2, 3...) y agrupamos los nodos por su verdadera identidad
+    // =================================================================
+    const nodes = Object.values(jsonObj) as any[];
+
+    const samplers = nodes.filter((n) => n?.class_type?.toLowerCase().includes("ksampler"));
+    const textEncoders = nodes.filter((n) => n?.class_type === "CLIPTextEncode");
+    const latentImages = nodes.filter((n) => n?.class_type === "EmptyLatentImage");
+    const loaders = nodes.filter((n) => n?.class_type === "CheckpointLoaderSimple");
+
+    // =================================================================
+    // 🕸️ 3. TRAZABILIDAD DESDE EL SAMPLER (El Core del Grafo)
+    // =================================================================
+    if (samplers.length > 0) {
+      // Tomamos el primer Sampler (el nodo principal que genera la imagen)
+      const sampler = samplers[0];
+      const inputs = sampler.inputs || {};
+
+      // Parámetros técnicos
+      result.steps = inputs.steps?.toString();
+      result.sampler = inputs.sampler_name?.toString();
+      result.cfgScale = inputs.cfg?.toString();
+      result.seed = (inputs.seed || inputs.noise_seed)?.toString();
+
+      // TRAZABILIDAD: ComfyUI guarda los links como arrays ["id_del_nodo", indice_puerto]
+      const posLink = Array.isArray(inputs.positive) ? inputs.positive[0]?.toString() : null;
+      const negLink = Array.isArray(inputs.negative) ? inputs.negative[0]?.toString() : null;
+
+      // Seguimos el cable del link directamente al nodo original usando el jsonObj
+      if (posLink && jsonObj[posLink] && !result.prompt) {
+        const text = jsonObj[posLink].inputs?.text || jsonObj[posLink].inputs?.text_g;
+        if (text) result.prompt = text;
+      }
+      if (negLink && jsonObj[negLink] && !result.negativePrompt) {
+        const text = jsonObj[negLink].inputs?.text || jsonObj[negLink].inputs?.text_g;
+        if (text) result.negativePrompt = text;
+      }
     }
 
-    if (result.prompt && result.steps) return result;
-  }
+    // =================================================================
+    // 🛟 4. FALLBACK HEURÍSTICO (Si la trazabilidad estricta falla)
+    // =================================================================
+    if (!result.prompt && textEncoders.length > 0) {
+      // Recorremos los encoders buscando el texto más largo como positivo
+      let longestText = "";
+      let potentialNegative = "";
 
-  if (jsonObj && typeof jsonObj === "object" && !Array.isArray(jsonObj)) {
-    Object.values(jsonObj).forEach((node: any) => {
-      if (typeof node !== "object" || !node) return;
+      textEncoders.forEach((node: any) => {
+        const text = node.inputs?.text || "";
+        if (typeof text === "string" && text.length > 5) {
+          const title = (node._meta?.title || "").toLowerCase();
 
-      if (node.class_type?.includes("KSampler")) {
-        result.steps = node.inputs?.steps?.toString() || result.steps;
-        result.seed = node.inputs?.seed?.toString() || result.seed;
-        result.cfgScale = node.inputs?.cfg?.toString() || result.cfgScale;
-        result.sampler = node.inputs?.sampler_name || result.sampler;
+          if (title.includes("negative")) {
+            potentialNegative = text;
+          } else if (text.length > longestText.length) {
+            longestText = text;
+          }
+        }
+      });
+
+      if (longestText) result.prompt = longestText;
+      if (potentialNegative && !result.negativePrompt) result.negativePrompt = potentialNegative;
+    }
+
+    // =================================================================
+    // 📐 5. EXTRACCIÓN DE RESOLUCIÓN Y MODELO
+    // =================================================================
+    if (latentImages.length > 0) {
+      const latent = latentImages[0];
+      if (latent.inputs?.width && latent.inputs?.height) {
+        result.resolution = `${latent.inputs.width}x${latent.inputs.height}`;
       }
-      if (node.class_type?.includes("CLIPTextEncode")) {
-        const text = node.inputs?.text;
-        const isNeg = node._meta?.title?.toLowerCase().includes("negative");
-        if (isNeg) result.negativePrompt = text;
-        else if (!result.prompt) result.prompt = text;
+    }
+
+    if (loaders.length > 0) {
+      const loader = loaders[0];
+      let modelName = loader.inputs?.ckpt_name?.toString();
+      if (modelName) {
+        result.model = modelName.replace(/\.[^/.]+$/, ""); // Quita la extensión .safetensors
       }
-      if (node.class_type === "LoraLoader") {
-        if (!result.loras) result.loras = [];
-        result.loras.push({
-          name: extractFileName(node.inputs?.lora_name),
-          strength: node.inputs?.strength_model,
-        });
-      }
-    });
+    }
+
+    // Limpieza final de null bytes
+    if (result.prompt) result.prompt = cleanNullBytes(result.prompt);
+    if (result.negativePrompt) result.negativePrompt = cleanNullBytes(result.negativePrompt);
+  } catch (error) {
+    console.error("❌ Error rastreando el grafo de ComfyUI:", error);
+    result.extractionConfidence = 0.2;
   }
 
   return result;
@@ -4585,18 +5338,20 @@ export function parseMidjourney(description: string, rawText: string): Extracted
 FILE: src/features/extractor/utils/parsers/stringUtils.ts
 ================================================
 export const cleanNullBytes = (text: string): string => {
-  return text.replace(/\0/g, "").trim();
-};
-
-export const cleanA1111Prefixes = (text: string): string => {
+  if (!text) return "";
   return text
-    .replace(/^UNICODE\x00/, "")
-    .replace(/^ASCII\x00\x00\x00/, "")
+    .replace(/\0/g, "")
+    .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F-\u009F]/g, "")
     .trim();
 };
 
+export const cleanA1111Prefixes = (text: string): string => {
+  return text.replace(/^(UNICODE|ASCII)\x00*/i, "").trim();
+};
+
 export const extractFileName = (path: string): string => {
-  return path.split("/").pop() || path;
+  if (!path) return "Archivo";
+  return path.split(/[\\/]/).pop() || path;
 };
 
 
@@ -4627,11 +5382,12 @@ FILE: src/features/extractor/utils/parsers/validation.ts
 import { z } from "zod";
 
 export const ExtractedPromptSchema = z.object({
+  title: z.string().default("Sin título"),
   prompt: z
     .string()
     .min(1, "El prompt es obligatorio")
     .max(20000, "El prompt excede el límite de 20,000 caracteres")
-    .transform((t) => t.trim()),
+    .transform((t) => t.replace(/[\r\n]+/g, " ").trim()),
   negativePrompt: z
     .string()
     .max(20000, "El prompt negativo excede el límite de 20,000 caracteres")
@@ -4661,6 +5417,218 @@ export const ExtractedPromptSchema = z.object({
 });
 
 export type ExtractedPromptData = z.infer<typeof ExtractedPromptSchema>;
+
+
+
+================================================
+FILE: src/features/feedback/components/FeedbackBetaModal.tsx
+================================================
+"use client";
+
+import { useState } from "react";
+import { useAuthStore } from "@/src/store/authStore";
+
+import { Modal } from "@/src/system/molecules/Modal/Modal";
+import { Button } from "@/src/system/atoms/Button/Button";
+import { IconMessageHeart, IconRocket, IconAlertCircle, IconMoodSmile } from "@tabler/icons-react";
+import toast from "react-hot-toast";
+
+interface FeedbackBetaModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onComplete: () => void;
+}
+
+export function FeedbackBetaModal({ isOpen, onClose, onComplete }: FeedbackBetaModalProps) {
+  const [step, setStep] = useState(1);
+  const [loading, setLoading] = useState(false);
+  const user = useAuthStore((state) => state.user);
+  const [answers, setAnswers] = useState({ pay: "", improve: "", bugs: "" });
+
+  const handleSend = async () => {
+    setLoading(true);
+    try {
+      const payload = {
+        username: user?.username || "Anónimo",
+        ...answers,
+      };
+      const res = await fetch("/api/feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) throw new Error("Fallo al enviar");
+
+      setStep(4);
+      toast.success("¡Gracias por ayudar que reprompt crezca!");
+    } catch (e) {
+      console.error(e);
+      toast.error("No se pudo enviar el feedback");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} maxWidth="max-w-lg">
+      <div className="p-8 flex flex-col gap-6">
+        {step < 4 && (
+          <div className="flex flex-col items-center text-center gap-2">
+            <div className="p-3 bg-accent/10 rounded-full text-accent mb-2">
+              <IconRocket size={32} />
+            </div>
+            <h2 className="text-xl font-black font-mono uppercase tracking-widest text-foreground">
+              Feedback de Beta
+            </h2>
+            <p className="text-xs font-mono text-muted-foreground uppercase">
+              Usuario pionero detectado
+            </p>
+          </div>
+        )}
+
+        {step === 1 && (
+          <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4">
+            <label className="text-sm font-bold text-foreground gap-2">
+              ¿Pagarías por una versión Pro de este servicio?
+            </label>
+            <div className="grid grid-cols-2 gap-2">
+              {["Probablemente sí", "No por ahora", "Depende del precio", "Prefiero gratis"].map(
+                (opt) => (
+                  <button
+                    key={opt}
+                    onClick={() => {
+                      setAnswers({ ...answers, pay: opt });
+                      setStep(2);
+                    }}
+                    className="p-3 text-xs font-mono border border-border hover:border-accent hover:bg-accent/5 transition-all text-left text-foreground"
+                  >
+                    {opt}
+                  </button>
+                ),
+              )}
+            </div>
+          </div>
+        )}
+
+        {step === 2 && (
+          <div className="space-y-4 animate-in fade-in slide-in-from-right-4">
+            <label className="text-sm font-bold flex items-center gap-2 text-foreground">
+              <IconMessageHeart size={18} className="text-accent" /> ¿Qué mejorarías de la
+              plataforma?
+            </label>
+            <textarea
+              className="w-full bg-muted/20 border border-border p-4 text-sm font-mono focus:outline-none focus:border-accent min-h-25 text-foreground"
+              placeholder="Funcionalidades, diseño, velocidad..."
+              onChange={(e) => setAnswers({ ...answers, improve: e.target.value })}
+            />
+            <Button className="w-full" onClick={() => setStep(3)}>
+              Siguiente
+            </Button>
+          </div>
+        )}
+
+        {step === 3 && (
+          <div className="space-y-4 animate-in fade-in slide-in-from-right-4">
+            <label className="text-sm font-bold flex items-center gap-2 text-foreground">
+              <IconAlertCircle size={18} className="text-destructive" /> ¿Has tenido algún problema
+              técnico?
+            </label>
+            <textarea
+              className="w-full bg-muted/20 border border-border p-4 text-sm font-mono focus:outline-none focus:border-accent min-h-25 text-foreground"
+              placeholder="Bugs, errores de carga, cierres inesperados..."
+              onChange={(e) => setAnswers({ ...answers, bugs: e.target.value })}
+            />
+            <Button className="w-full" isLoading={loading} onClick={handleSend}>
+              Enviar Feedback
+            </Button>
+          </div>
+        )}
+
+        {step === 4 && (
+          <div className="flex flex-col items-center text-center gap-6 py-4 animate-in zoom-in-95">
+            <IconMoodSmile size={64} className="text-accent animate-bounce" />
+            <div className="space-y-2">
+              <h3 className="text-lg font-black uppercase text-foreground">
+                ¡Gracias por tu apoyo!
+              </h3>
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                Reprompt está en <strong>fase Beta</strong>. Tus respuestas van directamente al
+                equipo de ingeniería.
+              </p>
+            </div>
+            <div className="bg-muted/30 border border-dashed border-border p-4 rounded-lg w-full">
+              <p className="text-[11px] font-mono text-muted-foreground uppercase tracking-wider leading-snug">
+                Recuerda que tienes un botón permanente de <strong>"Sugerencias"</strong> en el menú
+                lateral para enviarnos cualquier exigencia o idea en tiempo real.
+              </p>
+            </div>
+            <Button variant="tertiary" className="w-full" onClick={onComplete}>
+              Cerrar
+            </Button>
+          </div>
+        )}
+      </div>
+    </Modal>
+  );
+}
+
+
+
+================================================
+FILE: src/features/feedback/hooks/useFeedbackTrigger.ts
+================================================
+import { useEffect, useState } from "react";
+import { useAuthStore } from "@/src/store/authStore";
+
+export function useFeedbackTrigger() {
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+  const user = useAuthStore((state) => state.user);
+
+  useEffect(() => {
+    if (!user?.created_at || !user?.username) return;
+
+    const KEY_ANSWERED = `feedback_beta_answered_${user.username}`;
+    const KEY_LAST_DISMISSED = `feedback_beta_dismissed_${user.username}`;
+
+    // 1. Si ya respondió, NUNCA mostrar
+    if (localStorage.getItem(KEY_ANSWERED)) return;
+
+    // 2. Verificar antigüedad de la cuenta (2 días)
+    const createdAt = new Date(user.created_at).getTime();
+    const now = Date.now();
+    const twoDaysInMs = 2 * 24 * 60 * 60 * 1000;
+
+    if (now - createdAt < twoDaysInMs) return;
+
+    // 3. Lógica de Reaparición: ¿Cuánto hace que lo cerró?
+    const lastDismissed = localStorage.getItem(KEY_LAST_DISMISSED);
+    if (lastDismissed) {
+      const cooldown = 24 * 60 * 60 * 1000; // 24 horas de espera antes de volver a preguntar
+      if (now - parseInt(lastDismissed) < cooldown) return;
+    }
+
+    setShowFeedbackModal(true);
+  }, [user]);
+
+  // Si lo cierra sin responder (Snooze)
+  const snoozeFeedback = () => {
+    if (user) {
+      localStorage.setItem(`feedback_beta_dismissed_${user.username}`, Date.now().toString());
+    }
+    setShowFeedbackModal(false);
+  };
+
+  // Si completa el flujo (Final)
+  const completeFeedback = () => {
+    if (user) {
+      localStorage.setItem(`feedback_beta_answered_${user.username}`, "true");
+    }
+    setShowFeedbackModal(false);
+  };
+
+  return { showFeedbackModal, snoozeFeedback, completeFeedback };
+}
 
 
 
@@ -4841,7 +5809,7 @@ export function NavbarActions() {
           <Tooltip content="Cambiar Tema" side="bottom">
             <button
               onClick={toggleTheme}
-              className="p-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer transition-colors"
+              className="p-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer transition-colors w-10 h-10 flex items-center justify-center"
               title="Cambiar tema"
             >
               {isDark ? <IconSun size={24} /> : <IconMoon size={24} />}
@@ -4869,8 +5837,9 @@ FILE: src/features/layout/components/NavbarSearch.tsx
 ================================================
 "use client";
 
-import React, { useState, useRef } from "react";
-import { useSearch } from "@/src/features/search/hooks/useSearch";
+import { useState, useRef } from "react";
+import { useVectorSearch } from "@/src/features/search/useVectorSearch";
+import { useSearchStore } from "@/src/store/searchStore";
 import { useKeyboardShortcut } from "@/src/utils/hooks/useKeyboardShortcut";
 import { useClickOutside } from "@/src/utils/hooks/useClickOutside";
 
@@ -4885,8 +5854,9 @@ import {
 
 export function NavbarSearch() {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const { query, setQuery, handleSearch, isLoading } = useSearch();
+  const globalSearchStore = useSearchStore();
 
+  const vector = useVectorSearch({ scope: "global" });
   const modalContentRef = useRef<HTMLDivElement>(null);
 
   useClickOutside(modalContentRef, () => {
@@ -4898,16 +5868,18 @@ export function NavbarSearch() {
   });
 
   const handleCloseAndClear = () => {
-    setQuery("");
+    vector.clear();
+    globalSearchStore.clearSearch();
     setIsModalOpen(false);
   };
 
-  const onExecuteSearch = () => {
-    if (!query.trim()) return;
+  const onExecuteSearch = async () => {
+    if (!vector.query.trim()) return;
 
-    const syntheticEvent = { preventDefault: () => {} } as React.FormEvent;
-    handleSearch(syntheticEvent);
-    handleCloseAndClear();
+    await vector.handleExecute();
+
+    globalSearchStore.setResults(vector.results);
+    globalSearchStore.setQuery(vector.query);
   };
 
   return (
@@ -4920,12 +5892,12 @@ export function NavbarSearch() {
             <SearchModalHeader />
 
             <UniversalSearchBar
-              query={query}
-              isLoading={isLoading}
-              placeholder="Busca conceptos, estilos ...."
-              onQueryChange={setQuery}
+              query={vector.query}
+              isLoading={vector.isLoading}
+              placeholder="Búsqueda semántica de conceptos, estilos..."
+              onQueryChange={vector.setQuery}
               onSubmit={onExecuteSearch}
-              onClear={() => setQuery("")}
+              onClear={vector.clear}
               enableKeyboardShortcut={true}
             />
 
@@ -5065,7 +6037,7 @@ interface Author {
 
 export function PromptProfileHeader({ author, lang }: { author: Author; lang: string }) {
   const { data } = usePublicProfile(author.username);
-
+  const displayAvatar = data?.user?.avatar_url || author.avatar_url;
   const userRole = data?.user?.role || author.role || "creator";
 
   return (
@@ -5079,7 +6051,7 @@ export function PromptProfileHeader({ author, lang }: { author: Author; lang: st
           <Link href={`/${lang}/${author.username}`} className="flex items-center gap-3 group">
             <UserAvatar
               username={author.username}
-              avatarUrl={author.avatar_url}
+              avatarUrl={displayAvatar}
               size="lg"
               className="ring-2 ring-background/20 shadow-md transition-transform group-hover:scale-105"
             />
@@ -5115,22 +6087,142 @@ FILE: src/features/prompts/components/PromptTitleHeader.tsx
 ================================================
 "use client";
 
+import { useDownloadImage } from "@/src/features/prompts/hooks/useDownloadImage";
+import { IconDownload, IconTrash } from "@tabler/icons-react";
+import { Tooltip } from "@/src/system/atoms/Tooltip/Tooltip";
+
 interface PromptTitleHeaderProps {
   title?: string;
   createdAt: string | Date;
+  imageUrl?: string | null;
+  // 🟢 Nuevas props para el borrado
+  isOwner?: boolean;
+  promptId?: string;
+  onDelete?: (id: string) => void;
 }
 
-export function PromptTitleHeader({ title, createdAt }: PromptTitleHeaderProps) {
+export function PromptTitleHeader({
+  title,
+  createdAt,
+  imageUrl,
+  isOwner,
+  promptId,
+  onDelete,
+}: PromptTitleHeaderProps) {
+  const { downloadImage, isDownloading } = useDownloadImage();
+
+  const handleDelete = () => {
+    if (!onDelete || !promptId) return;
+
+    // 🛡️ Programación defensiva: Confirmación antes de ejecutar
+    if (
+      window.confirm(
+        "¿Estás seguro de que quieres eliminar este prompt? Esta acción es irreversible.",
+      )
+    ) {
+      onDelete(promptId);
+    }
+  };
+
   return (
-    <header className="shrink-0 mb-6">
-      <h1 className="text-2xl lg:text-3xl font-black uppercase tracking-tighter mb-2 leading-tight">
-        {title || "Prompt Sin Título"}
-      </h1>
-      <p className="text-xs font-mono text-muted-foreground/80 tracking-widest uppercase">
-        Creado el {new Date(createdAt).toLocaleDateString()}
-      </p>
+    <header className="shrink-0 mb-6 flex items-start justify-between gap-4">
+      <div className="flex flex-col">
+        <h1 className="text-2xl lg:text-3xl font-black uppercase tracking-tighter mb-2 leading-tight text-foreground">
+          {title || "Prompt Sin Título"}
+        </h1>
+        <p className="text-xs font-mono text-muted-foreground/80 tracking-widest uppercase">
+          Creado el {new Date(createdAt).toLocaleDateString()}
+        </p>
+      </div>
+
+      <div className="flex items-center gap-2 shrink-0">
+        {/* 🟢 BOTÓN DESCARGAR */}
+        {imageUrl && (
+          <Tooltip content="Descargar Imagen" side="bottom">
+            <button
+              onClick={() => downloadImage(imageUrl, title)}
+              disabled={isDownloading}
+              className={`p-2.5 rounded-lg border border-border/50 transition-all duration-200 ${
+                isDownloading
+                  ? "bg-muted text-muted-foreground opacity-50 cursor-not-allowed"
+                  : "bg-muted/10 hover:bg-(--accent-color) hover:text-white hover:border-(--accent-color) text-muted-foreground"
+              }`}
+            >
+              <IconDownload
+                size={20}
+                stroke={isDownloading ? 2 : 1.5}
+                className={isDownloading ? "animate-pulse" : ""}
+              />
+            </button>
+          </Tooltip>
+        )}
+
+        {/* 🟢 BOTÓN ELIMINAR (Solo para el dueño) */}
+        {isOwner && onDelete && (
+          <Tooltip content="Eliminar Prompt" side="bottom">
+            <button
+              onClick={handleDelete}
+              className="p-2.5 rounded-lg border border-border/50 bg-red-500/5 text-red-500 hover:bg-red-500 hover:text-white hover:border-red-500 transition-all duration-200"
+            >
+              <IconTrash size={20} stroke={1.5} />
+            </button>
+          </Tooltip>
+        )}
+      </div>
     </header>
   );
+}
+
+
+
+================================================
+FILE: src/features/prompts/hooks/useDownloadImage.ts
+================================================
+"use useState";
+import { useState } from "react";
+import toast from "react-hot-toast";
+
+export function useDownloadImage() {
+  const [isDownloading, setIsDownloading] = useState(false);
+
+  const downloadImage = async (imageUrl: string | null, promptTitle?: string) => {
+    if (!imageUrl) {
+      toast.error("No hay imagen para descargar");
+      return;
+    }
+
+    setIsDownloading(true);
+    try {
+      const response = await fetch(imageUrl);
+      if (!response.ok) throw new Error("Network response was not ok");
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+
+      const link = document.createElement("a");
+      link.href = url;
+
+      const safeName = (promptTitle || "reprompt_image").replace(/[^a-z0-9]/gi, "_").toLowerCase();
+      link.download = `${safeName}.png`;
+
+      document.body.appendChild(link);
+      link.click();
+
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+
+      toast.success("Imagen descargada");
+    } catch (error) {
+      console.error("Error downloading image:", error);
+      toast.error("Error al descargar la imagen");
+
+      window.open(imageUrl, "_blank");
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
+  return { downloadImage, isDownloading };
 }
 
 
@@ -5263,6 +6355,8 @@ interface SearchOptions {
   directoryId?: string;
 }
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
 export function useVectorSearch({ scope, directoryId }: SearchOptions) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<any[]>([]);
@@ -5279,7 +6373,7 @@ export function useVectorSearch({ scope, directoryId }: SearchOptions) {
         ...(directoryId && { directory_id: directoryId }),
       });
 
-      const res = await fetchSeguro(`/search/vector?${params.toString()}`);
+      const res = await fetchSeguro(`${API_URL}/search/vector?${params.toString()}`);
       if (res.ok) {
         const data = await res.json();
         setResults(data.results || []);
@@ -5311,7 +6405,7 @@ FILE: src/features/search/hooks/useSearch.ts
 ================================================
 "use client";
 
-import { useEffect, useCallback } from "react";
+import { useCallback } from "react";
 import { useProgressStore } from "@/src/store/progressStore";
 import { useSearchStore } from "@/src/store/searchStore";
 import { api } from "@/src/services/api";
@@ -5359,24 +6453,14 @@ export function useSearch() {
     [store],
   );
 
-  useEffect(() => {
-    const timerId = setTimeout(() => {
-      if (store.query.trim().length > 0) {
-        executeSearch(false);
-      } else {
-        store.clearSearch();
-      }
-    }, 300);
-
-    return () => clearTimeout(timerId);
-  }, [store.query]);
-
   const handleSearch = async (input?: string | React.FormEvent) => {
     if (input && typeof input === "object" && "preventDefault" in input) {
       input.preventDefault();
     } else if (typeof input === "string") {
       store.setQuery(input);
     }
+
+    executeSearch(false);
   };
 
   const loadMore = () => {
@@ -5750,17 +6834,39 @@ import { FadeIn } from "@/src/system/atoms/Animations/FadeIn";
 import { IconPhotoOff } from "@tabler/icons-react";
 import { SavedPrompt } from "@/src/types/models";
 import { useAuthStore } from "@/src/store/authStore";
+import { FeedSentinel } from "@/src/system/molecules/Feed/FeedSentinel"; // 🟢 Importamos el vigilante
+import { useInfiniteScroll } from "@/src/utils/hooks/useInfiniteScroll"; // 🟢 Importamos tu hook de scroll
 
 interface PromptGridProps {
   prompts: SavedPrompt[];
   lang: string;
   authorUsername: string;
   onDelete: (id: string) => void;
+  // 🟢 Recibimos las nuevas funciones del Hook
+  isLoading?: boolean;
+  hasMore?: boolean;
+  onLoadMore?: () => void;
 }
 
-export function PromptGrid({ prompts, lang, authorUsername, onDelete }: PromptGridProps) {
+export function PromptGrid({
+  prompts,
+  lang,
+  authorUsername,
+  onDelete,
+  isLoading = false,
+  hasMore = false,
+  onLoadMore = () => {},
+}: PromptGridProps) {
   const { user } = useAuthStore();
   const isOwner = user?.username === authorUsername;
+
+  // 🟢 Armamos el radar de scroll infinito
+  const sentinelRef = useInfiniteScroll({
+    hasMore,
+    isLoading,
+    onLoadMore,
+    threshold: 0.1, // Dispara un poco antes de llegar al fondo para que sea fluido
+  });
 
   const queueItems =
     prompts?.map((prompt) => ({
@@ -5768,7 +6874,8 @@ export function PromptGrid({ prompts, lang, authorUsername, onDelete }: PromptGr
       username: authorUsername,
     })) || [];
 
-  if (!prompts || prompts.length === 0) {
+  // Solo mostramos vacío si no está cargando (para evitar parpadeos iniciales)
+  if ((!prompts || prompts.length === 0) && !isLoading) {
     return (
       <div className="flex-1 min-h-[50vh] flex flex-col items-center justify-center text-muted-foreground/40 bg-muted/5">
         <IconPhotoOff size={48} stroke={1.5} className="mb-4" />
@@ -5780,24 +6887,34 @@ export function PromptGrid({ prompts, lang, authorUsername, onDelete }: PromptGr
   }
 
   return (
-    <div className="grid grid-cols-2 xs:grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 sm:gap-6 w-full pb-24 items-start">
-      {prompts.map((prompt, index) => (
-        <div key={prompt.id} className="w-full">
-          <FadeIn delay={0.05} y={15}>
-            <PromptCard
-              item={prompt}
-              index={index}
-              lang={lang}
-              isStudio={true}
-              authorUsername={authorUsername}
-              isPriority={index < 8}
-              onDelete={isOwner ? onDelete : undefined}
-              queueItems={queueItems}
-            />
-          </FadeIn>
-        </div>
-      ))}
-    </div>
+    <>
+      <div className="grid grid-cols-2 xs:grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 sm:gap-6 w-full items-start">
+        {prompts.map((prompt, index) => (
+          <div key={prompt.id} className="w-full">
+            <FadeIn delay={0.05} y={15}>
+              <PromptCard
+                item={prompt}
+                index={index}
+                lang={lang}
+                isStudio={true}
+                authorUsername={authorUsername}
+                isPriority={index < 8}
+                onDelete={isOwner ? onDelete : undefined}
+                queueItems={queueItems}
+              />
+            </FadeIn>
+          </div>
+        ))}
+      </div>
+
+      {/* 🟢 Colocamos el centinela al fondo. Él se encarga de mostrar "Cargando..." o "Fin" */}
+      <FeedSentinel
+        ref={sentinelRef as React.RefObject<HTMLDivElement>}
+        isLoading={isLoading}
+        hasMore={hasMore}
+        isEmpty={prompts.length === 0}
+      />
+    </>
   );
 }
 
@@ -6070,72 +7187,193 @@ FILE: src/features/studio/components/Workspace/WorkspaceHeader.tsx
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useStudioUI } from "@/src/store/useStudioUI";
-import { IconChevronRight, IconScanTraces, IconLayoutSidebar } from "@tabler/icons-react";
+import { useStudioPrompts } from "@/src/features/studio/hooks/useStudioPrompts";
+import {
+  IconChevronRight,
+  IconScanTraces,
+  IconLayoutSidebar,
+  IconX,
+  IconTrash,
+  IconFolder,
+  IconArrowsSort,
+  IconSquareCheck,
+} from "@tabler/icons-react";
 
 export function WorkspaceHeader() {
   const { lang } = useParams();
-  const { activeDirectoryId, setActiveDirectory, getBreadcrumbs, toggleSidebar } = useStudioUI();
+  const {
+    activeDirectoryId,
+    setActiveDirectory,
+    getBreadcrumbs,
+    toggleSidebar,
+    selectedPromptIds,
+    clearSelection,
+    directories,
+    sortBy,
+    setSortBy,
+  } = useStudioUI();
+
+  const { deleteBulkPrompts, moveBulkPrompts } = useStudioPrompts();
+
   const breadcrumbs = getBreadcrumbs();
+  const hasSelection = selectedPromptIds.length > 0;
 
   return (
-    <header className="flex items-center justify-between w-full mb-6 pb-4 border-b border-border/30">
-      <nav
-        aria-label="Breadcrumb"
-        className="flex items-center space-x-1 text-xs md:text-sm font-mono text-accent/40 lowcase overflow-x-auto scrollbar-none"
+    <header className="relative flex items-center w-full mb-6 pb-4 border-b border-border/30 min-h-13 overflow-hidden">
+      <div
+        className={`absolute inset-0 flex items-center justify-between w-full transition-all duration-300 ease-in-out ${
+          hasSelection
+            ? "opacity-0 -translate-y-4 pointer-events-none"
+            : "opacity-100 translate-y-0"
+        }`}
       >
-        <button
-          onClick={toggleSidebar}
-          className="p-1.5 rounded-md hover:bg-secondary/20 hover:text-accent transition-colors text-muted-foreground cursor-pointer hrink-0"
-          title="Alternar panel lateral"
-        >
-          <IconLayoutSidebar size={18} stroke={1.5} />
-        </button>
+        <div className="flex items-center flex-1 overflow-hidden pr-4">
+          <nav
+            aria-label="Breadcrumb"
+            className="flex items-center space-x-1 text-xs md:text-sm font-mono text-accent/40 lowercase overflow-x-auto scrollbar-none"
+          >
+            <button
+              onClick={toggleSidebar}
+              className="p-1.5 rounded-md hover:bg-secondary/20 hover:text-accent transition-colors text-muted-foreground cursor-pointer shrink-0"
+              title="Alternar panel lateral"
+            >
+              <IconLayoutSidebar size={18} stroke={1.5} />
+            </button>
 
-        <button
-          onClick={() => setActiveDirectory(null)}
-          className={`hover:text-accent transition-colors flex items-center gap-2 ${
-            !activeDirectoryId ? "text-muted-foreground font-bold" : ""
-          }`}
-          title="Root"
-        >
-          root
-        </button>
+            <button
+              onClick={() => setActiveDirectory(null)}
+              className={`hover:text-accent transition-colors flex items-center gap-2 ${
+                !activeDirectoryId ? "text-muted-foreground font-bold" : ""
+              }`}
+              title="Root"
+            >
+              root
+            </button>
 
-        {breadcrumbs.map((crumb, index) => {
-          const isLast = index === breadcrumbs.length - 1;
+            {breadcrumbs.map((crumb, index) => {
+              const isLast = index === breadcrumbs.length - 1;
 
-          return (
-            <div key={crumb.id} className="flex items-center space-x-1 whitespace-nowrap">
-              <IconChevronRight size={14} />
+              return (
+                <div key={crumb.id} className="flex items-center space-x-1 whitespace-nowrap">
+                  <IconChevronRight size={14} />
 
-              {isLast ? (
-                <span
-                  className="font-bold text-xs text-accent/80 tracking-widest truncate max-w-37.5 sm:max-w-37.5"
-                  title={crumb.name}
-                >
-                  {crumb.name.toUpperCase()}
-                </span>
-              ) : (
-                <button
-                  onClick={() => setActiveDirectory(crumb.id)}
-                  className="hover:text-accent text-xs transition-colors tracking-widest truncate max-w-37.5 sm:max-w-50"
-                  title={crumb.name}
-                >
-                  {crumb.name.toUpperCase()}
-                </button>
-              )}
-            </div>
-          );
-        })}
-      </nav>
+                  {isLast ? (
+                    <span
+                      className="font-bold text-xs text-accent/80 tracking-widest truncate max-w-37.5 sm:max-w-37.5"
+                      title={crumb.name}
+                    >
+                      {crumb.name.toUpperCase()}
+                    </span>
+                  ) : (
+                    <button
+                      onClick={() => setActiveDirectory(crumb.id)}
+                      className="hover:text-accent text-xs transition-colors tracking-widest truncate max-w-37.5 sm:max-w-50"
+                      title={crumb.name}
+                    >
+                      {crumb.name.toUpperCase()}
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+          </nav>
+        </div>
 
-      <Link
-        href={`/${lang}/reprompt`}
-        className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-xs font-bold hover:bg-primary/90 transition-all shadow-sm active:scale-95 shrink-0 ml-4"
+        <div className="flex items-center gap-3 shrink-0">
+          <Link
+            href={`/${lang}/reprompt`}
+            className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-xs font-bold hover:bg-primary/90 transition-all shadow-sm active:scale-95"
+          >
+            <IconScanTraces size={16} />
+            <span className="hidden sm:inline tracking-widest">Extractor</span>
+          </Link>
+
+          <div className="hidden sm:flex items-center bg-muted/50 rounded-lg p-1 border border-border/50">
+            <IconArrowsSort size={14} className="text-muted-foreground ml-2" />
+            <select
+              className="bg-transparent text-xs font-mono p-1.5 outline-none cursor-pointer text-foreground/80"
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as any)}
+            >
+              <option value="newest">Más recientes</option>
+              <option value="oldest">Más antiguos</option>
+              <option value="software">Por Software</option>
+            </select>
+          </div>
+
+          <button
+            onClick={() => useStudioUI.getState().selectAll(useStudioUI.getState().loadedPromptIds)}
+            className="hidden sm:flex items-center gap-2 px-3 py-2 bg-muted/50 hover:bg-muted text-muted-foreground hover:text-foreground rounded-lg text-xs font-bold transition-all border border-border/50"
+            title="Seleccionar todo lo cargado"
+          >
+            <IconSquareCheck size={16} />
+            <span>Seleccionar Todo</span>
+          </button>
+        </div>
+      </div>
+
+      <div
+        className={`absolute inset-0 flex items-center justify-between w-full transition-all duration-300 ease-in-out ${
+          hasSelection ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4 pointer-events-none"
+        }`}
       >
-        <IconScanTraces size={16} />
-        <span className="hidden sm:inline tracking-widest">Extractor</span>
-      </Link>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={clearSelection}
+            className="p-1.5 rounded-md hover:bg-muted text-muted-foreground transition-colors cursor-pointer"
+            title="Cancelar selección"
+          >
+            <IconX size={20} stroke={2} />
+          </button>
+          <span className="font-bold text-sm text-foreground">
+            {selectedPromptIds.length} seleccionados
+          </span>
+        </div>
+
+        <div className="flex items-center gap-4 bg-background">
+          <div className="flex items-center gap-2">
+            <label className="text-[10px] font-bold uppercase text-muted-foreground items-center gap-1.5 hidden sm:flex">
+              <IconFolder size={12} /> Colección
+            </label>
+            <select
+              className="bg-muted/50 text-xs p-2 rounded border border-border outline-none focus:ring-1 focus:ring-accent cursor-pointer min-w-32.5"
+              onChange={(e) => {
+                if (e.target.value !== "noop") {
+                  const targetDir = e.target.value === "root" ? null : e.target.value;
+                  moveBulkPrompts(selectedPromptIds, targetDir);
+                  e.target.value = "noop";
+                }
+              }}
+            >
+              <option value="noop">Mover a...</option>
+              <option value="root">Suelto</option>
+              {directories.map((d) => (
+                <option key={d.id} value={d.id}>
+                  {d.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="w-px h-5 bg-border/50 hidden sm:block"></div>
+
+          <button
+            onClick={() => {
+              if (
+                window.confirm(
+                  `¿Estás seguro de que quieres eliminar estos ${selectedPromptIds.length} prompts permanentemente?`,
+                )
+              ) {
+                deleteBulkPrompts(selectedPromptIds);
+              }
+            }}
+            className="flex items-center gap-2 px-3 py-2 text-red-500 hover:bg-red-500/10 rounded-lg text-xs font-mono font-bold transition-all shadow-sm active:scale-95"
+          >
+            <IconTrash size={14} />
+            <span className="hidden sm:inline tracking-widest">Eliminar</span>
+          </button>
+        </div>
+      </div>
     </header>
   );
 }
@@ -6511,14 +7749,27 @@ import { fetchSeguro } from "@/src/services/api/client";
 import toast from "react-hot-toast";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
+const ITEMS_PER_PAGE = 20;
 
 export function useStudioPrompts() {
-  const { activeDirectoryId, searchQuery, refreshKey } = useStudioUI();
+  const {
+    activeDirectoryId,
+    searchQuery,
+    refreshKey,
+    clearSelection,
+    sortBy,
+    deletedPromptIds,
+    addDeletedPromptIds,
+    clearDeletedPromptIds,
+  } = useStudioUI();
+
   const user = useAuthStore((state) => state.user);
 
   const [debouncedQuery, setDebouncedQuery] = useState(searchQuery);
   const [prompts, setPrompts] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
 
   useEffect(() => {
     const handler = setTimeout(() => setDebouncedQuery(searchQuery), 1000);
@@ -6526,33 +7777,64 @@ export function useStudioPrompts() {
   }, [searchQuery]);
 
   useEffect(() => {
+    setPrompts([]);
+    setPage(1);
+    setHasMore(true);
+    clearDeletedPromptIds();
+  }, [activeDirectoryId, debouncedQuery, refreshKey, sortBy]);
+
+  useEffect(() => {
     const fetchPrompts = async () => {
+      if (!hasMore && page > 1) return;
+
       setIsLoading(true);
 
       try {
         const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
-
-        const endpoint = debouncedQuery
+        const basePath = debouncedQuery
           ? `${API_BASE}/search/studio?q=${debouncedQuery}`
           : `${API_BASE}/prompts/studio?directory_id=${activeDirectoryId === null ? "root" : activeDirectoryId}`;
+
+        const endpoint = `${basePath}${basePath.includes("?") ? "&" : "?"}page=${page}&limit=${ITEMS_PER_PAGE}&sort=${sortBy}`;
 
         const res = await fetchSeguro(endpoint, { credentials: "include" });
 
         if (res.ok) {
           const data = await res.json();
-          setPrompts(data.results || data.data || []);
+          const newPrompts = data.results || data.data || [];
+
+          if (page === 1) {
+            setPrompts(newPrompts);
+            useStudioUI.getState().setLoadedPromptIds(newPrompts.map((p: any) => String(p.id)));
+          } else {
+            setPrompts((prev) => [...prev, ...newPrompts]);
+            useStudioUI
+              .getState()
+              .setLoadedPromptIds([
+                ...useStudioUI.getState().loadedPromptIds,
+                ...newPrompts.map((p: any) => String(p.id)),
+              ]);
+          }
+
+          setHasMore(newPrompts.length === ITEMS_PER_PAGE);
         } else {
           console.error("Fallo del servidor:", res.status);
+          setHasMore(false);
         }
       } catch (err) {
         console.error("Error en Studio Grid:", err);
+        setHasMore(false);
       } finally {
         setIsLoading(false);
       }
     };
 
     fetchPrompts();
-  }, [activeDirectoryId, debouncedQuery, refreshKey]);
+  }, [activeDirectoryId, debouncedQuery, refreshKey, page, sortBy]);
+
+  const loadMore = () => {
+    if (!isLoading && hasMore) setPage((prev) => prev + 1);
+  };
 
   const deletePrompt = async (promptId: string) => {
     const toastId = toast.loading("Exterminando rastro digital...");
@@ -6563,11 +7845,18 @@ export function useStudioPrompts() {
       });
 
       if (res.ok) {
-        setPrompts((prev) => prev.filter((p) => p.id !== promptId));
+        useStudioUI.getState().setDeletingIds([promptId]);
         toast.success("Eliminado del Studio", { id: toastId });
-      } else {
-        const errorData = await res.json();
-        throw new Error(errorData.detail || "Fallo de autorización");
+
+        setTimeout(async () => {
+          addDeletedPromptIds([String(promptId)]);
+          useStudioUI.getState().setDeletingIds([]);
+
+          const authState = useAuthStore.getState();
+          if (typeof authState.checkAuth === "function") {
+            await authState.checkAuth(true);
+          }
+        }, 400);
       }
     } catch (error: any) {
       console.error("Fallo al borrar:", error);
@@ -6575,11 +7864,77 @@ export function useStudioPrompts() {
     }
   };
 
+  const deleteBulkPrompts = async (promptIds: string[]) => {
+    const toastId = toast.loading(`Eliminando ${promptIds.length} prompts...`);
+    try {
+      const res = await fetchSeguro(`${API_URL}/prompts/bulk/delete`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt_ids: promptIds }),
+      });
+
+      if (res.ok) {
+        useStudioUI.getState().setDeletingIds(promptIds);
+        toast.success(`${promptIds.length} eliminados del Studio`, { id: toastId });
+
+        setTimeout(async () => {
+          const stringIds = promptIds.map(String);
+          addDeletedPromptIds(stringIds);
+          useStudioUI.getState().setDeletingIds([]);
+          clearSelection();
+
+          const authState = useAuthStore.getState();
+          if (typeof authState.checkAuth === "function") {
+            await authState.checkAuth(true);
+          }
+        }, 400);
+      } else {
+        const errorData = await res.json();
+        const errorMsg = Array.isArray(errorData.detail)
+          ? errorData.detail[0].msg
+          : errorData.detail;
+        throw new Error(errorMsg || "Fallo en borrado masivo");
+      }
+    } catch (error: any) {
+      console.error("Fallo al borrar masivamente:", error);
+      toast.error(error.message || "Error al eliminar múltiples prompts", { id: toastId });
+    }
+  };
+
+  const moveBulkPrompts = async (promptIds: string[], targetDirectoryId: string | null) => {
+    const toastId = toast.loading(`Moviendo ${promptIds.length} prompts...`);
+    try {
+      const res = await fetchSeguro(`${API_URL}/prompts/bulk/move`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt_ids: promptIds, directory_id: targetDirectoryId }),
+      });
+
+      if (res.ok) {
+        useStudioUI.getState().triggerRefresh();
+        clearSelection();
+        toast.success(`Movidos con éxito`, { id: toastId });
+      } else {
+        const errorData = await res.json();
+        throw new Error(errorData.detail || "Fallo al mover masivamente");
+      }
+    } catch (error: any) {
+      console.error("Fallo al mover:", error);
+      toast.error(error.message || "Error al mover", { id: toastId });
+    }
+  };
+
+  const visiblePrompts = prompts.filter((p) => !deletedPromptIds.includes(String(p.id)));
+
   return {
-    prompts,
+    prompts: visiblePrompts,
     isLoading,
+    hasMore,
+    loadMore,
     user,
     deletePrompt,
+    deleteBulkPrompts,
+    moveBulkPrompts,
   };
 }
 
@@ -6689,9 +8044,9 @@ export function ThemeMenuItem() {
 ================================================
 FILE: src/features/theme/components/ThemePreview.tsx
 ================================================
-import { ThemeColors } from "../constants/themeConfigs";
+import { ThemeColors, THEME_CONFIGS } from "../constants/themeConfigs";
 
-export function ThemePreview({ colors }: { colors: ThemeColors }) {
+function BasePreview({ colors }: { colors: ThemeColors }) {
   return (
     <div
       className={`w-full h-36 p-3 flex flex-col gap-2 border-b border-border/10 ${colors.wrapper}`}
@@ -6722,6 +8077,27 @@ export function ThemePreview({ colors }: { colors: ThemeColors }) {
       </div>
     </div>
   );
+}
+
+export function ThemePreview({ colors, isSystem }: { colors: ThemeColors; isSystem?: boolean }) {
+  if (isSystem) {
+    return (
+      <div className="relative w-full h-36 flex overflow-hidden">
+        <div className="w-1/2 h-full overflow-hidden relative">
+          <div className="absolute top-0 left-0 w-[200%] h-full">
+            <BasePreview colors={THEME_CONFIGS.light.colors} />
+          </div>
+        </div>
+        <div className="w-1/2 h-full overflow-hidden relative border-l border-border/20">
+          <div className="absolute top-0 right-0 w-[200%] h-full">
+            <BasePreview colors={THEME_CONFIGS.dark.colors} />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return <BasePreview colors={colors} />;
 }
 
 
@@ -6758,7 +8134,7 @@ export function ThemeSelectorCard({ themeType, isActive, onClick }: ThemeSelecto
         }
       `}
     >
-      <ThemePreview colors={config.colors} />
+      <ThemePreview colors={config.colors} isSystem={themeType === "system"} />
 
       <div className="p-4 flex items-start justify-between w-full bg-background flex-1">
         <div className="flex flex-col pr-4">
@@ -6826,6 +8202,21 @@ export const THEME_CONFIGS: Record<
       content: "bg-[#010409] border-gray-800",
       primaryLine: "bg-primary/50",
       contentLines: "bg-gray-800",
+    },
+  },
+
+  system: {
+    title: "Sistema",
+    description: "Se adapta automáticamente a los ajustes de tu dispositivo.",
+    colors: {
+      wrapper: "",
+      header: "",
+      dots: "",
+      lines: "",
+      sidebar: "",
+      content: "",
+      primaryLine: "",
+      contentLines: "",
     },
   },
 };
@@ -7851,6 +9242,7 @@ export const authApi = {
 ================================================
 FILE: src/services/api/client.ts
 ================================================
+import * as Sentry from "@sentry/nextjs";
 import { ENV } from "@/src/services/config/env";
 
 let isRefreshing = false;
@@ -7884,9 +9276,13 @@ export async function fetchSeguro(
   try {
     response = await fetch(endpoint, config);
   } catch (error) {
+    Sentry.captureException(error, {
+      extra: { endpoint, requestId },
+    });
+
     throw new Error("No hay conexión con el servidor.");
   }
-  
+
   const serverRequestId = response.headers.get("X-Request-ID") || requestId;
 
   if (!response.ok && response.status !== 401) {
@@ -8278,7 +9674,7 @@ interface AuthState {
 
   incrementPromptCount: () => void;
 
-  login: (userData: User) => void;
+  login: (userData: any) => void;
   logout: () => Promise<void>;
   checkAuth: (force?: boolean) => Promise<void>;
   logoutSilencioso: () => void;
@@ -8303,17 +9699,30 @@ const redirectToLogin = () => {
   window.location.href = `${localePrefix}/login`;
 };
 
+const normalizeUser = (data: any): User | null => {
+  if (!data || !data.username) return null;
+
+  return {
+    ...data,
+    role: data.role || "voyager",
+    prompts_count: data.prompts_count ?? 0,
+    avatarUrl: data.avatar_url !== undefined ? data.avatar_url : data.avatarUrl || null,
+  };
+};
+
 export const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
   isAuthenticated: false,
   isLoadingAuth: true,
   hasCheckedInitialAuth: false,
+
   updateLocalUsername: (newUsername) => {
     const currentUser = get().user;
     if (currentUser) {
       set({ user: { ...currentUser, username: newUsername } });
     }
   },
+
   incrementPromptCount: () => {
     const currentUser = get().user;
     if (currentUser) {
@@ -8325,21 +9734,25 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       });
     }
   },
+
   updateUser: (data: any) =>
-    set((state) => ({
-      user: state.user ? { ...state.user, ...data } : null,
-    })),
+    set((state) => {
+      if (!state.user) return { user: null };
+
+      const mergedData = { ...state.user, ...data };
+      return { user: normalizeUser(mergedData) };
+    }),
 
   login: (userData) => {
     if (process.env.NODE_ENV === "development") {
       console.log(`[AUTH_STORE] Sesión iniciada localmente: @${userData.username}`);
-      set({
-        user: userData,
-        isAuthenticated: true,
-        isLoadingAuth: false,
-        hasCheckedInitialAuth: true,
-      });
     }
+    set({
+      user: normalizeUser(userData),
+      isAuthenticated: true,
+      isLoadingAuth: false,
+      hasCheckedInitialAuth: true,
+    });
   },
 
   logoutSilencioso: () => {
@@ -8365,19 +9778,17 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const res = await api.auth.me();
       const userData = res?.data || res?.user || res;
 
-      if (userData?.username) {
-        set({
-          user: {
-            ...userData,
-            prompts_count: userData.prompts_count ?? 0,
-            role: userData.role || "voyager",
-            avatarUrl: userData.avatar_url || userData.avatarUrl,
-          },
+      const normalizedUser = normalizeUser(userData);
 
+      if (normalizedUser) {
+        set({
+          user: normalizedUser,
           isAuthenticated: true,
         });
       } else {
-        console.warn("⚠️ [AUTH_STORE] checkAuth respondió OK pero el cuerpo está vacío.");
+        console.warn(
+          "⚠️ [AUTH_STORE] checkAuth respondió OK pero el cuerpo está vacío o sin username.",
+        );
         set({ user: null, isAuthenticated: false });
       }
     } catch (error: unknown) {
@@ -8758,8 +10169,27 @@ interface StudioUIState {
   setSearchQuery: (query: string) => void;
   setIsSearching: (status: boolean) => void;
 
+  loadedPromptIds: string[];
+  setLoadedPromptIds: (ids: string[]) => void;
+
   getChildDirectories: (parentId: string | null) => Directory[];
   getBreadcrumbs: () => Directory[];
+
+  sortBy: "newest" | "oldest" | "software";
+  setSortBy: (sort: "newest" | "oldest" | "software") => void;
+
+  selectedPromptIds: string[];
+  deletingIds: string[];
+  setDeletingIds: (ids: string[]) => void;
+  deletedPromptIds: string[];
+  addDeletedPromptIds: (ids: string[]) => void;
+  clearDeletedPromptIds: () => void;
+
+  isSelectionMode: boolean;
+  toggleSelectionMode: () => void;
+  togglePromptSelection: (id: string) => void;
+  clearSelection: () => void;
+  selectAll: (ids: string[]) => void;
 }
 
 export const useStudioUI = create<StudioUIState>((set, get) => ({
@@ -8768,6 +10198,15 @@ export const useStudioUI = create<StudioUIState>((set, get) => ({
   searchQuery: "",
   isSearching: false,
   isSidebarOpen: false,
+
+  deletingIds: [],
+  setDeletingIds: (ids) => set({ deletingIds: ids }),
+  deletedPromptIds: [],
+  addDeletedPromptIds: (ids) =>
+    set((state) => ({
+      deletedPromptIds: [...state.deletedPromptIds, ...ids],
+    })),
+  clearDeletedPromptIds: () => set({ deletedPromptIds: [] }),
 
   refreshKey: 0,
   triggerRefresh: () => set((state) => ({ refreshKey: state.refreshKey + 1 })),
@@ -8778,6 +10217,12 @@ export const useStudioUI = create<StudioUIState>((set, get) => ({
   setActiveDirectory: (activeDirectoryId) => set({ activeDirectoryId }),
   setSearchQuery: (searchQuery) => set({ searchQuery }),
   setIsSearching: (isSearching) => set({ isSearching }),
+
+  sortBy: "newest",
+  setSortBy: (sort) => set({ sortBy: sort }),
+
+  loadedPromptIds: [],
+  setLoadedPromptIds: (ids) => set({ loadedPromptIds: ids }),
 
   getChildDirectories: (parentId) => {
     return get().directories.filter((d: Directory) => d.parent_id === parentId);
@@ -8799,6 +10244,37 @@ export const useStudioUI = create<StudioUIState>((set, get) => ({
     }
     return crumbs;
   },
+
+  selectedPromptIds: [],
+  isSelectionMode: false,
+
+  toggleSelectionMode: () =>
+    set((state) => {
+      const newMode = !state.isSelectionMode;
+      return {
+        isSelectionMode: newMode,
+        selectedPromptIds: newMode ? state.selectedPromptIds : [],
+      };
+    }),
+
+  togglePromptSelection: (id: string) =>
+    set((state) => {
+      const isSelected = state.selectedPromptIds.includes(id);
+      const newSelection = isSelected
+        ? state.selectedPromptIds.filter((promptId) => promptId !== id)
+        : [...state.selectedPromptIds, id];
+
+      const shouldKeepMode = newSelection.length > 0;
+
+      return {
+        selectedPromptIds: newSelection,
+        isSelectionMode: shouldKeepMode,
+      };
+    }),
+
+  clearSelection: () => set({ selectedPromptIds: [], isSelectionMode: false }),
+
+  selectAll: (ids: string[]) => set({ selectedPromptIds: ids, isSelectionMode: true }),
 }));
 
 
@@ -8871,6 +10347,7 @@ export function UserAvatar({
     xl: "w-24 h-24 text-3xl",
     "2xl": "w-20 h-20 md:w-28 md:h-28",
   };
+  console.log("avatar", avatarUrl)
 
   return (
     <div
@@ -8961,6 +10438,55 @@ export function UserBadge({ role = "voyager" }: UserBadgeProps) {
     >
       {config.label}
     </span>
+  );
+}
+
+
+
+================================================
+FILE: src/system/atoms/Badge/NeoIconBadge.tsx
+================================================
+"use client";
+
+import React from "react";
+import { clsx, type ClassValue } from "clsx";
+import { twMerge } from "tailwind-merge";
+
+function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));
+}
+
+export type NeoIconVariant = "danger" | "success" | "warning" | "info" | "primary";
+
+interface NeoIconBadgeProps {
+  children: React.ReactNode;
+  variant?: NeoIconVariant;
+  className?: string;
+}
+
+// Diccionario de estilos Neo-Brutalistas por variante
+const variantStyles: Record<NeoIconVariant, string> = {
+  danger: "bg-red-500/10 border-red-500 text-red-500 shadow-[4px_4px_0px_0px_rgba(239,68,68,1)]",
+  success:
+    "bg-green-500/10 border-green-500 text-green-500 shadow-[4px_4px_0px_0px_rgba(34,197,94,1)]",
+  warning:
+    "bg-orange-500/10 border-orange-500 text-orange-500 shadow-[4px_4px_0px_0px_rgba(249,115,22,1)]",
+  info: "bg-blue-500/10 border-blue-500 text-blue-500 shadow-[4px_4px_0px_0px_rgba(59,130,246,1)]",
+  primary:
+    "bg-foreground/5 border-foreground text-foreground shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] dark:shadow-[4px_4px_0px_0px_rgba(255,255,255,1)]",
+};
+
+export function NeoIconBadge({ children, variant = "primary", className }: NeoIconBadgeProps) {
+  return (
+    <div
+      className={cn(
+        "w-16 h-16 border-2 rounded-full flex items-center justify-center shrink-0 transition-transform hover:-translate-y-1 hover:shadow-[6px_6px_0px_0px]",
+        variantStyles[variant],
+        className,
+      )}
+    >
+      {children}
+    </div>
   );
 }
 
@@ -9590,17 +11116,20 @@ export function Tooltip({
   return (
     <TooltipProvider delayDuration={delayDuration}>
       <TooltipRoot>
+        {/* 🟢 Mantenemos el Trigger para no romper el DOM de React */}
         <TooltipTrigger asChild>{children}</TooltipTrigger>
-        <TooltipContent side={side} className={cn(styles[variant].container, className)}>
-          {content}
-          <TooltipPrimitive.Arrow className={styles[variant].arrow} />
-        </TooltipContent>
+
+        {/* 🟢 El escudo protector: Solo montamos la burbuja si hay contenido real */}
+        {content && (
+          <TooltipContent side={side} className={cn(styles[variant].container, className)}>
+            {content}
+            <TooltipPrimitive.Arrow className={styles[variant].arrow} />
+          </TooltipContent>
+        )}
       </TooltipRoot>
     </TooltipProvider>
   );
 }
-
-export { TooltipRoot, TooltipTrigger, TooltipContent, TooltipProvider };
 
 
 
@@ -9991,8 +11520,12 @@ import {
   IconTrash,
   IconBookmark,
   IconWand,
+  IconDownload,
+  IconSquareCheck, // 🟢 Importado
 } from "@tabler/icons-react";
 import { Tooltip } from "../../atoms/Tooltip/Tooltip";
+import { useDownloadImage } from "@/src/features/prompts/hooks/useDownloadImage";
+import { useStudioUI } from "@/src/store/useStudioUI"; // 🟢 Importamos el store
 
 // 🏛️ Directriz 12: Tipado estricto. Cero "any".
 interface Directory {
@@ -10007,7 +11540,7 @@ interface PromptCardActionsProps {
   onDelete?: (id: string) => void;
   isOpen: boolean;
   setIsOpen: (isOpen: boolean) => void;
-  isOwner: boolean; // 🟢 Inyectamos el estado de propiedad
+  isOwner: boolean;
 }
 
 export function PromptCardActions({
@@ -10019,6 +11552,10 @@ export function PromptCardActions({
   setIsOpen,
   isOwner,
 }: PromptCardActionsProps) {
+  const { downloadImage, isDownloading } = useDownloadImage();
+  // 🟢 Instanciamos la función del estado global
+  const togglePromptSelection = useStudioUI((state) => state.togglePromptSelection);
+
   return (
     <div className="absolute top-2 right-2 z-50">
       <button
@@ -10027,7 +11564,7 @@ export function PromptCardActions({
           e.stopPropagation();
           setIsOpen(!isOpen);
         }}
-        // 🕸️ Directriz 9: Área táctil ampliada (p-2) para evitar errores en móvil
+        // 🕸️ Directriz 9: Área táctil ampliada
         className={`p-2 rounded-md backdrop-blur-md border shadow-sm transition-colors ${
           isOpen
             ? "bg-background border-border text-foreground"
@@ -10040,9 +11577,71 @@ export function PromptCardActions({
 
       {isOpen && (
         <div className="absolute top-full right-0 mt-1 w-48 bg-background border border-border rounded-xl shadow-xl z-50 animate-in fade-in zoom-in-95 overflow-hidden">
-          {/* 👑 ACCIONES DE DUEÑO (OWNER) */}
-          {isOwner ? (
-            <>
+          {/* 🌍 ACCIONES UNIVERSALES (Para todos: Dueños y Visitantes) */}
+          <div className="flex flex-col">
+            {/* 🟢 NUEVO BOTÓN: Seleccionar (Solo Dueño) */}
+            {isOwner && (
+              <button
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  togglePromptSelection(String(item.id));
+                  setIsOpen(false);
+                }}
+                className="flex w-full items-center gap-2 px-3 py-3 text-xs font-mono font-bold text-foreground hover:bg-muted transition-colors border-b border-border/10"
+              >
+                <IconSquareCheck size={14} className="text-(--accent-color)" />
+                Seleccionar
+              </button>
+            )}
+
+            {item.image_url && (
+              <button
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  downloadImage(item.image_url || null, item.title || "prompt");
+                  setIsOpen(false);
+                }}
+                disabled={isDownloading}
+                className="flex w-full items-center gap-2 px-3 py-3 text-xs font-mono font-bold text-foreground/70 hover:bg-muted hover:text-foreground transition-colors border-b border-border/10"
+              >
+                <IconDownload
+                  size={14}
+                  className={isDownloading ? "animate-pulse text-accent" : ""}
+                />
+                {isDownloading ? "Descargando..." : "Descargar Imagen"}
+              </button>
+            )}
+
+            <Tooltip variant="default" content="Servicio en desarrollo" side="left">
+              <button
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                }}
+                className="flex w-full items-center gap-2 px-3 py-3 text-xs font-mono font-bold text-foreground/70 hover:bg-muted hover:text-foreground transition-colors border-b border-border/10 cursor-not-allowed opacity-70"
+              >
+                <IconWand size={14} /> Copiar Prompt
+              </button>
+            </Tooltip>
+
+            <Tooltip variant="default" content="Servicio en desarrollo" side="left">
+              <button
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                }}
+                className={`flex w-full items-center gap-2 px-3 py-3 text-xs font-mono font-bold text-foreground/70 hover:bg-muted hover:text-foreground transition-colors cursor-not-allowed opacity-70 ${isOwner ? "border-b border-border/30" : ""}`}
+              >
+                <IconBookmark size={14} /> Guardar
+              </button>
+            </Tooltip>
+          </div>
+
+          {/* 👑 ACCIONES DE DUEÑO (OWNER) - Zona Administrativa */}
+          {isOwner && (
+            <div className="bg-muted/10">
               {onAssign && directories && directories.length > 0 && (
                 <div className="px-3 py-3 border-b border-border/10">
                   <label className="text-[10px] font-bold uppercase text-muted-foreground mb-1.5 flex items-center gap-1.5">
@@ -10051,10 +11650,12 @@ export function PromptCardActions({
                   <select
                     className="w-full bg-muted/50 text-xs p-2 rounded border border-border outline-none focus:ring-1 focus:ring-accent cursor-pointer"
                     value={item.directory_id || ""}
+                    onClick={(e) => e.stopPropagation()}
                     onChange={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
                       onAssign(String(item.id), e.target.value);
+                      setIsOpen(false);
                     }}
                   >
                     <option value="">Suelto</option>
@@ -10072,43 +11673,16 @@ export function PromptCardActions({
                   onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
-                    // 🛡️ Directriz 6: Programación defensiva. Confirmación antes de mutar la DB.
-                    if (window.confirm("Eliminar prompt?")) {
+                    setIsOpen(false);
+                    if (window.confirm("¿Eliminar este prompt del Studio?")) {
                       onDelete(String(item.id));
                     }
                   }}
-                  className="flex w-full items-center gap-2 px-3 py-3 text-xs font-mono font-bold text-red-500 hover:bg-red-500/10 transition-colors"
+                  className="flex w-full items-center gap-2 px-3 py-3 text-xs font-mono font-bold text-red-500 hover:bg-red-500 hover:text-white transition-colors"
                 >
                   <IconTrash size={14} /> Eliminar
                 </button>
               )}
-            </>
-          ) : (
-            /* 👁️ ACCIONES DE VISITANTE (VISITOR) */
-            <div className="flex flex-col">
-              <Tooltip variant="default" content="Servicio en desarrollo" side="left">
-                <button
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                  }}
-                  className="flex w-full items-center gap-2 px-3 py-3 text-xs font-mono font-bold text-foreground/70 hover:bg-muted hover:text-foreground transition-colors border-b border-border/10 cursor-not-allowed opacity-70"
-                >
-                  <IconBookmark size={14} /> Guardar
-                </button>
-              </Tooltip>
-
-              <Tooltip variant="default" content="Servicio en desarrollo" side="left">
-                <button
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                  }}
-                  className="flex w-full items-center gap-2 px-3 py-3 text-xs font-mono font-bold text-foreground/70 hover:bg-muted hover:text-foreground transition-colors cursor-not-allowed opacity-70"
-                >
-                  <IconWand size={14} /> Copiar Prompt
-                </button>
-              </Tooltip>
             </div>
           )}
         </div>
@@ -10207,7 +11781,14 @@ FILE: src/system/molecules/Cards/PromptMetadataPanel.tsx
 "use client";
 
 import { useState } from "react";
-import { IconEdit, IconDeviceFloppy, IconX, IconPrompt, IconCircleMinus } from "@tabler/icons-react";
+import {
+  IconEdit,
+  IconDeviceFloppy,
+  IconX,
+  IconPrompt,
+  IconCircleMinus,
+  IconPuzzle,
+} from "@tabler/icons-react";
 import { SavedPrompt } from "@/src/types/models";
 import { FadeIn } from "@/src/system/atoms/Animations/FadeIn";
 
@@ -10232,13 +11813,28 @@ export function PromptMetadataPanel({ prompt, isOwner = true, onSave }: PromptMe
     negative_prompt: (prompt as any).negative_prompt || "",
     model: prompt.model || "",
     sampler: prompt.sampler || "",
+    lora: prompt.lora || "",
     software: prompt.software || "",
     width: prompt.width || undefined,
     height: prompt.height || undefined,
     steps: (prompt as any).steps || "",
     cfg_scale: (prompt as any).cfg_scale || "",
     seed: (prompt as any).seed || "",
+    extra_data: (prompt as any).extra_data || "",
   });
+
+  // =================================================================
+  // 🟢 LÓGICA DE RESCATE (Explicación)
+  // Aquí decidimos qué lista de LoRAs vamos a dibujar.
+  // 1. Miramos si existen en extra_data.loras (La nueva forma estructurada).
+  // 2. Si no, miramos si prompt.lora es un array (Forma antigua).
+  // 3. Si no hay nada, devolvemos un array vacío [].
+  // =================================================================
+  const lorasToRender = Array.isArray((prompt.extra_data as any)?.loras)
+    ? (prompt.extra_data as any).loras
+    : Array.isArray(prompt.lora)
+      ? prompt.lora
+      : [];
 
   const handleCopy = (text: string, section: string) => {
     navigator.clipboard.writeText(text);
@@ -10262,9 +11858,10 @@ export function PromptMetadataPanel({ prompt, isOwner = true, onSave }: PromptMe
     <FadeIn delay={0.2}>
       {isOwner && (
         <div className="flex justify-end mb-4 gap-2">
+          {/* ... (Botones de Editar/Guardar se mantienen igual) ... */}
           {isEditing ? (
             <>
-              <Tooltip content="Copiar Prompt">
+              <Tooltip content="Cancelar Edición">
                 <button
                   onClick={() => setIsEditing(false)}
                   disabled={isSaving}
@@ -10273,8 +11870,7 @@ export function PromptMetadataPanel({ prompt, isOwner = true, onSave }: PromptMe
                   <IconX size={14} /> Cancelar
                 </button>
               </Tooltip>
-
-              <Tooltip content="Copiar Negative Prompt">
+              <Tooltip content="Guardar Cambios">
                 <button
                   onClick={handleSave}
                   disabled={isSaving}
@@ -10322,6 +11918,35 @@ export function PromptMetadataPanel({ prompt, isOwner = true, onSave }: PromptMe
         />
 
         <PromptTechSpecs formData={formData} isEditing={isEditing} onChange={handleChange} />
+
+        {!isEditing && lorasToRender.length > 0 && (
+          <div className="flex flex-col gap-3 mt-4 pt-4 border-t border-border/50">
+            <h3 className="font-mono text-xs font-black uppercase tracking-widest flex items-center gap-2 text-muted-foreground">
+              <IconPuzzle size={18} /> Recursos Inyectados (LoRAs)
+            </h3>
+            <div className="flex flex-wrap gap-2">
+              {lorasToRender.map((lora: any, idx: number) => (
+                <Tooltip content="Servicio en desarrollo">
+                  <div
+                    key={idx}
+                    className="flex items-center gap-2 bg-purple-500/10 border border-purple-500/20 px-3 py-1.5 rounded-md hover:bg-purple-500/20 transition-colors"
+                  >
+                    <span
+                      className="text-xs font-mono font-bold text-purple-600 dark:text-purple-400 max-w-45 truncate"
+                      title={lora.name}
+                    >
+                      {lora.name}
+                    </span>
+                    <div className="h-3 w-px bg-purple-500/30" />
+                    <span className="text-[10px] font-black font-mono bg-purple-500/20 text-purple-700 dark:text-purple-400 px-1.5 py-0.5 rounded">
+                      {typeof lora.strength === "number" ? lora.strength.toFixed(2) : lora.strength}
+                    </span>
+                  </div>
+                </Tooltip>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </FadeIn>
   );
@@ -10371,7 +11996,7 @@ export function PromptTagsList({ tags }: { tags?: (string | TagItem)[] }) {
               content={
                 <div className="flex flex-col gap-0.5">
                   <span className="text-destructive text-xs font-bold capitalize">{tagName}</span>
-                  <span className="text-xs text-muted-foreground">Confianza: {confidence}%</span>
+                  <span className="text-xs text-muted">Confianza: {confidence}%</span>
                 </div>
               }
             >
@@ -10415,6 +12040,7 @@ FILE: src/system/molecules/Cards/PromptTechSpecs.tsx
 import { IconScanTraces } from "@tabler/icons-react";
 import { SavedPrompt } from "@/src/types/models";
 import { cn } from "@/lib/utils";
+import { Tooltip } from "../../atoms/Tooltip/Tooltip";
 
 interface PromptTechSpecsProps {
   formData: Partial<SavedPrompt>;
@@ -10427,6 +12053,7 @@ export function PromptTechSpecs({ formData, isEditing, onChange }: PromptTechSpe
     { key: "model", label: "Modelo", type: "text" },
     { key: "software", label: "Software", type: "text" },
     { key: "sampler", label: "Sampler", type: "text" },
+    { key: "lora", label: "Lora", type: "text" },
     { key: "steps", label: "Steps", type: "number" },
     { key: "cfg_scale", label: "CFG Scale", type: "text" },
     { key: "seed", label: "Seed", type: "text" },
@@ -10449,30 +12076,43 @@ export function PromptTechSpecs({ formData, isEditing, onChange }: PromptTechSpe
           if (!isEditing && !value) return null;
 
           return (
-            <div
+            <Tooltip
               key={spec.key}
-              className={cn(
-                "bg-muted/10 neo-border p-3 flex flex-col gap-1",
-                isEditing && "bg-background",
-              )}
+              content={
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-destructive text-xs font-bold capitalize">
+                    {spec.label}
+                  </span>
+                  <span className="text-xs text-muted">{value?.toString()}</span>
+                </div>
+              }
             >
-              <label className="text-[10px] font-mono text-muted-foreground uppercase tracking-widest">
-                {spec.label}
-              </label>
-              {isEditing ? (
-                <input
-                  type={spec.type}
-                  value={(value as string | number) || ""}
-                  onChange={(e) => onChange(spec.key as keyof SavedPrompt, e.target.value)}
-                  className="w-full bg-transparent border-b border-border/50 text-sm font-bold focus:outline-none focus:border-(--accent-color) py-1"
-                  placeholder={`Ej: ${spec.key === "seed" ? "123456" : "..."}`}
-                />
-              ) : (
-                <span className="text-sm font-bold truncate" title={String(value)}>
-                  {value as string | number}
-                </span>
-              )}
-            </div>
+              <div
+                key={spec.key}
+                className={cn(
+                  "bg-muted/10 neo-border p-3 flex flex-col gap-1",
+                  isEditing && "bg-background",
+                )}
+              >
+                <label className="text-[10px] font-mono text-muted-foreground uppercase tracking-widest">
+                  {spec.label}
+                </label>
+
+                {isEditing ? (
+                  <input
+                    type={spec.type}
+                    value={(value as string | number) || ""}
+                    onChange={(e) => onChange(spec.key as keyof SavedPrompt, e.target.value)}
+                    className="w-full bg-transparent border-b border-border/50 text-sm font-bold focus:outline-none focus:border-(--accent-color) py-1"
+                    placeholder={`Ej: ${spec.key === "seed" ? "123456" : "..."}`}
+                  />
+                ) : (
+                  <span className="text-sm font-bold truncate" title={String(value)}>
+                    {value as string | number}
+                  </span>
+                )}
+              </div>
+            </Tooltip>
           );
         })}
       </div>
@@ -10686,25 +12326,13 @@ interface FeedSentinelProps {
   isEmpty: boolean;
 }
 
-export const FeedSentinel = forwardRef<HTMLDivElement, FeedSentinelProps>(
-  ({ isLoading, hasMore, isEmpty }, ref) => {
-    return (
-      <div ref={ref} className="h-32 flex flex-col items-center justify-center mt-10 w-full">
-        {isLoading && <FeedState type="loading" />}
-
-        {!hasMore && !isEmpty && !isLoading && (
-          <div className="flex items-center gap-4 opacity-50 w-full max-w-md">
-            <div className="h-px bg-border flex-1" />
-            <p className="text-muted-foreground font-mono text-xs uppercase tracking-widest text-center whitespace-nowrap">
-              Fin de la transmisión
-            </p>
-            <div className="h-px bg-border flex-1" />
-          </div>
-        )}
-      </div>
-    );
-  },
-);
+export const FeedSentinel = forwardRef<HTMLDivElement, FeedSentinelProps>(({ isLoading }, ref) => {
+  return (
+    <div ref={ref} className="h-32 flex flex-col items-center justify-center mt-10 w-full">
+      {isLoading && <FeedState type="loading" />}
+    </div>
+  );
+});
 
 FeedSentinel.displayName = "FeedSentinel";
 
@@ -10931,7 +12559,7 @@ import "@testing-library/jest-dom";
 import userEvent from "@testing-library/user-event";
 import { useSearch } from "@/src/features/search/hooks/useSearch";
 import { render, screen, fireEvent } from "@testing-library/react";
-import { NavbarSearch } from "../../organisms/Navigation/NavbarSearch";
+import { NavbarSearch } from "../../organisms/Navigation/SemanticSearchBar";
 
 jest.mock("@/src/features/search/hooks/useSearch");
 const mockUseSearch = useSearch as jest.MockedFunction<typeof useSearch>;
@@ -11989,8 +13617,9 @@ FILE: src/system/molecules/Studio/PromptCard.tsx
 ================================================
 "use client";
 
+import React, { memo } from "react";
 import Link from "next/link";
-import { IconPhoto } from "@tabler/icons-react";
+import { IconPhoto, IconCheck } from "@tabler/icons-react";
 import { usePromptCard } from "@/src/system/molecules/Cards/hooks/usePromptCard";
 import { usePromptDnd } from "@/src/features/studio/hooks/usePromptDnd";
 import { PromptCardActions } from "../Cards/PromptCardActions";
@@ -12000,8 +13629,8 @@ import { SavedPrompt } from "@/src/types/models";
 import { Tooltip } from "../../atoms/Tooltip/Tooltip";
 import { RichPromptTooltipContent } from "./RichPromptTooltipContent";
 import { usePromptQueue } from "@/src/store/usePromptQueue";
-// 🟢 Directriz 9: Conocer el estado del usuario
 import { useAuthStore } from "@/src/store/authStore";
+import { useStudioUI } from "@/src/store/useStudioUI";
 
 interface Directory {
   id: string;
@@ -12021,7 +13650,47 @@ interface PromptCardProps {
   queueItems?: { id: string; username: string }[];
 }
 
-export function PromptCard({
+function CardContent({ item, index, isPriority, copied, handleCopy, isSelected }: any) {
+  return (
+    <>
+      <div
+        className={`relative aspect-4/5 w-full overflow-hidden bg-muted/20 border-b border-border/30 transition-all duration-300 ${isSelected ? "p-1 rounded-t-lg" : ""}`}
+      >
+        {item.image_url ? (
+          <LazyImage
+            src={item.image_url}
+            alt={item.title || "Prompt image"}
+            index={index}
+            className={`w-full h-full object-cover transition-transform duration-300 ease-out ${isSelected ? "rounded-t-md" : "group-hover:scale-[1.02]"}`}
+            priority={isPriority}
+          />
+        ) : (
+          <div className="w-full h-full flex flex-col items-center justify-center text-muted-foreground/20">
+            <IconPhoto size={32} stroke={1.5} />
+          </div>
+        )}
+        <div className="absolute inset-x-0 bottom-0 p-3 pt-12 bg-linear-to-t from-background/95 via-background/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200 ease-in-out flex flex-col gap-1.5 pointer-events-none group-hover:pointer-events-auto z-20">
+          <p className="text-[9px] text-muted-foreground font-mono font-semibold uppercase tracking-wider drop-shadow-sm line-clamp-1">
+            {item.model || "Base Model"}
+          </p>
+          <PromptCardSnippet promptText={item.prompt} copied={copied} onCopy={handleCopy} />
+        </div>
+      </div>
+      <div
+        className={`p-2.5 sm:p-3 flex-1 flex items-center transition-colors duration-300 ${isSelected ? "bg-destructive/5" : "bg-background"}`}
+      >
+        <h3
+          className={`font-semibold text-xs sm:text-sm w-full truncate ${isSelected ? "text-destructive" : "text-foreground/90"}`}
+        >
+          {item.software || "Sin título"}
+        </h3>
+      </div>
+    </>
+  );
+}
+
+// 🟢 Usamos function en lugar de const para evitar bugs del compilador SWC
+function PromptCardComponent({
   item,
   directories,
   onAssign,
@@ -12038,9 +13707,22 @@ export function PromptCard({
   const href = `/${lang}/${authorUsername}/p/${item.id}${isStudio ? "?from=studio" : ""}`;
   const setQueue = usePromptQueue((state) => state.setQueue);
 
-  // 🟢 Calculamos si el usuario actual es el autor del prompt
   const { user } = useAuthStore();
   const isOwner = user?.username === authorUsername;
+
+  const isSelectionMode = useStudioUI((state) => state.isSelectionMode);
+  const isSelected = useStudioUI((state) => state.selectedPromptIds.includes(String(item.id)));
+  const isDeleting = useStudioUI((state) => state.deletingIds.includes(String(item.id)));
+  const togglePromptSelection = useStudioUI((state) => state.togglePromptSelection);
+
+  const handleCardClick = (e: React.MouseEvent) => {
+    if (isSelectionMode) {
+      e.preventDefault();
+      togglePromptSelection(String(item.id));
+    } else if (queueItems.length > 0) {
+      setQueue(queueItems);
+    }
+  };
 
   return (
     <div
@@ -12049,12 +13731,16 @@ export function PromptCard({
       {...listeners}
       style={{
         opacity: isDragging ? 0.3 : 1,
-        cursor: isDragging ? "grabbing" : "grab",
+        cursor: isSelectionMode ? "pointer" : isDragging ? "grabbing" : "grab",
       }}
-      className={`group relative flex flex-col h-full bg-background rounded-xl border transition-all duration-200 overflow-hidden ${
-        isDragging
-          ? "border-accent ring-2 ring-accent scale-95"
-          : "border-border/50 shadow-xs hover:shadow-md hover:border-border"
+      className={`group relative flex flex-col h-full rounded-xl transition-all duration-300 overflow-hidden ${
+        isDeleting
+          ? "opacity-0 scale-90 border-destructive ring-2 ring-destructive bg-destructive/30 grayscale blur-sm z-50 pointer-events-none"
+          : isDragging
+            ? "border-accent ring-2 ring-accent scale-95"
+            : isSelected
+              ? "border-destructive ring-2 ring-destructive bg-destructive/10 scale-[0.98] shadow-lg"
+              : "border-border/50 shadow-xs hover:shadow-md hover:border-border bg-background"
       }`}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => {
@@ -12062,7 +13748,12 @@ export function PromptCard({
         setIsMenuOpen(false);
       }}
     >
-      {/* 🟢 Menú centralizado: Se acabó la colisión de botones */}
+      {isSelected && (
+        <div className="absolute top-2 left-2 z-40 bg-destructive text-white p-1 rounded-md shadow-md animate-in fade-in zoom-in">
+          <IconCheck size={20} stroke={3} />
+        </div>
+      )}
+
       <div
         className={`absolute top-0 right-0 bottom-0 left-0 pointer-events-none z-30 transition-opacity duration-200 ${isMenuOpen ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}
       >
@@ -12080,51 +13771,38 @@ export function PromptCard({
       </div>
 
       <Tooltip
-        content={<RichPromptTooltipContent prompt={item} />}
+        content={isSelectionMode ? null : <RichPromptTooltipContent prompt={item} />}
         side="left"
         delayDuration={350}
         variant="rich"
       >
         <Link
           href={href}
+          onClick={handleCardClick}
           className="relative flex flex-col h-full z-10 flex-1"
-          onClick={() => {
-            if (queueItems.length > 0) {
-              setQueue(queueItems);
-            }
-          }}
         >
-          <div className="relative aspect-4/5 w-full overflow-hidden bg-muted/20 border-b border-border/30">
-            {item.image_url ? (
-              <LazyImage
-                src={item.image_url}
-                alt={item.title || "Prompt image"}
-                index={index}
-                className="w-full h-full object-cover transition-transform duration-300 ease-out group-hover:scale-[1.02]"
-                priority={isPriority}
-              />
-            ) : (
-              <div className="w-full h-full flex flex-col items-center justify-center text-muted-foreground/20">
-                <IconPhoto size={32} stroke={1.5} />
-              </div>
-            )}
-            <div className="absolute inset-x-0 bottom-0 p-3 pt-12 bg-linear-to-t from-background/95 via-background/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200 ease-in-out flex flex-col gap-1.5 pointer-events-none group-hover:pointer-events-auto z-20">
-              <p className="text-[9px] text-muted-foreground font-mono font-semibold uppercase tracking-wider drop-shadow-sm line-clamp-1">
-                {item.model || "Base Model"}
-              </p>
-              <PromptCardSnippet promptText={item.prompt} copied={copied} onCopy={handleCopy} />
-            </div>
-          </div>
-          <div className="p-2.5 sm:p-3 bg-background flex-1 flex items-center">
-            <h3 className="font-semibold text-xs sm:text-sm text-foreground/90 w-full truncate">
-              {item.software || "Sin título"}
-            </h3>
-          </div>
+          <CardContent
+            item={item}
+            index={index}
+            isPriority={isPriority}
+            copied={copied}
+            handleCopy={handleCopy}
+            isSelected={isSelected}
+          />
         </Link>
       </Tooltip>
     </div>
   );
 }
+
+// 🟢 Exportación blindada con displayName para que React DevTools y Next.js no colapsen
+const PromptCard = memo(PromptCardComponent, (prevProps, nextProps) => {
+  return prevProps.item.id === nextProps.item.id && prevProps.isStudio === nextProps.isStudio;
+});
+
+PromptCard.displayName = "PromptCard";
+
+export { PromptCard };
 
 
 
@@ -12465,34 +14143,171 @@ export function AuthTabs({ isLogin, onToggle }: AuthTabsProps) {
 
 
 ================================================
+FILE: src/system/organisms/Extractor/ExtractorInfoModal.tsx
+================================================
+"use client";
+
+import { Modal } from "@/src/system/molecules/Modal/Modal";
+import { NeoIconBadge } from "@/src/system/atoms/Badge/NeoIconBadge";
+import {
+  IconCheck,
+  IconX,
+  IconInfoCircle,
+  IconPhoto,
+  IconBrandDiscord,
+  IconDeviceDesktop,
+} from "@tabler/icons-react";
+
+interface Props {
+  isOpen: boolean;
+  onClose: () => void;
+}
+
+export function ExtractorInfoModal({ isOpen, onClose }: Props) {
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} maxWidth="max-w-2xl">
+      <div className="p-8 space-y-8">
+        {/* Cabecera */}
+        <div className="flex flex-col items-center text-center space-y-6">
+          <NeoIconBadge variant="info">
+            <IconInfoCircle size={32} />
+          </NeoIconBadge>
+          <h2 className="text-2xl font-black font-mono uppercase tracking-widest">
+            ¿Cómo funciona la Extracción?
+          </h2>
+          <p className="text-muted-foreground font-mono text-sm leading-relaxed max-w-md">
+            Reprompt no "lee" la imagen visualmente, sino que busca los datos ocultos (Metadata)
+            grabados por el software de IA.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          {/* Columna: SÍ */}
+          <div className="space-y-4">
+            <div className="flex items-center gap-2 text-green-600 font-bold font-mono text-xs uppercase tracking-tighter">
+              <IconCheck size={18} stroke={3} /> Lo que funciona
+            </div>
+            <ul className="space-y-3">
+              <InfoItem
+                icon={<IconPhoto size={16} />}
+                title="Archivos Originales"
+                desc="Imágenes descargadas directamente de A1111, ComfyUI o Fooocus."
+              />
+              <InfoItem
+                icon={<IconBrandDiscord size={16} />}
+                title="Midjourney Original"
+                desc="Descargas desde el bot de Discord o la web oficial de MJ."
+              />
+            </ul>
+          </div>
+
+          {/* Columna: NO */}
+          <div className="space-y-4">
+            <div className="flex items-center gap-2 text-destructive font-bold font-mono text-xs uppercase tracking-tighter">
+              <IconX size={18} stroke={3} /> Lo que NO funciona
+            </div>
+            <ul className="space-y-3">
+              <InfoItem
+                icon={<IconDeviceDesktop size={16} />}
+                title="Capturas de Pantalla"
+                desc="Los screenshots destruyen toda la metadata del archivo original."
+                isNegative
+              />
+              <InfoItem
+                icon={<IconX size={16} />}
+                title="Redes Sociales"
+                desc="Instagram, Twitter o WhatsApp limpian los datos para ahorrar espacio."
+                isNegative
+              />
+            </ul>
+          </div>
+        </div>
+
+        <div className="bg-accent/10 border border-accent/40 p-4 rounded-lg">
+          <p className="text-xs font-mono text-accent/40 leading-tight text-center uppercase">
+            Tip: Si una imagen no tiene metadata, siempre podrás escribir los datos manualmente en
+            el Studio.
+          </p>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+function InfoItem({
+  icon,
+  title,
+  desc,
+  isNegative = false,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  desc: string;
+  isNegative?: boolean;
+}) {
+  return (
+    <li className="flex gap-3 items-start">
+      <div
+        className={`p-1.5 rounded-md border ${isNegative ? "border-destructive/20 text-destructive" : "border-green-500/20 text-green-600"} bg-background shadow-sm`}
+      >
+        {icon}
+      </div>
+      <div>
+        <h4 className="text-xs font-bold text-foreground">{title}</h4>
+        <p className="text-[11px] text-muted-foreground leading-snug">{desc}</p>
+      </div>
+    </li>
+  );
+}
+
+
+
+================================================
 FILE: src/system/organisms/Extractor/Dropzone/DropzoneContent.tsx
 ================================================
+import { Tooltip } from "@/src/system/atoms/Tooltip/Tooltip";
 import {
   IconUpload,
-  IconFileText,
-  IconPhoto,
   IconAlertCircle,
+  IconPhoto,
   IconFileZip,
+  IconFileText,
+  IconCloudUpload,
   IconScanTraces,
   IconFolderStar,
-  IconCloudUpload,
+  IconInfoCircle,
 } from "@tabler/icons-react";
 
 interface DropzoneContentProps {
   isDragActive: boolean;
   isDragReject: boolean;
+  onOpenInfo: () => void;
 }
 
-export function DropzoneContent({ isDragActive, isDragReject }: DropzoneContentProps) {
+export function DropzoneContent({ isDragActive, isDragReject, onOpenInfo }: DropzoneContentProps) {
   return (
     <div className="flex flex-col items-center justify-center w-full pt-12 pb-8 pointer-events-none">
+      {/* 🟢 Botón de Info: Usamos pointer-events-auto para que sea clickable */}
+      <Tooltip content="Información">
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation(); // 🟢 Crucial: evita que se abra el selector de archivos al clicar la info
+            onOpenInfo();
+          }}
+          className="absolute top-6 right-6 p-2 text-muted-foreground hover:text-accent transition-colors pointer-events-auto z-30 cursor-pointer"
+        >
+          <IconInfoCircle size={24} stroke={1.5} className="text-accent" />
+        </button>
+      </Tooltip>
+
       <div
         className={`w-24 h-24 rounded-full flex items-center justify-center mb-6 transition-all duration-300 neo-border
           ${
             isDragReject
               ? "bg-destructive text-destructive-foreground scale-110"
               : isDragActive
-                ? "bg-(--accent-color) text-white scale-110"
+                ? "bg-accent text-white scale-110"
                 : "bg-background text-muted-foreground group-hover:text-foreground group-hover:scale-105"
           }`}
       >
@@ -12522,7 +14337,7 @@ export function DropzoneContent({ isDragActive, isDragReject }: DropzoneContentP
       {/* Píldoras de formato */}
       <div className="flex flex-wrap justify-center gap-3 text-[10px] font-mono text-muted-foreground uppercase tracking-widest font-bold">
         <span className="flex items-center gap-1.5 bg-background px-3 py-1.5 neo-border rounded-full shadow-sm">
-          <IconPhoto size={14} /> Imagen o Video
+          <IconPhoto size={14} /> Imagen
         </span>
         <span className="flex items-center gap-1.5 bg-background px-3 py-1.5 neo-border rounded-full shadow-sm">
           <IconFileZip size={14} /> Lotes .ZIP
@@ -12532,43 +14347,41 @@ export function DropzoneContent({ isDragActive, isDragReject }: DropzoneContentP
         </span>
       </div>
 
+      {/* Footer informativo */}
       <div
         className={`w-full max-w-3xl mt-12 pt-8 border-t border-border/50 grid grid-cols-1 md:grid-cols-3 gap-8 px-6 transition-opacity duration-500
           ${isDragActive || isDragReject ? "opacity-10" : "opacity-100"}
         `}
       >
-        <div className="flex flex-col items-center text-center gap-2">
-          <div className="p-2 bg-muted/10 rounded-lg neo-border mb-1 text-muted-foreground border-accent!">
-            <IconCloudUpload className="text-accent!" size={20} />
-          </div>
-          <h4 className="font-bold text-xs uppercase tracking-widest text-foreground">1. Sube</h4>
-          <p className="text-xs font-mono text-muted-foreground leading-relaxed">
-            Sube tu contenido generado con IA o un suelta un ZIP.
-          </p>
-        </div>
-
-        <div className="flex flex-col items-center text-center gap-2">
-          <div className="p-2 bg-muted/10 rounded-lg neo-border mb-1 border-accent!">
-            <IconScanTraces className="text-accent!" size={20} />
-          </div>
-          <h4 className="font-bold text-xs uppercase tracking-widest text-foreground">2. Extrae</h4>
-          <p className="text-xs font-mono text-muted-foreground leading-relaxed">
-            Nuestro extractor lee la Metadata del material.
-          </p>
-        </div>
-
-        <div className="flex flex-col items-center text-center gap-2">
-          <div className="p-2 bg-muted/10 rounded-lg neo-border mb-1 border-accent!">
-            <IconFolderStar className="text-accent!" size={20} />
-          </div>
-          <h4 className="font-bold text-xs uppercase tracking-widest text-foreground">
-            3. Colecciona
-          </h4>
-          <p className="text-xs font-mono text-muted-foreground leading-relaxed">
-            Guarda los prompts en tu Studio, reutiliza y gestiona.
-          </p>
-        </div>
+        <StepItem
+          icon={<IconCloudUpload size={20} />}
+          step="Sube"
+          desc="Tus imágenes con metadata o un archivo ZIP."
+        />
+        <StepItem
+          icon={<IconScanTraces size={20} />}
+          step="Extrae"
+          desc="Leemos el ADN de la IA automáticamente."
+        />
+        <StepItem
+          icon={<IconFolderStar size={20} />}
+          step="Guarda"
+          desc="Organiza tus prompts en tu Studio personal."
+        />
       </div>
+    </div>
+  );
+}
+
+// Sub-componente interno para limpiar el código
+function StepItem({ icon, step, desc }: { icon: React.ReactNode; step: string; desc: string }) {
+  return (
+    <div className="flex flex-col items-center text-center gap-2">
+      <div className="p-2 bg-muted/10 rounded-lg neo-border mb-1 text-accent border-accent/70!">
+        {icon}
+      </div>
+      <h4 className="font-bold text-xs uppercase tracking-widest text-foreground">{step}</h4>
+      <p className="text-xs font-mono text-muted-foreground leading-relaxed">{desc}</p>
     </div>
   );
 }
@@ -12633,29 +14446,34 @@ interface ExtractorDropzoneProps {
   onFileDrop: (acceptedFiles: File[], rejectedFiles: any[]) => void;
   isExtracting: boolean;
   error: string | null;
+  onOpenInfo: () => void;
 }
 
+// 🟢 LA CLAVE: Desestructuramos con { ... } para recibir las funciones correctamente
 export function ExtractorDropzone({
   onFileDrop,
   isExtracting,
   error: externalError,
+  onOpenInfo,
 }: ExtractorDropzoneProps) {
   const onDrop = useCallback(
     (acceptedFiles: File[], fileRejections: any[]) => {
-      if (acceptedFiles.length > 0 || fileRejections.length > 0) {
+      // Verificamos que la función existe antes de llamarla (seguridad extra)
+      if (typeof onFileDrop === "function") {
         onFileDrop(acceptedFiles, fileRejections);
+      } else {
+        console.error("❌ Erro de Arquitectura: onFileDrop no llegó como función al Dropzone.");
       }
     },
     [onFileDrop],
   );
 
-  // 🟢 Extraemos isDragReject
   const { getRootProps, getInputProps, isDragActive, isDragReject } = useDropzone({
     onDrop,
     accept: {
       "image/png": [".png"],
       "image/jpeg": [".jpg", ".jpeg"],
-      "image/webp": [".webp"], // Sugiero añadir webp
+      "image/webp": [".webp"],
       "text/plain": [".txt"],
       "application/json": [".json"],
       "application/zip": [".zip"],
@@ -12669,18 +14487,20 @@ export function ExtractorDropzone({
   return (
     <div
       {...getRootProps()}
-      className={`group relative w-full border-4 border-dashed transition-all duration-300 ease-in-out flex flex-col items-center justify-center min-h-400px cursor-pointer neo-border overflow-hidden
-        ${
-          isDragReject
-            ? "border-destructive bg-destructive/5"
-            : isDragActive
-              ? "border-(--accent-color) bg-(--accent-color)/5 scale-[1.01] neo-shadow-accent"
-              : "border-border bg-muted/5 hover:bg-muted/10 hover:border-foreground/30"
-        }`}
+      className={`group relative w-full border-4 border-dashed transition-all duration-300 ease-in-out flex flex-col items-center justify-center min-h-100 cursor-pointer neo-border overflow-hidden ${
+        isDragReject
+          ? "border-destructive bg-destructive/5"
+          : isDragActive
+            ? "border-accent bg-accent/5 scale-[1.01] neo-shadow-accent"
+            : "border-border bg-muted/5 hover:bg-muted/10 hover:border-foreground/30"
+      }`}
     >
       <input {...getInputProps()} />
-      <DropzoneContent isDragActive={isDragActive} isDragReject={isDragReject} />
-
+      <DropzoneContent
+        isDragActive={isDragActive}
+        isDragReject={isDragReject}
+        onOpenInfo={onOpenInfo}
+      />
       {externalError && <DropzoneError message={externalError} />}
     </div>
   );
@@ -12691,16 +14511,30 @@ export function ExtractorDropzone({
 ================================================
 FILE: src/system/organisms/Extractor/Inspector/BatchInspector.tsx
 ================================================
+import Link from "next/link";
 import { useState } from "react";
 import { BatchItem, SkippedFile } from "@/src/features/extractor/hooks/usePromptExtractor";
-import { ExtractedPromptData } from "@/src/features/extractor/utils/promptParser";
+import {
+  ExtractedPromptData,
+  generateSmartTitle,
+} from "@/src/features/extractor/utils/promptParser";
 import { Button } from "@/src/system/atoms/Button/Button";
-import { IconTrash, IconDeviceFloppy, IconAlertTriangle, IconX } from "@tabler/icons-react";
+import {
+  IconTrash,
+  IconDeviceFloppy,
+  IconAlertTriangle,
+  IconX,
+  IconInfoCircle,
+} from "@tabler/icons-react";
 import { api } from "@/src/services/api";
 import { handleError } from "@/src/utils/errors/ErrorHandler";
+import { useAuthStore } from "@/src/store/authStore";
+import toast from "react-hot-toast";
 import { useNotificationStore } from "@/src/store/notificationStore";
 import { fetchSeguro } from "@/src/services/api/client";
 import { optimizeAndLogImage } from "@/src/utils/lib/image-optimizer";
+import { Modal } from "@/src/system/molecules/Modal/Modal";
+import { NeoIconBadge } from "@/src/system/atoms/Badge/NeoIconBadge";
 
 interface Props {
   batch: BatchItem[];
@@ -12722,8 +14556,25 @@ export function BatchInspector({
   onClearSkipped,
 }: Props) {
   const [isGlobalLoading, setIsGlobalLoading] = useState(false);
-  const notify = useNotificationStore((state) => state.notify);
+  const [isQuotaModalOpen, setIsQuotaModalOpen] = useState(false);
 
+  const notify = useNotificationStore((state) => state.notify);
+  const user = useAuthStore((state) => state.user);
+
+  // 🟢 Función para leer dimensiones sin destruir el ADN de la imagen
+  const getImageDimensions = (file: File): Promise<{ width: number; height: number }> => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        resolve({ width: img.width, height: img.height });
+        URL.revokeObjectURL(img.src);
+      };
+      img.onerror = () => resolve({ width: 0, height: 0 });
+      img.src = URL.createObjectURL(file);
+    });
+  };
+
+  // ... (Tu lógica handleSaveItem y handleSaveAll se mantiene IDÉNTICA) ...
   const handleSaveItem = async (item: BatchItem) => {
     if (item.status === "success") return;
     onUpdateStatus(item.id, "saving");
@@ -12731,26 +14582,41 @@ export function BatchInspector({
     try {
       let finalWidth = 0;
       let finalHeight = 0;
-      let finalImageUrl: string | null = null; // 🟢 FIX: Declaramos la variable que faltaba
+      let finalImageUrl: string | null = null;
 
       if (item.previewUrl && item.previewUrl.startsWith("blob:")) {
-        // 🟢 FIX: TypeScript ahora sabe que esto devuelve { file, width, height }
-        const optimizedData = await optimizeAndLogImage(item.file);
-        const archivoOptimizado = optimizedData.file;
-        finalWidth = optimizedData.width;
-        finalHeight = optimizedData.height;
+        // 🟢 1. LÓGICA DE TIERS (Identificamos si es Premium)
+        // Ajusta los roles según los que uses en tu base de datos ("Artist", "Artist Pro", etc.)
+        const isPremium = user?.role === "Artist" || user?.role === "Artist Pro";
 
-        const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+        let fileToUpload: File;
+
+        if (isPremium) {
+          // 💎 PREMIUM: Subimos archivo puro (Mantiene metadatos, pesa más)
+          const dims = await getImageDimensions(item.file);
+          finalWidth = dims.width;
+          finalHeight = dims.height;
+          fileToUpload = item.file;
+        } else {
+          // 🆓 GRATIS: Optimizamos (Destruye metadatos, aligera peso en R2)
+          const optimizedData = await optimizeAndLogImage(item.file);
+          fileToUpload = optimizedData.file;
+          finalWidth = optimizedData.width;
+          finalHeight = optimizedData.height;
+        }
+
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
 
         const ticketRes = await fetchSeguro(`${API_URL}/prompts/generate-upload-url`, {
           method: "POST",
           credentials: "include",
           body: JSON.stringify({
-            file_name: archivoOptimizado.name,
-            content_type: archivoOptimizado.type,
+            file_name: fileToUpload.name,
+            content_type: fileToUpload.type,
           }),
         });
 
+        if (ticketRes.status === 403) throw new Error("QUOTA_EXCEEDED");
         if (!ticketRes.ok) throw new Error("No se pudo obtener el ticket de subida de R2");
 
         const ticketData = await ticketRes.json();
@@ -12759,23 +14625,23 @@ export function BatchInspector({
         const fetchOptions = {
           method: "PUT",
           headers: {
-            "Content-Type": archivoOptimizado.type,
+            "Content-Type": fileToUpload.type,
             "Cache-Control": "public, max-age=31536000, immutable",
           },
-          body: archivoOptimizado,
+          body: fileToUpload,
         };
 
         const uploadRes = await fetch(uploadUrl, fetchOptions);
 
-        if (!uploadRes.ok) {
-          throw new Error("Fallo la subida física a Cloudflare R2");
-        }
+        if (!uploadRes.ok) throw new Error("Fallo la subida física a Cloudflare R2");
 
         finalImageUrl = ticketData.file_url;
       }
 
       const payload = {
-        title: `${item.data.software || "IA"}`,
+        title:
+          item.data.title ||
+          generateSmartTitle(item.file.name, item.data.prompt, item.data.software),
         prompt: item.data.prompt,
         negative_prompt: item.data.negativePrompt,
         software: item.data.software,
@@ -12802,184 +14668,307 @@ export function BatchInspector({
       setTimeout(() => {
         onRemoveItem(item.id);
       }, 1000);
-    } catch (err: unknown) {
-      handleError(err, "SaveBatchItem");
+    } catch (err: any) {
+      if (err.message !== "QUOTA_EXCEEDED") handleError(err, "SaveBatchItem");
       onUpdateStatus(item.id, "error");
+      throw err;
     }
   };
 
   const handleSaveAll = async () => {
     setIsGlobalLoading(true);
-    const pendingItems = batch.filter((i) => i.status !== "success");
-    await Promise.allSettled(pendingItems.map((item) => handleSaveItem(item)));
-    setIsGlobalLoading(false);
+    try {
+      const results = await Promise.allSettled(
+        batch.map((item: BatchItem) => handleSaveItem(item)),
+      );
+      const fulfilled = results.filter(
+        (r): r is PromiseFulfilledResult<any> => r.status === "fulfilled",
+      );
+      const rejected = results.filter((r): r is PromiseRejectedResult => r.status === "rejected");
+      const hitQuotaLimit = rejected.some((r) => r.reason?.message === "QUOTA_EXCEEDED");
+
+      if (hitQuotaLimit) {
+        setIsQuotaModalOpen(true);
+      } else if (rejected.length > 0) {
+        toast.error(`Se han guardado ${fulfilled.length} imágenes. ${rejected.length} fallaron.`, {
+          duration: 5000,
+        });
+      } else {
+        toast.success("¡Lote guardado con éxito!");
+      }
+
+      if (fulfilled.length > 0) {
+        const authState = useAuthStore.getState();
+        if (typeof authState.checkAuth === "function") await authState.checkAuth(true);
+      }
+    } catch (error) {
+      console.error("Error crítico en el lote", error);
+      toast.error("Ocurrió un error inesperado al procesar el lote.");
+    } finally {
+      setIsGlobalLoading(false);
+    }
   };
 
-  // ... EL RESTO DEL CÓDIGO (RETURN, HTML, JSX) SIGUE EXACTAMENTE IGUAL ...
   return (
-    <div className="space-y-6 animate-fade-in">
-      {/* FEEDBACK DE ARCHIVOS DESCARTADOS INTACTO AQUÍ */}
-      {skippedFiles.length > 0 && (
-        <div className="bg-orange-500/10 border-2 border-orange-500 p-4 neo-border relative">
-          <button
-            onClick={onClearSkipped}
-            className="absolute top-2 right-2 text-orange-700 hover:text-orange-900"
-          >
-            <IconX size={20} />
-          </button>
-          <div className="flex items-center gap-2 text-orange-600 font-black font-mono uppercase mb-2">
-            <IconAlertTriangle size={20} /> Se descartaron {skippedFiles.length} archivos
+    <>
+      <Modal isOpen={isQuotaModalOpen} onClose={() => setIsQuotaModalOpen(false)}>
+        {/* Modal de Cuota Intacto */}
+        <div className="p-8 flex flex-col items-center text-center space-y-6">
+          <NeoIconBadge variant="danger" className="mb-2">
+            <IconAlertTriangle size={32} stroke={2} />
+          </NeoIconBadge>
+          <div className="space-y-2">
+            <h2 className="text-2xl font-black font-mono uppercase tracking-widest text-foreground">
+              Límite Alcanzado
+            </h2>
+            <p className="text-muted-foreground font-mono text-sm leading-relaxed">
+              Tu plan actual{" "}
+              <strong className="text-foreground uppercase">({user?.role || "Voyager"})</strong> ha
+              alcanzado su capacidad máxima.
+            </p>
           </div>
-          <div className="max-h-32 overflow-y-auto custom-scrollbar">
-            <ul className="text-xs font-mono text-orange-800 space-y-1">
-              {skippedFiles.map((f, i) => (
-                <li key={i} className="flex gap-2">
-                  <span className="font-bold truncate w-1/3" title={f.name}>
-                    {f.name}
-                  </span>
-                  <span className="opacity-70 truncate w-2/3">{f.reason}</span>
-                </li>
-              ))}
-            </ul>
+          <div className="bg-muted/30 border border-border p-4 w-full flex flex-col gap-2">
+            <div className="flex justify-between font-mono text-xs">
+              <span>Imágenes Guardadas</span>
+              <span className="font-bold">
+                {user?.prompts_count || 0} / {user?.prompts_limit || 50}
+              </span>
+            </div>
+            <div className="h-2 w-full bg-border overflow-hidden">
+              <div className="h-full bg-red-500 w-full animate-pulse" />
+            </div>
           </div>
-        </div>
-      )}
-
-      {/* 🎛️ CONTROLES GLOBALES */}
-      <div className="flex flex-col sm:flex-row justify-between items-center bg-(--bg-secondary) p-4 neo-border gap-4">
-        <div className="font-mono text-sm font-bold uppercase">
-          <span className="text-(--accent-color)">{batch.length}</span> listos para studio
-        </div>
-        <div className="flex w-full sm:w-auto gap-3">
-          <Button
-            size="md"
-            onClick={onClearAll}
-            variant="tertiary"
-            disabled={isGlobalLoading}
-            className="text-sm!"
-          >
-            Descartar Todos
-          </Button>
-          <Button
-            size="sm"
-            variant="primary"
-            onClick={handleSaveAll}
-            isLoading={isGlobalLoading}
-            className="text-sm! w-full sm:w-auto"
-          >
-            <IconDeviceFloppy size={18} className="mr-2" /> Guardar Todo
-          </Button>
-        </div>
-      </div>
-
-      {/* 🖼️ GRID DE BATCH ITEMS */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-        {batch.map((item) => {
-          const isManual = item.data.software === "Desconocido";
-          return (
-            <div
-              key={item.id}
-              className={`neo-border bg-(--bg-secondary) flex flex-col h-420px relative group overflow-hidden transition-all ${
-                item.status === "success" ? "opacity-50 grayscale" : "hover:neo-shadow-accent"
-              }`}
+          <div className="flex flex-col w-full gap-3 pt-4">
+            <Link href="/settings/billing" className="w-full">
+              <Button variant="primary" className="w-full justify-center">
+                Mejorar Plan
+              </Button>
+            </Link>
+            <Button
+              variant="tertiary"
+              onClick={() => setIsQuotaModalOpen(false)}
+              className="w-full justify-center"
             >
-              {/* Imagen */}
-              <div className="relative h-48 shrink-0 border-b-2 border-(--border-color) bg-black">
-                {item.previewUrl ? (
-                  <img
-                    src={item.previewUrl}
-                    alt={item.file.name}
-                    className="w-full h-full object-cover opacity-90"
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-xs font-mono text-muted-foreground">
-                    Sin visual
-                  </div>
-                )}
+              Entendido
+            </Button>
+          </div>
+        </div>
+      </Modal>
 
-                <div className="absolute top-2 left-2 flex flex-col gap-1">
-                  <span
-                    className={`bg-black/80 ${isManual ? "text-yellow-400" : "text-white"} font-mono text-[10px] font-bold px-2 py-0.5 border border-(--border-color)`}
+      <div className="space-y-6 animate-fade-in w-full pb-20">
+        {/* ARCHIVOS DESCARTADOS (Minimizado) */}
+        {skippedFiles.length > 0 && (
+          <div className="bg-orange-500/10 border border-orange-500/30 rounded-xl p-4 relative shadow-sm">
+            <button
+              onClick={onClearSkipped}
+              className="absolute top-3 right-3 text-orange-700/50 hover:text-orange-900 transition-colors"
+            >
+              <IconX size={18} />
+            </button>
+            <div className="flex items-center gap-2 text-orange-600 font-semibold text-sm mb-3">
+              <IconAlertTriangle size={16} /> Se descartaron {skippedFiles.length} archivos
+            </div>
+            <div className="max-h-24 overflow-y-auto custom-scrollbar">
+              <ul className="text-xs font-mono text-orange-800/80 space-y-1.5">
+                {skippedFiles.map((f, i) => (
+                  <li key={i} className="flex gap-2">
+                    <span className="font-bold truncate max-w-[40%]" title={f.name}>
+                      {f.name}
+                    </span>
+                    <span className="opacity-70 truncate flex-1">{f.reason}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        )}
+
+        {/* 🎛️ CONTROLES GLOBALES (Más limpios) */}
+        <div className="flex flex-col sm:flex-row justify-between items-center bg-background border border-border/50 shadow-sm rounded-xl p-3 px-5 gap-4 sticky top-4 z-40">
+          <div className="font-mono text-sm font-semibold text-muted-foreground">
+            <span className="text-accent font-bold">{batch.length}</span> EXTRACCIONES LISTAS
+          </div>
+          <div className="flex w-full sm:w-auto gap-3">
+            <Button size="sm" onClick={onClearAll} variant="tertiary" disabled={isGlobalLoading}>
+              Descartar Todos
+            </Button>
+            <Button
+              size="sm"
+              variant="primary"
+              onClick={handleSaveAll}
+              isLoading={isGlobalLoading}
+              className="shadow-md"
+            >
+              <IconDeviceFloppy size={16} className="mr-1.5" /> Guardar Todo
+            </Button>
+          </div>
+        </div>
+
+        {/* 🖼️ GRID DE BATCH ITEMS (El verdadero Refactor Visual) */}
+        {/* 🟢 Pasamos de 4 columnas apretadas a 3 o 2 columnas anchas para leer bien el prompt */}
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 items-start">
+          {batch.map((item) => {
+            const isManual = item.data.software === "Desconocido";
+            return (
+              <div
+                key={item.id}
+                className={`bg-background border shadow-xs rounded-xl flex flex-col relative group overflow-hidden transition-all duration-300 ${
+                  item.status === "success"
+                    ? "opacity-40 grayscale pointer-events-none scale-95 border-green-500/30"
+                    : "border-border/60 hover:shadow-md hover:border-border"
+                }`}
+              >
+                {/* 1. Cabecera Visual y Título */}
+                <div className="flex items-center gap-3 p-3 border-b border-border/40 bg-muted/10">
+                  <div className="w-12 h-12 shrink-0 rounded-md overflow-hidden bg-black/5 border border-border/50 relative">
+                    {item.previewUrl ? (
+                      <img
+                        src={item.previewUrl}
+                        alt="preview"
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-muted-foreground/30">
+                        <IconInfoCircle size={16} />
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex flex-col flex-1 overflow-hidden">
+                    <span
+                      className="text-xs font-semibold text-foreground truncate"
+                      title={item.file.name}
+                    >
+                      {item.file.name}
+                    </span>
+                    <span
+                      className={`text-[10px] font-mono font-bold uppercase ${isManual ? "text-yellow-600" : "text-accent"}`}
+                    >
+                      {item.data.software}
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => onRemoveItem(item.id)}
+                    disabled={item.status === "saving"}
+                    className="p-1.5 text-muted-foreground hover:text-red-500 hover:bg-red-50 rounded-md transition-colors"
+                    title="Descartar imagen"
                   >
-                    {item.data.software}
-                  </span>
+                    <IconTrash size={16} stroke={2} />
+                  </button>
                 </div>
-              </div>
 
-              {/* 🟢 Contenido: Lógica Híbrida (Formulario Manual o Texto Fijo) */}
-              <div className="p-4 bg-background grow flex flex-col gap-2 overflow-hidden">
-                {isManual ? (
-                  <div className="flex flex-col h-full gap-2">
-                    <textarea
-                      placeholder="Escribe el prompt aquí..."
-                      className="w-full grow text-xs font-mono p-2 neo-border bg-muted/10 focus:outline-none focus:ring-2 focus:ring-(--accent-color) resize-none custom-scrollbar"
-                      value={item.data.prompt}
-                      onChange={(e) => onUpdateItemData(item.id, { prompt: e.target.value })}
-                    />
-                    <div className="flex gap-2 shrink-0">
-                      <input
-                        type="text"
-                        placeholder="Modelo (Ej. Midjourney v6)"
-                        className="w-1/2 text-xs font-mono p-2 neo-border bg-muted/10 focus:outline-none focus:ring-2 focus:ring-(--accent-color)"
-                        value={item.data.model || ""}
-                        onChange={(e) => onUpdateItemData(item.id, { model: e.target.value })}
+                {/* 2. Cuerpo del Prompt (Compacto y Scrolleable) */}
+                <div className="p-4 flex flex-col gap-3 flex-1 bg-background">
+                  {isManual ? (
+                    <div className="flex flex-col gap-3 animate-in fade-in">
+                      <div className="text-xs font-medium text-amber-600/80 bg-amber-500/10 p-2 rounded flex items-center gap-2">
+                        <IconAlertTriangle size={14} /> Faltan metadatos. Rellena los datos
+                        manualmente.
+                      </div>
+                      <textarea
+                        placeholder="Escribe el prompt de la imagen aquí..."
+                        className="w-full text-xs font-mono p-3 border border-border/50 rounded-md bg-transparent focus:outline-none focus:border-accent resize-none min-h-25 max-h-37.5 custom-scrollbar transition-colors"
+                        value={item.data.prompt || ""}
+                        onChange={(e) => onUpdateItemData(item.id, { prompt: e.target.value })}
                       />
-                      <input
-                        type="text"
-                        placeholder="Sampler (Ej. Euler a)"
-                        className="w-1/2 text-xs font-mono p-2 neo-border bg-muted/10 focus:outline-none focus:ring-2 focus:ring-(--accent-color)"
-                        value={item.data.sampler || ""}
-                        onChange={(e) => onUpdateItemData(item.id, { sampler: e.target.value })}
-                      />
+                      <div className="grid grid-cols-2 gap-2">
+                        <input
+                          type="text"
+                          placeholder="Modelo (Ej. Midjourney)"
+                          className="w-full text-xs font-mono p-2 border border-border/50 rounded-md bg-transparent focus:outline-none focus:border-accent"
+                          value={item.data.model || ""}
+                          onChange={(e) => onUpdateItemData(item.id, { model: e.target.value })}
+                        />
+                        <input
+                          type="text"
+                          placeholder="Sampler (Ej. Euler)"
+                          className="w-full text-xs font-mono p-2 border border-border/50 rounded-md bg-transparent focus:outline-none focus:border-accent"
+                          value={item.data.sampler || ""}
+                          onChange={(e) => onUpdateItemData(item.id, { sampler: e.target.value })}
+                        />
+                      </div>
                     </div>
-                  </div>
-                ) : (
-                  <div className="h-full overflow-y-auto custom-scrollbar pr-2">
-                    <p className="font-mono text-xs text-(--text-secondary) leading-relaxed">
-                      {item.data.prompt || (
-                        <span className="italic opacity-50 text-red-500">
-                          No se detectó un prompt en la metadata.
-                        </span>
-                      )}
-                    </p>
-                  </div>
-                )}
-              </div>
+                  ) : (
+                    <div className="flex flex-col h-full">
+                      {/* 🟢 Bloque de Prompt con altura máxima y scroll */}
+                      <div className="relative group/prompt">
+                        <div className="text-[10px] font-bold text-muted-foreground uppercase mb-1">
+                          Main Prompt
+                        </div>
+                        <div className="text-xs font-mono text-foreground/80 leading-relaxed bg-muted/20 p-2.5 rounded-md border border-border/30 max-h-32 overflow-y-auto custom-scrollbar">
+                          {item.data.prompt || (
+                            <span className="italic opacity-50">No detectado.</span>
+                          )}
+                        </div>
+                      </div>
 
-              {/* Barra de Acciones */}
-              <div className="border-t-2 shrink-0 border-(--border-color) flex justify-between bg-muted/20">
-                <button
-                  onClick={() => handleSaveItem(item)}
-                  disabled={item.status === "saving" || item.status === "success"}
-                  className={`flex-1 p-3 font-bold font-mono text-xs uppercase tracking-wider transition-colors ${
-                    item.status === "success"
-                      ? "text-green-500"
-                      : item.status === "error"
-                        ? "text-red-500 hover:bg-red-500/10"
-                        : "text-foreground hover:bg-(--accent-color) hover:text-white"
-                  }`}
-                >
-                  {item.status === "saving"
-                    ? "Guardando..."
-                    : item.status === "success"
+                      {/* 🟢 Parámetros técnicos en píldoras */}
+                      {(item.data.model || item.data.resolution || item.data.steps) && (
+                        <div className="flex flex-wrap gap-1.5 mt-3">
+                          {item.data.model && (
+                            <span
+                              className="px-2 py-0.5 bg-accent/10 text-accent border border-accent/20 rounded text-[10px] font-mono truncate max-w-30"
+                              title={item.data.model}
+                            >
+                              ⚙️ {item.data.model}
+                            </span>
+                          )}
+                          {item.data.resolution && (
+                            <span className="px-2 py-0.5 bg-muted text-muted-foreground border border-border/50 rounded text-[10px] font-mono">
+                              📐 {item.data.resolution}
+                            </span>
+                          )}
+                          {item.data.steps && (
+                            <span className="px-2 py-0.5 bg-muted text-muted-foreground border border-border/50 rounded text-[10px] font-mono">
+                              👣 {item.data.steps}
+                            </span>
+                          )}
+                          {item.data.sampler && (
+                            <span className="px-2 py-0.5 bg-muted text-muted-foreground border border-border/50 rounded text-[10px] font-mono">
+                              🧪 {item.data.sampler}
+                            </span>
+                          )}
+                          {item.data.loras && item.data.loras.length > 0 && (
+                            <>
+                              {item.data.loras.map((lora, idx) => (
+                                <span
+                                  key={`lora-${idx}`}
+                                  className="px-2 py-0.5 bg-purple-500/10 text-purple-600 border border-purple-500/20 rounded text-[10px] font-mono truncate max-w-40"
+                                  title={`${lora.name} (Fuerza: ${lora.strength})`}
+                                >
+                                  🔌 {lora.name} ({lora.strength})
+                                </span>
+                              ))}
+                            </>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* 3. Botón de Acción Individual */}
+                <div className="p-3 border-t border-border/40 bg-muted/5">
+                  <Button
+                    variant={item.status === "error" ? "tertiary" : "secondary"}
+                    size="sm"
+                    className="w-full justify-center text-xs"
+                    onClick={() => handleSaveItem(item)}
+                    isLoading={item.status === "saving"}
+                    disabled={item.status === "success"}
+                  >
+                    {item.status === "success"
                       ? "¡Guardado!"
                       : item.status === "error"
-                        ? "Reintentar"
-                        : "Guardar en Mi Studio"}
-                </button>
-                <button
-                  onClick={() => onRemoveItem(item.id)}
-                  disabled={item.status === "saving"}
-                  className="p-3 bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-colors border-l-2 border-(--border-color)"
-                >
-                  <IconTrash size={18} />
-                </button>
+                        ? "Fallo al guardar. Reintentar"
+                        : "Guardar individualmente"}
+                  </Button>
+                </div>
               </div>
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
       </div>
-    </div>
+    </>
   );
 }
 
@@ -13357,43 +15346,6 @@ export function Navbar() {
 
 
 ================================================
-FILE: src/system/organisms/Navigation/NavbarSearch.tsx
-================================================
-"use client";
-
-import { UniversalSearchBar } from "../../molecules/Search/UniversalSearchBar";
-import { useVectorSearch } from "@/src/features/search/useVectorSearch";
-import { useSearchStore } from "@/src/store/searchStore";
-
-export function NavbarSearch() {
-  const globalSearchStore = useSearchStore();
-
-  const vector = useVectorSearch({ scope: "global" });
-
-  const onSearchSubmit = async () => {
-    await vector.handleExecute();
-    globalSearchStore.setResults(vector.results);
-    globalSearchStore.setQuery(vector.query);
-  };
-
-  return (
-    <div className="w-full max-w-xl">
-      <UniversalSearchBar
-        query={vector.query}
-        isLoading={vector.isLoading}
-        placeholder="Búsqueda semántica de prompts..."
-        enableKeyboardShortcut={true}
-        onQueryChange={vector.setQuery}
-        onSubmit={onSearchSubmit}
-        onClear={vector.clear}
-      />
-    </div>
-  );
-}
-
-
-
-================================================
 FILE: src/system/organisms/Navigation/PageHeader.tsx
 ================================================
 "use client";
@@ -13518,6 +15470,10 @@ FILE: src/system/organisms/PromptDetail/PromptDetailView.tsx
 ================================================
 "use client";
 
+import { useRouter } from "next/navigation"; // 🟢 Importamos el router
+import toast from "react-hot-toast";
+import { fetchSeguro } from "@/src/services/api/client"; // 🟢 Tu cliente de API
+
 import { useAuthStore } from "@/src/store/authStore";
 import { PromptImageViewer } from "@/src/system/molecules/Cards/PromptImageViewer";
 import { PromptMetadataPanel } from "@/src/system/molecules/Cards/PromptMetadataPanel";
@@ -13537,7 +15493,10 @@ interface PromptDetailViewProps {
   lang: string;
   authorUsername: string;
   authorAvatar?: string;
+  onDelete?: (id: string) => void;
 }
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
 
 export function PromptDetailView({
   prompt,
@@ -13545,21 +15504,52 @@ export function PromptDetailView({
   lang,
   authorUsername,
   authorAvatar,
+  onDelete,
 }: PromptDetailViewProps) {
+  const router = useRouter();
   const { user } = useAuthStore();
   const isOwner = user?.username === authorUsername;
   const { handleSaveMetadata } = useUpdatePromptMetadata(String(prompt.id));
 
+  // 🟢 Lógica centralizada de borrado
+  const handleDelete = async (id: string) => {
+    // Si se pasa desde un padre (ej. en un modal futuro), usamos esa
+    if (onDelete) {
+      onDelete(id);
+      return;
+    }
+
+    const toastId = toast.loading("Exterminando rastro digital...");
+    try {
+      const res = await fetchSeguro(`${API_URL}/prompts/${id}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+
+      if (res.ok) {
+        toast.success("Eliminado del Studio", { id: toastId });
+        
+        router.push(`/${lang}/studio`);
+      } else {
+        const errorData = await res.json();
+        throw new Error(errorData.detail || "Fallo de autorización");
+      }
+    } catch (error: any) {
+      console.error("Fallo al borrar:", error);
+      toast.error(error.message || "Error al eliminar", { id: toastId });
+    }
+  };
+
   return (
-    <main className="backdrop-blur-md flex flex-col h-[calc(100dvh-64px)] overflow-hidden relative">
+    <main className="backdrop-blur-md flex flex-col h-[calc(100dvh-64px)] max-lg:h-auto max-lg:min-h-[calc(100dvh-64px)] overflow-hidden max-lg:overflow-y-auto relative">
       <div className="max-w-400 w-full mx-auto flex flex-col h-full min-h-0 px-0 md:px-6 lg:px-8">
         <div className="shrink-0 pt-4 pb-4 px-4 md:px-0 border-b border-border/10 z-30 backdrop-blur-md">
           <Breadcrumbs items={breadcrumbItems} />
         </div>
 
         <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_380px] xl:grid-cols-[minmax(0,1fr)_420px] gap-6 lg:gap-10 mt-6">
-          <section className="relative w-full h-full flex items-center justify-center pb-20">
-            <div className="absolute inset-0 z-20 pointer-events-none flex items-center pb-20">
+          <section className="relative w-full h-full max-lg:min-h-[50vh] flex items-center justify-center pb-20 max-lg:pb-6">
+            <div className="absolute inset-0 z-20 pointer-events-none flex items-center pb-20 max-lg:pb-6">
               <div className="w-full relative pointer-events-auto">
                 <PromptNavigation currentId={String(prompt.id)} lang={lang} />
               </div>
@@ -13577,7 +15567,7 @@ export function PromptDetailView({
 
           <section
             id="metadata-panel"
-            className="flex flex-col gap-6 px-4 md:px-0 pb-28 h-full overflow-y-auto custom-scrollbar"
+            className="flex flex-col gap-6 px-4 -20 md:px-0 lg:h-full lg:overflow-y-auto max-lg:overflow-visible custom-scrollbar"
           >
             {!isOwner && (
               <div className="shrink-0">
@@ -13589,13 +15579,22 @@ export function PromptDetailView({
             )}
 
             <div className="shrink-0">
-              <PromptTitleHeader title={prompt.title} createdAt={prompt.created_at} />
+              <div className="shrink-0">
+                <PromptTitleHeader
+                  title={prompt.title}
+                  createdAt={prompt.created_at}
+                  imageUrl={prompt.image_url}
+                  isOwner={isOwner}
+                  promptId={String(prompt.id)}
+                  onDelete={handleDelete}
+                />
+              </div>
             </div>
 
             <PromptMetadataPanel prompt={prompt} isOwner={isOwner} onSave={handleSaveMetadata} />
 
             {!isOwner && (
-              <div className="pt-6 mt-auto border-t border-border/30 shrink-0">
+              <div className="pt-6 mt-10 border-t border-border/30 shrink-0">
                 <Tooltip variant="default" content="Servicio en desarrollo">
                   <Button
                     variant="disabled"
@@ -13606,6 +15605,8 @@ export function PromptDetailView({
                 </Tooltip>
               </div>
             )}
+
+            <div className="h-10 lg:h-25 w-full shrink-0 pointer-events-none" />
           </section>
         </div>
       </div>
@@ -14116,11 +16117,10 @@ export function StudioWorkspace() {
 
   const params = useParams();
   const lang = (params?.lang as string) || "es";
-
-  const { prompts, isLoading, user, deletePrompt } = useStudioPrompts();
+  const { prompts, isLoading, user, hasMore, loadMore, deletePrompt } = useStudioPrompts();
   const authorUsername = user?.username || "unknown";
 
-  if (isLoading) {
+  if (isLoading && prompts.length === 0) {
     return (
       <div className="h-full flex flex-col flex-1 items-center justify-center">
         <PageLoader text="Sincronizando Studio..." />
@@ -14135,6 +16135,9 @@ export function StudioWorkspace() {
         lang={lang}
         authorUsername={authorUsername}
         onDelete={deletePrompt}
+        isLoading={isLoading}
+        hasMore={hasMore}
+        onLoadMore={loadMore}
       />
     </>
   );
@@ -14191,6 +16194,7 @@ export interface SavedPrompt {
   width?: number;
   height?: number;
   sampler?: string;
+  lora?: string;
   steps?: number;
   cfg_scale?: number;
   seed?: string;
@@ -14200,6 +16204,7 @@ export interface SavedPrompt {
   trigger_words?: string[];
   directory_id?: number | null;
   created_at: string;
+  extra_data?: string;
 }
 
 export interface MediaCardData {
@@ -14425,8 +16430,9 @@ export function useAvatarUpload(username: string, onAvatarUpdate?: (newUrl: stri
     setIsUploading(true);
     try {
       const optimizedFile = await optimizeAvatar(file);
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
 
+      // 1. Obtener ticket (Ruta Temporal)
       const ticketRes = await fetchSeguro(`${API_URL}/prompts/generate-upload-url`, {
         method: "POST",
         body: JSON.stringify({
@@ -14437,6 +16443,7 @@ export function useAvatarUpload(username: string, onAvatarUpdate?: (newUrl: stri
       if (!ticketRes.ok) throw new Error("Error obteniendo ticket de R2");
       const { upload_url, file_url } = await ticketRes.json();
 
+      // 2. Subir imagen a Cloudflare (Temporal)
       const uploadRes = await fetch(upload_url, {
         method: "PUT",
         headers: {
@@ -14447,22 +16454,36 @@ export function useAvatarUpload(username: string, onAvatarUpdate?: (newUrl: stri
       });
       if (!uploadRes.ok) throw new Error("Error subiendo a R2");
 
-      // 3. Guardar en DB
+      // 3. Guardar en DB (El backend mueve la imagen y nos da la URL definitiva)
       const updateRes = await fetchSeguro(`${API_URL}/auth/me/avatar`, {
         method: "PATCH",
         body: JSON.stringify({ avatar_url: file_url }),
       });
       if (!updateRes.ok) throw new Error("Error guardando en la Base de Datos");
 
-      // 4. Actualizar Estado Global y Local
-      setLocalAvatar(file_url);
+      // 🟢 LA CLAVE: Leer la respuesta del backend
+      const responseData = await updateRes.json();
 
-      if (user?.username === username && checkAuth) {
+      // Asumimos que tu backend devuelve la URL final aquí (ajústalo si la ruta del JSON es diferente)
+      const finalBackendUrl =
+        responseData?.data?.avatar_url || responseData?.avatar_url || file_url;
+
+      // 🟢 CACHE BUSTING: Engañamos a Next.js para que no muestre el 404 cacheado
+      const cacheBustedUrl = `${finalBackendUrl}?t=${Date.now()}`;
+
+      // 4. Actualizar Estado Global y Local con la URL definitiva
+      setLocalAvatar(cacheBustedUrl);
+
+      const updateUser = useAuthStore.getState().updateUser;
+      updateUser({ avatarUrl: cacheBustedUrl });
+
+      // Opcional: El checkAuth para sincronizar todo lo demás
+      if (user?.username.toLowerCase() === username.toLowerCase()) {
         await checkAuth(true);
       }
 
       notify("Perfil", "Avatar actualizado con éxito", "success");
-      if (onAvatarUpdate) onAvatarUpdate(file_url);
+      if (onAvatarUpdate) onAvatarUpdate(cacheBustedUrl);
     } catch (error) {
       console.error(error);
       notify("Error", "Hubo un problema actualizando el avatar", "error");
@@ -14616,25 +16637,20 @@ export function useScrollDirection() {
         window.requestAnimationFrame(() => {
           const target = event.target as HTMLElement | Document;
 
-          let currentScrollY = 0;
-          let clientHeight = 0;
-          let scrollHeight = 0;
-
           if (
-            target === document ||
-            target === document.documentElement ||
-            target === document.body
+            target !== document &&
+            target !== document.documentElement &&
+            target !== document.body
           ) {
-            currentScrollY = window.scrollY;
-            clientHeight = window.innerHeight;
-            scrollHeight = document.documentElement.scrollHeight;
-          } else {
-            const el = target as HTMLElement;
-            currentScrollY = el.scrollTop;
-            clientHeight = el.clientHeight;
-            scrollHeight = el.scrollHeight;
+            ticking = false;
+            return;
           }
 
+          const currentScrollY = window.scrollY;
+          const clientHeight = window.innerHeight;
+          const scrollHeight = document.documentElement.scrollHeight;
+
+          // Margen de 10px para evitar que temblores del dedo oculten el navbar
           if (Math.abs(currentScrollY - lastScrollY) < 10) {
             ticking = false;
             return;
@@ -14657,9 +16673,9 @@ export function useScrollDirection() {
       }
     };
 
-    window.addEventListener("scroll", onScroll, true);
+    window.addEventListener("scroll", onScroll, false);
 
-    return () => window.removeEventListener("scroll", onScroll, true);
+    return () => window.removeEventListener("scroll", onScroll, false);
   }, []);
 
   return scrollDirection;
@@ -14695,38 +16711,25 @@ FILE: src/utils/hooks/useTheme.ts
 ================================================
 "use client";
 
-import { useState, useEffect } from "react";
+import { useTheme as useNextTheme } from "next-themes";
+import { useEffect, useState } from "react";
 
 export function useTheme() {
-  const [isDark, setIsDark] = useState<boolean>(true);
+  const { theme, setTheme, systemTheme } = useNextTheme();
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    const savedTheme = localStorage.getItem("theme");
-    const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-
-    if (savedTheme === "dark" || (!savedTheme && prefersDark)) {
-      setIsDark(true);
-      document.documentElement.classList.add("dark");
-    } else {
-      setIsDark(false);
-      document.documentElement.classList.remove("dark");
-    }
+    setMounted(true);
   }, []);
 
-  const toggleTheme = () => {
-    const newValue = !isDark;
-    setIsDark(newValue);
+  const currentTheme = theme === "system" ? systemTheme : theme;
+  const isDark = mounted ? currentTheme === "dark" : true;
 
-    if (newValue) {
-      document.documentElement.classList.add("dark");
-      localStorage.setItem("theme", "dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-      localStorage.setItem("theme", "light");
-    }
+  const toggleTheme = () => {
+    setTheme(isDark ? "light" : "dark");
   };
 
-  return { isDark, toggleTheme };
+  return { isDark, toggleTheme, theme, setTheme, mounted };
 }
 
 

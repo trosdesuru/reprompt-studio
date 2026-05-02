@@ -26,7 +26,7 @@ interface AuthState {
 
   incrementPromptCount: () => void;
 
-  login: (userData: User) => void;
+  login: (userData: any) => void;
   logout: () => Promise<void>;
   checkAuth: (force?: boolean) => Promise<void>;
   logoutSilencioso: () => void;
@@ -51,17 +51,30 @@ const redirectToLogin = () => {
   window.location.href = `${localePrefix}/login`;
 };
 
+const normalizeUser = (data: any): User | null => {
+  if (!data || !data.username) return null;
+
+  return {
+    ...data,
+    role: data.role || "voyager",
+    prompts_count: data.prompts_count ?? 0,
+    avatarUrl: data.avatar_url !== undefined ? data.avatar_url : data.avatarUrl || null,
+  };
+};
+
 export const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
   isAuthenticated: false,
   isLoadingAuth: true,
   hasCheckedInitialAuth: false,
+
   updateLocalUsername: (newUsername) => {
     const currentUser = get().user;
     if (currentUser) {
       set({ user: { ...currentUser, username: newUsername } });
     }
   },
+
   incrementPromptCount: () => {
     const currentUser = get().user;
     if (currentUser) {
@@ -73,30 +86,25 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       });
     }
   },
+
   updateUser: (data: any) =>
     set((state) => {
       if (!state.user) return { user: null };
 
-      const normalizedData = { ...data };
-      if (data.avatar_url) {
-        normalizedData.avatarUrl = data.avatar_url;
-      }
-
-      return {
-        user: { ...state.user, ...normalizedData },
-      };
+      const mergedData = { ...state.user, ...data };
+      return { user: normalizeUser(mergedData) };
     }),
 
   login: (userData) => {
     if (process.env.NODE_ENV === "development") {
       console.log(`[AUTH_STORE] Sesión iniciada localmente: @${userData.username}`);
-      set({
-        user: userData,
-        isAuthenticated: true,
-        isLoadingAuth: false,
-        hasCheckedInitialAuth: true,
-      });
     }
+    set({
+      user: normalizeUser(userData),
+      isAuthenticated: true,
+      isLoadingAuth: false,
+      hasCheckedInitialAuth: true,
+    });
   },
 
   logoutSilencioso: () => {
@@ -122,19 +130,17 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const res = await api.auth.me();
       const userData = res?.data || res?.user || res;
 
-      if (userData?.username) {
-        set({
-          user: {
-            ...userData,
-            prompts_count: userData.prompts_count ?? 0,
-            role: userData.role || "voyager",
-            avatarUrl: userData.avatar_url || userData.avatarUrl,
-          },
+      const normalizedUser = normalizeUser(userData);
 
+      if (normalizedUser) {
+        set({
+          user: normalizedUser,
           isAuthenticated: true,
         });
       } else {
-        console.warn("⚠️ [AUTH_STORE] checkAuth respondió OK pero el cuerpo está vacío.");
+        console.warn(
+          "⚠️ [AUTH_STORE] checkAuth respondió OK pero el cuerpo está vacío o sin username.",
+        );
         set({ user: null, isAuthenticated: false });
       }
     } catch (error: unknown) {
