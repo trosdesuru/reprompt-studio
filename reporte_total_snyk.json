@@ -1,0 +1,547 @@
+{
+  "vulnerabilities": [
+    {
+      "id": "SNYK-JS-NEXT-15954202",
+      "title": "Allocation of Resources Without Limits or Throttling",
+      "CVSSv3": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+      "credit": [
+        "Unknown"
+      ],
+      "semver": {
+        "vulnerable": [
+          ">=13.0.0 <15.5.15",
+          ">=15.6.0-canary.0 <16.2.3"
+        ]
+      },
+      "exploit": "Not Defined",
+      "fixedIn": [
+        "15.5.15",
+        "16.2.3"
+      ],
+      "patches": [],
+      "insights": {
+        "triageAdvice": null
+      },
+      "language": "js",
+      "severity": "high",
+      "cvssScore": 8.7,
+      "functions": [],
+      "malicious": false,
+      "isDisputed": false,
+      "moduleName": "next",
+      "references": [
+        {
+          "url": "https://github.com/facebook/react/commit/404b38c764cf86e6f2ec42f873bb33ce114256d3",
+          "title": "GitHub Commit"
+        },
+        {
+          "url": "https://github.com/facebook/react/commit/44695455d4159078816623d119895f779cfe64ab",
+          "title": "GitHub Commit"
+        },
+        {
+          "url": "https://github.com/facebook/react/commit/672b24221f25c98adc67457468ab0b348342526f",
+          "title": "GitHub Commit"
+        },
+        {
+          "url": "https://github.com/facebook/react/commit/6cd04f4c5ffe7bf3ca3ad9aacaf76ee8cc8668fe",
+          "title": "GitHub Commit"
+        },
+        {
+          "url": "https://github.com/vercel/next.js/commit/28739286a88a83ab2d4e1899bdb4eb4ee7bee9a9",
+          "title": "GitHub Commit (Next)"
+        },
+        {
+          "url": "https://github.com/vercel/next.js/commit/cb90de98be409653f39ec602072740b38689a4e5",
+          "title": "GitHub Commit (Next)"
+        },
+        {
+          "url": "https://github.com/facebook/react/security/advisories/GHSA-479c-33wc-g2pg",
+          "title": "Maintainer's Advisory"
+        },
+        {
+          "url": "https://github.com/vercel/next.js/security/advisories/GHSA-q4gf-8mx6-v5v3",
+          "title": "Next.js Advisory"
+        }
+      ],
+      "cvssDetails": [],
+      "cvssSources": [
+        {
+          "type": "primary",
+          "vector": "CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:N/VI:N/VA:H/SC:N/SI:N/SA:N",
+          "assigner": "Snyk",
+          "severity": "high",
+          "baseScore": 8.7,
+          "cvssVersion": "4.0",
+          "modificationTime": "2026-04-14T10:40:00.731338Z"
+        },
+        {
+          "type": "secondary",
+          "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+          "assigner": "Snyk",
+          "severity": "high",
+          "baseScore": 7.5,
+          "cvssVersion": "3.1",
+          "modificationTime": "2026-04-14T10:40:00.731338Z"
+        }
+      ],
+      "description": "## Overview\n[next](https://www.npmjs.com/package/next) is a react framework.\n\nAffected versions of this package are vulnerable to Allocation of Resources Without Limits or Throttling via the `createMap`, `createSet`, and `extractIterator` functions in `packages/react-server/src/ReactFlightReplyServer.js`. An attacker can crash the server by supplying a model that contains cyclic reference and is consumed more than once during React Server Components decoding. The repeated consumption triggers an exception during reply processing, breaking rendering for requests that handle attacker-controlled Flight payloads.\n## Remediation\nUpgrade `next` to version 15.5.15, 16.2.3 or higher.\n## References\n- [GitHub Commit](https://github.com/facebook/react/commit/404b38c764cf86e6f2ec42f873bb33ce114256d3)\n- [GitHub Commit](https://github.com/facebook/react/commit/44695455d4159078816623d119895f779cfe64ab)\n- [GitHub Commit](https://github.com/facebook/react/commit/672b24221f25c98adc67457468ab0b348342526f)\n- [GitHub Commit](https://github.com/facebook/react/commit/6cd04f4c5ffe7bf3ca3ad9aacaf76ee8cc8668fe)\n- [GitHub Commit (Next)](https://github.com/vercel/next.js/commit/28739286a88a83ab2d4e1899bdb4eb4ee7bee9a9)\n- [GitHub Commit (Next)](https://github.com/vercel/next.js/commit/cb90de98be409653f39ec602072740b38689a4e5)\n- [Maintainer's Advisory](https://github.com/facebook/react/security/advisories/GHSA-479c-33wc-g2pg)\n- [Next.js Advisory](https://github.com/vercel/next.js/security/advisories/GHSA-q4gf-8mx6-v5v3)\n",
+      "epssDetails": {
+        "percentile": "0.72702",
+        "probability": "0.00728",
+        "modelVersion": "v2025.03.14"
+      },
+      "identifiers": {
+        "CVE": [
+          "CVE-2026-23869"
+        ],
+        "CWE": [
+          "CWE-674",
+          "CWE-770"
+        ],
+        "GHSA": [
+          "GHSA-479c-33wc-g2pg"
+        ]
+      },
+      "packageName": "next",
+      "proprietary": false,
+      "creationTime": "2026-04-09T10:53:16.899977Z",
+      "functions_new": [],
+      "alternativeIds": [],
+      "disclosureTime": "2026-04-08T21:10:45Z",
+      "exploitDetails": {
+        "sources": [],
+        "maturityLevels": [
+          {
+            "type": "secondary",
+            "level": "Not Defined",
+            "format": "CVSSv3"
+          },
+          {
+            "type": "primary",
+            "level": "Not Defined",
+            "format": "CVSSv4"
+          }
+        ]
+      },
+      "packageManager": "npm",
+      "publicationTime": "2026-04-09T10:53:17.336014Z",
+      "severityBasedOn": "CVSS",
+      "modificationTime": "2026-04-14T10:40:00.731338Z",
+      "socialTrendAlert": false,
+      "severityWithCritical": "high",
+      "from": [
+        "frontend-galeria@0.1.0",
+        "next@16.2.1"
+      ],
+      "upgradePath": [
+        false,
+        "next@16.2.3"
+      ],
+      "isUpgradable": true,
+      "isPatchable": false,
+      "name": "next",
+      "version": "16.2.1"
+    },
+    {
+      "id": "SNYK-JS-POSTCSS-16189065",
+      "title": "Cross-site Scripting (XSS)",
+      "CVSSv3": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:L/A:N/E:P",
+      "credit": [
+        "Sunil Kumar"
+      ],
+      "semver": {
+        "vulnerable": [
+          "<8.5.10"
+        ]
+      },
+      "exploit": "Proof of Concept",
+      "fixedIn": [
+        "8.5.10"
+      ],
+      "patches": [],
+      "insights": {
+        "triageAdvice": null
+      },
+      "language": "js",
+      "severity": "medium",
+      "cvssScore": 5.3,
+      "functions": [],
+      "malicious": false,
+      "isDisputed": false,
+      "moduleName": "postcss",
+      "references": [
+        {
+          "url": "https://github.com/postcss/postcss/security/advisories/GHSA-qx2v-qp2m-jg93",
+          "title": "GitHub Advisory"
+        },
+        {
+          "url": "https://github.com/postcss/postcss/commit/536c79e4b01e58a3a56b09c3c0cf2323f4b9a28b",
+          "title": "GitHub Commit"
+        },
+        {
+          "url": "https://github.com/postcss/postcss/releases/tag/8.5.10",
+          "title": "GitHub Release"
+        }
+      ],
+      "cvssDetails": [
+        {
+          "assigner": "Red Hat",
+          "severity": "medium",
+          "cvssV3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:L/A:N",
+          "cvssV3BaseScore": 6.1,
+          "modificationTime": "2026-04-25T14:22:10.667586Z"
+        }
+      ],
+      "cvssSources": [
+        {
+          "type": "primary",
+          "vector": "CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:P/VC:N/VI:N/VA:N/SC:L/SI:L/SA:N/E:P",
+          "assigner": "Snyk",
+          "severity": "medium",
+          "baseScore": 5.3,
+          "cvssVersion": "4.0",
+          "modificationTime": "2026-04-25T14:22:10.667586Z"
+        },
+        {
+          "type": "secondary",
+          "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:L/A:N/E:P",
+          "assigner": "Snyk",
+          "severity": "medium",
+          "baseScore": 6.1,
+          "cvssVersion": "3.1",
+          "modificationTime": "2026-04-25T14:22:10.667586Z"
+        },
+        {
+          "type": "secondary",
+          "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:L/A:N",
+          "assigner": "Red Hat",
+          "severity": "medium",
+          "baseScore": 6.1,
+          "cvssVersion": "3.1",
+          "modificationTime": "2026-04-25T14:22:10.667586Z"
+        }
+      ],
+      "description": "## Overview\n[postcss](https://www.npmjs.com/package/postcss) is a PostCSS is a tool for transforming styles with JS plugins.\n\nAffected versions of this package are vulnerable to Cross-site Scripting (XSS) in CSS Stringify Output. An attacker can execute arbitrary JavaScript code in the context of the affected web page by submitting crafted CSS containing `</style>` sequences that are not properly escaped when embedded within HTML `<style>` tags.\n## PoC\n```js\r\nconst postcss = require('postcss');\r\n\r\n// Parse user CSS and re-stringify for page embedding\r\nconst userCSS = 'body { content: \"</style><script>alert(1)</script><style>\"; }';\r\nconst ast = postcss.parse(userCSS);\r\nconst output = ast.toResult().css;\r\nconst html = `<style>${output}</style>`;\r\n\r\nconsole.log(html);\r\n// <style>body { content: \"</style><script>alert(1)</script><style>\"; }</style>\r\n//\r\n// Browser: </style> closes the style tag, <script> executes\r\n```\n## Details\n\nCross-site scripting (or XSS) is a code vulnerability that occurs when an attacker “injects” a malicious script into an otherwise trusted website. The injected script gets downloaded and executed by the end user’s browser when the user interacts with the compromised website.\n\nThis is done by escaping the context of the web application; the web application then delivers that data to its users along with other trusted dynamic content, without validating it. The browser unknowingly executes malicious script on the client side (through client-side languages; usually JavaScript or HTML)  in order to perform actions that are otherwise typically blocked by the browser’s Same Origin Policy.\n\nInjecting malicious code is the most prevalent manner by which XSS is exploited; for this reason, escaping characters in order to prevent this manipulation is the top method for securing code against this vulnerability.\n\nEscaping means that the application is coded to mark key characters, and particularly key characters included in user input, to prevent those characters from being interpreted in a dangerous context. For example, in HTML, `<` can be coded as  `&lt`; and `>` can be coded as `&gt`; in order to be interpreted and displayed as themselves in text, while within the code itself, they are used for HTML tags. If malicious content is injected into an application that escapes special characters and that malicious content uses `<` and `>` as HTML tags, those characters are nonetheless not interpreted as HTML tags by the browser if they’ve been correctly escaped in the application code and in this way the attempted attack is diverted.\n \nThe most prominent use of XSS is to steal cookies (source: OWASP HttpOnly) and hijack user sessions, but XSS exploits have been used to expose sensitive information, enable access to privileged services and functionality and deliver malware. \n\n### Types of attacks\nThere are a few methods by which XSS can be manipulated:\n\n|Type|Origin|Description|\n|--|--|--|\n|**Stored**|Server|The malicious code is inserted in the application (usually as a link) by the attacker. The code is activated every time a user clicks the link.|\n|**Reflected**|Server|The attacker delivers a malicious link externally from the vulnerable web site application to a user. When clicked, malicious code is sent to the vulnerable web site, which reflects the attack back to the user’s browser.| \n|**DOM-based**|Client|The attacker forces the user’s browser to render a malicious page. The data in the page itself delivers the cross-site scripting data.|\n|**Mutated**| |The attacker injects code that appears safe, but is then rewritten and modified by the browser, while parsing the markup. An example is rebalancing unclosed quotation marks or even adding quotation marks to unquoted parameters.|\n\n### Affected environments\nThe following environments are susceptible to an XSS attack:\n\n* Web servers\n* Application servers\n* Web application environments\n\n### How to prevent\nThis section describes the top best practices designed to specifically protect your code: \n\n* Sanitize data input in an HTTP request before reflecting it back, ensuring all data is validated, filtered or escaped before echoing anything back to the user, such as the values of query parameters during searches. \n* Convert special characters such as `?`, `&`, `/`, `<`, `>` and spaces to their respective HTML or URL encoded equivalents. \n* Give users the option to disable client-side scripts.\n* Redirect invalid requests.\n* Detect simultaneous logins, including those from two separate IP addresses, and invalidate those sessions.\n* Use and enforce a Content Security Policy (source: Wikipedia) to disable any features that might be manipulated for an XSS attack.\n* Read the documentation for any of the libraries referenced in your code to understand which elements allow for embedded HTML.\n\n## Remediation\nUpgrade `postcss` to version 8.5.10 or higher.\n## References\n- [GitHub Advisory](https://github.com/postcss/postcss/security/advisories/GHSA-qx2v-qp2m-jg93)\n- [GitHub Commit](https://github.com/postcss/postcss/commit/536c79e4b01e58a3a56b09c3c0cf2323f4b9a28b)\n- [GitHub Release](https://github.com/postcss/postcss/releases/tag/8.5.10)\n",
+      "epssDetails": {
+        "percentile": "0.09044",
+        "probability": "0.00031",
+        "modelVersion": "v2025.03.14"
+      },
+      "identifiers": {
+        "CVE": [
+          "CVE-2026-41305"
+        ],
+        "CWE": [
+          "CWE-79"
+        ],
+        "GHSA": [
+          "GHSA-qx2v-qp2m-jg93"
+        ]
+      },
+      "packageName": "postcss",
+      "proprietary": false,
+      "creationTime": "2026-04-24T07:45:25.169288Z",
+      "functions_new": [],
+      "alternativeIds": [],
+      "disclosureTime": "2026-04-24T04:18:45Z",
+      "exploitDetails": {
+        "sources": [
+          "Snyk"
+        ],
+        "maturityLevels": [
+          {
+            "type": "secondary",
+            "level": "Proof of Concept",
+            "format": "CVSSv3"
+          },
+          {
+            "type": "primary",
+            "level": "Proof of Concept",
+            "format": "CVSSv4"
+          }
+        ]
+      },
+      "packageManager": "npm",
+      "publicationTime": "2026-04-24T07:45:25.369031Z",
+      "severityBasedOn": "CVSS",
+      "modificationTime": "2026-04-25T14:22:10.667586Z",
+      "socialTrendAlert": false,
+      "severityWithCritical": "medium",
+      "from": [
+        "frontend-galeria@0.1.0",
+        "next@16.2.1",
+        "postcss@8.4.31"
+      ],
+      "upgradePath": [],
+      "isUpgradable": false,
+      "isPatchable": false,
+      "name": "postcss",
+      "version": "8.4.31"
+    }
+  ],
+  "ok": false,
+  "dependencyCount": 358,
+  "org": "trosdesuru",
+  "policy": "# Snyk (https://snyk.io) policy file, patches or ignores known vulnerabilities.\nversion: v1.25.1\nignore: {}\npatch: {}\n",
+  "isPrivate": true,
+  "licensesPolicy": {
+    "severities": {},
+    "orgLicenseRules": {
+      "AGPL-1.0": {
+        "licenseType": "AGPL-1.0",
+        "severity": "high",
+        "instructions": ""
+      },
+      "AGPL-3.0": {
+        "licenseType": "AGPL-3.0",
+        "severity": "high",
+        "instructions": ""
+      },
+      "Artistic-1.0": {
+        "licenseType": "Artistic-1.0",
+        "severity": "medium",
+        "instructions": ""
+      },
+      "Artistic-2.0": {
+        "licenseType": "Artistic-2.0",
+        "severity": "medium",
+        "instructions": ""
+      },
+      "CDDL-1.0": {
+        "licenseType": "CDDL-1.0",
+        "severity": "medium",
+        "instructions": ""
+      },
+      "CPOL-1.02": {
+        "licenseType": "CPOL-1.02",
+        "severity": "high",
+        "instructions": ""
+      },
+      "EPL-1.0": {
+        "licenseType": "EPL-1.0",
+        "severity": "medium",
+        "instructions": ""
+      },
+      "GPL-2.0": {
+        "licenseType": "GPL-2.0",
+        "severity": "high",
+        "instructions": ""
+      },
+      "GPL-3.0": {
+        "licenseType": "GPL-3.0",
+        "severity": "high",
+        "instructions": ""
+      },
+      "LGPL-2.0": {
+        "licenseType": "LGPL-2.0",
+        "severity": "medium",
+        "instructions": ""
+      },
+      "LGPL-2.1": {
+        "licenseType": "LGPL-2.1",
+        "severity": "medium",
+        "instructions": ""
+      },
+      "LGPL-3.0": {
+        "licenseType": "LGPL-3.0",
+        "severity": "medium",
+        "instructions": ""
+      },
+      "MPL-1.1": {
+        "licenseType": "MPL-1.1",
+        "severity": "medium",
+        "instructions": ""
+      },
+      "MPL-2.0": {
+        "licenseType": "MPL-2.0",
+        "severity": "medium",
+        "instructions": ""
+      },
+      "MS-RL": {
+        "licenseType": "MS-RL",
+        "severity": "medium",
+        "instructions": ""
+      },
+      "SimPL-2.0": {
+        "licenseType": "SimPL-2.0",
+        "severity": "high",
+        "instructions": ""
+      }
+    }
+  },
+  "packageManager": "npm",
+  "ignoreSettings": {
+    "adminOnly": false,
+    "reasonRequired": false,
+    "disregardFilesystemIgnores": false
+  },
+  "summary": "2 vulnerable dependency paths",
+  "remediation": {
+    "unresolved": [
+      {
+        "id": "SNYK-JS-POSTCSS-16189065",
+        "title": "Cross-site Scripting (XSS)",
+        "CVSSv3": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:L/A:N/E:P",
+        "credit": [
+          "Sunil Kumar"
+        ],
+        "semver": {
+          "vulnerable": [
+            "<8.5.10"
+          ]
+        },
+        "exploit": "Proof of Concept",
+        "fixedIn": [
+          "8.5.10"
+        ],
+        "patches": [],
+        "insights": {
+          "triageAdvice": null
+        },
+        "language": "js",
+        "severity": "medium",
+        "cvssScore": 5.3,
+        "functions": [],
+        "malicious": false,
+        "isDisputed": false,
+        "moduleName": "postcss",
+        "references": [
+          {
+            "url": "https://github.com/postcss/postcss/security/advisories/GHSA-qx2v-qp2m-jg93",
+            "title": "GitHub Advisory"
+          },
+          {
+            "url": "https://github.com/postcss/postcss/commit/536c79e4b01e58a3a56b09c3c0cf2323f4b9a28b",
+            "title": "GitHub Commit"
+          },
+          {
+            "url": "https://github.com/postcss/postcss/releases/tag/8.5.10",
+            "title": "GitHub Release"
+          }
+        ],
+        "cvssDetails": [
+          {
+            "assigner": "Red Hat",
+            "severity": "medium",
+            "cvssV3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:L/A:N",
+            "cvssV3BaseScore": 6.1,
+            "modificationTime": "2026-04-25T14:22:10.667586Z"
+          }
+        ],
+        "cvssSources": [
+          {
+            "type": "primary",
+            "vector": "CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:P/VC:N/VI:N/VA:N/SC:L/SI:L/SA:N/E:P",
+            "assigner": "Snyk",
+            "severity": "medium",
+            "baseScore": 5.3,
+            "cvssVersion": "4.0",
+            "modificationTime": "2026-04-25T14:22:10.667586Z"
+          },
+          {
+            "type": "secondary",
+            "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:L/A:N/E:P",
+            "assigner": "Snyk",
+            "severity": "medium",
+            "baseScore": 6.1,
+            "cvssVersion": "3.1",
+            "modificationTime": "2026-04-25T14:22:10.667586Z"
+          },
+          {
+            "type": "secondary",
+            "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:L/A:N",
+            "assigner": "Red Hat",
+            "severity": "medium",
+            "baseScore": 6.1,
+            "cvssVersion": "3.1",
+            "modificationTime": "2026-04-25T14:22:10.667586Z"
+          }
+        ],
+        "description": "## Overview\n[postcss](https://www.npmjs.com/package/postcss) is a PostCSS is a tool for transforming styles with JS plugins.\n\nAffected versions of this package are vulnerable to Cross-site Scripting (XSS) in CSS Stringify Output. An attacker can execute arbitrary JavaScript code in the context of the affected web page by submitting crafted CSS containing `</style>` sequences that are not properly escaped when embedded within HTML `<style>` tags.\n## PoC\n```js\r\nconst postcss = require('postcss');\r\n\r\n// Parse user CSS and re-stringify for page embedding\r\nconst userCSS = 'body { content: \"</style><script>alert(1)</script><style>\"; }';\r\nconst ast = postcss.parse(userCSS);\r\nconst output = ast.toResult().css;\r\nconst html = `<style>${output}</style>`;\r\n\r\nconsole.log(html);\r\n// <style>body { content: \"</style><script>alert(1)</script><style>\"; }</style>\r\n//\r\n// Browser: </style> closes the style tag, <script> executes\r\n```\n## Details\n\nCross-site scripting (or XSS) is a code vulnerability that occurs when an attacker “injects” a malicious script into an otherwise trusted website. The injected script gets downloaded and executed by the end user’s browser when the user interacts with the compromised website.\n\nThis is done by escaping the context of the web application; the web application then delivers that data to its users along with other trusted dynamic content, without validating it. The browser unknowingly executes malicious script on the client side (through client-side languages; usually JavaScript or HTML)  in order to perform actions that are otherwise typically blocked by the browser’s Same Origin Policy.\n\nInjecting malicious code is the most prevalent manner by which XSS is exploited; for this reason, escaping characters in order to prevent this manipulation is the top method for securing code against this vulnerability.\n\nEscaping means that the application is coded to mark key characters, and particularly key characters included in user input, to prevent those characters from being interpreted in a dangerous context. For example, in HTML, `<` can be coded as  `&lt`; and `>` can be coded as `&gt`; in order to be interpreted and displayed as themselves in text, while within the code itself, they are used for HTML tags. If malicious content is injected into an application that escapes special characters and that malicious content uses `<` and `>` as HTML tags, those characters are nonetheless not interpreted as HTML tags by the browser if they’ve been correctly escaped in the application code and in this way the attempted attack is diverted.\n \nThe most prominent use of XSS is to steal cookies (source: OWASP HttpOnly) and hijack user sessions, but XSS exploits have been used to expose sensitive information, enable access to privileged services and functionality and deliver malware. \n\n### Types of attacks\nThere are a few methods by which XSS can be manipulated:\n\n|Type|Origin|Description|\n|--|--|--|\n|**Stored**|Server|The malicious code is inserted in the application (usually as a link) by the attacker. The code is activated every time a user clicks the link.|\n|**Reflected**|Server|The attacker delivers a malicious link externally from the vulnerable web site application to a user. When clicked, malicious code is sent to the vulnerable web site, which reflects the attack back to the user’s browser.| \n|**DOM-based**|Client|The attacker forces the user’s browser to render a malicious page. The data in the page itself delivers the cross-site scripting data.|\n|**Mutated**| |The attacker injects code that appears safe, but is then rewritten and modified by the browser, while parsing the markup. An example is rebalancing unclosed quotation marks or even adding quotation marks to unquoted parameters.|\n\n### Affected environments\nThe following environments are susceptible to an XSS attack:\n\n* Web servers\n* Application servers\n* Web application environments\n\n### How to prevent\nThis section describes the top best practices designed to specifically protect your code: \n\n* Sanitize data input in an HTTP request before reflecting it back, ensuring all data is validated, filtered or escaped before echoing anything back to the user, such as the values of query parameters during searches. \n* Convert special characters such as `?`, `&`, `/`, `<`, `>` and spaces to their respective HTML or URL encoded equivalents. \n* Give users the option to disable client-side scripts.\n* Redirect invalid requests.\n* Detect simultaneous logins, including those from two separate IP addresses, and invalidate those sessions.\n* Use and enforce a Content Security Policy (source: Wikipedia) to disable any features that might be manipulated for an XSS attack.\n* Read the documentation for any of the libraries referenced in your code to understand which elements allow for embedded HTML.\n\n## Remediation\nUpgrade `postcss` to version 8.5.10 or higher.\n## References\n- [GitHub Advisory](https://github.com/postcss/postcss/security/advisories/GHSA-qx2v-qp2m-jg93)\n- [GitHub Commit](https://github.com/postcss/postcss/commit/536c79e4b01e58a3a56b09c3c0cf2323f4b9a28b)\n- [GitHub Release](https://github.com/postcss/postcss/releases/tag/8.5.10)\n",
+        "epssDetails": {
+          "percentile": "0.09044",
+          "probability": "0.00031",
+          "modelVersion": "v2025.03.14"
+        },
+        "identifiers": {
+          "CVE": [
+            "CVE-2026-41305"
+          ],
+          "CWE": [
+            "CWE-79"
+          ],
+          "GHSA": [
+            "GHSA-qx2v-qp2m-jg93"
+          ]
+        },
+        "packageName": "postcss",
+        "proprietary": false,
+        "creationTime": "2026-04-24T07:45:25.169288Z",
+        "functions_new": [],
+        "alternativeIds": [],
+        "disclosureTime": "2026-04-24T04:18:45Z",
+        "exploitDetails": {
+          "sources": [
+            "Snyk"
+          ],
+          "maturityLevels": [
+            {
+              "type": "secondary",
+              "level": "Proof of Concept",
+              "format": "CVSSv3"
+            },
+            {
+              "type": "primary",
+              "level": "Proof of Concept",
+              "format": "CVSSv4"
+            }
+          ]
+        },
+        "packageManager": "npm",
+        "publicationTime": "2026-04-24T07:45:25.369031Z",
+        "severityBasedOn": "CVSS",
+        "modificationTime": "2026-04-25T14:22:10.667586Z",
+        "socialTrendAlert": false,
+        "packagePopularityRank": 99,
+        "from": [
+          "frontend-galeria@0.1.0",
+          "next@16.2.1",
+          "postcss@8.4.31"
+        ],
+        "upgradePath": [],
+        "isUpgradable": false,
+        "isPatchable": false,
+        "isPinnable": false,
+        "isRuntime": false,
+        "name": "postcss",
+        "version": "8.4.31",
+        "severityWithCritical": "medium"
+      }
+    ],
+    "upgrade": {
+      "next@16.2.1": {
+        "upgradeTo": "next@16.2.3",
+        "upgrades": [
+          "next@16.2.1"
+        ],
+        "vulns": [
+          "SNYK-JS-NEXT-15954202"
+        ]
+      }
+    },
+    "patch": {},
+    "ignore": {},
+    "pin": {}
+  },
+  "filesystemPolicy": false,
+  "filtered": {
+    "ignore": [],
+    "patch": []
+  },
+  "uniqueCount": 2,
+  "projectName": "frontend-galeria",
+  "foundProjectCount": 2,
+  "displayTargetFile": "frontend/package-lock.json",
+  "hasUnknownVersions": false,
+  "path": "/Users/trosdesuru/Proyectos/reprompt"
+}
