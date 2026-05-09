@@ -1,5 +1,5 @@
 #### Ejecutar comnado de generación de archivo para versionado
-docker compose exec backend alembic revision --autogenerate -m "fixed: requirements numpy"
+docker compose exec backend alembic revision --autogenerate -m "added: new telemetry logs"
 
 ### Aplica los cambios a tu base de datos local
 docker compose exec backend alembic upgrade head

@@ -1,5 +1,8 @@
 import logging
 import time
+import os
+import psutil
+import gc
 
 from rq import Queue, Worker
 
@@ -20,6 +23,10 @@ logger = logging.getLogger("rq_worker")
 
 
 def process_image_ai(prompt_id: str):
+    # Fotografía de Memoria Inicial del proceso Worker
+    proceso = psutil.Process(os.getpid())
+    ram_inicial = proceso.memory_info().rss / (1024 * 1024)
+
     with Session(engine) as session:
         prompt = session.get(ImagePrompt, prompt_id)
         if not prompt:
@@ -27,29 +34,48 @@ def process_image_ai(prompt_id: str):
             return
 
         try:
-            logger.info(f"🧠 [WORKER] Iniciando procesamiento de IA para: {prompt_id}")
+            logger.info(
+                f"🧠 [WORKER] Iniciando procesamiento de IA para: {prompt_id}. RAM Base: {ram_inicial:.2f}MB"
+            )
             texto_a_vectorizar = prompt.prompt or prompt.title or "Generative Art"
+
+            # --- MEDICIÓN DE EMBEDDINGS ---
             start_time_emb = time.time()
-
-            vector = EmbeddingService.generate_vector(prompt.prompt or "Generative Art")
+            vector = EmbeddingService.generate_vector(texto_a_vectorizar)
             prompt.embedding = vector
-
             tiempo_emb = round(time.time() - start_time_emb, 2)
 
+            ram_post_embed = proceso.memory_info().rss / (1024 * 1024)
+            logger.info(
+                f"📐 [WORKER] Embeddings generados ({tiempo_emb}s). RAM: {ram_post_embed:.2f}MB (Δ {ram_post_embed - ram_inicial:+.2f}MB)"
+            )
+
+            # --- MEDICIÓN DE ETIQUETAS WD14 ---
             logger.info(f"🏷️ [WORKER] Extrayendo etiquetas visuales...")
             start_time_tags = time.time()
 
             wd14_manager = WD14Tagger()
-
             etiquetas = wd14_manager.get_tags(prompt.image_url)
             prompt.auto_tags = etiquetas
 
             tiempo_tags = round(time.time() - start_time_tags, 2)
 
+            ram_post_tags = proceso.memory_info().rss / (1024 * 1024)
+            logger.info(
+                f"🏷️ [WORKER] Etiquetas listas ({tiempo_tags}s). RAM: {ram_post_tags:.2f}MB (Δ {ram_post_tags - ram_post_embed:+.2f}MB)"
+            )
+
+            # --- GUARDADO Y LIMPIEZA ---
             session.add(prompt)
             session.commit()
-            
-            logger.info(f"✅ [WORKER] IA completada con éxito para ID: {prompt_id}")
+
+            # Forzamos la recolección de basura para recuperar memoria
+            gc.collect()
+            ram_final = proceso.memory_info().rss / (1024 * 1024)
+
+            logger.info(
+                f"✅ [WORKER] IA completada con éxito. RAM final: {ram_final:.2f}MB (Δ total {ram_final - ram_inicial:+.2f}MB)"
+            )
 
         except Exception as e:
             logger.error(

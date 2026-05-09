@@ -1,0 +1,361 @@
+Iniciando auditoría de 60 segundos...
+--- Seg: 1 ---
+NAME                  CPU %     MEM USAGE / LIMIT     NET I/O
+reprompt-frontend-1   0.00%     1.335GiB / 5.786GiB   5.27MB / 5.4MB
+reprompt-worker-1     0.00%     181.4MiB / 5.786GiB   17.9kB / 25.6kB
+reprompt-backend-1    34.13%    314.2MiB / 5.786GiB   225kB / 73.8kB
+reprompt-redis-1      0.65%     9.113MiB / 5.786GiB   28.7kB / 16.5kB
+--- Seg: 2 ---
+NAME                  CPU %     MEM USAGE / LIMIT     NET I/O
+reprompt-frontend-1   0.04%     1.335GiB / 5.786GiB   5.27MB / 5.4MB
+reprompt-worker-1     0.00%     181.4MiB / 5.786GiB   17.9kB / 25.6kB
+reprompt-backend-1    59.97%    314.2MiB / 5.786GiB   225kB / 73.8kB
+reprompt-redis-1      0.62%     9.113MiB / 5.786GiB   28.7kB / 16.5kB
+--- Seg: 3 ---
+NAME                  CPU %     MEM USAGE / LIMIT     NET I/O
+reprompt-frontend-1   0.02%     1.335GiB / 5.786GiB   5.27MB / 5.4MB
+reprompt-worker-1     0.00%     181.4MiB / 5.786GiB   17.9kB / 25.6kB
+reprompt-backend-1    34.68%    314.2MiB / 5.786GiB   225kB / 73.8kB
+reprompt-redis-1      0.66%     9.113MiB / 5.786GiB   28.7kB / 16.5kB
+--- Seg: 4 ---
+NAME                  CPU %     MEM USAGE / LIMIT     NET I/O
+reprompt-frontend-1   0.00%     1.335GiB / 5.786GiB   5.27MB / 5.4MB
+reprompt-worker-1     0.00%     181.4MiB / 5.786GiB   17.9kB / 25.6kB
+reprompt-backend-1    35.80%    314.2MiB / 5.786GiB   225kB / 73.8kB
+reprompt-redis-1      0.67%     9.113MiB / 5.786GiB   28.7kB / 16.5kB
+--- Seg: 5 ---
+NAME                  CPU %     MEM USAGE / LIMIT     NET I/O
+reprompt-frontend-1   106.21%   1.347GiB / 5.786GiB   5.28MB / 5.43MB
+reprompt-worker-1     0.00%     181.4MiB / 5.786GiB   17.9kB / 25.6kB
+reprompt-backend-1    57.18%    314.2MiB / 5.786GiB   225kB / 73.8kB
+reprompt-redis-1      1.17%     9.113MiB / 5.786GiB   28.7kB / 16.5kB
+--- Seg: 6 ---
+NAME                  CPU %     MEM USAGE / LIMIT     NET I/O
+reprompt-frontend-1   143.01%   1.366GiB / 5.786GiB   5.47MB / 5.48MB
+reprompt-worker-1     0.00%     181.4MiB / 5.786GiB   17.9kB / 25.6kB
+reprompt-backend-1    60.20%    314.2MiB / 5.786GiB   225kB / 73.8kB
+reprompt-redis-1      2.11%     9.113MiB / 5.786GiB   28.7kB / 16.5kB
+--- Seg: 7 ---
+NAME                  CPU %     MEM USAGE / LIMIT     NET I/O
+reprompt-frontend-1   158.98%   1.357GiB / 5.786GiB   5.5MB / 5.62MB
+reprompt-worker-1     0.00%     181.4MiB / 5.786GiB   17.9kB / 25.6kB
+reprompt-backend-1    30.36%    314.1MiB / 5.786GiB   228kB / 78.5kB
+reprompt-redis-1      1.31%     9.113MiB / 5.786GiB   28.7kB / 16.5kB
+--- Seg: 8 ---
+NAME                  CPU %     MEM USAGE / LIMIT     NET I/O
+reprompt-frontend-1   1.30%     1.358GiB / 5.786GiB   5.5MB / 5.62MB
+reprompt-worker-1     0.00%     181.4MiB / 5.786GiB   17.9kB / 25.6kB
+reprompt-backend-1    36.14%    314.1MiB / 5.786GiB   228kB / 78.6kB
+reprompt-redis-1      2.01%     9.113MiB / 5.786GiB   28.7kB / 16.5kB
+--- Seg: 9 ---
+NAME                  CPU %     MEM USAGE / LIMIT     NET I/O
+reprompt-frontend-1   0.08%     1.358GiB / 5.786GiB   5.5MB / 5.62MB
+reprompt-worker-1     0.00%     181.4MiB / 5.786GiB   17.9kB / 25.6kB
+reprompt-backend-1    35.48%    314.4MiB / 5.786GiB   228kB / 78.7kB
+reprompt-redis-1      1.03%     9.113MiB / 5.786GiB   28.7kB / 16.5kB
+--- Seg: 10 ---
+NAME                  CPU %     MEM USAGE / LIMIT     NET I/O
+reprompt-frontend-1   200.90%   1.373GiB / 5.786GiB   5.51MB / 5.63MB
+reprompt-worker-1     0.00%     181.4MiB / 5.786GiB   17.9kB / 25.6kB
+reprompt-backend-1    52.97%    314.1MiB / 5.786GiB   228kB / 78.7kB
+reprompt-redis-1      1.39%     9.113MiB / 5.786GiB   28.7kB / 16.5kB
+--- Seg: 11 ---
+NAME                  CPU %     MEM USAGE / LIMIT     NET I/O
+reprompt-frontend-1   131.44%   1.417GiB / 5.786GiB   5.55MB / 5.68MB
+reprompt-worker-1     0.00%     181.4MiB / 5.786GiB   17.9kB / 25.6kB
+reprompt-backend-1    27.76%    314.1MiB / 5.786GiB   228kB / 78.7kB
+reprompt-redis-1      1.03%     9.113MiB / 5.786GiB   28.7kB / 16.5kB
+--- Seg: 12 ---
+NAME                  CPU %     MEM USAGE / LIMIT     NET I/O
+reprompt-frontend-1   85.08%    1.516GiB / 5.786GiB   5.58MB / 5.78MB
+reprompt-worker-1     0.00%     181.4MiB / 5.786GiB   17.9kB / 25.6kB
+reprompt-backend-1    58.09%    315.1MiB / 5.786GiB   254kB / 89.1kB
+reprompt-redis-1      1.51%     9.113MiB / 5.786GiB   28.7kB / 16.5kB
+--- Seg: 13 ---
+NAME                  CPU %     MEM USAGE / LIMIT     NET I/O
+reprompt-frontend-1   253.68%   1.72GiB / 5.786GiB    5.75MB / 5.81MB
+reprompt-worker-1     0.00%     181.4MiB / 5.786GiB   17.9kB / 25.6kB
+reprompt-backend-1    37.10%    315.6MiB / 5.786GiB   260kB / 110kB
+reprompt-redis-1      1.64%     9.117MiB / 5.786GiB   29kB / 16.6kB
+--- Seg: 14 ---
+NAME                  CPU %     MEM USAGE / LIMIT     NET I/O
+reprompt-frontend-1   247.94%   1.712GiB / 5.786GiB   5.84MB / 5.95MB
+reprompt-worker-1     0.00%     181.4MiB / 5.786GiB   17.9kB / 25.6kB
+reprompt-backend-1    59.93%    315.7MiB / 5.786GiB   418kB / 150kB
+reprompt-redis-1      1.36%     9.117MiB / 5.786GiB   29kB / 16.7kB
+--- Seg: 15 ---
+NAME                  CPU %     MEM USAGE / LIMIT     NET I/O
+reprompt-frontend-1   318.28%   1.714GiB / 5.786GiB   6.77MB / 5.98MB
+reprompt-worker-1     0.00%     181.4MiB / 5.786GiB   18.6kB / 26.9kB
+reprompt-backend-1    40.57%    315.7MiB / 5.786GiB   419kB / 150kB
+reprompt-redis-1      2.61%     9.117MiB / 5.786GiB   29kB / 16.7kB
+--- Seg: 16 ---
+NAME                  CPU %     MEM USAGE / LIMIT     NET I/O
+reprompt-frontend-1   346.75%   1.68GiB / 5.786GiB    7.33MB / 5.98MB
+reprompt-worker-1     0.00%     181.4MiB / 5.786GiB   20.4kB / 30kB
+reprompt-backend-1    65.69%    315.7MiB / 5.786GiB   420kB / 150kB
+reprompt-redis-1      2.07%     9.125MiB / 5.786GiB   33.4kB / 19.2kB
+--- Seg: 17 ---
+NAME                  CPU %     MEM USAGE / LIMIT     NET I/O
+reprompt-frontend-1   331.44%   1.671GiB / 5.786GiB   7.51MB / 6.13MB
+reprompt-worker-1     0.00%     181.4MiB / 5.786GiB   20.5kB / 30.1kB
+reprompt-backend-1    60.25%    315.7MiB / 5.786GiB   420kB / 150kB
+reprompt-redis-1      1.52%     9.125MiB / 5.786GiB   33.5kB / 19.3kB
+--- Seg: 18 ---
+NAME                  CPU %     MEM USAGE / LIMIT     NET I/O
+reprompt-frontend-1   363.40%   1.906GiB / 5.786GiB   7.76MB / 6.57MB
+reprompt-worker-1     0.00%     181.4MiB / 5.786GiB   20.5kB / 30.1kB
+reprompt-backend-1    67.36%    315.7MiB / 5.786GiB   425kB / 159kB
+reprompt-redis-1      4.09%     9.125MiB / 5.786GiB   33.5kB / 19.3kB
+--- Seg: 19 ---
+NAME                  CPU %     MEM USAGE / LIMIT     NET I/O
+reprompt-frontend-1   374.71%   1.945GiB / 5.786GiB   8.31MB / 6.69MB
+reprompt-worker-1     0.00%     181.4MiB / 5.786GiB   20.5kB / 30.1kB
+reprompt-backend-1    47.43%    315.7MiB / 5.786GiB   425kB / 159kB
+reprompt-redis-1      3.17%     9.375MiB / 5.786GiB   33.5kB / 19.3kB
+--- Seg: 20 ---
+NAME                  CPU %     MEM USAGE / LIMIT     NET I/O
+reprompt-frontend-1   375.90%   1.964GiB / 5.786GiB   8.95MB / 6.85MB
+reprompt-worker-1     0.00%     181.4MiB / 5.786GiB   20.5kB / 30.1kB
+reprompt-backend-1    56.11%    315.7MiB / 5.786GiB   426kB / 159kB
+reprompt-redis-1      6.02%     9.125MiB / 5.786GiB   33.5kB / 19.3kB
+--- Seg: 21 ---
+NAME                  CPU %     MEM USAGE / LIMIT     NET I/O
+reprompt-frontend-1   357.51%   1.958GiB / 5.786GiB   9.46MB / 7.01MB
+reprompt-worker-1     0.00%     181.4MiB / 5.786GiB   20.5kB / 30.1kB
+reprompt-backend-1    45.53%    315.7MiB / 5.786GiB   426kB / 159kB
+reprompt-redis-1      2.77%     9.125MiB / 5.786GiB   33.5kB / 19.3kB
+--- Seg: 22 ---
+NAME                  CPU %     MEM USAGE / LIMIT     NET I/O
+reprompt-frontend-1   510.31%   1.796GiB / 5.786GiB   9.95MB / 7.24MB
+reprompt-worker-1     0.00%     181.4MiB / 5.786GiB   20.5kB / 30.1kB
+reprompt-backend-1    44.09%    315.7MiB / 5.786GiB   426kB / 159kB
+reprompt-redis-1      3.01%     9.129MiB / 5.786GiB   33.5kB / 19.3kB
+--- Seg: 23 ---
+NAME                  CPU %     MEM USAGE / LIMIT     NET I/O
+reprompt-frontend-1   317.84%   1.823GiB / 5.786GiB   9.95MB / 7.24MB
+reprompt-worker-1     0.00%     181.4MiB / 5.786GiB   20.5kB / 30.1kB
+reprompt-backend-1    26.09%    315.7MiB / 5.786GiB   426kB / 159kB
+reprompt-redis-1      0.94%     9.125MiB / 5.786GiB   33.5kB / 19.3kB
+--- Seg: 24 ---
+NAME                  CPU %     MEM USAGE / LIMIT     NET I/O
+reprompt-frontend-1   315.94%   1.787GiB / 5.786GiB   9.95MB / 7.24MB
+reprompt-worker-1     0.00%     181.4MiB / 5.786GiB   20.5kB / 30.1kB
+reprompt-backend-1    53.87%    315.7MiB / 5.786GiB   426kB / 159kB
+reprompt-redis-1      0.72%     9.125MiB / 5.786GiB   33.5kB / 19.3kB
+--- Seg: 25 ---
+NAME                  CPU %     MEM USAGE / LIMIT     NET I/O
+reprompt-frontend-1   309.40%   1.662GiB / 5.786GiB   10.3MB / 8.04MB
+reprompt-worker-1     0.00%     181.4MiB / 5.786GiB   20.5kB / 30.1kB
+reprompt-backend-1    57.02%    315.7MiB / 5.786GiB   426kB / 159kB
+reprompt-redis-1      0.83%     9.125MiB / 5.786GiB   33.5kB / 19.3kB
+--- Seg: 26 ---
+NAME                  CPU %     MEM USAGE / LIMIT     NET I/O
+reprompt-frontend-1   240.53%   1.653GiB / 5.786GiB   10.3MB / 8.16MB
+reprompt-worker-1     0.00%     181.4MiB / 5.786GiB   20.5kB / 30.1kB
+reprompt-backend-1    36.86%    315.7MiB / 5.786GiB   426kB / 159kB
+reprompt-redis-1      1.20%     9.125MiB / 5.786GiB   33.5kB / 19.3kB
+--- Seg: 27 ---
+NAME                  CPU %     MEM USAGE / LIMIT     NET I/O
+reprompt-frontend-1   268.29%   1.709GiB / 5.786GiB   10.4MB / 8.21MB
+reprompt-worker-1     0.00%     181.4MiB / 5.786GiB   20.5kB / 30.1kB
+reprompt-backend-1    32.37%    315.7MiB / 5.786GiB   426kB / 159kB
+reprompt-redis-1      0.79%     9.125MiB / 5.786GiB   33.5kB / 19.3kB
+--- Seg: 28 ---
+NAME                  CPU %     MEM USAGE / LIMIT     NET I/O
+reprompt-frontend-1   230.63%   1.833GiB / 5.786GiB   10.4MB / 8.21MB
+reprompt-worker-1     0.00%     181.4MiB / 5.786GiB   20.5kB / 30.1kB
+reprompt-backend-1    43.53%    315.7MiB / 5.786GiB   426kB / 160kB
+reprompt-redis-1      1.52%     9.125MiB / 5.786GiB   33.5kB / 19.3kB
+--- Seg: 29 ---
+NAME                  CPU %     MEM USAGE / LIMIT     NET I/O
+reprompt-frontend-1   373.74%   2.049GiB / 5.786GiB   10.4MB / 9.01MB
+reprompt-worker-1     0.00%     181.4MiB / 5.786GiB   20.5kB / 30.1kB
+reprompt-backend-1    35.01%    315.7MiB / 5.786GiB   426kB / 160kB
+reprompt-redis-1      1.08%     9.125MiB / 5.786GiB   33.5kB / 19.3kB
+--- Seg: 30 ---
+NAME                  CPU %     MEM USAGE / LIMIT     NET I/O
+reprompt-frontend-1   0.00%     2.061GiB / 5.786GiB   10.5MB / 9.11MB
+reprompt-worker-1     0.00%     181.4MiB / 5.786GiB   20.5kB / 30.1kB
+reprompt-backend-1    59.99%    315.7MiB / 5.786GiB   426kB / 160kB
+reprompt-redis-1      1.73%     9.125MiB / 5.786GiB   33.5kB / 19.3kB
+--- Seg: 31 ---
+NAME                  CPU %     MEM USAGE / LIMIT     NET I/O
+reprompt-frontend-1   107.54%   2.076GiB / 5.786GiB   10.5MB / 9.11MB
+reprompt-worker-1     0.05%     181.4MiB / 5.786GiB   20.5kB / 30.1kB
+reprompt-backend-1    66.93%    315.7MiB / 5.786GiB   426kB / 160kB
+reprompt-redis-1      0.88%     9.125MiB / 5.786GiB   33.5kB / 19.3kB
+--- Seg: 32 ---
+NAME                  CPU %     MEM USAGE / LIMIT     NET I/O
+reprompt-frontend-1   0.34%     2.071GiB / 5.786GiB   10.5MB / 9.11MB
+reprompt-worker-1     0.00%     181.4MiB / 5.786GiB   20.5kB / 30.1kB
+reprompt-backend-1    33.14%    315.7MiB / 5.786GiB   426kB / 160kB
+reprompt-redis-1      0.69%     9.125MiB / 5.786GiB   33.5kB / 19.3kB
+--- Seg: 33 ---
+NAME                  CPU %     MEM USAGE / LIMIT     NET I/O
+reprompt-frontend-1   0.00%     2.071GiB / 5.786GiB   10.5MB / 9.11MB
+reprompt-worker-1     0.00%     181.4MiB / 5.786GiB   20.5kB / 30.1kB
+reprompt-backend-1    35.52%    315.7MiB / 5.786GiB   426kB / 160kB
+reprompt-redis-1      0.78%     9.125MiB / 5.786GiB   33.5kB / 19.3kB
+--- Seg: 34 ---
+NAME                  CPU %     MEM USAGE / LIMIT     NET I/O
+reprompt-frontend-1   0.07%     1.75GiB / 5.786GiB    10.5MB / 9.11MB
+reprompt-worker-1     0.00%     181.4MiB / 5.786GiB   20.5kB / 30.1kB
+reprompt-backend-1    60.78%    315.7MiB / 5.786GiB   426kB / 160kB
+reprompt-redis-1      0.74%     9.125MiB / 5.786GiB   33.5kB / 19.3kB
+--- Seg: 35 ---
+NAME                  CPU %     MEM USAGE / LIMIT     NET I/O
+reprompt-frontend-1   0.10%     1.745GiB / 5.786GiB   10.5MB / 9.11MB
+reprompt-worker-1     0.00%     181.4MiB / 5.786GiB   20.5kB / 30.1kB
+reprompt-backend-1    34.33%    315.7MiB / 5.786GiB   426kB / 160kB
+reprompt-redis-1      0.67%     9.125MiB / 5.786GiB   33.5kB / 19.3kB
+--- Seg: 36 ---
+NAME                  CPU %     MEM USAGE / LIMIT     NET I/O
+reprompt-frontend-1   0.00%     1.745GiB / 5.786GiB   10.5MB / 9.11MB
+reprompt-worker-1     0.00%     181.4MiB / 5.786GiB   20.5kB / 30.1kB
+reprompt-backend-1    55.30%    315.7MiB / 5.786GiB   426kB / 160kB
+reprompt-redis-1      0.70%     9.125MiB / 5.786GiB   33.5kB / 19.3kB
+--- Seg: 37 ---
+NAME                  CPU %     MEM USAGE / LIMIT     NET I/O
+reprompt-frontend-1   0.00%     1.745GiB / 5.786GiB   10.5MB / 9.11MB
+reprompt-worker-1     0.00%     181.4MiB / 5.786GiB   20.5kB / 30.1kB
+reprompt-backend-1    44.15%    315.7MiB / 5.786GiB   426kB / 160kB
+reprompt-redis-1      0.81%     9.125MiB / 5.786GiB   33.5kB / 19.3kB
+--- Seg: 38 ---
+NAME                  CPU %     MEM USAGE / LIMIT     NET I/O
+reprompt-frontend-1   0.00%     1.745GiB / 5.786GiB   10.5MB / 9.11MB
+reprompt-worker-1     0.00%     181.4MiB / 5.786GiB   20.5kB / 30.1kB
+reprompt-backend-1    34.87%    315.7MiB / 5.786GiB   426kB / 160kB
+reprompt-redis-1      0.72%     9.125MiB / 5.786GiB   33.5kB / 19.3kB
+--- Seg: 39 ---
+NAME                  CPU %     MEM USAGE / LIMIT     NET I/O
+reprompt-frontend-1   0.03%     1.745GiB / 5.786GiB   10.5MB / 9.11MB
+reprompt-worker-1     0.00%     181.4MiB / 5.786GiB   20.5kB / 30.1kB
+reprompt-backend-1    60.79%    315.9MiB / 5.786GiB   426kB / 160kB
+reprompt-redis-1      0.64%     9.125MiB / 5.786GiB   33.5kB / 19.3kB
+--- Seg: 40 ---
+NAME                  CPU %     MEM USAGE / LIMIT     NET I/O
+reprompt-frontend-1   0.00%     1.745GiB / 5.786GiB   10.5MB / 9.11MB
+reprompt-worker-1     0.00%     181.4MiB / 5.786GiB   20.5kB / 30.1kB
+reprompt-backend-1    33.24%    315.7MiB / 5.786GiB   426kB / 160kB
+reprompt-redis-1      0.73%     9.375MiB / 5.786GiB   33.5kB / 19.3kB
+--- Seg: 41 ---
+NAME                  CPU %     MEM USAGE / LIMIT     NET I/O
+reprompt-frontend-1   0.72%     1.745GiB / 5.786GiB   10.5MB / 9.12MB
+reprompt-worker-1     0.00%     181.4MiB / 5.786GiB   20.5kB / 30.1kB
+reprompt-backend-1    43.11%    315.7MiB / 5.786GiB   426kB / 160kB
+reprompt-redis-1      0.91%     9.125MiB / 5.786GiB   33.5kB / 19.3kB
+--- Seg: 42 ---
+NAME                  CPU %     MEM USAGE / LIMIT     NET I/O
+reprompt-frontend-1   45.08%    1.75GiB / 5.786GiB    12MB / 9.12MB
+reprompt-worker-1     0.00%     181.4MiB / 5.786GiB   20.5kB / 30.1kB
+reprompt-backend-1    30.62%    315.7MiB / 5.786GiB   426kB / 160kB
+reprompt-redis-1      1.28%     9.125MiB / 5.786GiB   33.5kB / 19.3kB
+--- Seg: 43 ---
+NAME                  CPU %     MEM USAGE / LIMIT     NET I/O
+reprompt-frontend-1   0.00%     1.768GiB / 5.786GiB   24.1MB / 9.14MB
+reprompt-worker-1     0.00%     181.4MiB / 5.786GiB   20.5kB / 30.2kB
+reprompt-backend-1    66.51%    315.7MiB / 5.786GiB   426kB / 160kB
+reprompt-redis-1      1.83%     9.125MiB / 5.786GiB   33.6kB / 19.3kB
+--- Seg: 44 ---
+NAME                  CPU %     MEM USAGE / LIMIT     NET I/O
+reprompt-frontend-1   0.40%     1.768GiB / 5.786GiB   24.1MB / 9.14MB
+reprompt-worker-1     0.00%     181.4MiB / 5.786GiB   20.5kB / 30.2kB
+reprompt-backend-1    66.00%    315.7MiB / 5.786GiB   426kB / 160kB
+reprompt-redis-1      1.24%     9.125MiB / 5.786GiB   33.6kB / 19.3kB
+--- Seg: 45 ---
+NAME                  CPU %     MEM USAGE / LIMIT     NET I/O
+reprompt-frontend-1   0.00%     1.768GiB / 5.786GiB   24.1MB / 9.14MB
+reprompt-worker-1     0.00%     181.4MiB / 5.786GiB   20.6kB / 30.3kB
+reprompt-backend-1    25.52%    315.9MiB / 5.786GiB   426kB / 160kB
+reprompt-redis-1      0.92%     9.125MiB / 5.786GiB   33.7kB / 19.4kB
+--- Seg: 46 ---
+NAME                  CPU %     MEM USAGE / LIMIT     NET I/O
+reprompt-frontend-1   0.50%     1.689GiB / 5.786GiB   24.2MB / 9.14MB
+reprompt-worker-1     0.00%     181.4MiB / 5.786GiB   20.6kB / 30.3kB
+reprompt-backend-1    113.33%   320MiB / 5.786GiB     525kB / 287kB
+reprompt-redis-1      1.35%     9.125MiB / 5.786GiB   33.7kB / 19.4kB
+--- Seg: 47 ---
+NAME                  CPU %     MEM USAGE / LIMIT     NET I/O
+reprompt-frontend-1   0.09%     1.689GiB / 5.786GiB   24.2MB / 9.14MB
+reprompt-worker-1     39.03%    207.9MiB / 5.786GiB   40.8kB / 41.3kB
+reprompt-backend-1    85.06%    324.7MiB / 5.786GiB   651kB / 424kB
+reprompt-redis-1      1.79%     9.184MiB / 5.786GiB   42.2kB / 23.8kB
+--- Seg: 48 ---
+NAME                  CPU %     MEM USAGE / LIMIT     NET I/O
+reprompt-frontend-1   0.00%     1.689GiB / 5.786GiB   24.2MB / 9.14MB
+reprompt-worker-1     40.59%    243.1MiB / 5.786GiB   13.2MB / 116kB
+reprompt-backend-1    74.40%    327MiB / 5.786GiB     788kB / 561kB
+reprompt-redis-1      1.47%     9.184MiB / 5.786GiB   48.7kB / 24.6kB
+--- Seg: 49 ---
+NAME                  CPU %     MEM USAGE / LIMIT     NET I/O
+reprompt-frontend-1   0.00%     1.689GiB / 5.786GiB   24.2MB / 9.14MB
+reprompt-worker-1     236.81%   415.5MiB / 5.786GiB   67.4MB / 240kB
+reprompt-backend-1    78.91%    327.5MiB / 5.786GiB   913kB / 693kB
+reprompt-redis-1      3.42%     9.191MiB / 5.786GiB   53.6kB / 25.2kB
+--- Seg: 50 ---
+NAME                  CPU %     MEM USAGE / LIMIT     NET I/O
+reprompt-frontend-1   0.02%     1.729GiB / 5.786GiB   24.2MB / 9.17MB
+reprompt-worker-1     107.49%   903.8MiB / 5.786GiB   67.4MB / 240kB
+reprompt-backend-1    49.85%    327.5MiB / 5.786GiB   919kB / 733kB
+reprompt-redis-1      1.35%     9.191MiB / 5.786GiB   53.6kB / 25.2kB
+--- Seg: 51 ---
+NAME                  CPU %     MEM USAGE / LIMIT     NET I/O
+reprompt-frontend-1   0.00%     1.673GiB / 5.786GiB   24.2MB / 9.17MB
+reprompt-worker-1     319.58%   1.138GiB / 5.786GiB   67.5MB / 243kB
+reprompt-backend-1    37.50%    327.5MiB / 5.786GiB   919kB / 733kB
+reprompt-redis-1      0.73%     9.203MiB / 5.786GiB   53.6kB / 25.2kB
+--- Seg: 52 ---
+NAME                  CPU %     MEM USAGE / LIMIT     NET I/O
+reprompt-frontend-1   0.06%     1.673GiB / 5.786GiB   24.2MB / 9.17MB
+reprompt-worker-1     65.70%    328.3MiB / 5.786GiB   67.5MB / 270kB
+reprompt-backend-1    37.92%    327.5MiB / 5.786GiB   919kB / 733kB
+reprompt-redis-1      1.10%     9.27MiB / 5.786GiB    61.1kB / 28.5kB
+--- Seg: 53 ---
+NAME                  CPU %     MEM USAGE / LIMIT     NET I/O
+reprompt-frontend-1   186.99%   1.691GiB / 5.786GiB   24.2MB / 9.19MB
+reprompt-worker-1     103.99%   859.8MiB / 5.786GiB   67.5MB / 270kB
+reprompt-backend-1    26.69%    327.5MiB / 5.786GiB   919kB / 733kB
+reprompt-redis-1      0.64%     9.27MiB / 5.786GiB    61.1kB / 28.5kB
+--- Seg: 54 ---
+NAME                  CPU %     MEM USAGE / LIMIT     NET I/O
+reprompt-frontend-1   91.23%    1.758GiB / 5.786GiB   24.2MB / 9.19MB
+reprompt-worker-1     234.12%   1.121GiB / 5.786GiB   67.6MB / 273kB
+reprompt-backend-1    54.58%    327.5MiB / 5.786GiB   919kB / 733kB
+reprompt-redis-1      0.61%     9.281MiB / 5.786GiB   61.1kB / 28.5kB
+--- Seg: 55 ---
+NAME                  CPU %     MEM USAGE / LIMIT     NET I/O
+reprompt-frontend-1   90.00%    1.736GiB / 5.786GiB   24.4MB / 9.32MB
+reprompt-worker-1     254.14%   1.12GiB / 5.786GiB    67.6MB / 273kB
+reprompt-backend-1    47.90%    327.5MiB / 5.786GiB   919kB / 733kB
+reprompt-redis-1      1.17%     9.281MiB / 5.786GiB   61.1kB / 28.5kB
+--- Seg: 56 ---
+NAME                  CPU %     MEM USAGE / LIMIT     NET I/O
+reprompt-frontend-1   285.39%   1.798GiB / 5.786GiB   37.9MB / 9.39MB
+reprompt-worker-1     11.28%    237.2MiB / 5.786GiB   67.6MB / 299kB
+reprompt-backend-1    32.73%    327.5MiB / 5.786GiB   919kB / 733kB
+reprompt-redis-1      1.43%     9.289MiB / 5.786GiB   68.7kB / 31.7kB
+--- Seg: 57 ---
+NAME                  CPU %     MEM USAGE / LIMIT     NET I/O
+reprompt-frontend-1   206.01%   1.8GiB / 5.786GiB     37.9MB / 9.39MB
+reprompt-worker-1     81.86%    749.1MiB / 5.786GiB   67.6MB / 299kB
+reprompt-backend-1    33.94%    327.5MiB / 5.786GiB   919kB / 733kB
+reprompt-redis-1      1.34%     9.289MiB / 5.786GiB   68.7kB / 31.7kB
+--- Seg: 58 ---
+NAME                  CPU %     MEM USAGE / LIMIT     NET I/O
+reprompt-frontend-1   144.38%   1.826GiB / 5.786GiB   37.9MB / 9.6MB
+reprompt-worker-1     103.73%   1019MiB / 5.786GiB    67.6MB / 301kB
+reprompt-backend-1    29.65%    327.5MiB / 5.786GiB   919kB / 733kB
+reprompt-redis-1      0.83%     9.289MiB / 5.786GiB   68.7kB / 31.7kB
+--- Seg: 59 ---
+NAME                  CPU %     MEM USAGE / LIMIT     NET I/O
+reprompt-frontend-1   249.75%   1.923GiB / 5.786GiB   37.9MB / 9.77MB
+reprompt-worker-1     190.29%   1.185GiB / 5.786GiB   67.7MB / 302kB
+reprompt-backend-1    133.59%   327.4MiB / 5.786GiB   1.23MB / 897kB
+reprompt-redis-1      7.29%     9.289MiB / 5.786GiB   68.7kB / 31.7kB
+--- Seg: 60 ---
+NAME                  CPU %     MEM USAGE / LIMIT     NET I/O
+reprompt-frontend-1   175.69%   2.198GiB / 5.786GiB   38.7MB / 9.79MB
+reprompt-worker-1     169.63%   1.186GiB / 5.786GiB   67.7MB / 302kB
+reprompt-backend-1    56.05%    279.5MiB / 5.786GiB   1.33MB / 954kB
+reprompt-redis-1      0.98%     9.539MiB / 5.786GiB   68.7kB / 31.7kB

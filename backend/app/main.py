@@ -3,6 +3,7 @@ import logging
 import secrets
 import uuid
 import time
+import psutil
 
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request, Depends, HTTPException, status
@@ -44,13 +45,22 @@ logging.basicConfig(
 )
 logger = logging.getLogger("backend")
 
+
+# --- SILENCIADOR DE HEALTH CHECKS ---
+class EndpointFilter(logging.Filter):
+    def filter(self, record: logging.LogRecord) -> bool:
+        return record.getMessage().find("GET /api/health") == -1
+
+
+logging.getLogger("uvicorn.access").addFilter(EndpointFilter())
+# ---------------------------------------------------
+
 security = HTTPBasic()
 
 
 class CorrelationIdMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         correlation_id = request.headers.get("X-Request-ID", str(uuid.uuid4()))
-
         request.state.correlation_id = correlation_id
 
         start_time = time.time()
@@ -60,6 +70,44 @@ class CorrelationIdMiddleware(BaseHTTPMiddleware):
         response.headers["X-Request-ID"] = correlation_id
         response.headers["X-Process-Time"] = str(process_time)
         return response
+
+
+# --- MIDDLEWARE DE TELEMETRÍA ---
+class ResourceMonitorMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        if (
+            request.url.path in ["/api/health", "/docs", "/openapi.json"]
+            or request.method == "OPTIONS"
+        ):
+            return await call_next(request)
+
+        proceso = psutil.Process(os.getpid())
+
+        # Fotografía ANTES de procesar la petición
+        ram_antes_mb = proceso.memory_info().rss / (1024 * 1024)
+        cpu_antes = proceso.cpu_percent(interval=None)
+        start_time = time.time()
+
+        response = await call_next(request)
+
+        # Fotografía DESPUÉS de procesar la petición
+        tiempo_total = time.time() - start_time
+        ram_despues_mb = proceso.memory_info().rss / (1024 * 1024)
+        cpu_despues = proceso.cpu_percent(interval=None)
+
+        diferencia_ram = ram_despues_mb - ram_antes_mb
+
+        logger.info(
+            f"📊 [APM] {request.method} {request.url.path} | "
+            f"T: {tiempo_total:.2f}s | "
+            f"RAM: {ram_despues_mb:.2f}MB (Δ {diferencia_ram:+.2f}MB) | "
+            f"CPU Δ: {cpu_despues}%"
+        )
+
+        return response
+
+
+# --------------------------------------------
 
 
 def get_current_username(credentials: HTTPBasicCredentials = Depends(security)):
@@ -102,7 +150,9 @@ app = FastAPI(
     openapi_url=None,
 )
 
+# Inyectamos los middlewares
 app.add_middleware(CorrelationIdMiddleware)
+app.add_middleware(ResourceMonitorMiddleware)
 
 ALLOWED_ORIGINS = [
     "http://localhost:3000",
@@ -122,6 +172,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
 # SENTRY
 @app.get("/api/debug-sentry")
 def trigger_error():
@@ -130,13 +181,13 @@ def trigger_error():
     return {"message": "Esto no debería llegarse a leer"}
 
 
-# 🩺 HEALTH CHECK
+# HEALTH CHECK
 @app.api_route("/api/health", methods=["GET", "HEAD"], include_in_schema=False)
 async def health_check():
     return {"status": "ok"}
 
 
-# 📚 DOCUMENTACIÓN PROTEGIDA
+# DOCUMENTACIÓN PROTEGIDA
 @app.get("/docs", include_in_schema=False)
 async def get_swagger_documentation(username: str = Depends(get_current_username)):
     return get_swagger_ui_html(openapi_url="/openapi.json", title="Reprompt API Docs")
