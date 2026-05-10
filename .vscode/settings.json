@@ -1,7 +1,7 @@
 {
   "sonarlint.connectedMode.project": {
     "connectionId": "trosdesuru",
-    "projectKey": "usuario_bot_descarga"
+    "projectKey": "trosdesuru_scraper-galerias"
   },
   "standard.enable": false,
   "python-envs.defaultEnvManager": "ms-python.python:system",

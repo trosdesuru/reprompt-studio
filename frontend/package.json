@@ -8,7 +8,7 @@
     "format": "prettier --write \"{app,src}/**/*.{ts,tsx,css}\"",
     "start": "next start",
     "lint": "next lint",
-    "test": "jest",
+    "test": "jest --coverage",
     "test:watch": "jest --watch",
     "db:seed": "cd .. && docker compose exec -T backend python scripts/e2e_seed.py",
     "db:clean": "cd .. && docker compose exec -T backend python scripts/e2e_clean.py",
