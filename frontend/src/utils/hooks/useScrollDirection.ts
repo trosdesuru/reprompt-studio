@@ -2,10 +2,15 @@
 
 import { useState, useEffect } from "react";
 
-export function useScrollDirection() {
+export function useScrollDirection(enabled: boolean = true) {
   const [scrollDirection, setScrollDirection] = useState<"up" | "down">("up");
 
   useEffect(() => {
+    if (!enabled) {
+      setScrollDirection("up");
+      return;
+    }
+
     let lastScrollY = 0;
     let ticking = false;
 
@@ -27,7 +32,6 @@ export function useScrollDirection() {
           const clientHeight = window.innerHeight;
           const scrollHeight = document.documentElement.scrollHeight;
 
-          // Margen de 10px para evitar que temblores del dedo oculten el navbar
           if (Math.abs(currentScrollY - lastScrollY) < 10) {
             ticking = false;
             return;
@@ -53,7 +57,7 @@ export function useScrollDirection() {
     window.addEventListener("scroll", onScroll, false);
 
     return () => window.removeEventListener("scroll", onScroll, false);
-  }, []);
+  }, [enabled]);
 
   return scrollDirection;
 }

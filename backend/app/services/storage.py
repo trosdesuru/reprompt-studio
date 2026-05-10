@@ -1,4 +1,3 @@
-# backend/app/services/storage.py
 import boto3
 import logging
 from botocore.config import Config

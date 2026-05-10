@@ -54,7 +54,7 @@ export const useStudioUI = create<StudioUIState>((set, get) => ({
   activeDirectoryId: null,
   searchQuery: "",
   isSearching: false,
-  isSidebarOpen: false,
+  isSidebarOpen: true,
 
   deletingIds: [],
   setDeletingIds: (ids) => set({ deletingIds: ids }),

@@ -16,8 +16,6 @@ from app.core.config import settings
 from app.models.prompt import ImagePrompt
 from app.models.directory import Directory
 from app.services.security import http_session
-
-# Importamos nuestras utilidades limpias
 from app.utils.storage import guardar_archivo
 
 logger = logging.getLogger("downloader")
@@ -77,7 +75,7 @@ def generar_zip_coleccion(directory_id: str, user_email: str):
                     }
                 )
             except Exception:
-                continue  # Tolerancia a fallos: si una imagen falla, el ZIP sigue
+                continue  # Tolerancia a fallos, si una imagen falla, el ZIP sigue
 
         # 5. Escribir el manifiesto JSON con todos los prompts
         zip_file.writestr("prompts_metadata.json", json.dumps(metadata_list, indent=2))
@@ -93,14 +91,14 @@ def generar_zip_coleccion(directory_id: str, user_email: str):
         ExtraArgs={"ContentType": "application/zip"},
     )
 
-    # 7. Generar URL pre-firmada (caduca en 1 hora)
+    # 7. Generar URL pre-firmada de 1 hora de vida
     download_url = s3_client.generate_presigned_url(
         "get_object",
         Params={"Bucket": settings.R2_BUCKET_NAME, "Key": zip_key},
         ExpiresIn=3600,
     )
 
-    # (Opcional) Aquí notificarías al usuario vía WebSockets o Email de que su ZIP está listo
+    # Notificamos al usuario vía WebSockets que su ZIP está listo
     return download_url
 
 

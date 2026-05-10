@@ -1,7 +1,7 @@
 {
   "sonarlint.connectedMode.project": {
     "connectionId": "trosdesuru",
-    "projectKey": "tu_usuario_bot_descarga"
+    "projectKey": "usuario_bot_descarga"
   },
   "standard.enable": false,
   "python-envs.defaultEnvManager": "ms-python.python:system",
