@@ -2,16 +2,40 @@
   "common": {
     "loading": "Loading...",
     "error": "An error occurred",
-    "save": "Save"
+    "save": "Save",
+    "back": "Back",
+    "processing": "Processing...",
+    "complete": "Complete",
+    "terms": "Terms",
+    "privacy": "Privacy",
+    "legal": "Legal"
   },
   "nav": {
     "studio": "Studio",
     "gallery": "Gallery",
     "login": "Log In",
-    "join": "Sign Up"
+    "join": "Sign Up",
+    "my_studio_tooltip": "My Studio",
+    "extractor_tooltip": "Reprompt Extractor",
+    "theme_tooltip": "Toggle Theme",
+    "logout": "Log out"
   },
   "auth": {
-    "login_title": "Welcome back",
-    "join_title": "Join Reprompt"
+    "login_heading": "Welcome",
+    "login_highlight": "Back",
+    "login_subtitle": "Log in to manage your prompts",
+    "join_heading": "Join the",
+    "join_highlight": "Resistance",
+    "join_subtitle": "Store your AI-generated art",
+    "oauth_last_step": "Final",
+    "oauth_step": "Step",
+    "oauth_linking": "Linking:",
+    "placeholder_invite": "INVITE CODE",
+    "placeholder_email_user": "EMAIL OR USERNAME",
+    "placeholder_email": "EMAIL ADDRESS",
+    "btn_enter": "Log In",
+    "btn_confirm": "Confirm Access",
+    "btn_google": "Continue with Google",
+    "btn_discord": "Continue with Discord"
   }
 }

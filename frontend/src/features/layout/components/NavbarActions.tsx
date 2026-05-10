@@ -1,15 +1,25 @@
 "use client";
 
 import Link from "next/link";
+import { useParams } from "next/navigation";
+
 import { useState, useEffect } from "react";
+import { useTranslation } from "@/src/dictionaries/I18nProvider";
+
 import { useAuthStore } from "@/src/store/authStore";
 import { useTheme } from "@/src/utils/hooks/useTheme";
+
+import { Tooltip } from "@/src/system/atoms/Tooltip/Tooltip";
 import { UserDropdown } from "@/src/features/user/components/UserDropdown";
 import { NotificationDropdown } from "@/src/system/molecules/Navbar/NotificationDropdown";
+
 import { IconAlbum, IconSun, IconMoon, IconScanTraces } from "@tabler/icons-react";
-import { Tooltip } from "@/src/system/atoms/Tooltip/Tooltip";
 
 export function NavbarActions() {
+  const { t } = useTranslation();
+  const params = useParams();
+  const lang = params?.lang || "es";
+
   const user = useAuthStore((state) => state.user);
   const isLoadingAuth = useAuthStore((state) => state.isLoadingAuth);
 
@@ -31,25 +41,25 @@ export function NavbarActions() {
       ) : user ? (
         <>
           <div className="flex items-center gap-2">
-            <Tooltip content="Mi studio" side="bottom">
+            <Tooltip content={t("nav.my_studio_tooltip")} side="bottom">
               <Link
-                href="/es/studio"
+                href={`/${lang}/studio`}
                 className="flex items-center gap-2 px-4 py-2 bg-foreground text-background rounded-lg text-sm font-bold hover:opacity-90 transition-opacity"
               >
                 <IconAlbum size={18} />
-                Studio
+                {t("nav.studio")}
               </Link>
             </Tooltip>
 
             <Tooltip
-              content="Extractor Reprompt"
+              content={t("nav.extractor_tooltip")}
               side="bottom"
               className="bg-accent text-secondary"
             >
               <Link
-                href="/es/reprompt"
+                href={`/${lang}/reprompt`}
                 className="p-2 rounded-md text-muted-foreground hover:text-foreground transition-colors hover:bg-muted cursor-pointer"
-                title="Mi Estudio"
+                title={t("nav.extractor_tooltip")}
               >
                 <IconScanTraces size={22} />
               </Link>
@@ -58,11 +68,11 @@ export function NavbarActions() {
 
           <NotificationDropdown />
 
-          <Tooltip content="Cambiar Tema" side="bottom">
+          <Tooltip content={t("nav.theme_tooltip")} side="bottom">
             <button
               onClick={toggleTheme}
               className="p-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer transition-colors w-10 h-10 flex items-center justify-center"
-              title="Cambiar tema"
+              title={t("nav.theme_tooltip")}
             >
               {isDark ? <IconSun size={24} /> : <IconMoon size={24} />}
             </button>
@@ -72,10 +82,10 @@ export function NavbarActions() {
         </>
       ) : (
         <Link
-          href="/es/login"
+          href={`/${lang}/login`}
           className="text-sm font-bold px-4 py-2 bg-foreground text-background rounded-lg hover:opacity-90 transition-opacity"
         >
-          Entrar
+          {t("nav.login")}
         </Link>
       )}
     </div>

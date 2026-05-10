@@ -2,16 +2,40 @@
   "common": {
     "loading": "Cargando...",
     "error": "Ha ocurrido un error",
-    "save": "Guardar"
+    "save": "Guardar",
+    "back": "Volver",
+    "processing": "Procesando...",
+    "complete": "Completar",
+    "terms": "Términos",
+    "privacy": "Privacidad",
+    "legal": "Legal"
   },
   "nav": {
     "studio": "Estudio",
     "gallery": "Galería",
     "login": "Entrar",
-    "join": "Registro"
+    "join": "Registro",
+    "my_studio_tooltip": "Mi studio",
+    "extractor_tooltip": "Extractor Reprompt",
+    "theme_tooltip": "Cambiar Tema",
+    "logout": "Cerrar sesión"
   },
   "auth": {
-    "login_title": "Bienvenido de nuevo",
-    "join_title": "Únete a Reprompt"
+    "login_heading": "Bienvenido de",
+    "login_highlight": "Nuevo",
+    "login_subtitle": "Accede para gestionar tus prompts",
+    "join_heading": "Únete a la",
+    "join_highlight": "Resistencia",
+    "join_subtitle": "Almacena tu arte generado por IA",
+    "oauth_last_step": "Último",
+    "oauth_step": "Paso",
+    "oauth_linking": "Vinculando:",
+    "placeholder_invite": "CÓDIGO DE INVITACIÓN",
+    "placeholder_email_user": "EMAIL O USUARIO",
+    "placeholder_email": "CORREO ELECTRÓNICO",
+    "btn_enter": "Entrar",
+    "btn_confirm": "Confirmar Acceso",
+    "btn_google": "Continuar con Google",
+    "btn_discord": "Continuar con Discord"
   }
 }

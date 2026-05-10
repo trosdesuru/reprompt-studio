@@ -1,8 +1,6 @@
-// src/system/molecules/Auth/CredentialsForm.tsx
 import { IconMail, IconLock, IconTicket, IconLoader2 } from "@tabler/icons-react";
 
 interface CredentialsFormProps {
-  // ... (Mismos props de antes, no cambian)
   isLogin: boolean;
   isLoading: boolean;
   isSocialLoading: boolean;

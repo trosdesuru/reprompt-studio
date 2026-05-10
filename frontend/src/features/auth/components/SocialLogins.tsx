@@ -1,5 +1,5 @@
-// src/system/molecules/Auth/SocialLogins.tsx
 import { IconBrandGoogleFilled, IconBrandDiscordFilled, IconLoader2 } from "@tabler/icons-react";
+import { useTranslation } from "@/src/dictionaries/I18nProvider";
 
 interface SocialLoginsProps {
   isLoading: boolean;
@@ -17,6 +17,7 @@ export function SocialLogins({
   onDiscord,
 }: SocialLoginsProps) {
   const isDisabled = isLoading || isGoogleLoading || isDiscordLoading;
+  const { t } = useTranslation();
 
   return (
     <div className="flex flex-col gap-4">
@@ -31,7 +32,7 @@ export function SocialLogins({
         ) : (
           <IconBrandGoogleFilled size={18} className="text-red-500" />
         )}
-        Continuar con Google
+        {t("auth.btn_google")}
       </button>
 
       <button
@@ -45,7 +46,7 @@ export function SocialLogins({
         ) : (
           <IconBrandDiscordFilled size={18} />
         )}
-        Continuar con Discord
+        {t("auth.btn_discord")}
       </button>
     </div>
   );

@@ -50,7 +50,7 @@ export default async function RootLayout({
       className={cn(prompt.variable, "font-mono", jetbrainsMono.variable)}
     >
       <body
-        className="antialiased selection:bg-(--accent-color) selection:text-white"
+        className="antialiased selection:bg-foreground selection:text-muted"
         suppressHydrationWarning
       >
         <ThemeProvider

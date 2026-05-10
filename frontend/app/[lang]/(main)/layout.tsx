@@ -2,7 +2,7 @@
 
 import { Navbar } from "@/src/system/organisms/Navbar/Navbar";
 import { FadeIn } from "@/src/system/atoms/Animations/FadeIn";
-import { Footer } from "@/src/system/molecules/Navigation/Footer";
+import { Footer } from "@/src/system/organisms/Navigation/Footer";
 import { useFeedbackTrigger } from "@/src/features/feedback/hooks/useFeedbackTrigger";
 import { FeedbackBetaModal } from "@/src/features/feedback/components/FeedbackBetaModal";
 
