@@ -1,57 +1,26 @@
 "use client";
 
-import { useEffect } from "react";
-import { IconFolderPlus, IconCloudUpload, IconFolder } from "@tabler/icons-react";
-import { useStudioUI, Directory } from "@/src/store/useStudioUI";
+import { useStudioUI } from "@/src/store/useStudioUI";
 import { useAuthStore } from "@/src/store/authStore";
-import { useFileUploader } from "@/src/features/extractor/hooks/useFileUploader";
-import { useDirectoryActions } from "@/src/features/studio/hooks/useDirectoryActions";
-import { useDroppable } from "@dnd-kit/core";
+import { useTranslation } from "@/src/dictionaries/I18nProvider";
 
-import {
-  SidebarContainer,
-  SidebarDivider,
-  getSidebarItemClasses,
-} from "@/src/system/organisms/Sidebar";
-import { SidebarDirectory } from "@/src/system/molecules/Studio/SidebarDirectory";
+import { SidebarContainer, SidebarDivider } from "@/src/system/organisms/Sidebar";
 import { QuotaBar } from "@/src/features/admin/components/QuotaBar";
 
+import { SidebarExploreSection } from "./SidebarExploreSection";
+import { SidebarWorkspaceSection } from "./SidebarWorkspaceSection";
+
 export function StudioSidebar() {
-  const { directories, activeDirectoryId, setActiveDirectory } = useStudioUI();
+  const { t } = useTranslation();
   const { isSidebarOpen, setSidebarOpen } = useStudioUI();
-  const { createDirectory } = useDirectoryActions();
-  const { handleUploadClick } = useFileUploader();
   const { user } = useAuthStore();
-
-  useEffect(() => {
-    if (process.env.NODE_ENV === "development") {
-      console.log(
-        `👁️ [StudioSidebar] -> Renderizado completado. isSidebarOpen es ahora: ${isSidebarOpen}`,
-      );
-    }
-  }, [isSidebarOpen]);
-
-  const { setNodeRef: setRootDropRef, isOver: isRootOver } = useDroppable({
-    id: "root-zone",
-    data: { type: "root" },
-  });
-
-  const handleCreateRootFolder = async (e: React.MouseEvent) => {
-    e.stopPropagation();
-    const name = window.prompt("Nombre de la nueva carpeta principal:");
-    if (name?.trim()) await createDirectory(name.trim(), null);
-  };
-
-  const isRootActive = activeDirectoryId === null;
 
   return (
     <>
       {isSidebarOpen && (
         <div
           className="fixed inset-0 z-40 bg-surface/80 backdrop-blur-sm md:hidden"
-          onClick={() => {
-            setSidebarOpen(false);
-          }}
+          onClick={() => setSidebarOpen(false)}
           aria-hidden="true"
         />
       )}
@@ -68,56 +37,15 @@ export function StudioSidebar() {
       >
         <div className="w-65 h-full flex flex-col">
           <SidebarContainer>
-            <div className="px-3 mb-1 group relative mt-2 md:mt-0">
-              <div
-                ref={setRootDropRef}
-                onClick={() => {
-                  setActiveDirectory(null);
-                  if (window.innerWidth < 768) setSidebarOpen(false);
-                }}
-                role="button"
-                className={getSidebarItemClasses(isRootActive, isRootOver)}
-              >
-                <IconFolder size={18} stroke={1.5} />
-                <span className="tracking-widest flex-1 text-left text-xs">
-                  <span className="font-mono font-medium lowercase text-foreground/70">
-                    reprompt
-                  </span>{" "}
-                  root
-                </span>
-
-                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button
-                    onClick={handleCreateRootFolder}
-                    className="p-1 hover:bg-primary/20 rounded text-primary/80 transition-colors"
-                    title="Nueva carpeta en Root"
-                  >
-                    <IconFolderPlus size={14} stroke={2} />
-                  </button>
-                  <button
-                    onClick={handleUploadClick}
-                    className="p-1 hover:bg-primary/20 rounded text-primary/80 transition-colors"
-                    title="Subir a Root"
-                  >
-                    <IconCloudUpload size={14} stroke={2} />
-                  </button>
-                </div>
-              </div>
-            </div>
+            <SidebarExploreSection />
 
             <SidebarDivider />
 
-            <div className="px-3 flex flex-col gap-1">
-              {directories
-                .filter((d: Directory) => d.parent_id === null)
-                .map((dir: Directory) => (
-                  <SidebarDirectory key={dir.id} directory={dir} />
-                ))}
-            </div>
+            <SidebarWorkspaceSection />
 
-            <div className="px-3 pt-6 pb-10 mt-auto border-t border-border/50">
+            <div className="px-3 pt-6 pb-10 mt-auto border-t border-border/50 bg-background/50 backdrop-blur-sm z-10 sticky bottom-0">
               <QuotaBar
-                label="Prompts Almacenados"
+                label={t("studio.stored_prompts") || "Prompts Almacenados"}
                 used={user?.prompts_count || 0}
                 limit={user?.role === "artist" ? 5000 : 50}
               />
