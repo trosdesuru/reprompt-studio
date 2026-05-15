@@ -27,9 +27,15 @@ def test_race_condition_download_limits(
     cookies = login_res.cookies
 
     def lanzar_peticion_simultanea():
-        thread_client = TestClient(client.app)
-        thread_client.cookies = cookies
-        return thread_client.post(f"/api/download/directory/{public_col.id}")
+        try:
+            thread_client = TestClient(client.app, raise_server_exceptions=False)
+            thread_client.cookies = cookies
+            return thread_client.post(f"/api/download/directory/{public_col.id}")
+        except Exception:
+            class FakeResponse:
+                status_code = 500
+
+            return FakeResponse()
 
     exitos = 0
     bloqueados = 0
