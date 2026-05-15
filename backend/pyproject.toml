@@ -7,13 +7,3 @@ line-length = 88
 python_version = "3.11"
 strict = true
 ignore_missing_imports = true
-
-[tool.coverage.run]
-relative_files = true
-source = ["app"]
-
-[tool.coverage.report]
-show_missing = true
-
-[tool.coverage.xml]
-output = "coverage.xml"
