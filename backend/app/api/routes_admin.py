@@ -1,15 +1,15 @@
 import os
 import logging
 import secrets
+from typing import Annotated
 
-from fastapi import APIRouter, Depends, Request, HTTPException, BackgroundTasks
+from fastapi import APIRouter, Depends, Request, HTTPException, BackgroundTasks, status
 from sqlmodel import select, Session, func, delete, text
 from datetime import datetime, timedelta, timezone
 from pydantic import BaseModel
 
 from app.api.deps import get_optional_user, get_current_admin, get_session
 from app.models.user import User, AuditLog, InviteCode
-from app.models.user import AuditLog
 from app.models.directory import Directory
 from app.models.gallery import GalleryMetric
 from app.models.prompt import ImagePrompt
@@ -24,6 +24,11 @@ from app.services.auth_service import AuthService
 
 router = APIRouter()
 logger = logging.getLogger("backend")
+
+USER_NOT_FOUND = "Usuario no encontrado"
+
+ActiveAdmin = Annotated[User, Depends(get_current_admin)]
+DbSession = Annotated[Session, Depends(get_session)]
 
 
 class BugReport(BaseModel):
@@ -40,26 +45,34 @@ class UserActionRequest(BaseModel):
     action: str
 
 
+def sanitize_log(value: str) -> str:
+    if not value:
+        return ""
+    return value.replace("\n", " ").replace("\r", " ").strip()
+
+
 @router.post("/bugs")
 async def receive_bug_report(report: BugReport, request: Request):
-    """
-    Recibe la telemetría del Error Boundary del Frontend.
-    """
-    client_ip = request.client.host if request.client else "IP Desconocida"
+    client_ip = (
+        sanitize_log(request.client.host) if request.client else "IP Desconocida"
+    )
+
+    safe_url = sanitize_log(report.url)
+    safe_msg = sanitize_log(report.message)
+    safe_timestamp = sanitize_log(report.timestamp)
 
     logger.critical("=" * 60)
-    logger.critical(f"🚨 NUEVO BUG REPORTADO A Trosdesuru 🚨")
-    logger.critical(f"📍 Origen: {report.url} (IP: {client_ip})")
-    logger.critical(f"🕰️ Timestamp: {report.timestamp}")
-    logger.critical(f"💬 Mensaje: {report.message}")
+    logger.critical("NUEVO BUG REPORTADO A Trosdesuru")
+
+    logger.critical(f"Origen: {safe_url} (IP: {client_ip})")
+    logger.critical(f"Timestamp: {safe_timestamp}")
+    logger.critical(f"Mensaje: {safe_msg}")
 
     if report.stack:
-        logger.critical(f"📚 Stacktrace: \n{report.stack[:600]}...")
-    logger.critical("=" * 60)
+        safe_stack = sanitize_log(report.stack[:600])
+        logger.critical(f"📚 Stacktrace (Escapado): {safe_stack}...")
 
-    # NOTA FUTURA: Aquí podrías añadir un código simple usando 'httpx' o 'requests'
-    # para enviar este reporte como un mensaje push a un bot de Telegram, a un canal de Discord,
-    # o insertarlo en una nueva tabla 'AuditBugs' en Neon.tech.
+    logger.critical("=" * 60)
 
     return {
         "status": "success",
@@ -68,10 +81,7 @@ async def receive_bug_report(report: BugReport, request: Request):
 
 
 @router.get("/database-stats")
-def get_db_stats(
-    current_admin: User = Depends(get_current_admin),
-    session: Session = Depends(get_session),
-):
+def get_db_stats(current_admin: ActiveAdmin, session: DbSession):
     total_users = session.exec(select(func.count(User.id))).one()
     total_prompts = session.exec(select(func.count(ImagePrompt.id))).one()
     all_users = session.exec(select(User).limit(100)).all()
@@ -94,115 +104,69 @@ def get_db_stats(
     }
 
 
-@router.get("/storage-stats")
-def get_storage_stats(current_admin: User = Depends(get_current_admin)):
-    response = s3_client.list_objects_v2(Bucket=settings.R2_BUCKET_NAME)
-    archivos = response.get("Contents", [])
-
-    peso_total_bytes = sum(f["Size"] for f in archivos)
-
-    total_mb = round(peso_total_bytes / (1024 * 1024), 2)
-
-    return {
-        "status": "success",
-        "total_files": len(archivos),
-        "total_mb": total_mb,
-        "limit_mb": 10240,
-    }
-
-
-@router.get("/storage-stats")
-def get_storage_stats(current_admin: User = Depends(get_current_admin)):
+@router.get("/storage-stats", responses={500: {"description": "Fallo de conexión R2"}})
+def get_storage_stats(current_admin: ActiveAdmin):
     try:
-        # Pide a Cloudflare la lista de todos los objetos en tu Bucket
         response = s3_client.list_objects_v2(Bucket=settings.R2_BUCKET_NAME)
         archivos = response.get("Contents", [])
-
-        # Suma los bytes de todos los archivos
         peso_total_bytes = sum(f["Size"] for f in archivos)
-
-        # Convertimos a Megabytes y redondeamos a 2 decimales
         total_mb = round(peso_total_bytes / (1024 * 1024), 2)
 
         return {"status": "success", "total_files": len(archivos), "total_mb": total_mb}
-    except Exception as e:
-        logger.error(f"❌ Error leyendo R2: {e}")
+    except Exception:
+        # ✅ FIX S8572: Usar exception() captura el contexto automáticamente
+        logger.exception("❌ Error leyendo R2")
         raise HTTPException(
             status_code=500, detail="Fallo de conexión con Cloudflare R2"
         )
 
 
-@router.post("/garbage-collect")
-def run_garbage_collector(
-    current_admin: User = Depends(get_current_admin),
-    session: Session = Depends(get_session),
-):
-    """
-    🧹 El Recolector de Basura:
-    1. Borra Logs de más de 30 días.
-    2. Borra Códigos de Invitación usados hace más de 30 días.
-    3. Destruye archivos en /temp de R2 que tengan más de 24 horas.
-    """
+@router.post("/garbage-collect", responses={500: {"description": "Error en purga"}})
+def run_garbage_collector(current_admin: ActiveAdmin, session: DbSession):
     logger.info(
-        f"🧹 [GARBAGE_COLLECTOR] Protocolo iniciado por el Admin: {current_admin.username}"
+        f"🧹 [GARBAGE_COLLECTOR] Protocolo iniciado por: {current_admin.username}"
     )
 
     now = datetime.now(timezone.utc)
     thirty_days_ago = now - timedelta(days=30)
     one_day_ago = now - timedelta(days=1)
 
-    # --- 1. LIMPIEZA DE BASE DE DATOS (NEON) ---
     try:
-        # Borrar Logs Viejos
-        query_logs = delete(AuditLog).where(AuditLog.timestamp < thirty_days_ago)
-        result_logs = session.exec(query_logs)
-        deleted_logs = result_logs.rowcount
-
-        # Borrar Invitaciones Usadas y Viejas
-        query_invites = delete(InviteCode).where(
-            InviteCode.is_used == True, InviteCode.created_at < thirty_days_ago
-        )
-        result_invites = session.exec(query_invites)
-        deleted_invites = result_invites.rowcount
-
+        deleted_logs = session.exec(
+            delete(AuditLog).where(AuditLog.timestamp < thirty_days_ago)
+        ).rowcount
+        deleted_invites = session.exec(
+            delete(InviteCode).where(
+                InviteCode.is_used == True, InviteCode.created_at < thirty_days_ago
+            )
+        ).rowcount
         session.commit()
-    except Exception as e:
+    except Exception:
         session.rollback()
-        logger.error(f"❌ [GARBAGE_COLLECTOR] Fallo crítico en la DB: {e}")
+        logger.exception("❌ [GARBAGE_COLLECTOR] Fallo crítico en la DB")
         raise HTTPException(status_code=500, detail="Fallo en la purga de PostgreSQL")
 
-    # --- 2. LIMPIEZA DE INFRAESTRUCTURA (CLOUDFLARE R2) ---
     deleted_temp_files = 0
     try:
-        # Listamos objetos en la carpeta temp/
         response = s3_client.list_objects_v2(
             Bucket=settings.R2_BUCKET_NAME, Prefix="temp/"
         )
-
         if "Contents" in response:
-            objects_to_delete = []
-            for obj in response["Contents"]:
-                # Si el archivo lleva más de 24h sin ser movido a /prompts, es basura.
-                if obj["LastModified"] < one_day_ago:
-                    objects_to_delete.append({"Key": obj["Key"]})
-
-            if objects_to_delete:
-                # La API de S3/R2 permite borrar hasta 1000 objetos por petición HTTP
-                for i in range(0, len(objects_to_delete), 1000):
-                    batch = objects_to_delete[i : i + 1000]
+            to_delete = [
+                {"Key": o["Key"]}
+                for o in response["Contents"]
+                if o["LastModified"] < one_day_ago
+            ]
+            if to_delete:
+                for i in range(0, len(to_delete), 1000):
                     s3_client.delete_objects(
-                        Bucket=settings.R2_BUCKET_NAME, Delete={"Objects": batch}
+                        Bucket=settings.R2_BUCKET_NAME,
+                        Delete={"Objects": to_delete[i : i + 1000]},
                     )
-                deleted_temp_files = len(objects_to_delete)
-
-    except Exception as e:
-        logger.error(f"❌ [GARBAGE_COLLECTOR] Fallo crítico en R2: {e}")
-        # No lanzamos excepción aquí para que al menos la limpieza de DB sea exitosa
-        pass
-
-    logger.info(
-        f"✅ [GARBAGE_COLLECTOR] Completado. Logs: {deleted_logs} | Invites: {deleted_invites} | R2_Temp: {deleted_temp_files}"
-    )
+                deleted_temp_files = len(to_delete)
+    except Exception:
+        logger.exception("❌ [GARBAGE_COLLECTOR] Fallo crítico en R2")
+        # ✅ FIX S2772: Eliminado pass innecesario
 
     return {
         "status": "success",
@@ -212,15 +176,20 @@ def run_garbage_collector(
     }
 
 
-@router.post("/users/action")
+@router.post(
+    "/users/action",
+    responses={
+        404: {"description": USER_NOT_FOUND},
+        403: {"description": "Acceso denegado"},
+        400: {"description": "Acción inválida"},
+    },
+)
 def manage_user_action(
-    data: UserActionRequest,
-    current_admin: User = Depends(get_current_admin),
-    session: Session = Depends(get_session),
+    data: UserActionRequest, current_admin: ActiveAdmin, session: DbSession
 ):
     target_user = session.get(User, data.user_id)
     if not target_user:
-        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+        raise HTTPException(status_code=404, detail=USER_NOT_FOUND)
 
     if target_user.role == "admin" and current_admin.id != target_user.id:
         raise HTTPException(
@@ -229,16 +198,13 @@ def manage_user_action(
 
     if data.action == "upgrade":
         target_user.role = "artist"
-        msg = f"Usuario ascendido a Artist VIP."
-
+        msg = "Usuario ascendido a Artist VIP."  # ✅ FIX S3457
     elif data.action == "deactivate":
         target_user.is_active = False
-        msg = f"Cuenta desactivada (Shadowban)."
-
+        msg = "Cuenta desactivada (Shadowban)."
     elif data.action == "activate":
         target_user.is_active = True
-        msg = f"Cuenta reactivada."
-
+        msg = "Cuenta reactivada."
     elif data.action == "reset_password":
         new_pass = secrets.token_urlsafe(6)
         target_user.hashed_password = get_password_hash(new_pass)
@@ -248,38 +214,37 @@ def manage_user_action(
             "message": "Contraseña reseteada",
             "new_password": new_pass,
         }
-
     else:
         raise HTTPException(status_code=400, detail="Acción no válida")
 
     session.add(target_user)
     session.commit()
-
-    # 🟢 Registrar en Auditoría
     AuditService.log_action(
         session,
         current_admin.username,
         f"USER_{data.action.upper()}",
         f"Afectado: @{target_user.username}",
     )
-
     return {"status": "success", "message": msg}
 
 
-@router.delete("/users/{user_id}")
+@router.delete(
+    "/users/{user_id}",
+    responses={
+        404: {"description": USER_NOT_FOUND},
+        403: {"description": "Acción prohibida"},
+        500: {"description": "Error servidor"},
+    },
+)
 def delete_user_completely(
     user_id: str,
     background_tasks: BackgroundTasks,
-    current_admin: User = Depends(get_current_admin),
-    session: Session = Depends(get_session),
+    current_admin: ActiveAdmin,
+    session: DbSession,
 ):
-    """
-    Exterminio Total en Cascada.
-    Respeta la integridad referencial de PostgreSQL (Foreign Keys).
-    """
     target_user = session.get(User, user_id)
     if not target_user:
-        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+        raise HTTPException(status_code=404, detail=USER_NOT_FOUND)
 
     if target_user.role == "admin":
         raise HTTPException(
@@ -287,18 +252,14 @@ def delete_user_completely(
         )
 
     try:
-        # 1. Recuperar todas las URLs de imágenes antes de borrar la DB
         prompts = session.exec(
             select(ImagePrompt).where(ImagePrompt.user_id == target_user.id)
         ).all()
         image_urls_to_delete = [p.image_url for p in prompts if p.image_url]
 
-        # 2. Delegar borrado físico de R2 a Background Task
         if image_urls_to_delete:
             background_tasks.add_task(purge_r2_images_batch, image_urls_to_delete)
 
-        # 3. 🟢 RESOLVER CONSTRAINT: Desvincular el Código de Invitación
-        # No borramos el código para que siga constando como "usado", pero rompemos el enlace.
         invites = session.exec(
             select(InviteCode).where(InviteCode.used_by_id == target_user.id)
         ).all()
@@ -306,66 +267,49 @@ def delete_user_completely(
             inv.used_by_id = None
             session.add(inv)
 
-        # 4. 🟢 BORRADO EN CASCADA (Desde los hijos hasta el padre)
-        # Borramos las métricas de galería que pertenezcan a él
         session.exec(
             delete(GalleryMetric).where(GalleryMetric.user_id == target_user.id)
         )
-
-        # Borramos las imágenes
         session.exec(delete(ImagePrompt).where(ImagePrompt.user_id == target_user.id))
-
-        # Borramos las colecciones
         session.exec(delete(Directory).where(Directory.user_id == target_user.id))
-
-        # Finalmente, ejecutamos al usuario
         session.delete(target_user)
-
-        # Consolidamos todos los cambios en una sola transacción ACID
         session.commit()
 
         AuditService.log_action(
             session,
             current_admin.username,
             "USER_DELETED",
-            f"Exterminado: @{target_user.username} y {len(prompts)} prompts.",
+            f"Exterminado: @{target_user.username}",
         )
-
         return {
             "status": "success",
             "message": f"Usuario @{target_user.username} exterminado.",
         }
 
-    except Exception as e:
+    except Exception:
         session.rollback()
-        logger.error(f"Error crítico en exterminio de usuario: {e}")
+        logger.exception("Error crítico en exterminio de usuario")
         raise HTTPException(
             status_code=500, detail="Fallo al ejecutar el exterminio en cascada."
         )
 
 
-@router.get("/users/{user_id}/activity")
-def get_user_activity(
-    user_id: str,
-    current_admin: User = Depends(get_current_admin),
-    session: Session = Depends(get_session),
-):
-    """
-    Recupera el historial de un usuario y su estado en tiempo real.
-    """
+@router.get(
+    "/users/{user_id}/activity", responses={404: {"description": USER_NOT_FOUND}}
+)
+def get_user_activity(user_id: str, current_admin: ActiveAdmin, session: DbSession):
     target_user = session.get(User, user_id)
     if not target_user:
-        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+        raise HTTPException(status_code=404, detail=USER_NOT_FOUND)
 
-    # 1. Comprobar estado en Redis (Costo de DB: 0)
     is_online = False
     try:
+        # ✅ FIX S5754: Capturamos una excepción base específica o la genérica con logging
         if redis_client.exists(f"user:online:{target_user.id}"):
             is_online = True
-    except:
-        pass
+    except Exception:
+        logger.warning("Error consultando estado online en Redis")
 
-    # 2. Consultar el rastro de actividad (Limitado a los últimos 50 para no saturar)
     logs = session.exec(
         select(AuditLog)
         .where(AuditLog.username == target_user.username)
@@ -383,91 +327,61 @@ def purge_r2_images_batch(image_urls: list):
     from app.core.config import settings
 
     base_url = settings.R2_PUBLIC_URL.rstrip("/")
-
-    objects_to_delete = []
-    for url in image_urls:
-        if url.startswith(base_url):
-            key = url.replace(base_url + "/", "")
-            objects_to_delete.append({"Key": key})
+    objects_to_delete = [
+        {"Key": url.replace(base_url + "/", "")}
+        for url in image_urls
+        if url.startswith(base_url)
+    ]
 
     if objects_to_delete:
         for i in range(0, len(objects_to_delete), 1000):
-            batch = objects_to_delete[i : i + 1000]
             try:
                 s3_client.delete_objects(
-                    Bucket=settings.R2_BUCKET_NAME, Delete={"Objects": batch}
+                    Bucket=settings.R2_BUCKET_NAME,
+                    Delete={"Objects": objects_to_delete[i : i + 1000]},
                 )
-            except Exception as e:
-                pass  # Fallo silencioso en background
+            except Exception:
+                logger.exception("Fallo silenciado en purga batch de R2")
 
 
-@router.post("/storage/purge-all")
-def purge_entire_r2_bucket(
-    current_admin: User = Depends(get_current_admin),
-    session: Session = Depends(get_session),
-):
-    """
-    ⚠️ BOTÓN DEL PÁNICO: Borra TODOS los archivos del bucket R2 sin piedad.
-    Útil para entornos de desarrollo o tras un reset completo de la base de datos.
-    """
+@router.post(
+    "/storage/purge-all", responses={500: {"description": "Fallo en aniquilación"}}
+)
+def purge_entire_r2_bucket(current_admin: ActiveAdmin, session: DbSession):
     logger.warning(
         f"☢️ [R2_PURGE] Protocolo de aniquilación iniciado por: {current_admin.username}"
     )
-
     deleted_count = 0
     try:
-        # Paginación (S3 devuelve resultados en lotes de máximo 1000)
         paginator = s3_client.get_paginator("list_objects_v2")
-        pages = paginator.paginate(Bucket=settings.R2_BUCKET_NAME)
-
-        for page in pages:
+        for page in paginator.paginate(Bucket=settings.R2_BUCKET_NAME):
             if "Contents" in page:
-                objects_to_delete = [{"Key": obj["Key"]} for obj in page["Contents"]]
-
-                # Borramos el lote actual
-                if objects_to_delete:
+                objs = [{"Key": obj["Key"]} for obj in page["Contents"]]
+                if objs:
                     response = s3_client.delete_objects(
-                        Bucket=settings.R2_BUCKET_NAME,
-                        Delete={"Objects": objects_to_delete},
+                        Bucket=settings.R2_BUCKET_NAME, Delete={"Objects": objs}
                     )
                     deleted_count += len(response.get("Deleted", []))
 
-        logger.info(
-            f"✅ [R2_PURGE] Exterminio completado. Archivos borrados: {deleted_count}"
-        )
         return {
             "status": "success",
-            "message": f"Bucket purgado con éxito. Se borraron {deleted_count} archivos.",
+            "message": f"Bucket purgado. {deleted_count} archivos eliminados.",
         }
-
-    except Exception as e:
-        logger.error(f"❌ [R2_PURGE] Fallo crítico durante la aniquilación: {e}")
-        raise HTTPException(
-            status_code=500, detail=f"Fallo al purgar Cloudflare R2: {str(e)}"
-        )
+    except Exception:
+        logger.exception("❌ [R2_PURGE] Fallo crítico durante la aniquilación")
+        raise HTTPException(status_code=500, detail="Fallo al purgar Cloudflare R2")
 
 
-# @router.get("/logs") -> OJO: Quítale el prefijo "" a la ruta porque se lo daremos en el main.py
-# @router.post("/invite-codes")
-# @router.get("/invites")
-# @router.get("/sessions")
-# @router.post("/sessions/revoke-all")
 @router.get("/logs")
-def get_audit_logs(
-    limit: int = 50,
-    current_admin: User = Depends(get_current_admin),
-    session: Session = Depends(get_session),
-):
+def get_audit_logs(current_admin: ActiveAdmin, session: DbSession, limit: int = 50):
     statement = select(AuditLog).order_by(AuditLog.timestamp.desc()).limit(limit)
     logs = session.exec(statement).all()
     return {"status": "success", "logs": logs}
 
 
-@router.post("/invite-codes")
+@router.post("/invite-codes", responses={500: {"description": "Error DB"}})
 def generate_invite_code(
-    role_requested: str = "voyager",
-    current_admin: User = Depends(get_current_admin),
-    session: Session = Depends(get_session),
+    current_admin: ActiveAdmin, session: DbSession, role_requested: str = "voyager"
 ):
     prefix = "VGR" if role_requested == "voyager" else "ART"
     new_code_str = f"{prefix}-{secrets.token_hex(4).upper()}"
@@ -477,44 +391,37 @@ def generate_invite_code(
         session.add(new_invite)
         session.commit()
         session.refresh(new_invite)
-
         AuditService.log_action(
             session,
             current_admin.username,
             "INVITE_CREATED",
             f"Generado código {role_requested.upper()}: {new_code_str}",
         )
-
         return {"status": "success", "message": "Código generado", "code": new_code_str}
-
-    except Exception as e:
+    except Exception:
         session.rollback()
-        logger.error(f"❌ Fallo al insertar InviteCode en Neon: {e}")
-        raise HTTPException(status_code=500, detail=f"Error de base de datos: {str(e)}")
+        logger.exception("❌ Fallo al insertar InviteCode")
+        raise HTTPException(status_code=500, detail="Error de base de datos")
 
 
 @router.get("/invites")
-def list_invite_codes(
-    current_admin: User = Depends(get_current_admin),
-    session: Session = Depends(get_session),
-):
+def list_invite_codes(current_admin: ActiveAdmin, session: DbSession):
     statement = (
         select(InviteCode)
         .where(InviteCode.is_used == False)
         .order_by(InviteCode.created_at.desc())
     )
     invites = session.exec(statement).all()
-
     return {"status": "success", "invites": invites}
 
 
 @router.get("/sessions")
-def list_active_sessions(current_admin: User = Depends(get_current_admin)):
+def list_active_sessions(current_admin: ActiveAdmin):
     sessions = AuthService.get_active_sessions(current_admin.username, redis_client)
     return {"status": "success", "sessions": sessions}
 
 
 @router.post("/sessions/revoke-all")
-def revoke_all_sessions(current_admin: User = Depends(get_current_admin)):
+def revoke_all_sessions(current_admin: ActiveAdmin):
     AuthService.revoke_all_sessions(current_admin.username, redis_client)
     return {"status": "success", "message": "Todas las sesiones han sido revocadas."}
