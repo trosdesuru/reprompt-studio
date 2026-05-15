@@ -9,6 +9,8 @@ storage/
 analytics_*.json
 .docs/
 .storage/
+coverage.xml
+htmlcov/
 
 # Secretos
 .env
