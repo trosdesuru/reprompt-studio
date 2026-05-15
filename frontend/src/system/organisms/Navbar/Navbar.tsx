@@ -10,18 +10,9 @@ import { useScrollDirection } from "@/src/utils/hooks/useScrollDirection";
 
 export function Navbar() {
   const pathname = usePathname();
-
-  // 1. Identificamos en qué vistas NO queremos que se oculte el Navbar
   const isDetailView = pathname?.includes("/p/");
-
-  // Asumiendo que tu home es "/" o "/es" / "/en" (ajusta según tus idiomas)
   const isHome = pathname === "/" || pathname === "/es" || pathname === "/en";
-
-  // 2. Le pasamos la regla al Hook:
-  // "Solo actívate si estamos en la Home Y NO estamos en una vista de detalle"
   const scrollDirection = useScrollDirection(isHome && !isDetailView);
-
-  // 3. El CSS ahora es extremadamente simple. No hay ternarios anidados.
   const transformClass = scrollDirection === "down" ? "-translate-y-full" : "translate-y-0";
 
   return (
