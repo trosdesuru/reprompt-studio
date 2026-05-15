@@ -1,8 +1,12 @@
 import uuid
-from typing import Optional
-from sqlmodel import Field, SQLModel
-from datetime import datetime, timezone
+
 from enum import Enum
+from sqlmodel import Field, SQLModel
+from sqlalchemy import Column
+from sqlalchemy import Enum as SAEnum
+
+from typing import Optional
+from datetime import datetime, timezone
 
 
 class UserRole(str, Enum):
@@ -29,7 +33,14 @@ class User(SQLModel, table=True):
         nullable=False,
     )
     username: str = Field(index=True, unique=True, nullable=False)
-    role: UserRole = Field(default=UserRole.VOYAGER)
+    role: UserRole = Field(
+        default=UserRole.VOYAGER,
+        sa_column=Column(
+            SAEnum(UserRole, values_callable=lambda obj: [e.value for e in obj]),
+            nullable=False,
+            server_default="voyager",
+        ),
+    )
 
     # Soporte para Google Auth
     email: Optional[str] = Field(default=None, index=True, unique=True)
