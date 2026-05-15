@@ -3,7 +3,7 @@ import "@testing-library/jest-dom";
 import userEvent from "@testing-library/user-event";
 import { useSearch } from "@/src/features/search/hooks/useSearch";
 import { render, screen, fireEvent } from "@testing-library/react";
-import { NavbarSearch } from "../../organisms/Navigation/SemanticSearchBar";
+import { NavbarSearch } from "@/src/features/layout/components/NavbarSearch";
 
 jest.mock("@/src/features/search/hooks/useSearch");
 const mockUseSearch = useSearch as jest.MockedFunction<typeof useSearch>;
@@ -74,7 +74,7 @@ describe("Organism: NavbarSearch", () => {
       render(<NavbarSearch />);
       const input = screen.getByPlaceholderText(/Buscar prompts/i);
 
-      fireEvent.keyDown(window, { key: "/" });
+      fireEvent.keyDown(document, { key: "/" });
 
       expect(input).toHaveFocus();
       expect(defaultMockState.setQuery).not.toHaveBeenCalledWith("/");
