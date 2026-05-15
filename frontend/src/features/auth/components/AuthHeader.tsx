@@ -1,7 +1,7 @@
 import { useTranslation } from "@/src/dictionaries/I18nProvider";
 
 interface AuthHeaderProps {
-  isLogin: boolean;
+  readonly isLogin: boolean;
 }
 
 export function AuthHeader({ isLogin }: AuthHeaderProps) {

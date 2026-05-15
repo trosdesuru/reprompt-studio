@@ -1,6 +1,7 @@
 import { memo } from "react";
 import Image from "next/image";
 import { IconCamera, IconLoader2 } from "@tabler/icons-react";
+import { Button } from "../Button/Button";
 
 export interface UserAvatarProps {
   username: string;

@@ -1,7 +1,6 @@
 import uuid
-import html
-from typing import List, Optional, Dict, Any
-from pydantic import BaseModel, Field, field_validator
+import logging
+from typing import Optional, Annotated
 from fastapi import (
     APIRouter,
     Depends,
@@ -19,72 +18,25 @@ from app.services.storage import s3_client
 from app.core.config import settings
 from app.services.prompt_service import PromptService
 
+from app.schemas.prompt import (
+    PresignedUrlRequest,
+    StudioSaveRequest,
+    BatchDeleteRequest,
+    PromptPatchRequest,
+    BulkMoveRequest,
+)
+
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
-class BulkMoveRequest(BaseModel):
-    prompt_ids: List[uuid.UUID]
-    directory_id: Optional[str] = None
-
-
-class BatchDeleteRequest(BaseModel):
-    prompt_ids: List[uuid.UUID]
-
-
-class PromptPatchRequest(BaseModel):
-    directory_id: Optional[str] = None
-
-
-class PresignedUrlRequest(BaseModel):
-    file_name: str
-    content_type: str
-
-
-class PromptPatchRequest(BaseModel):
-    directory_id: Optional[str] = None
-    title: Optional[str] = Field(None, max_length=150)
-    prompt: Optional[str] = Field(None, max_length=20000)
-    negative_prompt: Optional[str] = Field(None, max_length=20000)
-    software: Optional[str] = Field(None, max_length=50)
-    model: Optional[str] = Field(None, max_length=150)
-    sampler: Optional[str] = Field(None, max_length=100)
-    steps: Optional[str] = Field(None, max_length=20)
-    cfg_scale: Optional[str] = Field(None, max_length=20)
-    seed: Optional[str] = Field(None, max_length=50)
-    resolution: Optional[str] = Field(None, max_length=50)
-
-
-class StudioSaveRequest(BaseModel):
-    title: str = Field(..., max_length=150)
-    image_url: str = Field(..., description="URL temporal en R2")
-    directory_id: Optional[str] = None
-    prompt: Optional[str] = Field(None, max_length=20000)
-    negative_prompt: Optional[str] = Field(None, max_length=20000)
-    software: Optional[str] = Field("Desconocido", max_length=50)
-    model: Optional[str] = Field(None, max_length=150)
-    sampler: Optional[str] = Field(None, max_length=100)
-    steps: Optional[str] = Field(None, max_length=20)
-    cfg_scale: Optional[str] = Field(None, max_length=20)
-    seed: Optional[str] = Field(None, max_length=50)
-    width: Optional[int] = None
-    height: Optional[int] = None
-    resolution: Optional[str] = Field(None, max_length=50)
-    extra_data: Optional[Dict[str, Any]] = Field(default_factory=dict)
-
-    @field_validator("title", "prompt", "negative_prompt", mode="before")
-    @classmethod
-    def sanitize_text(cls, value: Optional[str]) -> Optional[str]:
-        if not value:
-            return value
-        cleaned = value.strip()
-        if "<script" in cleaned.lower() or "javascript:" in cleaned.lower():
-            raise ValueError("Contenido bloqueado por seguridad.")
-        return html.escape(cleaned)
-
-
-@router.post("/generate-upload-url")
+@router.post(
+    "/generate-upload-url",
+    responses={500: {"description": "Error de comunicación con Cloudflare R2"}},
+)
 def generate_upload_url(
-    request: PresignedUrlRequest, current_user: User = Depends(verify_prompt_quota)
+    current_user: Annotated[User, Depends(verify_prompt_quota)],
+    request: PresignedUrlRequest,
 ):
     try:
         unique_id = str(uuid.uuid4())[:8]
@@ -107,15 +59,16 @@ def generate_upload_url(
             "upload_url": presigned_url,
             "file_url": f"{base_url}/{object_key}",
         }
-    except Exception as e:
+    except Exception:
+        logger.exception("Fallo al generar URL presignada en R2")
         raise HTTPException(status_code=500, detail="Error con Cloudflare R2")
 
 
 @router.post("/save")
 def save_studio_prompt(
+    current_user: Annotated[User, Depends(verify_prompt_quota)],
+    session: Annotated[Session, Depends(get_session)],
     data: StudioSaveRequest,
-    current_user: User = Depends(verify_prompt_quota),
-    session: Session = Depends(get_session),
 ):
     nuevo_prompt = PromptService.process_quarantined_upload(
         session=session,
@@ -128,10 +81,10 @@ def save_studio_prompt(
 
 @router.post("/upload-studio")
 async def upload_to_studio(
-    file: UploadFile = File(...),
-    directory_id: Optional[str] = Form(None),
-    session: Session = Depends(get_session),
-    current_user: User = Depends(verify_prompt_quota),
+    session: Annotated[Session, Depends(get_session)],
+    current_user: Annotated[User, Depends(verify_prompt_quota)],
+    file: Annotated[UploadFile, File(...)],
+    directory_id: Annotated[Optional[str], Form()] = None,
 ):
     nuevo_prompt = await PromptService.process_and_save_studio_upload(
         session, current_user, file, directory_id
@@ -141,9 +94,9 @@ async def upload_to_studio(
 
 @router.post("/bulk/delete")
 def eliminar_prompts_lote(
+    current_user: Annotated[User, Depends(get_current_user)],
+    session: Annotated[Session, Depends(get_session)],
     data: BatchDeleteRequest,
-    current_user: User = Depends(get_current_user),
-    session: Session = Depends(get_session),
 ):
     count, deleted_ids = PromptService.delete_batch_prompts(
         session, current_user, data.prompt_ids
@@ -157,12 +110,12 @@ def eliminar_prompts_lote(
 
 @router.get("/studio")
 def obtener_prompts_studio(
+    current_user: Annotated[User, Depends(get_current_user)],
+    session: Annotated[Session, Depends(get_session)],
     directory_id: Optional[str] = None,
     page: int = 1,
     limit: int = 20,
     sort: str = "newest",
-    current_user: User = Depends(get_current_user),
-    session: Session = Depends(get_session),
 ):
     resultados = PromptService.get_studio_prompts(
         session, current_user, directory_id, page=page, limit=limit, sort=sort
@@ -172,10 +125,10 @@ def obtener_prompts_studio(
 
 @router.patch("/{prompt_id}")
 def actualizar_prompt(
+    current_user: Annotated[User, Depends(get_current_user)],
+    session: Annotated[Session, Depends(get_session)],
     prompt_id: uuid.UUID,
     data: PromptPatchRequest,
-    current_user: User = Depends(get_current_user),
-    session: Session = Depends(get_session),
 ):
     prompt_actualizado = PromptService.update_prompt(
         session=session,
@@ -188,9 +141,9 @@ def actualizar_prompt(
 
 @router.put("/bulk/move")
 def mover_prompts_lote(
+    current_user: Annotated[User, Depends(get_current_user)],
+    session: Annotated[Session, Depends(get_session)],
     data: BulkMoveRequest,
-    current_user: User = Depends(get_current_user),
-    session: Session = Depends(get_session),
 ):
     count = PromptService.move_batch_prompts(
         session, current_user, data.prompt_ids, data.directory_id
@@ -203,9 +156,9 @@ def mover_prompts_lote(
 
 @router.delete("/{prompt_id}")
 def eliminar_prompt(
+    current_user: Annotated[User, Depends(get_current_user)],
+    session: Annotated[Session, Depends(get_session)],
     prompt_id: uuid.UUID,
-    current_user: User = Depends(get_current_user),
-    session: Session = Depends(get_session),
 ):
     PromptService.delete_single_prompt(session, current_user, prompt_id)
     return {
