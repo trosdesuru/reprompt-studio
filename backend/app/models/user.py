@@ -21,7 +21,6 @@ class InviteCode(SQLModel, table=True):
 
 
 class User(SQLModel, table=True):
-    """Usuarios de la plataforma con soporte Híbrido (Local / OAuth)"""
 
     id: uuid.UUID = Field(
         default_factory=uuid.uuid4,
@@ -52,7 +51,6 @@ class User(SQLModel, table=True):
 
 
 class AuditLog(SQLModel, table=True):
-    """Registro inmutable de auditoría del sistema"""
 
     id: Optional[int] = Field(default=None, primary_key=True)
     username: str = Field(index=True)
