@@ -9,6 +9,7 @@ storage/
 analytics_*.json
 .docs/
 .storage/
+frontend/coverage/
 coverage.xml
 htmlcov/
 
