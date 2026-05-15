@@ -66,11 +66,15 @@ def descargar_coleccion_completa(
     if col.is_private and col.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Esta colección es privada")
 
-    cantidad_imagenes = session.exec(
+    cantidad_imagenes_query = session.exec(
         select(func.count(ImagePrompt.id)).where(
             ImagePrompt.directory_id == directory_id
         )
-    ).one()
+    ).first()
+
+    cantidad_imagenes = (
+        cantidad_imagenes_query if cantidad_imagenes_query is not None else 0
+    )
 
     limite_descarga = 50 if current_user.role == UserRole.VOYAGER else 1000
 

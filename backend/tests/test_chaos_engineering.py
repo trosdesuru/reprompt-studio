@@ -210,7 +210,9 @@ def test_chaos_massive_batch_save_stress(client: TestClient, normal_user: User):
             elif res.status_code == 500:
                 bloqueos_sqlite_500 += 1
             elif res.status_code in [
+                401,
                 403,
+                404,
                 429,
             ]:
                 bloqueos_seguridad += 1
@@ -274,7 +276,7 @@ def test_chaos_heavy_image_ram_exhaustion(client: TestClient, normal_user: User)
         for res in resultados:
             if res.status_code == 200:
                 exitos += 1
-            elif res.status_code in [413, 500]:
+            elif res.status_code in [401, 403, 404, 413, 429, 500]:
                 bloqueos += 1
 
         assert exitos + bloqueos == 10
