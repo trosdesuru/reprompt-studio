@@ -8,7 +8,7 @@ interface StudioDndWrapperProps {
   children: React.ReactNode;
 }
 
-export function StudioDndWrapper({ children }: StudioDndWrapperProps) {
+export function StudioDndWrapper({ children }: Readonly<StudioDndWrapperProps>) {
   const { sensors, activeDragItem, handleDragStart, handleDragEnd } = useStudioDnd();
 
   return (

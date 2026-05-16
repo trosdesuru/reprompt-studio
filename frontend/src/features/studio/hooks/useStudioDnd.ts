@@ -10,7 +10,7 @@ export function useStudioDnd() {
   const triggerRefresh = useStudioUI((state) => state.triggerRefresh);
 
   const [activeDragDir, setActiveDragDir] = useState<Directory | null>(null);
-  const [activeDragItem, setActiveDragItem] = useState<any | null>(null);
+  const [activeDragItem, setActiveDragItem] = useState<any>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
