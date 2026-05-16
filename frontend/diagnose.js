@@ -1,5 +1,5 @@
-const fs = require("fs");
-const path = require("path");
+const fs = require("node:fs");
+const path = require("node:path");
 
 if (process.env.NODE_ENV === "development") {
   console.log("--- 🕵️ INVESTIGACIÓN DE DEPENDENCIAS ---");

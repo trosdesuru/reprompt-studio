@@ -2,14 +2,14 @@
 
 import { use, useState } from "react";
 import { usePromptExtractor } from "@/src/features/extractor/hooks/usePromptExtractor";
-import { ExtractorDropzone } from "@/src/system/organisms/Extractor/Dropzone"; // 🟢 Importación limpia
+import { ExtractorDropzone } from "@/src/system/organisms/Extractor/Dropzone";
 import { BatchInspector } from "@/src/system/organisms/Extractor/Inspector/BatchInspector";
 import { UpgradeModal } from "@/src/system/organisms/Modal/UpgradeModal";
 import { ExtractorInfoModal } from "@/src/system/organisms/Extractor/ExtractorInfoModal";
 import { IconScanTraces } from "@tabler/icons-react";
 import { PageHeader } from "@/src/system/organisms/Navigation/PageHeader";
 
-export default function RepromptPage({ params }: { params: Promise<{ lang: string }> }) {
+export default function RepromptPage({ params }: Readonly<{ params: Promise<{ lang: string }> }>) {
   const { lang } = use(params);
   const [isInfoModalOpen, setIsInfoModalOpen] = useState(false);
 
@@ -29,7 +29,7 @@ export default function RepromptPage({ params }: { params: Promise<{ lang: strin
   } = usePromptExtractor();
 
   return (
-    <main className="min-h-screen bg-background p-4 md:p-8">
+    <main className="max-h-screen bg-background p-4 md:p-8">
       <UpgradeModal isOpen={upgradeModal} onClose={closeUpgradeModal} />
       <ExtractorInfoModal isOpen={isInfoModalOpen} onClose={() => setIsInfoModalOpen(false)} />
 
@@ -48,7 +48,7 @@ export default function RepromptPage({ params }: { params: Promise<{ lang: strin
         <section className="w-full">
           {batch.length === 0 ? (
             <ExtractorDropzone
-              onFileDrop={processFiles} // 🟢 Pasamos la función del hook
+              onFileDrop={processFiles}
               isExtracting={isExtracting}
               error={error}
               onOpenInfo={() => setIsInfoModalOpen(true)}

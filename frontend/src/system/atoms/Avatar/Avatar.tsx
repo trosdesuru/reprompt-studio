@@ -1,7 +1,6 @@
 import { memo } from "react";
 import Image from "next/image";
 import { IconCamera, IconLoader2 } from "@tabler/icons-react";
-import { Button } from "../Button/Button";
 
 export interface UserAvatarProps {
   username: string;
@@ -30,15 +29,24 @@ export const UserAvatar = memo(function UserAvatar({
     xl: "w-24 h-24 text-3xl",
     "2xl": "w-20 h-20 md:w-28 md:h-28",
   };
-  console.log("avatar", avatarUrl);
+
+  if (process.env.NODE_ENV === "development") {
+    console.log("avatar", avatarUrl);
+  }
+
+  const isInteractive = !!onClick;
+
+  const Component = isInteractive ? "button" : "div";
 
   return (
-    <div
+    <Component
+      {...(isInteractive ? { type: "button" } : {})}
       className={`
         ${sizeClasses[size]} 
         shrink-0 rounded-full flex items-center justify-center overflow-hidden
         bg-accent relative group
         ${editable && !isUploading ? "cursor-pointer hover:border-accent" : ""}
+        ${isInteractive ? "cursor-pointer focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 focus:ring-offset-background" : ""}
         ${className}
       `}
       aria-label={`Avatar de ${username}`}
@@ -72,6 +80,6 @@ export const UserAvatar = memo(function UserAvatar({
           </span>
         </div>
       )}
-    </div>
+    </Component>
   );
 });
