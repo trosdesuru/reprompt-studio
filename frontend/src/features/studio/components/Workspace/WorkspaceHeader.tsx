@@ -1,22 +1,16 @@
 "use client";
 
-import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useStudioUI } from "@/src/store/useStudioUI";
 import { useStudioPrompts } from "@/src/features/studio/hooks/useStudioPrompts";
-import {
-  IconChevronRight,
-  IconScanTraces,
-  IconLayoutSidebar,
-  IconX,
-  IconTrash,
-  IconFolder,
-  IconArrowsSort,
-  IconSquareCheck,
-} from "@tabler/icons-react";
+
+import { WorkspaceBreadcrumbs } from "./WorkspaceBreadcrumbs";
+import { WorkspaceDefaultControls } from "./WorkspaceDefaultControls";
+import { WorkspaceBulkActions } from "./WorkspaceBulkActions";
 
 export function WorkspaceHeader() {
   const { lang } = useParams();
+
   const {
     activeDirectoryId,
     setActiveDirectory,
@@ -27,6 +21,8 @@ export function WorkspaceHeader() {
     directories,
     sortBy,
     setSortBy,
+    loadedPromptIds,
+    selectAll,
   } = useStudioUI();
 
   const { deleteBulkPrompts, moveBulkPrompts } = useStudioPrompts();
@@ -44,88 +40,20 @@ export function WorkspaceHeader() {
         }`}
       >
         <div className="flex items-center flex-1 overflow-hidden pr-4">
-          <nav
-            aria-label="Breadcrumb"
-            className="flex items-center space-x-1 text-xs md:text-sm font-mono text-accent/40 lowercase overflow-x-auto scrollbar-none"
-          >
-            <button
-              onClick={toggleSidebar}
-              className="p-1.5 rounded-md hover:bg-secondary/20 hover:text-accent transition-colors text-muted-foreground cursor-pointer shrink-0"
-              title="Alternar panel lateral"
-            >
-              <IconLayoutSidebar size={18} stroke={1.5} />
-            </button>
-
-            <button
-              onClick={() => setActiveDirectory(null)}
-              className={`hover:text-accent transition-colors flex items-center gap-2 ${
-                !activeDirectoryId ? "text-muted-foreground font-bold" : ""
-              }`}
-              title="Root"
-            >
-              root
-            </button>
-
-            {breadcrumbs.map((crumb, index) => {
-              const isLast = index === breadcrumbs.length - 1;
-
-              return (
-                <div key={crumb.id} className="flex items-center space-x-1 whitespace-nowrap">
-                  <IconChevronRight size={14} />
-
-                  {isLast ? (
-                    <span
-                      className="font-bold text-xs text-accent/80 tracking-widest truncate max-w-37.5 sm:max-w-37.5"
-                      title={crumb.name}
-                    >
-                      {crumb.name.toUpperCase()}
-                    </span>
-                  ) : (
-                    <button
-                      onClick={() => setActiveDirectory(crumb.id)}
-                      className="hover:text-accent text-xs transition-colors tracking-widest truncate max-w-37.5 sm:max-w-50"
-                      title={crumb.name}
-                    >
-                      {crumb.name.toUpperCase()}
-                    </button>
-                  )}
-                </div>
-              );
-            })}
-          </nav>
+          <WorkspaceBreadcrumbs
+            activeDirectoryId={activeDirectoryId}
+            breadcrumbs={breadcrumbs}
+            onToggleSidebar={toggleSidebar}
+            onSetActiveDirectory={setActiveDirectory}
+          />
         </div>
 
-        <div className="flex items-center gap-3 shrink-0">
-          <Link
-            href={`/${lang}/reprompt`}
-            className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-xs font-bold hover:bg-primary/90 transition-all shadow-sm active:scale-95"
-          >
-            <IconScanTraces size={16} />
-            <span className="hidden sm:inline tracking-widest">Extractor</span>
-          </Link>
-
-          <div className="hidden sm:flex items-center bg-muted/50 rounded-lg p-1 border border-border/50">
-            <IconArrowsSort size={14} className="text-muted-foreground ml-2" />
-            <select
-              className="bg-transparent text-xs font-mono p-1.5 outline-none cursor-pointer text-foreground/80"
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as any)}
-            >
-              <option value="newest">Más recientes</option>
-              <option value="oldest">Más antiguos</option>
-              <option value="software">Por Software</option>
-            </select>
-          </div>
-
-          <button
-            onClick={() => useStudioUI.getState().selectAll(useStudioUI.getState().loadedPromptIds)}
-            className="hidden sm:flex items-center gap-2 px-3 py-2 bg-muted/50 hover:bg-muted text-muted-foreground hover:text-foreground rounded-lg text-xs font-bold transition-all border border-border/50"
-            title="Seleccionar todo lo cargado"
-          >
-            <IconSquareCheck size={16} />
-            <span>Seleccionar Todo</span>
-          </button>
-        </div>
+        <WorkspaceDefaultControls
+          lang={lang as string}
+          sortBy={sortBy}
+          setSortBy={setSortBy}
+          onSelectAll={() => selectAll(loadedPromptIds)}
+        />
       </div>
 
       <div
@@ -133,62 +61,13 @@ export function WorkspaceHeader() {
           hasSelection ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4 pointer-events-none"
         }`}
       >
-        <div className="flex items-center gap-3">
-          <button
-            onClick={clearSelection}
-            className="p-1.5 rounded-md hover:bg-muted text-muted-foreground transition-colors cursor-pointer"
-            title="Cancelar selección"
-          >
-            <IconX size={20} stroke={2} />
-          </button>
-          <span className="font-bold text-sm text-foreground">
-            {selectedPromptIds.length} seleccionados
-          </span>
-        </div>
-
-        <div className="flex items-center gap-4 bg-background">
-          <div className="flex items-center gap-2">
-            <label className="text-[10px] font-bold uppercase text-muted-foreground items-center gap-1.5 hidden sm:flex">
-              <IconFolder size={12} /> Colección
-            </label>
-            <select
-              className="bg-muted/50 text-xs p-2 rounded border border-border outline-none focus:ring-1 focus:ring-accent cursor-pointer min-w-32.5"
-              onChange={(e) => {
-                if (e.target.value !== "noop") {
-                  const targetDir = e.target.value === "root" ? null : e.target.value;
-                  moveBulkPrompts(selectedPromptIds, targetDir);
-                  e.target.value = "noop";
-                }
-              }}
-            >
-              <option value="noop">Mover a...</option>
-              <option value="root">Suelto</option>
-              {directories.map((d) => (
-                <option key={d.id} value={d.id}>
-                  {d.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="w-px h-5 bg-border/50 hidden sm:block"></div>
-
-          <button
-            onClick={() => {
-              if (
-                window.confirm(
-                  `¿Estás seguro de que quieres eliminar estos ${selectedPromptIds.length} prompts permanentemente?`,
-                )
-              ) {
-                deleteBulkPrompts(selectedPromptIds);
-              }
-            }}
-            className="flex items-center gap-2 px-3 py-2 text-red-500 hover:bg-red-500/10 rounded-lg text-xs font-mono font-bold transition-all shadow-sm active:scale-95"
-          >
-            <IconTrash size={14} />
-            <span className="hidden sm:inline tracking-widest">Eliminar</span>
-          </button>
-        </div>
+        <WorkspaceBulkActions
+          selectedCount={selectedPromptIds.length}
+          directories={directories}
+          onClearSelection={clearSelection}
+          onMoveBulk={(targetDir) => moveBulkPrompts(selectedPromptIds, targetDir)}
+          onDeleteBulk={() => deleteBulkPrompts(selectedPromptIds)}
+        />
       </div>
     </header>
   );

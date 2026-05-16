@@ -1,7 +1,7 @@
 import { SettingsSidebar } from "@/src/features/settings/components/SettingsSidebar";
 import { SettingsProfileHeader } from "@/src/features/settings/components/SettingsProfileHeader";
 
-export default function SettingsLayout({ children }: { children: React.ReactNode }) {
+export default function SettingsLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <div className="flex flex-col min-h-[calc(100vh-4rem)] bg-background p-4 md:p-8 animate-fade-in">
       <div className="w-full max-w-7xl mx-auto flex flex-col flex-1">

@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, type SyntheticEvent } from "react";
 import { useAuthStore } from "@/src/store/authStore";
 import { api } from "@/src/services/api";
 import { toast } from "react-hot-toast";
 import { Button } from "@/src/system/atoms/Button/Button";
 import { Input } from "@/src/system/atoms/Input/Input";
-import { IconShieldLock, IconAlertTriangle } from "@tabler/icons-react";
+import { IconAlertTriangle, IconLockSquareRounded } from "@tabler/icons-react";
 import { SettingsSectionHeader } from "@/src/features/settings/components/SettingsSectionHeader";
 import { DangerZoneSettingsSection } from "@/src/features/user/components/DangerZoneSettingsSection";
 
@@ -17,7 +17,7 @@ export default function SecuritySettingsPage() {
   const [error, setError] = useState<string | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsLoading(true);
     setError(null);
@@ -47,8 +47,10 @@ export default function SecuritySettingsPage() {
 
       toast.success("Contraseña actualizada con éxito");
       formRef.current?.reset();
-    } catch (err: any) {
-      setError(err.message || "Fallo al actualizar la contraseña");
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : "Fallo al actualizar la contraseña";
+
+      setError(errorMessage);
       toast.error("No se pudo cambiar la contraseña");
     } finally {
       setIsLoading(false);
@@ -62,7 +64,7 @@ export default function SecuritySettingsPage() {
       <SettingsSectionHeader
         title="Seguridad y Acceso"
         description="Gestiona tu contraseña y protege tu cuenta de Reprompt."
-        icon={<IconShieldLock className="text-muted-foreground" size={24} />}
+        icon={<IconLockSquareRounded size={24} />}
       />
 
       <div className="bg-background border border-border/50 rounded-xl p-6 md:p-8 relative overflow-hidden shadow-sm">

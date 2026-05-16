@@ -16,7 +16,6 @@ interface NeoIconBadgeProps {
   className?: string;
 }
 
-// Diccionario de estilos Neo-Brutalistas por variante
 const variantStyles: Record<NeoIconVariant, string> = {
   danger: "bg-red-500/10 border-red-500 text-red-500 shadow-[4px_4px_0px_0px_rgba(239,68,68,1)]",
   success:
@@ -28,7 +27,11 @@ const variantStyles: Record<NeoIconVariant, string> = {
     "bg-foreground/5 border-foreground text-foreground shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] dark:shadow-[4px_4px_0px_0px_rgba(255,255,255,1)]",
 };
 
-export function NeoIconBadge({ children, variant = "primary", className }: NeoIconBadgeProps) {
+export function NeoIconBadge({
+  children,
+  variant = "primary",
+  className,
+}: Readonly<NeoIconBadgeProps>) {
   return (
     <div
       className={cn(

@@ -4,10 +4,9 @@ import { useStudioUI } from "@/src/store/useStudioUI";
 import { useAuthStore } from "@/src/store/authStore";
 import { useTranslation } from "@/src/dictionaries/I18nProvider";
 
-import { SidebarContainer, SidebarDivider } from "@/src/system/organisms/Sidebar";
+import { SidebarContainer } from "@/src/system/organisms/Sidebar";
 import { QuotaBar } from "@/src/features/admin/components/QuotaBar";
 
-import { SidebarExploreSection } from "./SidebarExploreSection";
 import { SidebarWorkspaceSection } from "./SidebarWorkspaceSection";
 
 export function StudioSidebar() {
@@ -37,15 +36,16 @@ export function StudioSidebar() {
       >
         <div className="w-65 h-full flex flex-col">
           <SidebarContainer>
-            <SidebarExploreSection />
+            
+            {/*  TODO <SidebarExploreSection /> */}
 
-            <SidebarDivider />
+            {/* TODO <SidebarDivider /> */}
 
             <SidebarWorkspaceSection />
 
             <div className="px-3 pt-6 pb-10 mt-auto border-t border-border/50 bg-background/50 backdrop-blur-sm z-10 sticky bottom-0">
               <QuotaBar
-                label={t("studio.stored_prompts") || "Prompts Almacenados"}
+                label={t("") || "Prompts Almacenados"}
                 used={user?.prompts_count || 0}
                 limit={user?.role === "artist" ? 5000 : 50}
               />

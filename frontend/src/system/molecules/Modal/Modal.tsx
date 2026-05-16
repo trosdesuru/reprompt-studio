@@ -24,9 +24,9 @@ export function Modal({ isOpen, onClose, children, maxWidth = "max-w-md" }: Moda
       if (e.key === "Escape") onClose();
     };
     if (isOpen) {
-      window.addEventListener("keydown", handleEsc);
+      document.addEventListener("keydown", handleEsc);
     }
-    return () => window.removeEventListener("keydown", handleEsc);
+    return () => document.removeEventListener("keydown", handleEsc);
   }, [isOpen, onClose]);
 
   if (!isOpen || !mounted) return null;

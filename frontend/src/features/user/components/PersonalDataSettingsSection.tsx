@@ -6,7 +6,7 @@ import { Button } from "@/src/system/atoms/Button/Button";
 import { IconId } from "@tabler/icons-react";
 import { ChangePersonalDataModal } from "./ChangePersonalDataModal";
 
-export function PersonalDataSettingsSection({ user }: { user: User }) {
+export function PersonalDataSettingsSection({ user }: Readonly<{ user: User }>) {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   return (

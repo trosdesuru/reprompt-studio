@@ -5,7 +5,7 @@ interface ChangeUsernameFormStepProps {
   lang: string;
 }
 
-export function ChangeUsernameFormStep({ lang }: ChangeUsernameFormStepProps) {
+export function ChangeUsernameFormStep({ lang }: Readonly<ChangeUsernameFormStepProps>) {
   return (
     <div className="flex flex-col">
       <div className="flex items-center gap-3 p-4 border-b border-border bg-muted/10">

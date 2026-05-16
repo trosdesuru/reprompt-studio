@@ -13,9 +13,9 @@ export function SettingsSidebar() {
 
   return (
     <nav className="flex flex-col gap-1 pt-6 sticky">
-      <SidebarHeading>Ajustes Generales</SidebarHeading>
+      <SidebarHeading>Ajustes</SidebarHeading>
 
-      <SidebarDivider className="my-4" />
+      <SidebarDivider className="my-2" />
       <div className="px-3 flex flex-col gap-1">
         {links.map((link) => (
           <Link key={link.href} href={link.href} className={getSidebarItemClasses(link.isActive)}>

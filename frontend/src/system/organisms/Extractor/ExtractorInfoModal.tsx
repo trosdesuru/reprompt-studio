@@ -16,7 +16,7 @@ interface Props {
   onClose: () => void;
 }
 
-export function ExtractorInfoModal({ isOpen, onClose }: Props) {
+export function ExtractorInfoModal({ isOpen, onClose }: Readonly<Props>) {
   return (
     <Modal isOpen={isOpen} onClose={onClose} maxWidth="max-w-2xl">
       <div className="p-8 space-y-6">
@@ -91,12 +91,12 @@ function InfoItem({
   title,
   desc,
   isNegative = false,
-}: {
+}: Readonly<{
   icon: React.ReactNode;
   title: string;
   desc: string;
   isNegative?: boolean;
-}) {
+}>) {
   return (
     <li className="flex gap-3 items-start">
       <div

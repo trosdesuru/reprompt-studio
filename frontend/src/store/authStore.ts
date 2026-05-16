@@ -33,9 +33,9 @@ interface AuthState {
 }
 
 const redirectToLogin = () => {
-  if (typeof window === "undefined") return;
+  if (typeof document === "undefined") return;
 
-  const currentPath = window.location.pathname;
+  const currentPath = document.location.pathname;
   if (
     currentPath.includes("/login") ||
     currentPath.includes("/google/callback") ||
@@ -48,7 +48,7 @@ const redirectToLogin = () => {
   const localePrefix = localeMatch ? `/${localeMatch[1]}` : "";
 
   console.warn(`🚷 [AUTH_ROUTER] Redirigiendo al usuario a: ${localePrefix}/login`);
-  window.location.href = `${localePrefix}/login`;
+  document.location.href = `${localePrefix}/login`;
 };
 
 const normalizeUser = (data: any): User | null => {
@@ -177,21 +177,21 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 }));
 
-if (typeof window !== "undefined") {
-  window.addEventListener("auth:session_recovered", () => {
+if (typeof document !== "undefined") {
+  document.addEventListener("auth:session_recovered", () => {
     if (process.env.NODE_ENV === "development") {
       console.log("♻️ [AUTH_STORE] Sesión recuperada. Sincronizando interfaz...");
     }
     useAuthStore.getState().checkAuth(true);
   });
 
-  window.addEventListener("auth:unauthorized", () => {
+  document.addEventListener("auth:unauthorized", () => {
     const state = useAuthStore.getState();
     if (state.isAuthenticated) {
       state.logoutSilencioso();
-      const currentPath = window.location.pathname;
+      const currentPath = document.location.pathname;
       if (!currentPath.includes("/login")) {
-        window.location.href = `/${currentPath.split("/")[1] || "es"}/login`;
+        document.location.href = `/${currentPath.split("/")[1] || "es"}/login`;
       }
     }
   });

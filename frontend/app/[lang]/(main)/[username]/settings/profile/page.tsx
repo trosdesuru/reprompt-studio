@@ -2,6 +2,7 @@
 
 import { use, useEffect } from "react";
 import { useRouter } from "next/navigation";
+
 import { useAuthStore } from "@/src/store/authStore";
 import { SettingsSectionHeader } from "@/src/features/settings/components/SettingsSectionHeader";
 import { IconUserSquareRounded } from "@tabler/icons-react";
@@ -11,9 +12,9 @@ import { PersonalDataSettingsSection } from "@/src/features/user/components/Pers
 
 export default function ProfileSettingsPage({
   params,
-}: {
+}: Readonly<{
   params: Promise<{ lang: string; username: string }>;
-}) {
+}>) {
   const { lang, username } = use(params);
   const router = useRouter();
   const { user, isLoadingAuth } = useAuthStore();
@@ -36,7 +37,7 @@ export default function ProfileSettingsPage({
       <SettingsSectionHeader
         title="Perfil Público"
         description="Gestiona tu identidad visual, datos personales y tu nombre de usuario."
-        icon={<IconUserSquareRounded className="text-brand" size={24} />}
+        icon={<IconUserSquareRounded size={24} />}
       />
 
       <div className="space-y-8 pt-4">

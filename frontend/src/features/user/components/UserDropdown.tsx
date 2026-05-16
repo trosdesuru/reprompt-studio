@@ -72,18 +72,18 @@ export function UserDropdown() {
             />
 
             <MenuItem
-              icon={<IconLockSquareRounded size={16} />}
-              label="Seguridad y Privacidad"
-              onClick={() =>
-                navigate(`/${lang}/${encodeURIComponent(user.username)}/settings/security`)
-              }
-            />
-
-            <MenuItem
               icon={<IconDeviceDesktop size={16} />}
               label="Apariencia"
               onClick={() =>
                 navigate(`/${lang}/${encodeURIComponent(user.username)}/settings/appearance`)
+              }
+            />
+
+            <MenuItem
+              icon={<IconLockSquareRounded size={16} />}
+              label="Seguridad y Privacidad"
+              onClick={() =>
+                navigate(`/${lang}/${encodeURIComponent(user.username)}/settings/security`)
               }
             />
 

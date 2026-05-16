@@ -54,24 +54,22 @@ export function SidebarWorkspaceSection() {
   return (
     <>
       <div className="px-3 pt-4 pb-2">
-        <SidebarHeading>{t("studio.sidebar_section_workspace") || "Mi Espacio"}</SidebarHeading>
+        <SidebarHeading>{t("") || "Mi Espacio"}</SidebarHeading>
       </div>
 
       <div className="px-3 mb-1 group relative">
-        <div
+        <Button
+          variant="ghost"
+          size="sm"
           ref={setRootDropRef}
           onClick={() => {
             setActiveDirectory(null);
             if (window.innerWidth < 768) setSidebarOpen(false);
           }}
-          role="button"
           className={getSidebarItemClasses(isRootActive, isRootOver)}
         >
           <IconFolder size={18} stroke={1.5} />
-          <span className="tracking-widest flex-1 text-left text-xs">
-            <span className="font-mono font-medium lowercase text-foreground/70">reprompt</span>{" "}
-            root
-          </span>
+          <span className="tracking-widest flex-1 text-left text-xs">root</span>
 
           <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
             <Button
@@ -83,6 +81,7 @@ export function SidebarWorkspaceSection() {
             >
               <IconFolderPlus size={16} stroke={2} />
             </Button>
+
             <Button
               variant="ghost"
               size="sm"
@@ -93,7 +92,7 @@ export function SidebarWorkspaceSection() {
               <IconCloudUpload size={16} stroke={2} />
             </Button>
           </div>
-        </div>
+        </Button>
       </div>
 
       {isCreatingRoot && (

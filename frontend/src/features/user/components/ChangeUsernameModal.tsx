@@ -11,7 +11,7 @@ interface ChangeUsernameModalProps {
   lang: string;
 }
 
-export function ChangeUsernameModal({ isOpen, onClose, lang }: ChangeUsernameModalProps) {
+export function ChangeUsernameModal({ isOpen, onClose, lang }: Readonly<ChangeUsernameModalProps>) {
   const [step, setStep] = useState<1 | 2>(1);
 
   useEffect(() => {

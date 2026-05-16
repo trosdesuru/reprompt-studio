@@ -1,17 +1,17 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type SyntheticEvent } from "react";
 import { useAuthStore } from "@/src/store/authStore";
 import { Input } from "@/src/system/atoms/Input/Input";
 import { Button } from "@/src/system/atoms/Button/Button";
 import { IconUser, IconBriefcase, IconCalendarEvent } from "@tabler/icons-react";
 import { toast } from "react-hot-toast";
 
-export function UpdatePersonalDataForm({ onSuccess }: { onSuccess: () => void }) {
+export function UpdatePersonalDataForm({ onSuccess }: Readonly<{ onSuccess: () => void }>) {
   const { user, updateUser } = useAuthStore();
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsLoading(true);
 
@@ -21,14 +21,13 @@ export function UpdatePersonalDataForm({ onSuccess }: { onSuccess: () => void })
     const age = formData.get("age") as string;
 
     try {
-      // TODO: Aquí conectarás con tu endpoint de API: api.user.updateProfile(...)
-      await new Promise((resolve) => setTimeout(resolve, 800)); // Simulación
+      // TODO Conectar con endpoint: api.user.updateProfile
+      await new Promise((resolve) => setTimeout(resolve, 800));
 
-      // Actualizamos el store global (Zustand)
-      updateUser({ fullName, profession, age: parseInt(age) });
+      updateUser({ fullName, profession, age: Number.parseInt(age) });
 
       toast.success("Perfil actualizado");
-      onSuccess(); // Cierra el modal automáticamente al terminar
+      onSuccess();
     } catch (error) {
       toast.error("Error al guardar los cambios");
     } finally {

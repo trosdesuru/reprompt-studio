@@ -1,7 +1,6 @@
-// frontend/features/admin/components/SecurityModule.tsx
 import { Button } from "@/src/system/atoms/Button/Button";
 
-export function SecurityModule({ onRevokeAll }: { onRevokeAll: () => void }) {
+export function SecurityModule({ onRevokeAll }: Readonly<{ onRevokeAll: () => void }>) {
   return (
     <section className="bg-(--bg-secondary) p-6 neo-border neo-shadow flex flex-col gap-4 border-red-500/20">
       <h2 className="text-xl font-black font-mono uppercase flex items-center gap-2 text-red-500">

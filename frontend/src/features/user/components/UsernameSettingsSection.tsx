@@ -11,7 +11,7 @@ interface UsernameSettingsSectionProps {
   lang: string;
 }
 
-export function UsernameSettingsSection({ user, lang }: UsernameSettingsSectionProps) {
+export function UsernameSettingsSection({ user, lang }: Readonly<UsernameSettingsSectionProps>) {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   return (

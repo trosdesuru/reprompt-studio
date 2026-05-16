@@ -1,5 +1,9 @@
 import { usePathname, useParams } from "next/navigation";
-import { IconLock, IconPalette, IconUserSquareRounded } from "@tabler/icons-react";
+import {
+  IconDeviceDesktop,
+  IconLockSquareRounded,
+  IconUserSquareRounded,
+} from "@tabler/icons-react";
 import { ReactNode } from "react";
 
 export interface NavLink {
@@ -25,16 +29,16 @@ export function useSettingsNavigation(): NavLink[] {
       isActive: pathname.includes(`${basePath}/profile`),
     },
     {
-      href: `${basePath}/security`,
-      label: "Seguridad",
-      icon: <IconLock size={20} />,
-      isActive: pathname.includes(`${basePath}/security`),
-    },
-    {
       href: `${basePath}/appearance`,
       label: "Apariencia",
-      icon: <IconPalette size={20} />,
+      icon: <IconDeviceDesktop size={20} />,
       isActive: pathname.includes(`${basePath}/appearance`),
+    },
+    {
+      href: `${basePath}/security`,
+      label: "Seguridad",
+      icon: <IconLockSquareRounded size={20} />,
+      isActive: pathname.includes(`${basePath}/security`),
     },
   ];
 }
