@@ -1,7 +1,10 @@
 import logging
-from fastapi import APIRouter, Depends, Response, Cookie, HTTPException
-from fastapi.responses import JSONResponse
+from typing import Annotated
+
 from sqlmodel import Session
+from fastapi.responses import JSONResponse
+from fastapi import APIRouter, Depends, Response, Cookie, HTTPException
+
 from app.core.db import get_session
 from app.api.deps import RateLimiter
 from app.services.auth_service import AuthService
@@ -14,7 +17,9 @@ router = APIRouter()
 
 
 @router.post("/register")
-def register_user(user_data: UserRegister, session: Session = Depends(get_session)):
+def register_user(
+    user_data: UserRegister, session: Annotated[Session, Depends(get_session)]
+):
     new_user = AuthService.register_user(user_data, session)
     return {
         "status": "success",
@@ -24,10 +29,14 @@ def register_user(user_data: UserRegister, session: Session = Depends(get_sessio
 
 
 @router.post(
-    "/login", dependencies=[Depends(RateLimiter(max_requests=5, window_seconds=60))]
+    "/login",
+    dependencies=[Depends(RateLimiter(max_requests=5, window_seconds=60))],
+    responses={429: {"description": "Cuenta bloqueada temporalmente por fuerza bruta"}},
 )
 def login_user(
-    user_data: UserLogin, response: Response, session: Session = Depends(get_session)
+    user_data: UserLogin,
+    response: Response,
+    session: Annotated[Session, Depends(get_session)],
 ):
     user_key = f"brute_force_user:{user_data.username}"
     attempts = redis_client.incr(user_key)
@@ -39,12 +48,9 @@ def login_user(
             detail=f"La cuenta '{user_data.username}' está bloqueada temporalmente. Prueba en 5 min.",
         )
 
-    try:
-        access_token, refresh_token, username = AuthService.authenticate_user(
-            user_data, session, redis_client
-        )
-    except HTTPException as e:
-        raise e
+    access_token, refresh_token, username = AuthService.authenticate_user(
+        user_data, session, redis_client
+    )
 
     redis_client.delete(user_key)
 
@@ -66,11 +72,11 @@ def login_user(
 @router.post("/refresh")
 def refresh_access_token(
     response: Response,
-    refresh_token: str | None = Cookie(None),
-    session: Session = Depends(get_session),
+    session: Annotated[Session, Depends(get_session)],
+    refresh_token: Annotated[str | None, Cookie()] = None,
 ):
     if not refresh_token:
-        logger.warning("🍪 [API_AUTH] No se detectó cookie 'refresh_token'.")
+        logger.warning("[API_AUTH] No se detectó cookie 'refresh_token'.")
 
     try:
         new_access, new_refresh = AuthService.rotate_tokens(
@@ -101,7 +107,9 @@ def refresh_access_token(
 
 
 @router.post("/logout")
-def logout_user(response: Response, refresh_token: str | None = Cookie(None)):
+def logout_user(
+    response: Response, refresh_token: Annotated[str | None, Cookie()] = None
+):
     response.delete_cookie("access_token", **COOKIE_PARAMS)
     response.delete_cookie("refresh_token", **COOKIE_PARAMS)
 

@@ -1,4 +1,6 @@
 import urllib.parse
+
+from typing import Annotated
 from fastapi import APIRouter, Depends, Response, status
 from sqlmodel import Session
 from app.core.config import settings
@@ -29,7 +31,9 @@ def get_google_auth_url():
 
 @router.post("/google/callback")
 def verify_google_code(
-    data: GoogleAuthRequest, response: Response, session: Session = Depends(get_session)
+    data: GoogleAuthRequest,
+    response: Response,
+    session: Annotated[Session, Depends(get_session)],
 ):
     result = AuthService.authenticate_google_user(
         data.code, data.redirect_uri, session, redis_client
@@ -62,7 +66,10 @@ def verify_google_code(
 def register_google_user_route(
     data: GoogleJoinRequest,
     response: Response,
-    session: Session = Depends(get_session),
+    session: Annotated[
+        Session,
+        Depends(get_session),
+    ],
 ):
     access_token, refresh_token, username = AuthService.register_google_user(
         data, session, redis_client
@@ -101,7 +108,10 @@ def get_discord_auth_url():
 def discord_auth(
     data: DiscordAuthRequest,
     response: Response,
-    session: Session = Depends(get_session),
+    session: Annotated[
+        Session,
+        Depends(get_session),
+    ],
 ):
     result = AuthService.authenticate_discord_user(
         data.code, data.redirect_uri, session, redis_client

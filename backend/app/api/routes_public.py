@@ -1,21 +1,39 @@
 import uuid
 from datetime import datetime
+from typing import Annotated
+
 from fastapi import APIRouter, Depends, HTTPException, Response
-from sqlmodel import Session, select, or_, func
-from sqlalchemy import select as sa_select
+from sqlmodel import Session, select, or_
+
 from app.core.db import get_session
 from app.models.user import User
-
 from app.models.directory import Directory
 from app.models.prompt import ImagePrompt
 from app.api.deps import get_optional_user
-from typing import Optional
+from app.core.errors import NOT_FOUND_RESPONSE, FORBIDDEN_RESPONSE
 
 router = APIRouter()
 
 
-@router.get("/profile/{username}")
-def get_public_profile(username: str, session: Session = Depends(get_session)):
+DbSession = Annotated[Session, Depends(get_session)]
+OptionalUser = Annotated[User | None, Depends(get_optional_user)]
+
+
+def safe_extract(obj):
+    """Limpia atributos internos de SQLAlchemy y embeddings pesados."""
+    if not obj:
+        return None
+
+    data = {k: v for k, v in obj.__dict__.items() if not k.startswith("_")}
+    data.pop("embedding", None)
+    return data
+
+
+@router.get(
+    "/profile/{username}",
+    responses={404: NOT_FOUND_RESPONSE[404]},
+)
+def get_public_profile(username: str, session: DbSession):
     user = session.exec(select(User).where(User.username == username)).first()
     if not user:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
@@ -23,25 +41,18 @@ def get_public_profile(username: str, session: Session = Depends(get_session)):
     directories = session.exec(
         select(Directory)
         .where(Directory.user_id == user.id)
-        .where(Directory.is_private == False)
+        .where(Directory.is_private.is_(False))
     ).all()
 
     statement = (
         select(ImagePrompt)
         .outerjoin(Directory, ImagePrompt.directory_id == Directory.id)
         .where(ImagePrompt.user_id == user.id)
-        .where(or_(ImagePrompt.directory_id == None, Directory.is_private == False))
+        .where(or_(ImagePrompt.directory_id.is_(None), Directory.is_private.is_(False)))
         .order_by(ImagePrompt.created_at.desc())
         .limit(50)
     )
     prompts = session.exec(statement).all()
-
-    def safe_extract(obj):
-        if not obj:
-            return None
-        data = {k: v for k, v in obj.__dict__.items() if not k.startswith("_")}
-        data.pop("embedding", None)
-        return data
 
     clean_prompts = [safe_extract(p) for p in prompts]
 
@@ -56,12 +67,18 @@ def get_public_profile(username: str, session: Session = Depends(get_session)):
     }
 
 
-@router.get("/profile/{username}/{directory_slug}")
+@router.get(
+    "/profile/{username}/{directory_slug}",
+    responses={
+        404: NOT_FOUND_RESPONSE[404],
+        403: FORBIDDEN_RESPONSE[403],
+    },
+)
 def get_public_directory(
     username: str,
     directory_slug: str,
-    session: Session = Depends(get_session),
-    current_user: User = Depends(get_optional_user),
+    session: DbSession,
+    current_user: OptionalUser,
 ):
     user = session.exec(select(User).where(User.username == username)).first()
     if not user:
@@ -71,7 +88,7 @@ def get_public_directory(
         select(Directory)
         .where(Directory.user_id == user.id)
         .where(Directory.slug == directory_slug)
-        .where(Directory.is_private == False)
+        .where(Directory.is_private.is_(False))
     ).first()
 
     if not directory:
@@ -89,13 +106,6 @@ def get_public_directory(
         .order_by(ImagePrompt.created_at.desc())
     ).all()
 
-    def safe_extract(obj):
-        if not obj:
-            return None
-        data = {k: v for k, v in obj.__dict__.items() if not k.startswith("_")}
-        data.pop("embedding", None)
-        return data
-
     clean_prompts = [safe_extract(p) for p in prompts]
 
     return {
@@ -106,11 +116,17 @@ def get_public_directory(
     }
 
 
-@router.get("/prompt/{prompt_id}")
+@router.get(
+    "/prompt/{prompt_id}",
+    responses={
+        404: NOT_FOUND_RESPONSE[404],
+        403: FORBIDDEN_RESPONSE[403],
+    },
+)
 def get_public_prompt_detail(
     prompt_id: uuid.UUID,
-    session: Session = Depends(get_session),
-    current_user: User = Depends(get_optional_user),
+    session: DbSession,
+    current_user: OptionalUser,
 ):
     prompt = session.exec(
         select(ImagePrompt).where(ImagePrompt.id == prompt_id)
@@ -144,18 +160,11 @@ def get_public_prompt_detail(
         .outerjoin(Directory, ImagePrompt.directory_id == Directory.id)
         .where(ImagePrompt.user_id == user.id)
         .where(ImagePrompt.id != prompt.id)
-        .where(or_(ImagePrompt.directory_id == None, Directory.is_private == False))
+        .where(or_(ImagePrompt.directory_id.is_(None), Directory.is_private.is_(False)))
         .order_by(ImagePrompt.created_at.desc())
         .limit(12)
     )
     related_user = session.exec(statement).all()
-
-    def safe_extract(obj):
-        if not obj:
-            return None
-        data = {k: v for k, v in obj.__dict__.items() if not k.startswith("_")}
-        data.pop("embedding", None)
-        return data
 
     return {
         "status": "success",
@@ -172,9 +181,9 @@ def get_public_feed(
     response: Response,
     include_self: bool = False,
     limit: int = 24,
-    cursor: Optional[str] = None,
-    session: Session = Depends(get_session),
-    current_user: Optional[User] = Depends(get_optional_user),
+    cursor: str | None = None,
+    session: DbSession = None,
+    current_user: OptionalUser = None,
 ):
     response.headers["Cache-Control"] = "public, max-age=60, stale-while-revalidate=30"
 
@@ -184,8 +193,8 @@ def get_public_feed(
         .outerjoin(Directory, ImagePrompt.directory_id == Directory.id)
         .where(
             or_(
-                ImagePrompt.directory_id == None,
-                Directory.is_private == False,
+                ImagePrompt.directory_id.is_(None),
+                Directory.is_private.is_(False),
             )
         )
     )
@@ -204,7 +213,7 @@ def get_public_feed(
     results = session.exec(query).all()
 
     feed = []
-    for p, user in results:
+    for p, feed_user in results:
         feed.append(
             {
                 "type": "prompt",
@@ -213,8 +222,8 @@ def get_public_feed(
                 "created_at": str(p.created_at),
                 "title": p.title,
                 "prompt": p.prompt,
-                "username": user.username,
-                "avatar_url": user.avatar_url,
+                "username": feed_user.username,
+                "avatar_url": feed_user.avatar_url,
                 "image_url": p.image_url,
                 "model": p.model,
                 "resolution": p.resolution,

@@ -1,15 +1,14 @@
-import os
 import logging
 import secrets
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Request, HTTPException, BackgroundTasks, status
+from fastapi import APIRouter, Depends, Request, HTTPException, BackgroundTasks
 from sqlmodel import select, Session, func, delete, text
 from datetime import datetime, timedelta, timezone
 from pydantic import BaseModel
 
-from app.api.deps import get_optional_user, get_current_admin, get_session
-from app.models.user import User, AuditLog, InviteCode
+from app.api.deps import get_current_admin, get_session
+from app.models.user import User, AuditLog, InviteCode, UserRole
 from app.models.directory import Directory
 from app.models.gallery import GalleryMetric
 from app.models.prompt import ImagePrompt
@@ -114,7 +113,6 @@ def get_storage_stats(current_admin: ActiveAdmin):
 
         return {"status": "success", "total_files": len(archivos), "total_mb": total_mb}
     except Exception:
-        # ✅ FIX S8572: Usar exception() captura el contexto automáticamente
         logger.exception("❌ Error leyendo R2")
         raise HTTPException(
             status_code=500, detail="Fallo de conexión con Cloudflare R2"
@@ -137,7 +135,7 @@ def run_garbage_collector(current_admin: ActiveAdmin, session: DbSession):
         ).rowcount
         deleted_invites = session.exec(
             delete(InviteCode).where(
-                InviteCode.is_used == True, InviteCode.created_at < thirty_days_ago
+                InviteCode.is_used.is_(True), InviteCode.created_at < thirty_days_ago
             )
         ).rowcount
         session.commit()
@@ -166,7 +164,6 @@ def run_garbage_collector(current_admin: ActiveAdmin, session: DbSession):
                 deleted_temp_files = len(to_delete)
     except Exception:
         logger.exception("❌ [GARBAGE_COLLECTOR] Fallo crítico en R2")
-        # ✅ FIX S2772: Eliminado pass innecesario
 
     return {
         "status": "success",
@@ -191,14 +188,14 @@ def manage_user_action(
     if not target_user:
         raise HTTPException(status_code=404, detail=USER_NOT_FOUND)
 
-    if target_user.role == "admin" and current_admin.id != target_user.id:
+    if target_user.role == UserRole.ADMIN and current_admin.id != target_user.id:
         raise HTTPException(
             status_code=403, detail="No puedes modificar a otro administrador."
         )
 
     if data.action == "upgrade":
-        target_user.role = "artist"
-        msg = "Usuario ascendido a Artist VIP."  # ✅ FIX S3457
+        target_user.role = UserRole.ARTIST
+        msg = "Usuario ascendido a Artist VIP."
     elif data.action == "deactivate":
         target_user.is_active = False
         msg = "Cuenta desactivada (Shadowban)."
@@ -246,7 +243,7 @@ def delete_user_completely(
     if not target_user:
         raise HTTPException(status_code=404, detail=USER_NOT_FOUND)
 
-    if target_user.role == "admin":
+    if target_user.role == UserRole.ADMIN:
         raise HTTPException(
             status_code=403, detail="No se puede borrar a un administrador."
         )
@@ -304,7 +301,6 @@ def get_user_activity(user_id: str, current_admin: ActiveAdmin, session: DbSessi
 
     is_online = False
     try:
-        # ✅ FIX S5754: Capturamos una excepción base específica o la genérica con logging
         if redis_client.exists(f"user:online:{target_user.id}"):
             is_online = True
     except Exception:
@@ -320,11 +316,8 @@ def get_user_activity(user_id: str, current_admin: ActiveAdmin, session: DbSessi
     return {"status": "success", "is_online": is_online, "logs": logs}
 
 
-# --- Helper Function for Background Task ---
 def purge_r2_images_batch(image_urls: list):
     """Borra múltiples archivos de R2 en lote"""
-    from app.services.storage import s3_client
-    from app.core.config import settings
 
     base_url = settings.R2_PUBLIC_URL.rstrip("/")
     objects_to_delete = [
@@ -408,7 +401,7 @@ def generate_invite_code(
 def list_invite_codes(current_admin: ActiveAdmin, session: DbSession):
     statement = (
         select(InviteCode)
-        .where(InviteCode.is_used == False)
+        .where(InviteCode.is_used.is_(False))
         .order_by(InviteCode.created_at.desc())
     )
     invites = session.exec(statement).all()

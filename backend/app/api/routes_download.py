@@ -1,17 +1,26 @@
 import uuid
+
 from rq import Queue
 from rq.job import Job
 from rq.exceptions import NoSuchJobError
+
+from typing import Annotated
 from sqlmodel import Session, select, func
 from fastapi import APIRouter, Depends, HTTPException
 
+from app.api.deps import get_current_user
+from app.models.prompt import ImagePrompt
+from app.models.user import User, UserRole
+from app.models.directory import Directory
+from app.services.downloader import generar_zip_coleccion, ejecutar_descarga_individual
+
 from app.core.redis_config import conn
 from app.core.db import get_session
-from app.models.directory import Directory
-from app.models.prompt import ImagePrompt
-from app.services.downloader import generar_zip_coleccion, ejecutar_descarga_individual
-from app.api.deps import get_current_user
-from app.models.user import User, UserRole
+from app.core.errors import (
+    NOT_FOUND_RESPONSE,
+    SERVER_ERROR_RESPONSE,
+    FORBIDDEN_RESPONSE,
+)
 
 router = APIRouter()
 
@@ -19,14 +28,19 @@ downloads_queue_premium = Queue("downloads_premium", connection=conn)
 downloads_queue_free = Queue("downloads_free", connection=conn)
 
 
-@router.get("/single/{image_key}")
+@router.get(
+    "/single/{image_key}",
+    responses={
+        404: NOT_FOUND_RESPONSE[404],
+        403: FORBIDDEN_RESPONSE[403],
+        500: SERVER_ERROR_RESPONSE[500],
+    },
+)
 def descargar_una_imagen(
     image_key: str,
-    current_user: User = Depends(get_current_user),
-    session: Session = Depends(get_session),
+    session: Annotated[Session, Depends(get_session)],
+    current_user: Annotated[User, Depends(get_current_user)],
 ):
-    """Resolución sincrónica instantánea para archivos únicos."""
-
     statement = select(ImagePrompt).where(ImagePrompt.image_url.contains(image_key))
     prompt = session.exec(statement).first()
 
@@ -45,20 +59,26 @@ def descargar_una_imagen(
     try:
         url = ejecutar_descarga_individual(image_key)
         return {"download_url": url}
-    except Exception as e:
+    except Exception:
         raise HTTPException(
             status_code=500, detail="Error al generar el acceso directo en R2"
         )
 
 
-@router.post("/directory/{directory_id}")
+@router.post(
+    "/directory/{directory_id}",
+    responses={
+        404: NOT_FOUND_RESPONSE[404],
+        500: SERVER_ERROR_RESPONSE[500],
+        403: FORBIDDEN_RESPONSE[403],
+    },
+)
 def descargar_coleccion_completa(
     directory_id: uuid.UUID,
-    current_user: User = Depends(get_current_user),
-    session: Session = Depends(get_session),
+    current_user: Annotated[User, Depends(get_current_user)],
+    session: Annotated[Session, Depends(get_session)],
 ):
     """Delega la generación masiva del ZIP al Worker de Redis para no congelar la API."""
-
     col = session.get(Directory, directory_id)
     if not col:
         raise HTTPException(status_code=404, detail="Colección no encontrada")
@@ -75,13 +95,12 @@ def descargar_coleccion_completa(
     cantidad_imagenes = (
         cantidad_imagenes_query if cantidad_imagenes_query is not None else 0
     )
-
     limite_descarga = 50 if current_user.role == UserRole.VOYAGER else 1000
 
     if cantidad_imagenes > limite_descarga:
         raise HTTPException(
             status_code=403,
-            detail=f"Tu plan '{current_user.role}' permite descargar un máximo de {limite_descarga} imágenes de golpe. Esta colección tiene {cantidad_imagenes}. ¡Haz upgrade a Artist!",
+            detail=f"Tu plan '{current_user.role.value}' permite descargar un máximo de {limite_descarga} imágenes de golpe. Esta colección tiene {cantidad_imagenes}. ¡Haz upgrade a Artist!",
         )
 
     try:
@@ -108,15 +127,21 @@ def descargar_coleccion_completa(
             "message": "Generando ZIP en segundo plano.",
             "queue": queue_assigned,
         }
-    except Exception as e:
+    except Exception:
         raise HTTPException(
             status_code=500, detail="Error al encolar la descarga masiva"
         )
 
 
-@router.get("/status/{job_id}")
+@router.get(
+    "/status/{job_id}",
+    responses={
+        404: NOT_FOUND_RESPONSE[404],
+        500: SERVER_ERROR_RESPONSE[500],
+    },
+)
 def verificar_estado_descarga(
-    job_id: str, current_user: User = Depends(get_current_user)
+    job_id: str, current_user: Annotated[User, Depends(get_current_user)]
 ):
     """
     El frontend consulta este endpoint cada X segundos.
@@ -136,5 +161,5 @@ def verificar_estado_descarga(
         raise HTTPException(
             status_code=404, detail="El trabajo de descarga no existe o ha caducado"
         )
-    except Exception as e:
+    except Exception:
         raise HTTPException(status_code=500, detail="Error interno al consultar Redis")

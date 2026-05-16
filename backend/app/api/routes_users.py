@@ -1,4 +1,5 @@
 import logging
+from typing import Annotated
 
 from sqlmodel import Session, select, func
 from fastapi import APIRouter, Depends, Response, HTTPException
@@ -6,26 +7,28 @@ from fastapi import APIRouter, Depends, Response, HTTPException
 from app.core.config import settings
 from app.core.db import get_session
 from app.api.deps import get_current_user
-from app.services.storage import move_to_permanent
+
 from app.services.auth_service import AuthService
 from app.services.audit_service import AuditService
 from app.utils.storage import eliminar_de_r2
-from app.schemas.user import AccountDeleteRequest
+
+from app.schemas.user import AccountDeleteRequest, AvatarUpdate, UsernameUpdate
 from app.models.user import User, InviteCode
 from app.models.prompt import ImagePrompt
 from app.models.directory import Directory
-from app.schemas.user import AvatarUpdate, UsernameUpdate, PasswordChange
 from app.api.auth_utils import COOKIE_PARAMS, redis_client
+
+from app.core.errors import AUTH_RESPONSE, SERVER_ERROR_RESPONSE
 
 logger = logging.getLogger("routes_users")
 router = APIRouter()
 
+DbSession = Annotated[Session, Depends(get_session)]
+ActiveUser = Annotated[User, Depends(get_current_user)]
 
-@router.get("/me")
-def get_current_user_profile(
-    current_user: User = Depends(get_current_user),
-    session: Session = Depends(get_session),
-):
+
+@router.get("/me", responses={**AUTH_RESPONSE})
+def get_current_user_profile(current_user: ActiveUser, session: DbSession):
     count_statement = select(func.count(ImagePrompt.id)).where(
         ImagePrompt.user_id == current_user.id
     )
@@ -41,12 +44,18 @@ def get_current_user_profile(
     }
 
 
-@router.patch("/me/username")
+@router.patch(
+    "/me/username",
+    responses={
+        **AUTH_RESPONSE,
+        400: {"description": "Nombre de usuario no disponible o formato inválido"},
+    },
+)
 def change_my_username(
     data: UsernameUpdate,
     response: Response,
-    current_user: User = Depends(get_current_user),
-    session: Session = Depends(get_session),
+    current_user: ActiveUser,
+    session: DbSession,
 ):
     new_name, new_access, new_refresh = AuthService.update_username(
         current_user, data.new_username, session, redis_client
@@ -70,12 +79,14 @@ def change_my_username(
     }
 
 
-@router.patch("/me/avatar")
-def update_my_avatar(
-    data: AvatarUpdate,
-    current_user: User = Depends(get_current_user),
-    session: Session = Depends(get_session),
-):
+@router.patch(
+    "/me/avatar",
+    responses={
+        **AUTH_RESPONSE,
+        400: {"description": "URL de avatar requerida o no permitida"},
+    },
+)
+def update_my_avatar(data: AvatarUpdate, current_user: ActiveUser, session: DbSession):
     if not data.avatar_url:
         raise HTTPException(status_code=400, detail="Se requiere una URL de avatar.")
 
@@ -100,18 +111,27 @@ def update_my_avatar(
     }
 
 
-@router.delete("/me")
+@router.delete(
+    "/me",
+    responses={
+        **AUTH_RESPONSE,
+        **SERVER_ERROR_RESPONSE,
+        400: {
+            "description": "El nombre de usuario no coincide para confirmar el borrado"
+        },
+    },
+)
 def delete_my_account(
     data: AccountDeleteRequest,
     response: Response,
-    current_user: User = Depends(get_current_user),
-    session: Session = Depends(get_session),
+    current_user: ActiveUser,
+    session: DbSession,
 ):
     """
     Botón Nuclear: Elimina cuenta, limpiando todas las claves foráneas en Neon DB,
     archivos en R2, sesiones en Redis y cookies.
     """
-    logger.info(
+    logger.warning(
         f"☢️ [DANGER ZONE] Iniciando borrado bottom-up para: {current_user.username}"
     )
 
@@ -122,17 +142,21 @@ def delete_my_account(
         try:
             eliminar_de_r2(current_user.avatar_url)
         except Exception as e:
-            logger.error(f"⚠️ Error borrando avatar: {e}")
+            logger.warning(f"⚠️ Aviso: No se pudo borrar el avatar en R2: {e}")
 
     prompts = session.exec(
         select(ImagePrompt).where(ImagePrompt.user_id == current_user.id)
     ).all()
+
     for prompt in prompts:
         if prompt.image_url:
             try:
                 eliminar_de_r2(prompt.image_url)
             except Exception as e:
-                pass
+
+                logger.warning(
+                    f"⚠️ Aviso: Imagen huerfana en R2 (prompt {prompt.id}): {e}"
+                )
         session.delete(prompt)
 
     invite = session.exec(
@@ -156,16 +180,13 @@ def delete_my_account(
     )
 
     try:
-        from app.api.auth_utils import redis_client
 
         AuthService.revoke_all_sessions(current_user.username, redis_client)
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning(f"⚠️ Aviso: Error limpiando Redis: {e}")
 
     session.delete(current_user)
     session.commit()
-
-    from app.api.auth_utils import COOKIE_PARAMS
 
     response.delete_cookie("access_token", **COOKIE_PARAMS)
     response.delete_cookie("refresh_token", **COOKIE_PARAMS)

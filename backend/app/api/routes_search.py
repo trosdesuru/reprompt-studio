@@ -1,37 +1,48 @@
-# backend/app/api/routes_search.py
-from fastapi import APIRouter, Depends, Query
+from typing import Annotated
+from fastapi import APIRouter, Depends, Query, HTTPException
 from sqlmodel import Session, select
-from typing import List
 
 from app.core.db import get_session
 from app.api.deps import get_current_user
-
 from app.models.user import User
 from app.models.prompt import ImagePrompt
 from app.services.embedding_service import EmbeddingService
 
+from app.core.errors import AUTH_RESPONSE, SERVER_ERROR_RESPONSE
+
 router = APIRouter()
 
+DbSession = Annotated[Session, Depends(get_session)]
+ActiveUser = Annotated[User, Depends(get_current_user)]
 
-@router.get("/vector")
+
+@router.get(
+    "/vector",
+    responses={
+        **AUTH_RESPONSE,
+        **SERVER_ERROR_RESPONSE,
+        500: {
+            "description": "No se pudo procesar la búsqueda"
+        },
+    },
+)
 def buscar_en_studio(
-    q: str = Query(..., description="Texto a buscar semánticamente"),
+    current_user: ActiveUser,
+    session: DbSession,
+    q: Annotated[str, Query(description="Texto a buscar semánticamente")] = "",
     limit: int = 20,
-    current_user: User = Depends(get_current_user),
-    session: Session = Depends(get_session),
 ):
-    """
-    🔍 Buscador Semántico Local (Studio):
-    1. Convierte la query en un vector.
-    2. Busca en la DB los prompts que más se acerquen a ese significado.
-    """
+
+    q = q.strip()
     if not q:
         return {"status": "success", "query": q, "results": []}
 
     query_vector = EmbeddingService.generate_vector(q)
 
     if not query_vector:
-        return {"status": "error", "message": "No se pudo procesar la búsqueda"}
+        raise HTTPException(
+            status_code=500, detail="No se pudo procesar la búsqueda semántica."
+        )
 
     statement = (
         select(ImagePrompt)

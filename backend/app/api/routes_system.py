@@ -1,3 +1,4 @@
+from typing import Annotated
 from fastapi import APIRouter, Depends
 from sqlmodel import Session, select
 from app.core.db import get_session
@@ -7,10 +8,7 @@ router = APIRouter()
 
 
 @router.get("/health")
-def health_check(session: Session = Depends(get_session)):
-    """
-    Diagnóstico profundo: Verifica latencia de DB y estado de conexión.
-    """
+def health_check(session: Annotated[Session, Depends(get_session)]):
     start_db = time.time()
     try:
         session.exec(select(1)).first()
