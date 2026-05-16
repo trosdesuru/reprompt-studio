@@ -1,14 +1,12 @@
-# app/services/wd14_service.py
 import os
 import cv2
 import numpy as np
 import pandas as pd
 import onnxruntime as rt
-import urllib.request
 import logging
 import threading
-from typing import List, Tuple
 import requests
+from typing import List
 
 logger = logging.getLogger("wd14_service")
 
@@ -41,12 +39,13 @@ class WD14Tagger:
 
         logger.info("🏷️ [WD14] Cargando CSV de etiquetas...")
         self.tags_df = pd.read_csv(self.csv_path)
-        self.tag_names = self.tags_df[self.tags_df["category"].isin([0, 4])][
-            "name"
-        ].tolist()
-        self.tag_indices = self.tags_df[
-            self.tags_df["category"].isin([0, 4])
-        ].index.tolist()
+
+        valid_tags = self.tags_df[self.tags_df["category"].isin([0, 4])]
+
+        tag_names = valid_tags["name"].tolist()
+        tag_indices = valid_tags.index.tolist()
+
+        self.valid_tags_map = dict(zip(tag_indices, tag_names))
 
         logger.info("🧠 [WD14] Cargando modelo SwinV2 en ONNX Runtime (CPU)...")
         self.ort_session = rt.InferenceSession(
@@ -63,17 +62,17 @@ class WD14Tagger:
 
         if not os.path.exists(self.model_path) or not os.path.exists(self.csv_path):
             logger.info(
-                f"⬇️ [WD14] Descargando modelo {self.model_name} por primera vez. Esto puede tardar un poco..."
+                "⬇️ [WD14] Descargando modelo %s por primera vez. Esto puede tardar un poco...",
+                self.model_name,
             )
 
-            # Descargar ONNX
             hf_hub_download(
                 repo_id=self.model_name,
                 filename=self.model_file,
                 local_dir=self.model_dir,
                 local_dir_use_symlinks=False,
             )
-            # Descargar CSV
+
             hf_hub_download(
                 repo_id=self.model_name,
                 filename=self.csv_file,
@@ -124,13 +123,11 @@ class WD14Tagger:
 
             result_tags = []
 
-            for i, p in enumerate(probs):
-                if i in self.tag_indices and p >= threshold:
-                    tag_name = self.tag_names[self.tag_indices.index(i)]
+            for idx, tag_name in self.valid_tags_map.items():
+                p = probs[idx]
+                if p >= threshold:
                     clean_tag = tag_name.replace("_", " ")
-
                     confidence = int(round(float(p) * 100))
-
                     result_tags.append({"name": clean_tag, "confidence": confidence})
 
             result_tags = sorted(
@@ -139,6 +136,7 @@ class WD14Tagger:
 
             return result_tags
 
-        except Exception as e:
-            logger.error(f"❌ [WD14] Error etiquetando {image_url}: {e}")
+        except Exception:
+
+            logger.exception("❌ [WD14] Error etiquetando %s", image_url)
             return []

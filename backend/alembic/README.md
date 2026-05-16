@@ -1,5 +1,5 @@
 #### Ejecutar comnado de generación de archivo para versionado
-docker compose exec backend alembic revision --autogenerate -m "refactor app/api: cleaning code"
+docker compose exec backend alembic revision --autogenerate -m "refactor app/services: clean smell code and death code"
 
 ### Aplica los cambios a tu base de datos local
 docker compose exec backend alembic upgrade head

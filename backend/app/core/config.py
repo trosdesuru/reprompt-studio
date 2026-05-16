@@ -18,7 +18,6 @@ class Settings(BaseSettings):
     # Google Auth
     GOOGLE_CLIENT_ID: str
     GOOGLE_CLIENT_SECRET: str
-    INVITE_ONLY_MODE: bool = True
 
     # Discord Auth
     DISCORD_CLIENT_ID: str = ""

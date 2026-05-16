@@ -218,7 +218,9 @@ class AuthService:
             logger.info(f"🚀 [AUTH] Sesión registrada en Redis. Key: {redis_key}")
             return access_token, refresh_data["token"], user.username
         except Exception as e:
-            logger.error(f"💥 [AUTH] Error crítico en el registro de sesión: {str(e)}")
+            logger.exception(
+                f"💥 [AUTH] Error crítico en el registro de sesión: {str(e)}"
+            )
             raise e
 
     @staticmethod
@@ -260,9 +262,7 @@ class AuthService:
             )
 
             if active_jti and active_jti != jti:
-                logger.warning(
-                    f"🚨 [AUTH_SERVICE] ALERTA DE SEGURIDAD (Posible Robo o Doble Petición)."
-                )
+                logger.warning("[AUTH_SERVICE] ALERTA: Posible Robo o Doble Petición.")
                 logger.warning(f"   -> JTI Recibido: {jti}")
                 logger.warning(f"   -> JTI en Redis: {active_jti}")
                 redis_client.delete(redis_key)
@@ -311,7 +311,7 @@ class AuthService:
                 status_code=401, detail="Token expirado. Inicia sesión."
             )
         except jwt.InvalidTokenError as e:
-            logger.error(f"❌ [AUTH_SERVICE] Error de firma JWT: {str(e)}")
+            logger.exception(f"❌ [AUTH_SERVICE] Error de firma JWT: {str(e)}")
             raise HTTPException(status_code=401, detail="Firma inválida.")
 
     @staticmethod
@@ -486,7 +486,7 @@ class AuthService:
             token_response.raise_for_status()
             token_json = token_response.json()
             discord_access_token = token_json["access_token"]
-        except requests.exceptions.RequestException as e:
+        except requests.exceptions.RequestException:
             raise HTTPException(
                 status_code=401,
                 detail="El código de Discord ha expirado o es inválido.",
@@ -563,7 +563,7 @@ class AuthService:
             )
             file_bytes = response["Body"].read()
         except Exception as e:
-            logger.error(f"❌ Error leyendo avatar temporal: {e}")
+            logger.exception(f"❌ Error leyendo avatar temporal: {e}")
             raise HTTPException(
                 status_code=404, detail="Archivo temporal no encontrado."
             )

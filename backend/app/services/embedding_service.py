@@ -1,5 +1,5 @@
 import logging
-import threading  # 👈 IMPORTANTE: Importamos el gestor de candados
+import threading
 from fastembed import TextEmbedding
 
 logger = logging.getLogger(__name__)
@@ -7,16 +7,14 @@ logger = logging.getLogger(__name__)
 
 class EmbeddingService:
     _model = None
-    _lock = threading.Lock()  # 👈 Creamos un candado para los hilos
+    _lock = threading.Lock()
 
     @classmethod
     def get_model(cls):
         if cls._model is None:
             with cls._lock:
                 if cls._model is None:
-                    logger.info(
-                        "🧠 Inicializando modelo FastEmbed en memoria global (Solo 1 vez)..."
-                    )
+                    logger.info("Inicializando modelo FastEmbed en memoria global")
                     cls._model = TextEmbedding(model_name="BAAI/bge-small-en-v1.5")
         return cls._model
 
@@ -32,5 +30,5 @@ class EmbeddingService:
             return embeddings[0].tolist()
 
         except Exception as e:
-            logger.error(f"❌ Error generando vector para '{texto}': {e}")
+            logger.exception(f"❌ Error generando vector para '{texto}': {e}")
             return [0.0] * 384
