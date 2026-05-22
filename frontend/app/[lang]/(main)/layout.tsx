@@ -6,7 +6,7 @@ import { Footer } from "@/src/system/organisms/Navigation/Footer";
 import { useFeedbackTrigger } from "@/src/features/feedback/hooks/useFeedbackTrigger";
 import { FeedbackBetaModal } from "@/src/features/feedback/components/FeedbackBetaModal";
 
-export default function MainLayout({ children }: { children: React.ReactNode }) {
+export default function MainLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   const { showFeedbackModal, snoozeFeedback, completeFeedback } = useFeedbackTrigger();
   return (
     <>

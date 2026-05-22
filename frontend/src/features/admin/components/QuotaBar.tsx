@@ -9,7 +9,7 @@ interface QuotaBarProps {
   className?: string;
 }
 
-export function QuotaBar({ used, limit, label, className }: QuotaBarProps) {
+export function QuotaBar({ used, limit, label, className }: Readonly<QuotaBarProps>) {
   const isInfinite = limit === null || limit === -1 || limit === Infinity;
   const percentage = isInfinite ? 0 : Math.min((used / limit) * 100, 100);
 

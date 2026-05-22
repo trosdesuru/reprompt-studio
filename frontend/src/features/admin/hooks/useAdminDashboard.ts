@@ -1,4 +1,3 @@
-// frontend/features/admin/hooks/useAdminDashboard.ts
 import { useState, useCallback } from "react";
 import { api } from "@/src/services/api";
 import { AuditLog } from "../admin.types";
@@ -51,7 +50,7 @@ export function useAdminDashboard() {
       const data = await api.revocarTodasLasSesiones();
       if (data.status === "success") {
         alert("🔒 Sesiones invalidadas con éxito.");
-        window.location.href = "/login";
+        document.location.href = "/login";
       }
     } catch (err) {
       alert("Error al comunicarse con Redis para revocar sesiones.");

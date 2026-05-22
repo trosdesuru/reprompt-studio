@@ -30,11 +30,11 @@ function CallbackLogic() {
 
     const authenticate = async () => {
       try {
-        const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || window.location.origin;
-        const redirectUri = `${baseUrl}${window.location.pathname}`;
+        const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || document.location.origin;
+        const redirectUri = `${baseUrl}${document.location.pathname}`;
 
         if (process.env.NODE_ENV === "development") {
-          console.log("📤 Canjeando código con Redirect URI oficial:", redirectUri);
+          console.log("Canjeando código con Redirect URI oficial:", redirectUri);
         }
 
         const response = await api.auth.verifyGoogleCode({ code, redirect_uri: redirectUri });
@@ -58,7 +58,7 @@ function CallbackLogic() {
           await checkAuth();
 
           setTimeout(() => {
-            window.location.replace(`/${lang}`);
+            document.location.replace(`/${lang}`);
           }, 1000);
         }
       } catch (error: any) {

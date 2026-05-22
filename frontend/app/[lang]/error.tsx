@@ -1,22 +1,21 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import * as Sentry from "@sentry/nextjs"; // 🟢 Importación del Oráculo
+import * as Sentry from "@sentry/nextjs";
 import { api } from "@/src/services/api";
 
 export default function GlobalError({
   error,
   reset,
-}: {
+}: Readonly<{
   error: Error & { digest?: string };
   reset: () => void;
-}) {
+}>) {
   const [isSending, setIsSending] = useState(false);
   const [isSent, setIsSent] = useState(false);
-  const [eventId, setEventId] = useState<string | null>(null); // 🟢 Guardamos el ID del error
+  const [eventId, setEventId] = useState<string | null>(null);
 
   useEffect(() => {
-    // 1. Reporte silencioso e inmediato a Sentry (Telemetría de Día Cero)
     const id = Sentry.captureException(error, {
       extra: { digest: error.digest },
     });
@@ -28,25 +27,23 @@ export default function GlobalError({
   const handleReport = async () => {
     setIsSending(true);
 
-    // 2. Si tenemos el ID de Sentry, lanzamos su Modal de Feedback profesional
     if (eventId) {
       Sentry.showReportDialog({
         eventId,
         title: "Informe de Anomalía Crítica",
         user: {
-          name: "Usuario de Reprompt", // Podrías sacar esto de tu authStore
+          name: "Usuario de Reprompt",
         },
         onEventSent: () => setIsSent(true),
       });
       setIsSending(false);
     } else {
-      // 3. Fallback: Si Sentry no cargó, usamos tu API manual (Resiliencia)
       try {
         await api.admin.reportBug({
           message: error.message,
           stack: error.stack,
           digest: error.digest,
-          url: window.location.href,
+          url: document.location.href,
           timestamp: new Date().toISOString(),
         });
         setIsSent(true);
@@ -62,15 +59,14 @@ export default function GlobalError({
     <main className="min-h-screen bg-background flex flex-col items-center justify-center p-4 md:p-8 font-sans">
       <div className="bg-muted/10 p-6 md:p-10 neo-border neo-shadow max-w-2xl w-full text-center space-y-6">
         <h2 className="text-3xl font-black font-mono text-destructive uppercase tracking-widest">
-          ¡Fallo en el Sistema! 🛠️
+          ¡Fallo en el Sistema!
         </h2>
         <p className="text-muted-foreground font-mono text-sm leading-relaxed">
           Nuestros escudos han detectado una anomalía crítica en esta ruta. Haz clic en el botón de
-          abajo para enviar los registros directamente al administrador (
+          abajo para enviar los registros directamente al administrador ({" "}
           <strong>@trosdesuru</strong>).
         </p>
 
-        {/* 🟢 Solo en desarrollo para no asustar al usuario en producción */}
         {process.env.NODE_ENV === "development" && (
           <div className="bg-black/80 p-4 rounded-md text-left overflow-auto text-xs text-red-400 font-mono mt-4 max-h-40 custom-scrollbar neo-border">
             {error.message}
@@ -80,7 +76,7 @@ export default function GlobalError({
         <div className="flex flex-col sm:flex-row gap-4 justify-center pt-6">
           {isSent ? (
             <div className="px-6 py-3 bg-green-500/10 text-green-500 neo-border font-bold font-mono uppercase tracking-widest text-xs flex items-center justify-center">
-              ✅ Reporte Transmitido
+              Reporte Transmitido
             </div>
           ) : (
             <button
@@ -96,7 +92,7 @@ export default function GlobalError({
             onClick={() => reset()}
             className="px-6 py-3 bg-background text-foreground font-bold font-mono uppercase tracking-widest text-xs neo-border hover:neo-shadow transition-all"
           >
-            🔄 Intentar de nuevo
+            Intentar de nuevo
           </button>
         </div>
       </div>

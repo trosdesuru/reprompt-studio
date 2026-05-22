@@ -12,9 +12,9 @@ import { ProfileHeader } from "@/src/system/organisms/Profile/ProfileHeader";
 
 export default function PublicProfilePage({
   params,
-}: {
+}: Readonly<{
   params: Promise<{ lang: string; username: string; index: number }>;
-}) {
+}>) {
   const { lang, username } = use(params);
   const { data, isLoading, error } = usePublicProfile(username);
 

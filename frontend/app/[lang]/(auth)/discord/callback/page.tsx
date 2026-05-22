@@ -29,7 +29,7 @@ export default function DiscordCallbackPage() {
 
     const authenticate = async () => {
       try {
-        const currentUrl = new URL(window.location.href);
+        const currentUrl = new URL(document.location.href);
         const redirectUri = `${currentUrl.origin}${currentUrl.pathname}`;
 
         const response = await api.verifyDiscordCode({ code, redirect_uri: redirectUri });

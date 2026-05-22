@@ -12,7 +12,10 @@ interface PromptDetailPageProps {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }
 
-export default function PromptDetailPage({ params, searchParams }: PromptDetailPageProps) {
+export default function PromptDetailPage({
+  params,
+  searchParams,
+}: Readonly<PromptDetailPageProps>) {
   const { lang, username, prompt_id } = use(params);
   const resolvedSearchParams = use(searchParams);
 
@@ -26,7 +29,7 @@ export default function PromptDetailPage({ params, searchParams }: PromptDetailP
 
   if (isLoading) return <PageLoader text="Desencriptando datos..." />;
 
-  if (error || !data || !data.prompt) {
+  if (error || !data?.prompt) {
     return <PromptErrorState error={error} backUrl={backUrl} backText={backText} />;
   }
 

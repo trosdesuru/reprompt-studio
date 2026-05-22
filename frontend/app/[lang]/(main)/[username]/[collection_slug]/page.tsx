@@ -12,9 +12,9 @@ import { useAuthStore } from "@/src/store/authStore";
 
 export default function PublicDirectoryPage({
   params,
-}: {
+}: Readonly<{
   params: Promise<{ lang: string; username: string; directory_slug: string }>;
-}) {
+}>) {
   const { lang, username, directory_slug } = use(params);
   const { data, isLoading, error } = usePublicDirectory(username, directory_slug);
 

@@ -5,7 +5,7 @@ import Link from "next/link";
 import { RegisterForm } from "@/src/features/auth/components/RegisterForm";
 import { useRedirectIfAuthenticated } from "@/src/features/auth/hooks/useRedirectIfAuthenticated";
 
-export default function JoinPage(props: { params: Promise<{ lang: string }> }) {
+export default function JoinPage(props: Readonly<{ params: Promise<{ lang: string }> }>) {
   const params = use(props.params);
   const lang = params.lang;
 

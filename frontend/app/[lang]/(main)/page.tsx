@@ -11,7 +11,7 @@ import { FeedState } from "@/src/system/molecules/Feedback/FeedState";
 import { SearchResults } from "@/src/system/organisms/Search/SearchResults/SearchResults";
 import { FeedLayout } from "@/src/system/templates/Feed/FeedLayout";
 
-export default function Home({ params }: { params: Promise<{ lang: string }> }) {
+export default function Home({ params }: Readonly<{ params: Promise<{ lang: string }> }>) {
   const { lang } = use(params);
 
   const search = useSearch();

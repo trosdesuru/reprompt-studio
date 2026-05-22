@@ -8,7 +8,7 @@ interface MetricWidgetProps {
   icon: React.ReactNode;
 }
 
-export function MetricWidget({ title, value, icon }: MetricWidgetProps) {
+export function MetricWidget({ title, value, icon }: Readonly<MetricWidgetProps>) {
   return (
     <div className="p-6 bg-background border border-border rounded-xl shadow-sm flex items-center gap-4">
       <div className="p-3 bg-accent/10 text-accent rounded-lg">{icon}</div>

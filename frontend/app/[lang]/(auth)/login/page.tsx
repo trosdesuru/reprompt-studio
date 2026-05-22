@@ -6,7 +6,7 @@ interface LoginPageProps {
   params: Promise<{ lang: string }> | { lang: string };
 }
 
-export default async function LoginPage({ params }: LoginPageProps) {
+export default async function LoginPage({ params }: Readonly<LoginPageProps>) {
   const resolvedParams = await params;
   const lang = resolvedParams?.lang || "es";
 
