@@ -13,6 +13,7 @@ import { cn } from "@/lib/utils";
 import { getDictionary, Locale } from "@/src/dictionaries/getDictionary";
 import { I18nProvider } from "@/src/dictionaries/I18nProvider";
 import { GoogleOAuthProvider } from "@react-oauth/google";
+import { Analytics } from "@vercel/analytics/next";
 
 const prompt = Prompt({
   weight: ["400", "700", "900"],
@@ -71,6 +72,7 @@ export default async function RootLayout({
             </I18nProvider>
           </GoogleOAuthProvider>
         </ThemeProvider>
+        <Analytics />
       </body>
     </html>
   );
