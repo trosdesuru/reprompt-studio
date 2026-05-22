@@ -24,16 +24,14 @@ export function StudioWorkspace() {
   }
 
   return (
-    <>
-      <PromptGrid
-        prompts={prompts}
-        lang={lang}
-        authorUsername={authorUsername}
-        onDelete={deletePrompt}
-        isLoading={isLoading}
-        hasMore={hasMore}
-        onLoadMore={loadMore}
-      />
-    </>
+    <PromptGrid
+      prompts={prompts}
+      lang={lang}
+      authorUsername={authorUsername}
+      onDelete={deletePrompt}
+      isLoading={isLoading}
+      hasMore={hasMore}
+      onLoadMore={loadMore}
+    />
   );
 }

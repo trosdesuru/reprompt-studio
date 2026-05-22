@@ -72,7 +72,6 @@ function CardContent({ item, index, isPriority, copied, handleCopy, isSelected }
   );
 }
 
-// 🟢 Usamos function en lugar de const para evitar bugs del compilador SWC
 function PromptCardComponent({
   item,
   directories,
@@ -178,7 +177,6 @@ function PromptCardComponent({
   );
 }
 
-// 🟢 Exportación blindada con displayName para que React DevTools y Next.js no colapsen
 const PromptCard = memo(PromptCardComponent, (prevProps, nextProps) => {
   return prevProps.item.id === nextProps.item.id && prevProps.isStudio === nextProps.isStudio;
 });

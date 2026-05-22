@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { persist } from "zustand/middleware";
 
 export interface Directory {
   id: string;
@@ -7,6 +8,8 @@ export interface Directory {
   slug?: string;
   is_private?: boolean;
 }
+
+export type ViewMode = "grid" | "list";
 
 interface StudioUIState {
   directories: Directory[];
@@ -47,89 +50,103 @@ interface StudioUIState {
   togglePromptSelection: (id: string) => void;
   clearSelection: () => void;
   selectAll: (ids: string[]) => void;
+
+  viewMode: ViewMode;
+  setViewMode: (mode: ViewMode) => void;
 }
 
-export const useStudioUI = create<StudioUIState>((set, get) => ({
-  directories: [],
-  activeDirectoryId: null,
-  searchQuery: "",
-  isSearching: false,
-  isSidebarOpen: true,
+export const useStudioUI = create<StudioUIState>()(
+  persist(
+    (set, get) => ({
+      directories: [],
+      activeDirectoryId: null,
+      searchQuery: "",
+      isSearching: false,
+      isSidebarOpen: true,
 
-  deletingIds: [],
-  setDeletingIds: (ids) => set({ deletingIds: ids }),
-  deletedPromptIds: [],
-  addDeletedPromptIds: (ids) =>
-    set((state) => ({
-      deletedPromptIds: [...state.deletedPromptIds, ...ids],
-    })),
-  clearDeletedPromptIds: () => set({ deletedPromptIds: [] }),
+      deletingIds: [],
+      setDeletingIds: (ids) => set({ deletingIds: ids }),
+      deletedPromptIds: [],
+      addDeletedPromptIds: (ids) =>
+        set((state) => ({
+          deletedPromptIds: [...state.deletedPromptIds, ...ids],
+        })),
+      clearDeletedPromptIds: () => set({ deletedPromptIds: [] }),
 
-  refreshKey: 0,
-  triggerRefresh: () => set((state) => ({ refreshKey: state.refreshKey + 1 })),
-  toggleSidebar: () => set((state) => ({ isSidebarOpen: !state.isSidebarOpen })),
+      refreshKey: 0,
+      triggerRefresh: () => set((state) => ({ refreshKey: state.refreshKey + 1 })),
+      toggleSidebar: () => set((state) => ({ isSidebarOpen: !state.isSidebarOpen })),
 
-  setSidebarOpen: (isOpen: boolean) => set({ isSidebarOpen: isOpen }),
-  setDirectories: (directories) => set({ directories }),
-  setActiveDirectory: (activeDirectoryId) => set({ activeDirectoryId }),
-  setSearchQuery: (searchQuery) => set({ searchQuery }),
-  setIsSearching: (isSearching) => set({ isSearching }),
+      setSidebarOpen: (isOpen: boolean) => set({ isSidebarOpen: isOpen }),
+      setDirectories: (directories) => set({ directories }),
+      setActiveDirectory: (activeDirectoryId) => set({ activeDirectoryId }),
+      setSearchQuery: (searchQuery) => set({ searchQuery }),
+      setIsSearching: (isSearching) => set({ isSearching }),
 
-  sortBy: "newest",
-  setSortBy: (sort) => set({ sortBy: sort }),
+      sortBy: "newest",
+      setSortBy: (sort) => set({ sortBy: sort }),
 
-  loadedPromptIds: [],
-  setLoadedPromptIds: (ids) => set({ loadedPromptIds: ids }),
+      loadedPromptIds: [],
+      setLoadedPromptIds: (ids) => set({ loadedPromptIds: ids }),
 
-  getChildDirectories: (parentId) => {
-    return get().directories.filter((d: Directory) => d.parent_id === parentId);
-  },
+      getChildDirectories: (parentId) => {
+        return get().directories.filter((d: Directory) => d.parent_id === parentId);
+      },
 
-  getBreadcrumbs: () => {
-    const { directories, activeDirectoryId } = get();
-    const crumbs: Directory[] = [];
-    let currentId = activeDirectoryId;
+      getBreadcrumbs: () => {
+        const { directories, activeDirectoryId } = get();
+        const crumbs: Directory[] = [];
+        let currentId = activeDirectoryId;
 
-    while (currentId) {
-      const dir = directories.find((d) => d.id === currentId);
-      if (dir) {
-        crumbs.unshift(dir);
-        currentId = dir.parent_id;
-      } else {
-        currentId = null;
-      }
-    }
-    return crumbs;
-  },
+        while (currentId) {
+          const dir = directories.find((d) => d.id === currentId);
+          if (dir) {
+            crumbs.unshift(dir);
+            currentId = dir.parent_id;
+          } else {
+            currentId = null;
+          }
+        }
+        return crumbs;
+      },
 
-  selectedPromptIds: [],
-  isSelectionMode: false,
+      selectedPromptIds: [],
+      isSelectionMode: false,
 
-  toggleSelectionMode: () =>
-    set((state) => {
-      const newMode = !state.isSelectionMode;
-      return {
-        isSelectionMode: newMode,
-        selectedPromptIds: newMode ? state.selectedPromptIds : [],
-      };
+      toggleSelectionMode: () =>
+        set((state) => {
+          const newMode = !state.isSelectionMode;
+          return {
+            isSelectionMode: newMode,
+            selectedPromptIds: newMode ? state.selectedPromptIds : [],
+          };
+        }),
+
+      togglePromptSelection: (id: string) =>
+        set((state) => {
+          const isSelected = state.selectedPromptIds.includes(id);
+          const newSelection = isSelected
+            ? state.selectedPromptIds.filter((promptId) => promptId !== id)
+            : [...state.selectedPromptIds, id];
+
+          const shouldKeepMode = newSelection.length > 0;
+
+          return {
+            selectedPromptIds: newSelection,
+            isSelectionMode: shouldKeepMode,
+          };
+        }),
+
+      clearSelection: () => set({ selectedPromptIds: [], isSelectionMode: false }),
+
+      selectAll: (ids: string[]) => set({ selectedPromptIds: ids, isSelectionMode: true }),
+
+      viewMode: "grid",
+      setViewMode: (mode) => set({ viewMode: mode }),
     }),
-
-  togglePromptSelection: (id: string) =>
-    set((state) => {
-      const isSelected = state.selectedPromptIds.includes(id);
-      const newSelection = isSelected
-        ? state.selectedPromptIds.filter((promptId) => promptId !== id)
-        : [...state.selectedPromptIds, id];
-
-      const shouldKeepMode = newSelection.length > 0;
-
-      return {
-        selectedPromptIds: newSelection,
-        isSelectionMode: shouldKeepMode,
-      };
-    }),
-
-  clearSelection: () => set({ selectedPromptIds: [], isSelectionMode: false }),
-
-  selectAll: (ids: string[]) => set({ selectedPromptIds: ids, isSelectionMode: true }),
-}));
+    {
+      name: "reprompt-studio-ui",
+      partialize: (state) => ({ viewMode: state.viewMode }),
+    },
+  ),
+);
