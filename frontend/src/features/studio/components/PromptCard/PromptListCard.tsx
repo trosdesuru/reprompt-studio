@@ -2,7 +2,6 @@
 
 import React, { memo } from "react";
 import Link from "next/link";
-
 import { IconPhoto, IconCheck } from "@tabler/icons-react";
 import { usePromptCard } from "@/src/system/molecules/Cards/hooks/usePromptCard";
 import { usePromptDnd } from "@/src/features/studio/hooks/usePromptDnd";
@@ -31,12 +30,29 @@ interface PromptListCardProps {
   queueItems?: { id: string; username: string }[];
 }
 
-const getCardStyles = (isDeleting: boolean, isDragging: boolean, isSelected: boolean) => {
+const getZIndexLayer = (isDragging: boolean, isMenuOpen: boolean, isHovered: boolean) => {
+  if (isDragging) return "z-30";
+  if (isMenuOpen) return "z-20";
+  if (isHovered) return "z-10";
+  return "z-0";
+};
+
+const getCardStyles = (
+  isDeleting: boolean,
+  isDragging: boolean,
+  isSelected: boolean,
+  isHovered: boolean,
+  isMenuOpen: boolean,
+) => {
+  const zIndexLayer = getZIndexLayer(isDragging, isMenuOpen, isHovered);
+
   if (isDeleting)
-    return "opacity-0 scale-95 border-destructive bg-destructive/10 grayscale blur-sm pointer-events-none";
-  if (isDragging) return "border-accent ring-1 ring-accent bg-accent/5 scale-[0.99]";
-  if (isSelected) return "border-destructive ring-1 ring-destructive bg-destructive/5 shadow-sm";
-  return "border-border/40 shadow-xs hover:shadow-sm hover:border-border/80 bg-background";
+    return `${zIndexLayer} opacity-0 scale-95 border-destructive bg-destructive/10 grayscale blur-sm pointer-events-none`;
+  if (isDragging) return `${zIndexLayer} border-accent ring-1 ring-accent bg-accent/5 scale-[0.99]`;
+  if (isSelected)
+    return `${zIndexLayer} border-destructive ring-1 ring-destructive bg-destructive/5 shadow-sm`;
+
+  return `${zIndexLayer} border-border/40 shadow-xs hover:shadow-sm hover:border-border/80 bg-background`;
 };
 
 const getCursorStyle = (isSelectionMode: boolean, isDragging: boolean) => {
@@ -72,7 +88,7 @@ function PromptListCardComponent({
   isPriority = false,
   queueItems = [],
 }: Readonly<PromptListCardProps>) {
-  const { setIsHovered, isMenuOpen, setIsMenuOpen } = usePromptCard();
+  const { isHovered, setIsHovered, isMenuOpen, setIsMenuOpen } = usePromptCard();
   const { attributes, listeners, setNodeRef, isDragging } = usePromptDnd(item);
   const href = `/${lang}/${authorUsername}/p/${item.id}${isStudio ? "?from=studio" : ""}`;
   const setQueue = usePromptQueue((state) => state.setQueue);
@@ -94,7 +110,7 @@ function PromptListCardComponent({
     }
   };
 
-  const cardClasses = `group relative flex items-center w-full gap-4 p-2 pl-3 rounded-xl border transition-all duration-200 min-h-18 overflow-hidden ${getCardStyles(isDeleting, isDragging, isSelected)}`;
+  const cardClasses = `group relative flex items-center w-full gap-4 p-2 pl-3 rounded-xl border transition-all duration-200 min-h-18 ${getCardStyles(isDeleting, isDragging, isSelected, isHovered, isMenuOpen)}`;
 
   return (
     <article
@@ -161,9 +177,9 @@ function PromptListCardComponent({
         </div>
       </Link>
 
-      <div className="shrink-0 w-10 h-10 flex items-center justify-center relative z-30">
+      <div className="shrink-0 w-10 h-10 flex items-center justify-center">
         <div
-          className={`transition-opacity duration-150 ${isMenuOpen ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}
+          className={`transition-opacity duration-150 z-90! ${isMenuOpen ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}
         >
           <PromptCardActions
             item={item}

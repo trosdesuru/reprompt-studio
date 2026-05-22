@@ -8,13 +8,12 @@ import {
   IconBookmark,
   IconWand,
   IconDownload,
-  IconSquareCheck, // 🟢 Importado
+  IconSquareCheck,
 } from "@tabler/icons-react";
 import { Tooltip } from "../../atoms/Tooltip/Tooltip";
 import { useDownloadImage } from "@/src/features/prompts/hooks/useDownloadImage";
-import { useStudioUI } from "@/src/store/useStudioUI"; // 🟢 Importamos el store
+import { useStudioUI } from "@/src/store/useStudioUI";
 
-// 🏛️ Directriz 12: Tipado estricto. Cero "any".
 interface Directory {
   id: string;
   name: string;
@@ -40,7 +39,7 @@ export function PromptCardActions({
   isOwner,
 }: PromptCardActionsProps) {
   const { downloadImage, isDownloading } = useDownloadImage();
-  // 🟢 Instanciamos la función del estado global
+
   const togglePromptSelection = useStudioUI((state) => state.togglePromptSelection);
 
   return (
@@ -51,7 +50,6 @@ export function PromptCardActions({
           e.stopPropagation();
           setIsOpen(!isOpen);
         }}
-        // 🕸️ Directriz 9: Área táctil ampliada
         className={`p-2 rounded-md backdrop-blur-md border shadow-sm transition-colors ${
           isOpen
             ? "bg-background border-border text-foreground"
@@ -64,9 +62,7 @@ export function PromptCardActions({
 
       {isOpen && (
         <div className="absolute top-full right-0 mt-1 w-48 bg-background border border-border rounded-xl shadow-xl z-50 animate-in fade-in zoom-in-95 overflow-hidden">
-          {/* 🌍 ACCIONES UNIVERSALES (Para todos: Dueños y Visitantes) */}
           <div className="flex flex-col">
-            {/* 🟢 NUEVO BOTÓN: Seleccionar (Solo Dueño) */}
             {isOwner && (
               <button
                 onClick={(e) => {
@@ -126,7 +122,6 @@ export function PromptCardActions({
             </Tooltip>
           </div>
 
-          {/* 👑 ACCIONES DE DUEÑO (OWNER) - Zona Administrativa */}
           {isOwner && (
             <div className="bg-muted/10">
               {onAssign && directories && directories.length > 0 && (
