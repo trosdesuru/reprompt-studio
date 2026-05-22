@@ -101,7 +101,7 @@ export function PromptGrid({
       )}
 
       <FeedSentinel
-        ref={sentinelRef as React.RefObject<HTMLDivElement>}
+        ref={sentinelRef}
         isLoading={isLoading}
         hasMore={hasMore}
         isEmpty={prompts.length === 0}
